@@ -191,6 +191,15 @@ cython_debug/
 # Ruff stuff:
 .ruff_cache/
 
+# Node.js
+node_modules/
+dist/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
 # PyPI configuration file
 .pypirc
 

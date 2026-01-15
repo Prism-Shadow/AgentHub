@@ -1,0 +1,17 @@
+{
+  "name": "agent-adapter",
+  "version": "0.1.0",
+  "description": "Agent Adapter TypeScript package",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src --ext .ts",
+    "start": "node dist/index.js"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.7.0"
+  }
+}

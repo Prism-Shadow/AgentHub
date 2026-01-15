@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import datetime
+
+def get_message() -> str:
+    return "Hello from Agent Adapter!"
 
 
-def get_current_time() -> str:
-    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-
-def print_hello_world():
-    print(f"Hello from custom project! Current time is {get_current_time()}")
+def print_hello_world() -> None:
+    print(get_message())
 
 
 if __name__ == "__main__":

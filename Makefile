@@ -21,5 +21,5 @@ style:
 	uv run ruff format $(check_dirs)
 
 test:
-	uv pip install -e .[tests]
+	uv pip install -e .[dev]
 	uv run pytest -vvv tests
