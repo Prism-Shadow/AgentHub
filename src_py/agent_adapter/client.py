@@ -22,23 +22,13 @@ from google.genai import types
 from .types import MessageDict, ThinkingLevel, ToolChoice
 
 
-class BaseLLMClient(ABC):
+class LLMClient(ABC):
     """
     Abstract base class for LLM clients.
 
-    All model-specific clients should inherit from this class and implement
-    the stream_generate method.
+    All model-specific clients must inherit from this class and implement
+    both abstract methods: stream_generate and stream_generate_stateful.
     """
-
-    def __init__(self, api_key: Optional[str] = None):
-        """
-        Initialize the LLM client.
-
-        Args:
-            api_key: Optional API key. If not provided, will use environment variable.
-        """
-        self._history: List[MessageDict] = []
-        self._api_key = api_key
 
     @abstractmethod
     async def stream_generate(
@@ -54,8 +44,6 @@ class BaseLLMClient(ABC):
         """
         Generate content in streaming mode (stateless).
 
-        This method requires the full message history to be passed in each call.
-
         Args:
             messages: List of message dictionaries containing conversation history
             model: Model identifier to use for generation
@@ -70,6 +58,7 @@ class BaseLLMClient(ABC):
         """
         pass
 
+    @abstractmethod
     async def stream_generate_stateful(
         self,
         message: MessageDict,
@@ -83,9 +72,6 @@ class BaseLLMClient(ABC):
         """
         Generate content in streaming mode (stateful).
 
-        This method maintains conversation history internally. Only the latest
-        message needs to be provided.
-
         Args:
             message: Latest message dictionary to add to conversation
             model: Model identifier to use for generation
@@ -98,64 +84,17 @@ class BaseLLMClient(ABC):
         Yields:
             Message chunks from the streaming response.
         """
-        # Add user message to history
-        self._history.append(message)
-
-        # Collect the complete response
-        response_text = ""
-        response_thoughts = ""
-
-        async for chunk in self.stream_generate(
-            messages=self._history,
-            model=model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            tools=tools,
-            thinking_level=thinking_level,
-            tool_choice=tool_choice,
-        ):
-            # Yield the chunk
-            yield chunk
-
-            # Accumulate response text and thoughts from chunk
-            try:
-                if hasattr(chunk, "text") and chunk.text:
-                    response_text += chunk.text
-                elif hasattr(chunk, "candidates") and chunk.candidates:
-                    for candidate in chunk.candidates:
-                        if hasattr(candidate, "content") and hasattr(candidate.content, "parts"):
-                            for part in candidate.content.parts:
-                                if hasattr(part, "text") and part.text:
-                                    response_text += part.text
-                                if hasattr(part, "thought") and part.thought:
-                                    response_thoughts += part.text
-            except Exception:
-                # Silently continue if chunk structure doesn't match expected format
-                pass
-
-        # Add model response to history (include thoughts if present)
-        if response_text or response_thoughts:
-            response_content = response_text
-            if response_thoughts:
-                response_content = f"[Thoughts: {response_thoughts}]\n{response_text}"
-            self._history.append({"role": "assistant", "content": response_content})
-
-    def clear_history(self) -> None:
-        """Clear the message history for stateful generation."""
-        self._history.clear()
-
-    def get_history(self) -> List[MessageDict]:
-        """Get the current message history."""
-        return self._history.copy()
+        pass
 
 
-class GeminiClient(BaseLLMClient):
+class GeminiClient(LLMClient):
     """Gemini-specific LLM client implementation."""
 
     def __init__(self, api_key: Optional[str] = None):
         """Initialize Gemini client."""
-        super().__init__(api_key)
+        self._history: List[MessageDict] = []
         self._gemini_client = None
+        self._api_key = api_key
 
     def _get_gemini_client(self):
         """Get or create Gemini client."""
@@ -176,7 +115,6 @@ class GeminiClient(BaseLLMClient):
         elif url_lower.endswith(".webp"):
             return "image/webp"
         else:
-            # Default to jpeg for unknown image types
             return "image/jpeg"
 
     def _convert_thinking_level(self, thinking_level: Optional[ThinkingLevel]) -> Optional[types.ThinkingLevel]:
@@ -196,7 +134,6 @@ class GeminiClient(BaseLLMClient):
         if tool_choice is None:
             return None
         if isinstance(tool_choice, list):
-            # For list of tool names, use ANY mode with allowed function names
             return types.FunctionCallingConfig(mode="ANY", allowed_function_names=tool_choice)
         elif tool_choice == "none":
             return types.FunctionCallingConfig(mode="NONE")
@@ -211,7 +148,6 @@ class GeminiClient(BaseLLMClient):
         contents = []
         for msg in messages:
             role = msg.get("role", "user")
-            # Map our roles to Gemini's roles
             if role == "assistant":
                 gemini_role = "model"
             elif role == "tool":
@@ -221,7 +157,6 @@ class GeminiClient(BaseLLMClient):
 
             content_data = msg.get("content", "")
 
-            # Handle different content formats
             if isinstance(content_data, str):
                 parts = [types.Part.from_text(text=content_data)]
             elif isinstance(content_data, list):
@@ -233,9 +168,11 @@ class GeminiClient(BaseLLMClient):
                         if item_type == "text":
                             parts.append(types.Part.from_text(text=item_value))
                         elif item_type == "image_url":
-                            # For image URLs, detect mime type from extension or default to image/jpeg
                             mime_type = self._detect_mime_type(item_value)
                             parts.append(types.Part.from_uri(file_uri=item_value, mime_type=mime_type))
+                        elif item_type == "thought_signature":
+                            # Pass thought signature back to API
+                            parts.append(types.Part(thought_signature=item_value))
                     else:
                         parts.append(types.Part.from_text(text=str(item)))
             else:
@@ -257,20 +194,17 @@ class GeminiClient(BaseLLMClient):
         """Stream generate using Gemini SDK."""
         client = self._get_gemini_client()
 
-        # Build config
         config_params = {}
         if max_tokens is not None:
             config_params["max_output_tokens"] = max_tokens
         if temperature is not None:
             config_params["temperature"] = temperature
 
-        # Handle thinking level
         if thinking_level is not None:
             gemini_thinking_level = self._convert_thinking_level(thinking_level)
             if gemini_thinking_level:
                 config_params["thinking_config"] = types.ThinkingConfig(thinking_level=gemini_thinking_level)
 
-        # Handle tools and tool choice
         if tools is not None:
             config_params["tools"] = tools
             if tool_choice is not None:
@@ -280,10 +214,8 @@ class GeminiClient(BaseLLMClient):
 
         config = types.GenerateContentConfig(**config_params) if config_params else None
 
-        # Convert messages to Gemini format
         contents = self._convert_messages_to_contents(messages)
 
-        # Stream generate
         response_stream = await client.aio.models.generate_content_stream(
             model=model, contents=contents, config=config
         )
@@ -291,26 +223,93 @@ class GeminiClient(BaseLLMClient):
         async for chunk in response_stream:
             yield chunk
 
+    async def stream_generate_stateful(
+        self,
+        message: MessageDict,
+        model: str,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+        tools: Optional[List[Any]] = None,
+        thinking_level: Optional[ThinkingLevel] = None,
+        tool_choice: Optional[ToolChoice] = None,
+    ) -> AsyncIterator[Any]:
+        """Stream generate with automatic history management."""
+        self._history.append(message)
 
-class AutoLLMClient(BaseLLMClient):
+        response_text = ""
+        thought_signature = None
+
+        async for chunk in self.stream_generate(
+            messages=self._history,
+            model=model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            tools=tools,
+            thinking_level=thinking_level,
+            tool_choice=tool_choice,
+        ):
+            yield chunk
+
+            # Extract text and thought signature from chunk
+            try:
+                if hasattr(chunk, "candidates") and chunk.candidates:
+                    for candidate in chunk.candidates:
+                        if hasattr(candidate, "content") and hasattr(candidate.content, "parts"):
+                            for part in candidate.content.parts:
+                                if hasattr(part, "text") and part.text:
+                                    response_text += part.text
+                                if hasattr(part, "thought_signature") and part.thought_signature:
+                                    thought_signature = part.thought_signature
+                elif hasattr(chunk, "text") and chunk.text:
+                    response_text += chunk.text
+            except Exception:
+                pass
+
+        # Build response content
+        if response_text or thought_signature:
+            content_items = []
+            if response_text:
+                content_items.append({"type": "text", "value": response_text})
+            if thought_signature:
+                content_items.append({"type": "thought_signature", "value": thought_signature})
+
+            self._history.append(
+                {"role": "assistant", "content": content_items if len(content_items) > 1 else response_text}
+            )
+
+    def clear_history(self) -> None:
+        """Clear the message history."""
+        self._history.clear()
+
+    def get_history(self) -> List[MessageDict]:
+        """Get the current message history."""
+        return self._history.copy()
+
+
+class AutoLLMClient(LLMClient):
     """
     Auto-routing LLM client that dispatches to appropriate model-specific client.
 
-    This client analyzes the model name and routes the request to the correct
-    underlying client implementation (Gemini, GPT, Claude, etc.).
+    This client is stateful - it knows the model name at initialization and maintains
+    conversation history for that specific model.
     """
 
-    def __init__(self, api_key: Optional[str] = None):
-        """Initialize AutoLLMClient."""
-        super().__init__(api_key)
-        self._clients = {}
+    def __init__(self, model: str, api_key: Optional[str] = None):
+        """
+        Initialize AutoLLMClient with a specific model.
 
-    def _get_client_for_model(self, model: str) -> BaseLLMClient:
-        """Get or create the appropriate client for the given model."""
+        Args:
+            model: Model identifier (determines which client to use)
+            api_key: Optional API key
+        """
+        self._model = model
+        self._api_key = api_key
+        self._client = self._create_client_for_model(model)
+
+    def _create_client_for_model(self, model: str) -> LLMClient:
+        """Create the appropriate client for the given model."""
         if "gemini" in model.lower():
-            if "gemini" not in self._clients:
-                self._clients["gemini"] = GeminiClient(self._api_key)
-            return self._clients["gemini"]
+            return GeminiClient(self._api_key)
         elif "gpt" in model.lower() or "o1" in model.lower():
             raise NotImplementedError("GPT models not yet implemented")
         elif "claude" in model.lower():
@@ -328,9 +327,8 @@ class AutoLLMClient(BaseLLMClient):
         thinking_level: Optional[ThinkingLevel] = None,
         tool_choice: Optional[ToolChoice] = None,
     ) -> AsyncIterator[Any]:
-        """Route to appropriate client and stream generate."""
-        client = self._get_client_for_model(model)
-        async for chunk in client.stream_generate(
+        """Route to underlying client's stream_generate."""
+        async for chunk in self._client.stream_generate(
             messages=messages,
             model=model,
             max_tokens=max_tokens,
@@ -340,3 +338,36 @@ class AutoLLMClient(BaseLLMClient):
             tool_choice=tool_choice,
         ):
             yield chunk
+
+    async def stream_generate_stateful(
+        self,
+        message: MessageDict,
+        model: str,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+        tools: Optional[List[Any]] = None,
+        thinking_level: Optional[ThinkingLevel] = None,
+        tool_choice: Optional[ToolChoice] = None,
+    ) -> AsyncIterator[Any]:
+        """Route to underlying client's stream_generate_stateful."""
+        async for chunk in self._client.stream_generate_stateful(
+            message=message,
+            model=model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            tools=tools,
+            thinking_level=thinking_level,
+            tool_choice=tool_choice,
+        ):
+            yield chunk
+
+    def clear_history(self) -> None:
+        """Clear history in the underlying client."""
+        if hasattr(self._client, "clear_history"):
+            self._client.clear_history()
+
+    def get_history(self) -> List[MessageDict]:
+        """Get history from the underlying client."""
+        if hasattr(self._client, "get_history"):
+            return self._client.get_history()
+        return []

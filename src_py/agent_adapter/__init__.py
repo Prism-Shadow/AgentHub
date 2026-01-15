@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .client import AutoLLMClient as LLMClient
+from .client import AutoLLMClient, GeminiClient, LLMClient
 from .types import MessageDict, ThinkingLevel, ToolChoice
 
 
 __all__ = [
+    "AutoLLMClient",
+    "GeminiClient",
     "LLMClient",
     "MessageDict",
     "ThinkingLevel",

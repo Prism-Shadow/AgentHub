@@ -16,7 +16,7 @@ import os
 
 import pytest
 
-from agent_adapter import LLMClient
+from agent_adapter import GeminiClient
 
 
 # Skip tests if no API key is available
@@ -29,7 +29,7 @@ pytestmark = pytest.mark.skipif(
 @pytest.mark.asyncio
 async def test_stream_generate_basic():
     """Test basic stateless stream generation."""
-    client = LLMClient()
+    client = GeminiClient()
     messages = [{"role": "user", "content": "Say hello"}]
 
     chunks = []
@@ -42,7 +42,7 @@ async def test_stream_generate_basic():
 @pytest.mark.asyncio
 async def test_stream_generate_with_all_parameters():
     """Test stream generation with all optional parameters."""
-    client = LLMClient()
+    client = GeminiClient()
     messages = [{"role": "user", "content": "What is 2+2?"}]
 
     chunks = []
@@ -60,7 +60,7 @@ async def test_stream_generate_with_all_parameters():
 @pytest.mark.asyncio
 async def test_stream_generate_stateful():
     """Test stateful stream generation."""
-    client = LLMClient()
+    client = GeminiClient()
 
     # First message
     chunks1 = []
@@ -88,7 +88,7 @@ async def test_stream_generate_stateful():
 @pytest.mark.asyncio
 async def test_clear_history():
     """Test clearing message history."""
-    client = LLMClient()
+    client = GeminiClient()
 
     # Add a message
     async for _ in client.stream_generate_stateful(
@@ -106,7 +106,7 @@ async def test_clear_history():
 @pytest.mark.asyncio
 async def test_message_with_content_list():
     """Test message with content as a list of objects."""
-    client = LLMClient()
+    client = GeminiClient()
     messages = [
         {
             "role": "user",
@@ -126,31 +126,25 @@ async def test_message_with_content_list():
 @pytest.mark.asyncio
 async def test_unknown_model():
     """Test that unknown models raise ValueError."""
-    client = LLMClient()
-    messages = [{"role": "user", "content": "Hello"}]
+    from agent_adapter import AutoLLMClient
 
     with pytest.raises(ValueError, match="Unknown model type"):
-        async for _ in client.stream_generate(messages=messages, model="unknown-model-xyz"):
-            pass
+        AutoLLMClient(model="unknown-model-xyz")
 
 
 @pytest.mark.asyncio
 async def test_gpt_not_implemented():
     """Test that GPT models raise NotImplementedError."""
-    client = LLMClient()
-    messages = [{"role": "user", "content": "Hello"}]
+    from agent_adapter import AutoLLMClient
 
     with pytest.raises(NotImplementedError, match="GPT models not yet implemented"):
-        async for _ in client.stream_generate(messages=messages, model="gpt-4"):
-            pass
+        AutoLLMClient(model="gpt-4")
 
 
 @pytest.mark.asyncio
 async def test_claude_not_implemented():
     """Test that Claude models raise NotImplementedError."""
-    client = LLMClient()
-    messages = [{"role": "user", "content": "Hello"}]
+    from agent_adapter import AutoLLMClient
 
     with pytest.raises(NotImplementedError, match="Claude models not yet implemented"):
-        async for _ in client.stream_generate(messages=messages, model="claude-3"):
-            pass
+        AutoLLMClient(model="claude-3")
