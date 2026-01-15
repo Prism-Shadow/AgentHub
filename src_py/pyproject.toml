@@ -1,13 +1,10 @@
 [project]
-name = "custom-proj"
+name = "agent-adapter-py"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
+description = "Agent Adapter Py package"
+readme = "../README.md"
 requires-python = ">=3.11"
-dependencies = [
-    "openai>=2.7.0",
-    "python-dotenv>=1.2.1",
-]
+dependencies = []
 
 [dependency-groups]
 dev = [
@@ -38,7 +35,6 @@ select = ["C", "E", "F", "I", "W", "RUF022"]
 
 [tool.ruff.lint.isort]
 lines-after-imports = 2
-known-third-party = ["openai"]
 
 [tool.ruff.format]
 quote-style = "double"

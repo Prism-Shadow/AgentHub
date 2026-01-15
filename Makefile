@@ -3,23 +3,23 @@
 check_dirs := .
 
 default:
-	uv pip install -e .
+	cd src_py && uv pip install -e .
 
 build:
-	uv build
+	cd src_py && uv build
 
 commit:
-	uv run pre-commit install
-	uv run pre-commit run --all-files
+	cd src_py && uv run pre-commit install --config ../.pre-commit-config.yaml
+	cd src_py && uv run pre-commit run --all-files --config ../.pre-commit-config.yaml
 
 quality:
-	uv run ruff check $(check_dirs)
-	uv run ruff format --check $(check_dirs)
+	cd src_py && uv run ruff check $(check_dirs)
+	cd src_py && uv run ruff format --check $(check_dirs)
 
 style:
-	uv run ruff check $(check_dirs) --fix
-	uv run ruff format $(check_dirs)
+	cd src_py && uv run ruff check $(check_dirs) --fix
+	cd src_py && uv run ruff format $(check_dirs)
 
 test:
-	uv pip install -e .[tests]
-	uv run pytest -vvv tests
+	cd src_py && uv pip install -e .[dev]
+	cd src_py && uv run pytest -vvv tests

@@ -1,56 +1,33 @@
-# Python Template
+# Agent Adapter
 
-A template for Python projects.
+This repository contains a minimal Python package and a minimal TypeScript package for the Agent Adapter hello world examples.
 
-## 1. Install uv project manager
+## Python package (agent-adapter-py)
 
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
+Python sources live in `src_py/`.
 
-Follow https://docs.astral.sh/uv/ to install uv project manager on other operating systems.
-
-## 2. Change the project name
-
-Replace all occurrences of `custom_proj` with your new project name.
-
-```
-custom_proj/
-    ├── __init__.py
-    ├── hello_world.py
-    └── openrouter.py
-
-# change to
-
-new_name/
-    ├── __init__.py
-    ├── hello_world.py
-    └── openrouter.py
-```
-
-And pyproject.toml:
-
-```toml
-name = "custom-proj"
-
-# change to
-
-name = "new-name"
-```
-
-## 3. Run the example
+Install dependencies and run the example from `src_py/`:
 
 ```bash
-make
-uv run python examples/invoke.py
+cd src_py
+uv pip install -e .
+uv run python -m agent_adapter.hello_world
 ```
 
-## 4. Run the tests
+Run linting/tests:
 
 ```bash
+make quality
 make test
 ```
 
-## 5. Push to GitHub
+## TypeScript package (agent-adapter-ts)
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
+TypeScript sources live in `src_ts/`. From the `src_ts` directory:
+
+```bash
+npm install
+npm run lint
+npm run build
+npm run start
+```

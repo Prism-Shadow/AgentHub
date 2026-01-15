@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from custom_proj.hello_world import print_hello_world
+from .hello_world import get_message, print_hello_world
 
 
-if __name__ == "__main__":
-    print_hello_world()
+__all__ = ["get_message", "print_hello_world"]
