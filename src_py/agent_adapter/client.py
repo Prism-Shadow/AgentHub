@@ -55,10 +55,12 @@ class LLMClient:
             tool_choice: Tool usage preference (none/auto/required or list of tool names)
 
         Yields:
-            Message chunks from the streaming response
+            Message chunks from the streaming response. Each chunk is a dictionary
+            with the response data. The actual structure depends on the SDK implementation.
         """
         # TODO: Implement actual SDK integration
-        # For now, return a simple mock response
+        # For now, return a simple mock response as a dict
+        # Future implementations should return SDK-specific response objects
         yield {"type": "text", "content": "Mock response chunk"}
 
     async def stream_generate_stateful(
@@ -87,7 +89,8 @@ class LLMClient:
             tool_choice: Tool usage preference (none/auto/required or list of tool names)
 
         Yields:
-            Message chunks from the streaming response
+            Message chunks from the streaming response. Each chunk is a dictionary
+            with the response data. The actual structure depends on the SDK implementation.
         """
         # Add message to history
         self._message_history.append(message)
