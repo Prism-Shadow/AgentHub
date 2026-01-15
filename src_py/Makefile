@@ -1,18 +1,16 @@
 .PHONY: default install lint build test
 
-check_dirs := .
-
 default: install
 
 install:
 	uv pip install -e .
 
 lint:
-	uv run ruff check $(check_dirs)
-	uv run ruff format --check $(check_dirs)
+	uvx ruff check
+	uvx ruff format --check
 
 build:
-	uv build
+	uvx build
 
 test:
 	uv pip install -e .[dev]

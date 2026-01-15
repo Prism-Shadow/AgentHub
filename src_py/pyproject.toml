@@ -2,7 +2,6 @@
 name = "agent-adapter"
 version = "0.1.0"
 description = "Agent Adapter package"
-readme = "../README.md"
 requires-python = ">=3.11"
 dependencies = []
 
