@@ -86,8 +86,14 @@ make build
 
 **Run the application:**
 ```bash
-make test  # This runs the start script
-# or manually: npm run start
+npm run start
+```
+
+**Run tests:**
+```bash
+make test
+# or manually: npm run test
+# Note: Currently a placeholder - extend with actual test framework
 ```
 
 **Run linting:**
