@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Union
 
 
 class ThinkingLevel(str, Enum):
@@ -27,39 +27,6 @@ class ThinkingLevel(str, Enum):
 
 # Tool choice can be a literal string or a list of tool names
 ToolChoice = Union[Literal["none", "auto", "required"], List[str]]
-
-
-class ContentPart:
-    """Represents a part of message content."""
-
-    def __init__(self, type: str, value: Any):
-        self.type = type
-        self.value = value
-
-
-class Message:
-    """Represents a message in the conversation."""
-
-    def __init__(
-        self,
-        role: str,
-        content: Union[str, List[Dict[str, Any]]],
-        tool_call_id: Optional[str] = None,
-    ):
-        self.role = role
-        self.content = content
-        self.tool_call_id = tool_call_id
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert message to dictionary format."""
-        result: Dict[str, Any] = {
-            "role": self.role,
-            "content": self.content,
-        }
-        if self.tool_call_id is not None:
-            result["tool_call_id"] = self.tool_call_id
-        return result
-
 
 # Type alias for message dict format
 MessageDict = Dict[str, Any]

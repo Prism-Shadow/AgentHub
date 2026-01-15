@@ -14,13 +14,11 @@
 
 from .client import LLMClient
 from .hello_world import get_message, print_hello_world
-from .types import ContentPart, Message, MessageDict, ThinkingLevel, ToolChoice
+from .types import MessageDict, ThinkingLevel, ToolChoice
 
 
 __all__ = [
-    "ContentPart",
     "LLMClient",
-    "Message",
     "MessageDict",
     "ThinkingLevel",
     "ToolChoice",
