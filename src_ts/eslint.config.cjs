@@ -13,6 +13,9 @@ module.exports = [
         ecmaVersion: "latest",
         sourceType: "module",
       },
+      globals: {
+        console: "readonly",
+      },
     },
     plugins: {
       "@typescript-eslint": tsPlugin,
