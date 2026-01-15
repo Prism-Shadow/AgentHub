@@ -16,7 +16,7 @@ import os
 
 import pytest
 
-from agent_adapter.client import LLMClient
+from agent_adapter import LLMClient
 
 
 # Skip tests if no API key is available

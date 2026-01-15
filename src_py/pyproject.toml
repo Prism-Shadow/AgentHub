@@ -3,7 +3,7 @@ name = "agent-adapter"
 version = "0.1.0"
 description = "Agent Adapter package"
 requires-python = ">=3.11"
-dependencies = ["google-genai>=1.5.0"]
+dependencies = ["google-genai>=1.5.0", "httpx[socks]"]
 
 [dependency-groups]
 dev = ["pytest>=8.4.2", "pytest-asyncio>=0.23.0", "ruff>=0.14.3"]

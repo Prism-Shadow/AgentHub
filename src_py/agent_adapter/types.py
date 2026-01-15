@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from enum import Enum
-from typing import Any, Dict, List, Literal, Union
+from typing import List, Literal, NotRequired, TypedDict, Union
 
 
 class ThinkingLevel(str, Enum):
@@ -28,5 +28,17 @@ class ThinkingLevel(str, Enum):
 # Tool choice can be a literal string or a list of tool names
 ToolChoice = Union[Literal["none", "auto", "required"], List[str]]
 
-# Type alias for message dict format
-MessageDict = Dict[str, Any]
+
+class ContentItem(TypedDict):
+    """A content item within a message."""
+
+    type: str  # "text" or "image_url"
+    value: str
+
+
+class MessageDict(TypedDict):
+    """Message format for LLM communication."""
+
+    role: str  # "user", "assistant", "tool", or "system"
+    content: Union[str, List[ContentItem]]  # Text or list of content items
+    tool_call_id: NotRequired[str]  # Optional tool call ID for tool responses

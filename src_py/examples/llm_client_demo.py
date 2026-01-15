@@ -21,7 +21,7 @@ This example shows both stateless and stateful streaming generation.
 
 import asyncio
 
-from agent_adapter import LLMClient, ThinkingLevel
+from agent_adapter import LLMClient
 
 
 async def stateless_example():
@@ -81,60 +81,10 @@ async def stateful_example():
     print()
 
 
-async def thinking_example():
-    """Example with different thinking levels."""
-    print("=" * 60)
-    print("Thinking Level Example")
-    print("=" * 60)
-
-    client = LLMClient()
-
-    messages = [{"role": "user", "content": "Explain quantum computing in simple terms"}]
-
-    print("User: Explain quantum computing in simple terms")
-    print("Assistant (HIGH thinking): ", end="", flush=True)
-
-    async for chunk in client.stream_generate(
-        messages=messages, model="gemini-3-flash-preview", thinking_level=ThinkingLevel.HIGH
-    ):
-        print(chunk, end="", flush=True)
-
-    print("\n")
-
-
-async def multimodal_example():
-    """Example with multimodal content."""
-    print("=" * 60)
-    print("Multimodal Example")
-    print("=" * 60)
-
-    client = LLMClient()
-
-    messages = [
-        {
-            "role": "user",
-            "content": [
-                {"type": "text", "value": "What's in this image?"},
-                {"type": "image_url", "value": "https://example.com/sample.jpg"},
-            ],
-        }
-    ]
-
-    print("User: [Sends image] What's in this image?")
-    print("Assistant: ", end="", flush=True)
-
-    async for chunk in client.stream_generate(messages=messages, model="gemini-3-flash-preview"):
-        print(chunk, end="", flush=True)
-
-    print("\n")
-
-
 async def main():
     """Run all examples."""
     await stateless_example()
     await stateful_example()
-    await thinking_example()
-    await multimodal_example()
 
 
 if __name__ == "__main__":

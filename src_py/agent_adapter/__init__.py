@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .client import LLMClient
-from .hello_world import get_message, print_hello_world
+from .client import AutoLLMClient as LLMClient
 from .types import MessageDict, ThinkingLevel, ToolChoice
 
 
@@ -22,6 +21,4 @@ __all__ = [
     "MessageDict",
     "ThinkingLevel",
     "ToolChoice",
-    "get_message",
-    "print_hello_world",
 ]

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+from abc import ABC, abstractmethod
 from typing import Any, AsyncIterator, List, Optional
 
 from google import genai
@@ -21,13 +22,12 @@ from google.genai import types
 from .types import MessageDict, ThinkingLevel, ToolChoice
 
 
-class LLMClient:
+class BaseLLMClient(ABC):
     """
-    Unified LLM client that provides a consistent interface for different model SDKs.
+    Abstract base class for LLM clients.
 
-    This client provides two main methods:
-    - stream_generate: Stateless async method that requires full message history
-    - stream_generate_stateful: Stateful async method that only requires the latest message
+    All model-specific clients should inherit from this class and implement
+    the stream_generate method.
     """
 
     def __init__(self, api_key: Optional[str] = None):
@@ -37,9 +37,125 @@ class LLMClient:
         Args:
             api_key: Optional API key. If not provided, will use environment variable.
         """
-        self.history: List[MessageDict] = []
-        self._gemini_client = None
+        self._history: List[MessageDict] = []
         self._api_key = api_key
+
+    @abstractmethod
+    async def stream_generate(
+        self,
+        messages: List[MessageDict],
+        model: str,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+        tools: Optional[List[Any]] = None,
+        thinking_level: Optional[ThinkingLevel] = None,
+        tool_choice: Optional[ToolChoice] = None,
+    ) -> AsyncIterator[Any]:
+        """
+        Generate content in streaming mode (stateless).
+
+        This method requires the full message history to be passed in each call.
+
+        Args:
+            messages: List of message dictionaries containing conversation history
+            model: Model identifier to use for generation
+            max_tokens: Maximum number of tokens to generate
+            temperature: Sampling temperature (0.0 to 2.0)
+            tools: List of tools/functions available to the model
+            thinking_level: Level of reasoning depth (none, low, medium, high)
+            tool_choice: Tool usage preference (none/auto/required or list of tool names)
+
+        Yields:
+            Message chunks from the streaming response.
+        """
+        pass
+
+    async def stream_generate_stateful(
+        self,
+        message: MessageDict,
+        model: str,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+        tools: Optional[List[Any]] = None,
+        thinking_level: Optional[ThinkingLevel] = None,
+        tool_choice: Optional[ToolChoice] = None,
+    ) -> AsyncIterator[Any]:
+        """
+        Generate content in streaming mode (stateful).
+
+        This method maintains conversation history internally. Only the latest
+        message needs to be provided.
+
+        Args:
+            message: Latest message dictionary to add to conversation
+            model: Model identifier to use for generation
+            max_tokens: Maximum number of tokens to generate
+            temperature: Sampling temperature (0.0 to 2.0)
+            tools: List of tools/functions available to the model
+            thinking_level: Level of reasoning depth (none, low, medium, high)
+            tool_choice: Tool usage preference (none/auto/required or list of tool names)
+
+        Yields:
+            Message chunks from the streaming response.
+        """
+        # Add user message to history
+        self._history.append(message)
+
+        # Collect the complete response
+        response_text = ""
+        response_thoughts = ""
+
+        async for chunk in self.stream_generate(
+            messages=self._history,
+            model=model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            tools=tools,
+            thinking_level=thinking_level,
+            tool_choice=tool_choice,
+        ):
+            # Yield the chunk
+            yield chunk
+
+            # Accumulate response text and thoughts from chunk
+            try:
+                if hasattr(chunk, "text") and chunk.text:
+                    response_text += chunk.text
+                elif hasattr(chunk, "candidates") and chunk.candidates:
+                    for candidate in chunk.candidates:
+                        if hasattr(candidate, "content") and hasattr(candidate.content, "parts"):
+                            for part in candidate.content.parts:
+                                if hasattr(part, "text") and part.text:
+                                    response_text += part.text
+                                if hasattr(part, "thought") and part.thought:
+                                    response_thoughts += part.text
+            except Exception:
+                # Silently continue if chunk structure doesn't match expected format
+                pass
+
+        # Add model response to history (include thoughts if present)
+        if response_text or response_thoughts:
+            response_content = response_text
+            if response_thoughts:
+                response_content = f"[Thoughts: {response_thoughts}]\n{response_text}"
+            self._history.append({"role": "assistant", "content": response_content})
+
+    def clear_history(self) -> None:
+        """Clear the message history for stateful generation."""
+        self._history.clear()
+
+    def get_history(self) -> List[MessageDict]:
+        """Get the current message history."""
+        return self._history.copy()
+
+
+class GeminiClient(BaseLLMClient):
+    """Gemini-specific LLM client implementation."""
+
+    def __init__(self, api_key: Optional[str] = None):
+        """Initialize Gemini client."""
+        super().__init__(api_key)
+        self._gemini_client = None
 
     def _get_gemini_client(self):
         """Get or create Gemini client."""
@@ -138,49 +254,6 @@ class LLMClient:
         thinking_level: Optional[ThinkingLevel] = None,
         tool_choice: Optional[ToolChoice] = None,
     ) -> AsyncIterator[Any]:
-        """
-        Generate content in streaming mode (stateless).
-
-        This method requires the full message history to be passed in each call.
-
-        Args:
-            messages: List of message dictionaries containing conversation history
-            model: Model identifier to use for generation
-            max_tokens: Maximum number of tokens to generate
-            temperature: Sampling temperature (0.0 to 2.0)
-            tools: List of tools/functions available to the model
-            thinking_level: Level of reasoning depth (none, low, medium, high)
-            tool_choice: Tool usage preference (none/auto/required or list of tool names)
-
-        Yields:
-            Message chunks from the streaming response. Each chunk is a dictionary
-            with the response data. The actual structure depends on the SDK implementation.
-        """
-        # Dispatch based on model name
-        if "gemini" in model.lower():
-            async for chunk in self._stream_generate_gemini(
-                messages, model, max_tokens, temperature, tools, thinking_level, tool_choice
-            ):
-                yield chunk
-        elif "gpt" in model.lower() or "o1" in model.lower():
-            # TODO: Implement GPT/OpenAI integration
-            raise NotImplementedError("GPT models not yet implemented")
-        elif "claude" in model.lower():
-            # TODO: Implement Claude integration
-            raise NotImplementedError("Claude models not yet implemented")
-        else:
-            raise ValueError(f"Unknown model type: {model}")
-
-    async def _stream_generate_gemini(
-        self,
-        messages: List[MessageDict],
-        model: str,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
-        tools: Optional[List[Any]] = None,
-        thinking_level: Optional[ThinkingLevel] = None,
-        tool_choice: Optional[ToolChoice] = None,
-    ) -> AsyncIterator[Any]:
         """Stream generate using Gemini SDK."""
         client = self._get_gemini_client()
 
@@ -218,9 +291,36 @@ class LLMClient:
         async for chunk in response_stream:
             yield chunk
 
-    async def stream_generate_stateful(
+
+class AutoLLMClient(BaseLLMClient):
+    """
+    Auto-routing LLM client that dispatches to appropriate model-specific client.
+
+    This client analyzes the model name and routes the request to the correct
+    underlying client implementation (Gemini, GPT, Claude, etc.).
+    """
+
+    def __init__(self, api_key: Optional[str] = None):
+        """Initialize AutoLLMClient."""
+        super().__init__(api_key)
+        self._clients = {}
+
+    def _get_client_for_model(self, model: str) -> BaseLLMClient:
+        """Get or create the appropriate client for the given model."""
+        if "gemini" in model.lower():
+            if "gemini" not in self._clients:
+                self._clients["gemini"] = GeminiClient(self._api_key)
+            return self._clients["gemini"]
+        elif "gpt" in model.lower() or "o1" in model.lower():
+            raise NotImplementedError("GPT models not yet implemented")
+        elif "claude" in model.lower():
+            raise NotImplementedError("Claude models not yet implemented")
+        else:
+            raise ValueError(f"Unknown model type: {model}")
+
+    async def stream_generate(
         self,
-        message: MessageDict,
+        messages: List[MessageDict],
         model: str,
         max_tokens: Optional[int] = None,
         temperature: Optional[float] = None,
@@ -228,32 +328,10 @@ class LLMClient:
         thinking_level: Optional[ThinkingLevel] = None,
         tool_choice: Optional[ToolChoice] = None,
     ) -> AsyncIterator[Any]:
-        """
-        Generate content in streaming mode (stateful).
-
-        This method maintains conversation history internally. Only the latest
-        message needs to be provided.
-
-        Args:
-            message: Latest message dictionary to add to conversation
-            model: Model identifier to use for generation
-            max_tokens: Maximum number of tokens to generate
-            temperature: Sampling temperature (0.0 to 2.0)
-            tools: List of tools/functions available to the model
-            thinking_level: Level of reasoning depth (none, low, medium, high)
-            tool_choice: Tool usage preference (none/auto/required or list of tool names)
-
-        Yields:
-            Message chunks from the streaming response. Each chunk is a dictionary
-            with the response data. The actual structure depends on the SDK implementation.
-        """
-        # Add user message to history
-        self.history.append(message)
-
-        # Collect the complete response
-        response_text = ""
-        async for chunk in self.stream_generate(
-            messages=self.history,
+        """Route to appropriate client and stream generate."""
+        client = self._get_client_for_model(model)
+        async for chunk in client.stream_generate(
+            messages=messages,
             model=model,
             max_tokens=max_tokens,
             temperature=temperature,
@@ -261,32 +339,4 @@ class LLMClient:
             thinking_level=thinking_level,
             tool_choice=tool_choice,
         ):
-            # Yield the chunk
             yield chunk
-
-            # Accumulate response text from chunk
-            # Handle both direct text attribute and parts-based responses
-            try:
-                if hasattr(chunk, "text") and chunk.text:
-                    response_text += chunk.text
-                elif hasattr(chunk, "candidates") and chunk.candidates:
-                    for candidate in chunk.candidates:
-                        if hasattr(candidate, "content") and hasattr(candidate.content, "parts"):
-                            for part in candidate.content.parts:
-                                if hasattr(part, "text") and part.text:
-                                    response_text += part.text
-            except Exception:
-                # Silently continue if chunk structure doesn't match expected format
-                pass
-
-        # Add model response to history
-        if response_text:
-            self.history.append({"role": "assistant", "content": response_text})
-
-    def clear_history(self) -> None:
-        """Clear the message history for stateful generation."""
-        self.history.clear()
-
-    def get_history(self) -> List[MessageDict]:
-        """Get the current message history."""
-        return self.history.copy()
