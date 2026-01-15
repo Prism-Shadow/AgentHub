@@ -1,4 +1,4 @@
-# GitHub Copilot Instructions for AgentAdapter
+# Coding Guidelines
 
 ## Project Overview
 
@@ -24,15 +24,17 @@ AgentAdapter is a dual-language project containing both Python and TypeScript im
 ## Coding Standards
 
 ### Python
+
 - Follow the [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)
 - Use `ruff` for linting and formatting
 - Maintain Python 3.11+ compatibility
 - Run `make lint` and `make test` from `src_py/` before committing
 
 ### TypeScript
+
 - Use ESLint for code quality
 - Follow TypeScript strict mode conventions
-- Run `make lint` and `make build` from `src_ts/` before committing
+- Run `make lint` and `make test` from `src_ts/` before committing
 
 ## Development Workflow
 
