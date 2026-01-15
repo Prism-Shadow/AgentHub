@@ -85,13 +85,7 @@ npm install
 make lint && make test
 ```
 
-5. Build the project
-
-```bash
-make build
-```
-
-6. Submit changes
+5. Submit changes
 
 ```bash
 git add .
@@ -99,9 +93,9 @@ git commit -m "commit message"
 git push origin your_name/dev
 ```
 
-7. Create a merge request from your branch `your_name/dev`
+6. Create a merge request from your branch `your_name/dev`
 
-8. Update your local repository
+7. Update your local repository
 
 ```bash
 git checkout main
