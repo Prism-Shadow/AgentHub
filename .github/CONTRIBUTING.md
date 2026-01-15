@@ -1,5 +1,7 @@
 # Contributing
 
+## Python Package
+
 ### Style guide
 
 We follow the [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html), check it for details.
@@ -9,8 +11,8 @@ We follow the [Google Python Style Guide](https://google.github.io/styleguide/py
 1. Clone the repo to local disk
 
 ```bash
-git clone https://github.com/Prism-Shadow/python-template.git
-cd python-template
+git clone https://github.com/Prism-Shadow/AgentAdapter.git
+cd AgentAdapter
 ```
 
 2. Create a new branch
