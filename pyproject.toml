@@ -1,7 +1,7 @@
 [project]
-name = "agent-adapter"
+name = "agent-adapter-py"
 version = "0.1.0"
-description = "Agent Adapter Python package"
+description = "Agent Adapter Py package"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []

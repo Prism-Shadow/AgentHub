@@ -2,7 +2,7 @@
 
 This repository contains a minimal Python package and a minimal TypeScript package for the Agent Adapter hello world examples.
 
-## Python package
+## Python package (agent-adapter-py)
 
 Install dependencies and run the example:
 
@@ -18,7 +18,7 @@ make quality
 make test
 ```
 
-## TypeScript package
+## TypeScript package (agent-adapter-ts)
 
 From the `typescript` directory:
 
