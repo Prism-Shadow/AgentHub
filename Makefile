@@ -22,4 +22,4 @@ style:
 
 test:
 	uv pip install -e .[dev]
-	uv run pytest -vvv tests
+	uv run pytest -vvv src_py/tests

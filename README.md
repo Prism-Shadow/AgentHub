@@ -4,6 +4,8 @@ This repository contains a minimal Python package and a minimal TypeScript packa
 
 ## Python package (agent-adapter-py)
 
+Python sources live in `src_py/`.
+
 Install dependencies and run the example:
 
 ```bash
@@ -20,7 +22,7 @@ make test
 
 ## TypeScript package (agent-adapter-ts)
 
-From the `typescript` directory:
+TypeScript sources live in `src_ts/`. From the `src_ts` directory:
 
 ```bash
 npm install
