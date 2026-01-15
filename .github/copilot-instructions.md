@@ -49,3 +49,14 @@ AgentAdapter is a dual-language project containing both Python and TypeScript im
 - Each language has its own dependencies and build process
 - When making changes, ensure consistency across both implementations when applicable
 - Consult the `docs/` directory for comprehensive reference materials before making architectural changes
+
+## GitHub Workflow Secrets for Testing
+
+When writing tests that require calling AI models, the following secrets are available in GitHub workflows:
+
+- `ANTHROPIC_API_KEY` - API key for Anthropic SDK (Claude models)
+- `GEMINI_API_KEY` - API key for Google Gemini SDK
+- `OPENAI_API_KEY` - API key for OpenAI SDK
+- `OPENAI_BASE_URL` - Base URL for OpenAI API (optional, for custom endpoints)
+
+These secrets can be used in your test code to authenticate with the respective AI model providers. Make sure to handle these credentials securely and never log or expose them in test output.
