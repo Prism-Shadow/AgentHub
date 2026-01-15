@@ -18,15 +18,14 @@ AgentAdapter is a dual-language project containing both Python and TypeScript im
   - `tsconfig.json` - TypeScript compiler configuration
   - `Makefile` - TypeScript build and test commands
 
-- `docs/` - **Reference documentation for coding agents**
-  - See this directory for detailed architecture, development guidelines, and code conventions
+- `docs/` - **Reference documentation for model SDKs**
+  - See this directory for detailed development guidelines and code conventions
 
 ## Coding Standards
 
 ### Python
 
 - Follow the [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)
-- Use `ruff` for linting and formatting
 - Maintain Python 3.11+ compatibility
 - Run `make lint` and `make test` from `src_py/` before committing
 
@@ -48,7 +47,7 @@ AgentAdapter is a dual-language project containing both Python and TypeScript im
 - This is a monorepo containing both Python and TypeScript packages
 - Each language has its own dependencies and build process
 - When making changes, ensure consistency across both implementations when applicable
-- Consult the `docs/` directory for comprehensive reference materials before making architectural changes
+- Consult the [../docs/README.md](../docs/README.md) for model sdk usage
 
 ## GitHub Workflow Secrets for Testing
 
@@ -58,8 +57,6 @@ When writing tests that require calling AI models, the following secrets are ava
 - `GEMINI_API_KEY` - API key for Google Gemini SDK
 - `OPENAI_API_KEY` - API key for OpenAI SDK
 - `OPENAI_BASE_URL` - Base URL for OpenAI API (optional, for custom endpoints)
-
-### Usage in GitHub Workflows
 
 To use these secrets in your workflow files, reference them in the `env:` section:
 

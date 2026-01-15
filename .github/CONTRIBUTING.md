@@ -47,8 +47,7 @@ git push origin your_name/dev
 7. Update your local repository
 
 ```bash
-git checkout main
-git pull
+git checkout main && git pull
 ```
 
 ## TypeScript Package
@@ -98,6 +97,5 @@ git push origin your_name/dev
 7. Update your local repository
 
 ```bash
-git checkout main
-git pull
+git checkout main && git pull
 ```
