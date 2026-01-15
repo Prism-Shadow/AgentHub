@@ -50,3 +50,54 @@ git push origin your_name/dev
 git checkout main
 git pull
 ```
+
+## TypeScript Package
+
+### Style guide
+
+We use ESLint for code quality and follow TypeScript strict mode conventions.
+
+### Create a Pull Request
+
+1. Clone the repo to local disk
+
+```bash
+git clone https://github.com/Prism-Shadow/AgentAdapter.git
+cd AgentAdapter
+```
+
+2. Create a new branch
+
+```bash
+git checkout -b your_name/dev
+```
+
+3. Set up a development environment
+
+```bash
+cd src_ts
+npm install
+```
+
+4. Check code before commit
+
+```bash
+make lint && make test
+```
+
+5. Submit changes
+
+```bash
+git add .
+git commit -m "commit message"
+git push origin your_name/dev
+```
+
+6. Create a merge request from your branch `your_name/dev`
+
+7. Update your local repository
+
+```bash
+git checkout main
+git pull
+```
