@@ -12,7 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .client import LLMClient
 from .hello_world import get_message, print_hello_world
+from .types import ContentPart, Message, MessageDict, ThinkingLevel, ToolChoice
 
 
-__all__ = ["get_message", "print_hello_world"]
+__all__ = [
+    "ContentPart",
+    "LLMClient",
+    "Message",
+    "MessageDict",
+    "ThinkingLevel",
+    "ToolChoice",
+    "get_message",
+    "print_hello_world",
+]
