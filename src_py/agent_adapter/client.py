@@ -48,6 +48,21 @@ class LLMClient:
             self._gemini_client = genai.Client(api_key=api_key) if api_key else genai.Client()
         return self._gemini_client
 
+    def _detect_mime_type(self, url: str) -> str:
+        """Detect MIME type from URL extension."""
+        url_lower = url.lower()
+        if url_lower.endswith(".png"):
+            return "image/png"
+        elif url_lower.endswith(".jpg") or url_lower.endswith(".jpeg"):
+            return "image/jpeg"
+        elif url_lower.endswith(".gif"):
+            return "image/gif"
+        elif url_lower.endswith(".webp"):
+            return "image/webp"
+        else:
+            # Default to jpeg for unknown image types
+            return "image/jpeg"
+
     def _convert_thinking_level(self, thinking_level: Optional[ThinkingLevel]) -> Optional[types.ThinkingLevel]:
         """Convert our ThinkingLevel enum to Gemini's ThinkingLevel."""
         if thinking_level is None:
@@ -102,8 +117,9 @@ class LLMClient:
                         if item_type == "text":
                             parts.append(types.Part.from_text(text=item_value))
                         elif item_type == "image_url":
-                            # For image URLs, use from_uri
-                            parts.append(types.Part.from_uri(file_uri=item_value, mime_type="image/jpeg"))
+                            # For image URLs, detect mime type from extension or default to image/jpeg
+                            mime_type = self._detect_mime_type(item_value)
+                            parts.append(types.Part.from_uri(file_uri=item_value, mime_type=mime_type))
                     else:
                         parts.append(types.Part.from_text(text=str(item)))
             else:
@@ -248,9 +264,20 @@ class LLMClient:
             # Yield the chunk
             yield chunk
 
-            # Accumulate response text
-            if hasattr(chunk, "text") and chunk.text:
-                response_text += chunk.text
+            # Accumulate response text from chunk
+            # Handle both direct text attribute and parts-based responses
+            try:
+                if hasattr(chunk, "text") and chunk.text:
+                    response_text += chunk.text
+                elif hasattr(chunk, "candidates") and chunk.candidates:
+                    for candidate in chunk.candidates:
+                        if hasattr(candidate, "content") and hasattr(candidate.content, "parts"):
+                            for part in candidate.content.parts:
+                                if hasattr(part, "text") and part.text:
+                                    response_text += part.text
+            except Exception:
+                # Silently continue if chunk structure doesn't match expected format
+                pass
 
         # Add model response to history
         if response_text:
