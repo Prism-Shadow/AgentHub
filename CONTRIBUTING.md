@@ -22,13 +22,14 @@ git checkout -b your_name/dev
 3. Set up a development environment
 
 ```bash
+cd src_py
 uv sync --dev
 ```
 
 4. Check code before commit
 
 ```bash
-make commit && make style && make quality
+make lint && make test
 ```
 
 5. Submit changes
