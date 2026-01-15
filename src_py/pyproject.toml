@@ -2,7 +2,7 @@
 name = "agent-adapter-py"
 version = "0.1.0"
 description = "Agent Adapter Py package"
-readme = "README.md"
+readme = "../README.md"
 requires-python = ">=3.11"
 dependencies = []
 
@@ -18,7 +18,7 @@ requires = ["uv_build>=0.9.16,<0.10.0"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
-module-root = "src_py"
+module-root = ""
 source-include = []
 
 [tool.ruff]
