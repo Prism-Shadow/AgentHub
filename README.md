@@ -1,6 +1,6 @@
 # Agent Adapter
 
-This repository contains a minimal Python package and a minimal TypeScript package for the Agent Adapter hello world examples.
+This repository contains a minimal Python package and a minimal TypeScript package for the Agent Adapter.
 
 ## Python package
 
@@ -9,8 +9,9 @@ Python sources live in `src_py/`.
 ```bash
 cd src_py
 make
-uv run python -m agent_adapter.hello_world
 ```
+
+See [docs/llm_client_usage.md](docs/llm_client_usage.md) for comprehensive usage examples and API documentation.
 
 ## TypeScript package
 
@@ -21,3 +22,7 @@ cd src_ts
 make
 npm run start
 ```
+
+## License
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
