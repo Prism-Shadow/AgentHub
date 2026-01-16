@@ -15,7 +15,6 @@
 from .auto_client import AutoLLMClient
 from .base_client import LLMClient
 from .gemini3 import Gemini3Client
-from .gemini_client import GeminiClient
 from .types import (
     ThinkingLevel,
     ToolChoice,
@@ -28,7 +27,6 @@ from .types import (
 __all__ = [
     "AutoLLMClient",
     "Gemini3Client",
-    "GeminiClient",
     "LLMClient",
     "ThinkingLevel",
     "ToolChoice",

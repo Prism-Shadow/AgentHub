@@ -117,3 +117,27 @@ async def test_claude_not_implemented():
     """Test that Claude models raise NotImplementedError."""
     with pytest.raises(NotImplementedError, match="Claude models not yet implemented"):
         AutoLLMClient(model="claude-3-opus")
+
+
+@pytest.mark.asyncio
+async def test_image_understanding():
+    """Test image understanding with a URL."""
+    client = AutoLLMClient(model="gemini-3-flash-preview")
+    image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Narcissus_poeticus_subsp._radiiflorus.1658.jpg/500px-Narcissus_poeticus_subsp._radiiflorus.1658.jpg"
+
+    messages = [
+        {
+            "role": "user",
+            "content_items": [
+                {"type": "text", "text": "What's in this image?"},
+                {"type": "image_url", "image_url": image_url},
+            ],
+        }
+    ]
+    config = {}
+
+    events = []
+    async for event in client.streaming_response(messages=messages, config=config):
+        events.append(event)
+
+    assert len(events) > 0
