@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from enum import Enum
-from typing import Any, List, Literal, NotRequired, TypedDict, Union
+from enum import StrEnum
+from typing import Literal, NotRequired, TypedDict
 
 
-class ThinkingLevel(str, Enum):
+class ThinkingLevel(StrEnum):
     """Thinking level for model reasoning."""
 
     NONE = "none"
@@ -26,41 +26,76 @@ class ThinkingLevel(str, Enum):
 
 
 # Tool choice can be a literal string or a list of tool names
-ToolChoice = Union[Literal["none", "auto", "required"], List[str]]
+ToolChoice = Literal["auto", "required", "none"] | list[str]
+Role = Literal["user", "assistant", "tool"]
+FinishReason = Literal["stop", "length", "unknown"]
 
 
-class ContentItem(TypedDict):
-    """A content item within a message."""
+class TextContentItem(TypedDict):
+    type: Literal["text"]
+    text: str
+    signature: str
+    tool_call_id: str
 
-    type: str  # "text", "image_url", or "thought_signature"
-    value: str
+
+class ReasoningContentItem(TypedDict):
+    type: Literal["reasoning"]
+    reasoning: str
+    signature: str
+
+
+class ImageContentItem(TypedDict):
+    type: Literal["image_url"]
+    image_url: str
+
+
+class FunctionCallContentItem(TypedDict):
+    type: Literal["function_call"]
+    name: str
+    argument: str
+    signature: str
+    tool_call_id: str
+
+
+class UnknownContentItem(TypedDict):
+    type: Literal["unknown"]
+    data: str
+
+
+ContentItem = TextContentItem | ReasoningContentItem | ImageContentItem | FunctionCallContentItem | UnknownContentItem
+
+
+class UsageMetadata(TypedDict):
+    prompt_tokens: int | None
+    thoughts_tokens: int | None
+    response_tokens: int | None
 
 
 class UniMessage(TypedDict):
     """Universal message format for LLM communication."""
 
-    role: str  # "user", "assistant", "tool", or "system"
-    content: Union[str, List[ContentItem]]  # Text or list of content items
-    tool_call_id: NotRequired[str]  # Optional tool call ID for tool responses
-
-
-class UniConfig(TypedDict, total=False):
-    """Universal configuration format for LLM requests."""
-
-    max_tokens: int
-    temperature: float
-    tools: List[Any]
-    thinking_level: ThinkingLevel
-    tool_choice: ToolChoice
+    role: Role
+    content_items: list[ContentItem]  # List of content items
+    usage_metadata: NotRequired[UsageMetadata]
+    finish_reason: NotRequired[FinishReason]
 
 
 class UniEvent(TypedDict):
     """Universal event format for streaming responses."""
 
-    type: str  # "text", "thought_signature", "tool_call", etc.
-    content: str  # The actual content of the event
-    metadata: NotRequired[dict]  # Optional metadata
+    role: Role
+    content_items: list[ContentItem]  # List of content items
+    usage_metadata: NotRequired[UsageMetadata]
+    finish_reason: NotRequired[FinishReason]
 
 
-# Legacy aliases for backward compatibility
-MessageDict = UniMessage
+class UniConfig(TypedDict):
+    """Universal configuration format for LLM requests."""
+
+    max_tokens: int | None
+    temperature: float | None
+    tools: list[str] | None
+    thinking_summary: bool | None
+    thinking_level: ThinkingLevel | None
+    tool_choice: ToolChoice | None
+    system_prompt: str | None

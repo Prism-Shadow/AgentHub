@@ -13,9 +13,9 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Any, AsyncIterator, List
+from typing import Any, AsyncIterator
 
-from .types import UniConfig, UniEvent, UniMessage
+from .types import ContentItem, FinishReason, UniConfig, UniEvent, UniMessage, UsageMetadata
 
 
 class LLMClient(ABC):
@@ -40,7 +40,7 @@ class LLMClient(ABC):
         pass
 
     @abstractmethod
-    def transform_uni_message_to_model_input(self, messages: List[UniMessage]) -> Any:
+    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> Any:
         """
         Transform universal message format to model-specific input format.
 
@@ -65,9 +65,9 @@ class LLMClient(ABC):
         """
         pass
 
-    def transform_uni_event_to_uni_message(self, events: List[UniEvent]) -> UniMessage:
+    def concat_uni_events_to_uni_message(self, events: list[UniEvent]) -> UniMessage:
         """
-        Transform a stream of universal events into a single universal message.
+        Concatenate a stream of universal events into a single universal message.
 
         This is a concrete method implemented in the base class that can be reused
         by all model clients. It accumulates events and builds a complete message.
@@ -78,32 +78,44 @@ class LLMClient(ABC):
         Returns:
             Complete universal message dictionary
         """
-        text_content = ""
-        thought_signature = None
-        content_items = []
+        content_items: list[ContentItem] = []
+        usage_metadata: UsageMetadata | None = None
+        finish_reason: FinishReason | None = None
 
         for event in events:
-            if event["type"] == "text":
-                text_content += event["content"]
-            elif event["type"] == "thought_signature":
-                thought_signature = event["content"]
+            # Merge content_items from all events
+            for item in event["content_items"]:
+                if item["type"] == "text":
+                    if content_items and content_items[-1]["type"] == "text":
+                        content_items[-1]["text"] += item["text"]
+                        if "signature" in item:  # signature may appear at the last item
+                            content_items[-1]["signature"] = item["signature"]
+                    elif item["text"]:  # omit empty text items
+                        content_items.append(item.copy())
+                elif item["type"] == "reasoning":
+                    if content_items and content_items[-1]["type"] == "reasoning":
+                        content_items[-1]["reasoning"] += item["reasoning"]
+                        if "signature" in item:  # signature may appear at the last item
+                            content_items[-1]["signature"] = item["signature"]
+                    elif item["reasoning"]:  # omit empty reasoning items
+                        content_items.append(item.copy())
+                else:
+                    content_items.append(item.copy())
 
-        # Build content
-        if text_content:
-            content_items.append({"type": "text", "value": text_content})
-        if thought_signature:
-            content_items.append({"type": "thought_signature", "value": thought_signature})
+            usage_metadata = event.get("usage_metadata")  # usage_metadata is taken from the last event
+            finish_reason = event.get("finish_reason")  # finish_reason is taken from the last event
 
         return {
             "role": "assistant",
-            "content": content_items if len(content_items) > 1 else (text_content if text_content else ""),
+            "content_items": content_items,
+            "usage_metadata": usage_metadata,
+            "finish_reason": finish_reason,
         }
 
     @abstractmethod
     async def streaming_response(
         self,
-        messages: List[UniMessage],
-        model: str,
+        messages: list[UniMessage],
         config: UniConfig,
     ) -> AsyncIterator[UniEvent]:
         """
@@ -115,7 +127,6 @@ class LLMClient(ABC):
 
         Args:
             messages: List of universal message dictionaries containing conversation history
-            model: Model identifier to use for generation
             config: Universal configuration dict
 
         Yields:
@@ -127,7 +138,6 @@ class LLMClient(ABC):
     async def streaming_response_stateful(
         self,
         message: UniMessage,
-        model: str,
         config: UniConfig,
     ) -> AsyncIterator[UniEvent]:
         """
@@ -139,10 +149,19 @@ class LLMClient(ABC):
 
         Args:
             message: Latest universal message dictionary to add to conversation
-            model: Model identifier to use for generation
             config: Universal configuration dict
 
         Yields:
             Universal events from the streaming response
         """
+        pass
+
+    @abstractmethod
+    def clear_history(self) -> None:
+        """Clear the message history."""
+        pass
+
+    @abstractmethod
+    def get_history(self) -> list[UniMessage]:
+        """Get the current message history."""
         pass

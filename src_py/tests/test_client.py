@@ -29,12 +29,12 @@ pytestmark = pytest.mark.skipif(
 @pytest.mark.asyncio
 async def test_streaming_response_basic():
     """Test basic stateless stream generation."""
-    client = GeminiClient()
-    messages = [{"role": "user", "content": "Say hello"}]
+    client = GeminiClient(model="gemini-3-flash-preview")
+    messages = [{"role": "user", "content_items": [{"type": "text", "text": "Say hello"}]}]
     config = {}
 
     events = []
-    async for event in client.streaming_response(messages=messages, model="gemini-2.0-flash-exp", config=config):
+    async for event in client.streaming_response(messages=messages, config=config):
         events.append(event)
 
     assert len(events) > 0
@@ -43,12 +43,12 @@ async def test_streaming_response_basic():
 @pytest.mark.asyncio
 async def test_streaming_response_with_all_parameters():
     """Test stream generation with all optional parameters."""
-    client = GeminiClient()
-    messages = [{"role": "user", "content": "What is 2+2?"}]
+    client = GeminiClient(model="gemini-3-flash-preview")
+    messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is 2+2?"}]}]
     config = {"max_tokens": 100, "temperature": 0.7}
 
     events = []
-    async for event in client.streaming_response(messages=messages, model="gemini-2.0-flash-exp", config=config):
+    async for event in client.streaming_response(messages=messages, config=config):
         events.append(event)
 
     assert len(events) > 0
@@ -57,13 +57,13 @@ async def test_streaming_response_with_all_parameters():
 @pytest.mark.asyncio
 async def test_streaming_response_stateful():
     """Test stateful stream generation."""
-    client = GeminiClient()
+    client = GeminiClient(model="gemini-3-flash-preview")
     config = {}
 
     # First message
     events1 = []
     async for event in client.streaming_response_stateful(
-        message={"role": "user", "content": "My name is Alice"}, model="gemini-2.0-flash-exp", config=config
+        message={"role": "user", "content_items": [{"type": "text", "text": "My name is Alice"}]}, config=config
     ):
         events1.append(event)
 
@@ -73,7 +73,7 @@ async def test_streaming_response_stateful():
     # Second message
     events2 = []
     async for event in client.streaming_response_stateful(
-        message={"role": "user", "content": "What is my name?"}, model="gemini-2.0-flash-exp", config=config
+        message={"role": "user", "content_items": [{"type": "text", "text": "What is my name?"}]}, config=config
     ):
         events2.append(event)
 
@@ -84,11 +84,11 @@ async def test_streaming_response_stateful():
 @pytest.mark.asyncio
 async def test_clear_history():
     """Test clearing conversation history."""
-    client = GeminiClient()
+    client = GeminiClient(model="gemini-3-flash-preview")
     config = {}
 
     async for event in client.streaming_response_stateful(
-        message={"role": "user", "content": "Hello"}, model="gemini-2.0-flash-exp", config=config
+        message={"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}, config=config
     ):
         pass
 
@@ -96,27 +96,6 @@ async def test_clear_history():
 
     client.clear_history()
     assert len(client.get_history()) == 0
-
-
-@pytest.mark.asyncio
-async def test_message_with_content_list():
-    """Test messages with content list (multimodal)."""
-    client = GeminiClient()
-    messages = [
-        {
-            "role": "user",
-            "content": [
-                {"type": "text", "value": "Hello"},
-            ],
-        }
-    ]
-    config = {}
-
-    events = []
-    async for event in client.streaming_response(messages=messages, model="gemini-2.0-flash-exp", config=config):
-        events.append(event)
-
-    assert len(events) > 0
 
 
 @pytest.mark.asyncio

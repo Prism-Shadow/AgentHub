@@ -12,47 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
-from typing import Any, AsyncIterator, List, Optional
+from typing import AsyncIterator
 
 from google import genai
 from google.genai import types
 
 from .base_client import LLMClient
-from .types import ThinkingLevel, ToolChoice, UniConfig, UniEvent, UniMessage
+from .types import ContentItem, FinishReason, ThinkingLevel, ToolChoice, UniConfig, UniEvent, UniMessage, UsageMetadata
 
 
 class GeminiClient(LLMClient):
     """Gemini-specific LLM client implementation."""
 
-    def __init__(self, api_key: Optional[str] = None):
-        """Initialize Gemini client."""
-        self._history: List[UniMessage] = []
-        self._gemini_client = None
-        self._api_key = api_key
+    def __init__(self, model: str, api_key: str | None = None):
+        """Initialize Gemini client with model and API key."""
+        self._model = model
+        api_key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        self._client = genai.Client(api_key=api_key) if api_key else genai.Client()
+        self._history: list[UniMessage] = []
 
-    def _get_gemini_client(self):
-        """Get or create Gemini client."""
-        if self._gemini_client is None:
-            api_key = self._api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-            self._gemini_client = genai.Client(api_key=api_key) if api_key else genai.Client()
-        return self._gemini_client
-
-    def _detect_mime_type(self, url: str) -> str:
+    def _detect_mime_type(self, url: str) -> str | None:
         """Detect MIME type from URL extension."""
-        url_lower = url.lower()
-        if url_lower.endswith(".png"):
-            return "image/png"
-        elif url_lower.endswith(".jpg") or url_lower.endswith(".jpeg"):
-            return "image/jpeg"
-        elif url_lower.endswith(".gif"):
-            return "image/gif"
-        elif url_lower.endswith(".webp"):
-            return "image/webp"
-        else:
-            return "image/jpeg"
+        import mimetypes
 
-    def transform_uni_config_to_model_config(self, config: UniConfig) -> Optional[types.GenerateContentConfig]:
+        mime_type, _ = mimetypes.guess_type(url)
+        return mime_type
+
+    def transform_uni_config_to_model_config(self, config: UniConfig) -> types.GenerateContentConfig | None:
         """
         Transform universal configuration to Gemini-specific configuration.
 
@@ -63,32 +51,37 @@ class GeminiClient(LLMClient):
             Gemini GenerateContentConfig object or None if no config needed
         """
         config_params = {}
+        if config.get("system_prompt") is not None:
+            config_params["system_instruction"] = config["system_prompt"]
 
         if config.get("max_tokens") is not None:
             config_params["max_output_tokens"] = config["max_tokens"]
+
         if config.get("temperature") is not None:
             config_params["temperature"] = config["temperature"]
 
         # Convert thinking level
+        thinking_summary = config.get("thinking_summary")
         thinking_level = config.get("thinking_level")
-        if thinking_level is not None:
+        if thinking_summary is not None or thinking_level is not None:
+            gemini_thinking_summary = thinking_summary or False
             gemini_thinking_level = self._convert_thinking_level(thinking_level)
-            if gemini_thinking_level:
-                config_params["thinking_config"] = types.ThinkingConfig(thinking_level=gemini_thinking_level)
+            config_params["thinking_config"] = types.ThinkingConfig(
+                include_thoughts=gemini_thinking_summary, thinking_level=gemini_thinking_level
+            )
 
         # Convert tools and tool choice
         tools = config.get("tools")
         if tools is not None:
-            config_params["tools"] = tools
+            config_params["tools"] = [types.Tool(function_declarations=tools)]
             tool_choice = config.get("tool_choice")
             if tool_choice is not None:
                 tool_config = self._convert_tool_choice(tool_choice)
-                if tool_config:
-                    config_params["tool_config"] = types.ToolConfig(function_calling_config=tool_config)
+                config_params["tool_config"] = types.ToolConfig(function_calling_config=tool_config)
 
         return types.GenerateContentConfig(**config_params) if config_params else None
 
-    def _convert_thinking_level(self, thinking_level: ThinkingLevel) -> Optional[types.ThinkingLevel]:
+    def _convert_thinking_level(self, thinking_level: ThinkingLevel) -> types.ThinkingLevel | None:
         """Convert ThinkingLevel enum to Gemini's ThinkingLevel."""
         mapping = {
             ThinkingLevel.NONE: types.ThinkingLevel.MINIMAL,
@@ -98,7 +91,7 @@ class GeminiClient(LLMClient):
         }
         return mapping.get(thinking_level)
 
-    def _convert_tool_choice(self, tool_choice: ToolChoice) -> Optional[types.FunctionCallingConfig]:
+    def _convert_tool_choice(self, tool_choice: ToolChoice) -> types.FunctionCallingConfig:
         """Convert ToolChoice to Gemini's tool config."""
         if isinstance(tool_choice, list):
             return types.FunctionCallingConfig(mode="ANY", allowed_function_names=tool_choice)
@@ -108,9 +101,8 @@ class GeminiClient(LLMClient):
             return types.FunctionCallingConfig(mode="AUTO")
         elif tool_choice == "required":
             return types.FunctionCallingConfig(mode="ANY")
-        return None
 
-    def transform_uni_message_to_model_input(self, messages: List[UniMessage]) -> List[types.Content]:
+    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[types.Content]:
         """
         Transform universal message format to Gemini's Content format.
 
@@ -120,43 +112,41 @@ class GeminiClient(LLMClient):
         Returns:
             List of Gemini Content objects
         """
+        mapping = {
+            "user": "user",
+            "assistant": "model",
+            "tool": "user",
+        }
         contents = []
         for msg in messages:
-            role = msg.get("role", "user")
-            if role == "assistant":
-                gemini_role = "model"
-            elif role == "tool":
-                gemini_role = "tool"
-            else:
-                gemini_role = "user"
+            role = msg["role"]
+            parts = []
+            for item in msg["content_items"]:
+                if role == "tool" and item["type"] == "text":
+                    function_name = item["tool_call_id"]
+                    function_response = {"output": item["text"]}
+                    parts.append(types.Part.from_function_response(name=function_name, response=function_response))
+                elif item["type"] == "image_url":
+                    url_value = item["image_url"]
+                    mime_type = self._detect_mime_type(url_value)
+                    parts.append(types.Part.from_uri(file_uri=url_value, mime_type=mime_type))
+                elif item["type"] == "text":
+                    parts.append(types.Part(text=item["text"], thought_signature=item.get("signature")))
+                elif item["type"] == "reasoning":
+                    parts.append(
+                        types.Part(text=item["reasoning"], thought=True, thought_signature=item.get("signature"))
+                    )
+                elif item["type"] == "function_call":
+                    function_call = types.FunctionCall(name=item["name"], args=json.loads(item["argument"]))
+                    parts.append(types.Part(function_call=function_call, thought_signature=item.get("signature")))
+                else:
+                    raise ValueError(f"Unknown item: {item}")
 
-            content_data = msg.get("content", "")
+            contents.append(types.Content(role=mapping[msg["role"]], parts=parts))
 
-            if isinstance(content_data, str):
-                parts = [types.Part.from_text(text=content_data)]
-            elif isinstance(content_data, list):
-                parts = []
-                for item in content_data:
-                    if isinstance(item, dict):
-                        item_type = item.get("type", "text")
-                        item_value = item.get("value", "")
-                        if item_type == "text":
-                            parts.append(types.Part.from_text(text=item_value))
-                        elif item_type == "image_url":
-                            mime_type = self._detect_mime_type(item_value)
-                            parts.append(types.Part.from_uri(file_uri=item_value, mime_type=mime_type))
-                        elif item_type == "thought_signature":
-                            # Pass thought signature back to API
-                            parts.append(types.Part(thought_signature=item_value))
-                    else:
-                        parts.append(types.Part.from_text(text=str(item)))
-            else:
-                parts = [types.Part.from_text(text=str(content_data))]
-
-            contents.append(types.Content(role=gemini_role, parts=parts))
         return contents
 
-    def transform_model_output_to_uni_event(self, model_output: Any) -> UniEvent:
+    def transform_model_output_to_uni_event(self, model_output: types.GenerateContentResponse) -> UniEvent:
         """
         Transform Gemini model output to universal event format.
 
@@ -166,41 +156,58 @@ class GeminiClient(LLMClient):
         Returns:
             Universal event dictionary
         """
-        # Try to extract text from chunk
-        text_content = ""
-        thought_signature = None
+        mapping = {
+            types.FinishReason.STOP: "stop",
+            types.FinishReason.MAX_TOKENS: "length",
+        }
+        content_items: list[ContentItem] = []
+        usage_metadata: UsageMetadata | None = None
+        finish_reason: FinishReason | None = None
 
-        try:
-            if hasattr(model_output, "candidates") and model_output.candidates:
-                for candidate in model_output.candidates:
-                    if hasattr(candidate, "content") and hasattr(candidate.content, "parts"):
-                        for part in candidate.content.parts:
-                            if hasattr(part, "text") and part.text:
-                                text_content += part.text
-                            if hasattr(part, "thought_signature") and part.thought_signature:
-                                thought_signature = part.thought_signature
-            elif hasattr(model_output, "text") and model_output.text:
-                text_content += model_output.text
-        except Exception:
-            pass
+        candidate = model_output.candidates[0]
+        for part in candidate.content.parts:
+            if part.function_call is not None:
+                content_items.append(
+                    {
+                        "type": "function_call",
+                        "name": part.function_call.name,
+                        "argument": json.dumps(part.function_call.args, ensure_ascii=False),
+                        "tool_call_id": part.function_call.name,
+                        "signature": part.thought_signature,
+                    }
+                )
+            elif part.text is not None and part.thought:
+                content_items.append(
+                    {"type": "reasoning", "reasoning": part.text, "signature": part.thought_signature}
+                )
+            elif part.text is not None:
+                content_items.append({"type": "text", "text": part.text, "signature": part.thought_signature})
+            else:
+                raise ValueError(f"Unknown output: {part}")
 
-        # Return text event if we have text, otherwise thought_signature event
-        if text_content:
-            return {"type": "text", "content": text_content}
-        elif thought_signature:
-            return {"type": "thought_signature", "content": thought_signature}
-        else:
-            return {"type": "text", "content": ""}
+        if model_output.usage_metadata:
+            usage_metadata = {
+                "prompt_tokens": model_output.usage_metadata.prompt_token_count,
+                "thoughts_tokens": model_output.usage_metadata.thoughts_token_count,
+                "response_tokens": model_output.usage_metadata.candidates_token_count,
+            }
+
+        if candidate.finish_reason:
+            finish_reason = mapping.get(candidate.finish_reason, "unknown")
+
+        return {
+            "role": "assistant",
+            "content_items": content_items,
+            "usage_metadata": usage_metadata,
+            "finish_reason": finish_reason,
+        }
 
     async def streaming_response(
         self,
-        messages: List[UniMessage],
-        model: str,
+        messages: list[UniMessage],
         config: UniConfig,
     ) -> AsyncIterator[UniEvent]:
         """Stream generate using Gemini SDK with unified conversion methods."""
-        client = self._get_gemini_client()
-
         # Use unified config conversion
         gemini_config = self.transform_uni_config_to_model_config(config)
 
@@ -208,19 +215,15 @@ class GeminiClient(LLMClient):
         contents = self.transform_uni_message_to_model_input(messages)
 
         # Stream generate
-        response_stream = await client.aio.models.generate_content_stream(
-            model=model, contents=contents, config=gemini_config
+        response_stream = await self._client.aio.models.generate_content_stream(
+            model=self._model, contents=contents, config=gemini_config
         )
-
         async for chunk in response_stream:
-            event = self.transform_model_output_to_uni_event(chunk)
-            if event["content"]:  # Only yield non-empty events
-                yield event
+            yield self.transform_model_output_to_uni_event(chunk)
 
     async def streaming_response_stateful(
         self,
         message: UniMessage,
-        model: str,
         config: UniConfig,
     ) -> AsyncIterator[UniEvent]:
         """Stream generate with automatic history management using unified conversion methods."""
@@ -229,25 +232,19 @@ class GeminiClient(LLMClient):
 
         # Collect all events for history
         events = []
-
-        async for event in self.streaming_response(
-            messages=self._history,
-            model=model,
-            config=config,
-        ):
+        async for event in self.streaming_response(messages=self._history, config=config):
             events.append(event)
             yield event
 
         # Convert events to message and add to history
         if events:
-            assistant_message = self.transform_uni_event_to_uni_message(events)
-            if assistant_message.get("content"):
-                self._history.append(assistant_message)
+            assistant_message = self.concat_uni_events_to_uni_message(events)
+            self._history.append(assistant_message)
 
     def clear_history(self) -> None:
         """Clear the message history."""
         self._history.clear()
 
-    def get_history(self) -> List[UniMessage]:
+    def get_history(self) -> list[UniMessage]:
         """Get the current message history."""
         return self._history.copy()
