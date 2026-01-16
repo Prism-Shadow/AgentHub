@@ -19,7 +19,7 @@ from google import genai
 from google.genai import types
 
 from .base_client import LLMClient
-from .types import MessageDict, ThinkingLevel, ToolChoice
+from .types import ThinkingLevel, ToolChoice, UniConfig, UniEvent, UniMessage
 
 
 class GeminiClient(LLMClient):
@@ -27,7 +27,7 @@ class GeminiClient(LLMClient):
 
     def __init__(self, api_key: Optional[str] = None):
         """Initialize Gemini client."""
-        self._history: List[MessageDict] = []
+        self._history: List[UniMessage] = []
         self._gemini_client = None
         self._api_key = api_key
 
@@ -52,43 +52,35 @@ class GeminiClient(LLMClient):
         else:
             return "image/jpeg"
 
-    def convert_config_to_model_config(
-        self,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
-        tools: Optional[List[Any]] = None,
-        thinking_level: Optional[ThinkingLevel] = None,
-        tool_choice: Optional[ToolChoice] = None,
-    ) -> Optional[types.GenerateContentConfig]:
+    def transform_uni_config_to_model_config(self, config: UniConfig) -> Optional[types.GenerateContentConfig]:
         """
-        Convert unified configuration to Gemini-specific configuration.
+        Transform universal configuration to Gemini-specific configuration.
 
         Args:
-            max_tokens: Maximum number of tokens to generate
-            temperature: Sampling temperature (0.0 to 2.0)
-            tools: List of tools/functions available to the model
-            thinking_level: Level of reasoning depth (none, low, medium, high)
-            tool_choice: Tool usage preference (none/auto/required or list of tool names)
+            config: Universal configuration dict
 
         Returns:
             Gemini GenerateContentConfig object or None if no config needed
         """
         config_params = {}
 
-        if max_tokens is not None:
-            config_params["max_output_tokens"] = max_tokens
-        if temperature is not None:
-            config_params["temperature"] = temperature
+        if config.get("max_tokens") is not None:
+            config_params["max_output_tokens"] = config["max_tokens"]
+        if config.get("temperature") is not None:
+            config_params["temperature"] = config["temperature"]
 
         # Convert thinking level
+        thinking_level = config.get("thinking_level")
         if thinking_level is not None:
             gemini_thinking_level = self._convert_thinking_level(thinking_level)
             if gemini_thinking_level:
                 config_params["thinking_config"] = types.ThinkingConfig(thinking_level=gemini_thinking_level)
 
         # Convert tools and tool choice
+        tools = config.get("tools")
         if tools is not None:
             config_params["tools"] = tools
+            tool_choice = config.get("tool_choice")
             if tool_choice is not None:
                 tool_config = self._convert_tool_choice(tool_choice)
                 if tool_config:
@@ -96,10 +88,8 @@ class GeminiClient(LLMClient):
 
         return types.GenerateContentConfig(**config_params) if config_params else None
 
-    def _convert_thinking_level(self, thinking_level: Optional[ThinkingLevel]) -> Optional[types.ThinkingLevel]:
-        """Convert our ThinkingLevel enum to Gemini's ThinkingLevel."""
-        if thinking_level is None:
-            return None
+    def _convert_thinking_level(self, thinking_level: ThinkingLevel) -> Optional[types.ThinkingLevel]:
+        """Convert ThinkingLevel enum to Gemini's ThinkingLevel."""
         mapping = {
             ThinkingLevel.NONE: types.ThinkingLevel.MINIMAL,
             ThinkingLevel.LOW: types.ThinkingLevel.LOW,
@@ -108,10 +98,8 @@ class GeminiClient(LLMClient):
         }
         return mapping.get(thinking_level)
 
-    def _convert_tool_choice(self, tool_choice: Optional[ToolChoice]) -> Optional[types.FunctionCallingConfig]:
-        """Convert our ToolChoice to Gemini's tool config."""
-        if tool_choice is None:
-            return None
+    def _convert_tool_choice(self, tool_choice: ToolChoice) -> Optional[types.FunctionCallingConfig]:
+        """Convert ToolChoice to Gemini's tool config."""
         if isinstance(tool_choice, list):
             return types.FunctionCallingConfig(mode="ANY", allowed_function_names=tool_choice)
         elif tool_choice == "none":
@@ -122,12 +110,12 @@ class GeminiClient(LLMClient):
             return types.FunctionCallingConfig(mode="ANY")
         return None
 
-    def convert_messages_to_model_input(self, messages: List[MessageDict]) -> List[types.Content]:
+    def transform_uni_message_to_model_input(self, messages: List[UniMessage]) -> List[types.Content]:
         """
-        Convert standard message format to Gemini's Content format.
+        Transform universal message format to Gemini's Content format.
 
         Args:
-            messages: List of message dictionaries in standard format
+            messages: List of universal message dictionaries
 
         Returns:
             List of Gemini Content objects
@@ -168,119 +156,98 @@ class GeminiClient(LLMClient):
             contents.append(types.Content(role=gemini_role, parts=parts))
         return contents
 
-    def convert_model_output_to_message(self, model_output: Any) -> MessageDict:
+    def transform_model_output_to_uni_event(self, model_output: Any) -> UniEvent:
         """
-        Convert Gemini model output to standard message format.
+        Transform Gemini model output to universal event format.
 
         Args:
             model_output: Gemini response chunk
 
         Returns:
-            Standard message dictionary with role and content
+            Universal event dictionary
         """
-        response_text = ""
+        # Try to extract text from chunk
+        text_content = ""
         thought_signature = None
 
-        # Extract text and thought signature from chunk
         try:
             if hasattr(model_output, "candidates") and model_output.candidates:
                 for candidate in model_output.candidates:
                     if hasattr(candidate, "content") and hasattr(candidate.content, "parts"):
                         for part in candidate.content.parts:
                             if hasattr(part, "text") and part.text:
-                                response_text += part.text
+                                text_content += part.text
                             if hasattr(part, "thought_signature") and part.thought_signature:
                                 thought_signature = part.thought_signature
             elif hasattr(model_output, "text") and model_output.text:
-                response_text += model_output.text
+                text_content += model_output.text
         except Exception:
             pass
 
-        # Build standard message
-        content_items = []
-        if response_text:
-            content_items.append({"type": "text", "value": response_text})
-        if thought_signature:
-            content_items.append({"type": "thought_signature", "value": thought_signature})
+        # Return text event if we have text, otherwise thought_signature event
+        if text_content:
+            return {"type": "text", "content": text_content}
+        elif thought_signature:
+            return {"type": "thought_signature", "content": thought_signature}
+        else:
+            return {"type": "text", "content": ""}
 
-        return {
-            "role": "assistant",
-            "content": content_items if len(content_items) > 1 else (response_text if response_text else ""),
-        }
-
-    async def stream_generate(
+    async def streaming_response(
         self,
-        messages: List[MessageDict],
+        messages: List[UniMessage],
         model: str,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
-        tools: Optional[List[Any]] = None,
-        thinking_level: Optional[ThinkingLevel] = None,
-        tool_choice: Optional[ToolChoice] = None,
-    ) -> AsyncIterator[Any]:
+        config: UniConfig,
+    ) -> AsyncIterator[UniEvent]:
         """Stream generate using Gemini SDK with unified conversion methods."""
         client = self._get_gemini_client()
 
         # Use unified config conversion
-        config = self.convert_config_to_model_config(
-            max_tokens=max_tokens,
-            temperature=temperature,
-            tools=tools,
-            thinking_level=thinking_level,
-            tool_choice=tool_choice,
-        )
+        gemini_config = self.transform_uni_config_to_model_config(config)
 
         # Use unified message conversion
-        contents = self.convert_messages_to_model_input(messages)
+        contents = self.transform_uni_message_to_model_input(messages)
 
         # Stream generate
         response_stream = await client.aio.models.generate_content_stream(
-            model=model, contents=contents, config=config
+            model=model, contents=contents, config=gemini_config
         )
 
         async for chunk in response_stream:
-            yield chunk
+            event = self.transform_model_output_to_uni_event(chunk)
+            if event["content"]:  # Only yield non-empty events
+                yield event
 
-    async def stream_generate_stateful(
+    async def streaming_response_stateful(
         self,
-        message: MessageDict,
+        message: UniMessage,
         model: str,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
-        tools: Optional[List[Any]] = None,
-        thinking_level: Optional[ThinkingLevel] = None,
-        tool_choice: Optional[ToolChoice] = None,
-    ) -> AsyncIterator[Any]:
+        config: UniConfig,
+    ) -> AsyncIterator[UniEvent]:
         """Stream generate with automatic history management using unified conversion methods."""
         # Add user message to history
         self._history.append(message)
 
-        # Accumulate complete output for conversion
-        complete_output = None
+        # Collect all events for history
+        events = []
 
-        async for chunk in self.stream_generate(
+        async for event in self.streaming_response(
             messages=self._history,
             model=model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            tools=tools,
-            thinking_level=thinking_level,
-            tool_choice=tool_choice,
+            config=config,
         ):
-            yield chunk
-            # Keep last chunk for conversion
-            complete_output = chunk
+            events.append(event)
+            yield event
 
-        # Convert model output to standard message and add to history
-        if complete_output is not None:
-            standard_message = self.convert_model_output_to_message(complete_output)
-            if standard_message.get("content"):
-                self._history.append(standard_message)
+        # Convert events to message and add to history
+        if events:
+            assistant_message = self.transform_uni_event_to_uni_message(events)
+            if assistant_message.get("content"):
+                self._history.append(assistant_message)
 
     def clear_history(self) -> None:
         """Clear the message history."""
         self._history.clear()
 
-    def get_history(self) -> List[MessageDict]:
+    def get_history(self) -> List[UniMessage]:
         """Get the current message history."""
         return self._history.copy()

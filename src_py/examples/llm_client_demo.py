@@ -30,15 +30,17 @@ async def stateless_example():
     print("Stateless Example")
     print("=" * 60)
 
-    client = AutoLLMClient(model="gemini-3-flash-preview")
+    client = AutoLLMClient(model="gemini-2.0-flash-exp")
 
     messages = [{"role": "user", "content": "Hello! What's 2+2?"}]
+    config = {"temperature": 0.7}
 
     print("User: Hello! What's 2+2?")
     print("Assistant: ", end="", flush=True)
 
-    async for chunk in client.stream_generate(messages=messages, model="gemini-3-flash-preview", temperature=0.7):
-        print(chunk, end="", flush=True)
+    async for event in client.streaming_response(messages=messages, model="gemini-2.0-flash-exp", config=config):
+        if event["type"] == "text":
+            print(event["content"], end="", flush=True)
 
     print("\n")
 
@@ -49,16 +51,18 @@ async def stateful_example():
     print("Stateful Example")
     print("=" * 60)
 
-    client = AutoLLMClient(model="gemini-3-flash-preview")
+    client = AutoLLMClient(model="gemini-2.0-flash-exp")
+    config = {}
 
     # First message
     print("User: My name is Alice")
     print("Assistant: ", end="", flush=True)
 
-    async for chunk in client.stream_generate_stateful(
-        message={"role": "user", "content": "My name is Alice"}, model="gemini-3-flash-preview"
+    async for event in client.streaming_response_stateful(
+        message={"role": "user", "content": "My name is Alice"}, model="gemini-2.0-flash-exp", config=config
     ):
-        print(chunk, end="", flush=True)
+        if event["type"] == "text":
+            print(event["content"], end="", flush=True)
 
     print("\n")
 
@@ -66,10 +70,11 @@ async def stateful_example():
     print("User: What's my name?")
     print("Assistant: ", end="", flush=True)
 
-    async for chunk in client.stream_generate_stateful(
-        message={"role": "user", "content": "What's my name?"}, model="gemini-3-flash-preview"
+    async for event in client.streaming_response_stateful(
+        message={"role": "user", "content": "What's my name?"}, model="gemini-2.0-flash-exp", config=config
     ):
-        print(chunk, end="", flush=True)
+        if event["type"] == "text":
+            print(event["content"], end="", flush=True)
 
     print("\n")
 

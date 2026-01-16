@@ -13,9 +13,9 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Any, AsyncIterator, List, Optional
+from typing import Any, AsyncIterator, List
 
-from .types import MessageDict, ThinkingLevel, ToolChoice
+from .types import UniConfig, UniEvent, UniMessage
 
 
 class LLMClient(ABC):
@@ -23,32 +23,16 @@ class LLMClient(ABC):
     Abstract base class for LLM clients.
 
     All model-specific clients must inherit from this class and implement
-    five abstract methods for complete SDK abstraction:
-    1. convert_config_to_model_config - Convert unified config to model-specific config
-    2. convert_messages_to_model_input - Convert standard messages to model input
-    3. convert_model_output_to_message - Convert model output to standard message
-    4. stream_generate - Stateless streaming generation
-    5. stream_generate_stateful - Stateful streaming generation
+    the required abstract methods for complete SDK abstraction.
     """
 
     @abstractmethod
-    def convert_config_to_model_config(
-        self,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
-        tools: Optional[List[Any]] = None,
-        thinking_level: Optional[ThinkingLevel] = None,
-        tool_choice: Optional[ToolChoice] = None,
-    ) -> Any:
+    def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:
         """
-        Convert unified configuration to model-specific configuration.
+        Transform universal configuration to model-specific configuration.
 
         Args:
-            max_tokens: Maximum number of tokens to generate
-            temperature: Sampling temperature (0.0 to 2.0)
-            tools: List of tools/functions available to the model
-            thinking_level: Level of reasoning depth (none, low, medium, high)
-            tool_choice: Tool usage preference (none/auto/required or list of tool names)
+            config: Universal configuration dict
 
         Returns:
             Model-specific configuration object
@@ -56,12 +40,12 @@ class LLMClient(ABC):
         pass
 
     @abstractmethod
-    def convert_messages_to_model_input(self, messages: List[MessageDict]) -> Any:
+    def transform_uni_message_to_model_input(self, messages: List[UniMessage]) -> Any:
         """
-        Convert standard message format to model-specific input format.
+        Transform universal message format to model-specific input format.
 
         Args:
-            messages: List of message dictionaries in standard format
+            messages: List of universal message dictionaries
 
         Returns:
             Model-specific input format (e.g., Gemini's Content list, OpenAI's messages array)
@@ -69,77 +53,96 @@ class LLMClient(ABC):
         pass
 
     @abstractmethod
-    def convert_model_output_to_message(self, model_output: Any) -> MessageDict:
+    def transform_model_output_to_uni_event(self, model_output: Any) -> UniEvent:
         """
-        Convert model output to standard message format.
+        Transform model output to universal event format.
 
         Args:
-            model_output: Model-specific output object
+            model_output: Model-specific output object (streaming chunk)
 
         Returns:
-            Standard message dictionary with role and content
+            Universal event dictionary
         """
         pass
 
+    def transform_uni_event_to_uni_message(self, events: List[UniEvent]) -> UniMessage:
+        """
+        Transform a stream of universal events into a single universal message.
+
+        This is a concrete method implemented in the base class that can be reused
+        by all model clients. It accumulates events and builds a complete message.
+
+        Args:
+            events: List of universal events from streaming response
+
+        Returns:
+            Complete universal message dictionary
+        """
+        text_content = ""
+        thought_signature = None
+        content_items = []
+
+        for event in events:
+            if event["type"] == "text":
+                text_content += event["content"]
+            elif event["type"] == "thought_signature":
+                thought_signature = event["content"]
+
+        # Build content
+        if text_content:
+            content_items.append({"type": "text", "value": text_content})
+        if thought_signature:
+            content_items.append({"type": "thought_signature", "value": thought_signature})
+
+        return {
+            "role": "assistant",
+            "content": content_items if len(content_items) > 1 else (text_content if text_content else ""),
+        }
+
     @abstractmethod
-    async def stream_generate(
+    async def streaming_response(
         self,
-        messages: List[MessageDict],
+        messages: List[UniMessage],
         model: str,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
-        tools: Optional[List[Any]] = None,
-        thinking_level: Optional[ThinkingLevel] = None,
-        tool_choice: Optional[ToolChoice] = None,
-    ) -> AsyncIterator[Any]:
+        config: UniConfig,
+    ) -> AsyncIterator[UniEvent]:
         """
         Generate content in streaming mode (stateless).
 
-        This method should use convert_config_to_model_config and
-        convert_messages_to_model_input to prepare the request.
+        This method should use transform_uni_config_to_model_config and
+        transform_uni_message_to_model_input to prepare the request, then
+        transform_model_output_to_uni_event to convert each chunk.
 
         Args:
-            messages: List of message dictionaries containing conversation history
+            messages: List of universal message dictionaries containing conversation history
             model: Model identifier to use for generation
-            max_tokens: Maximum number of tokens to generate
-            temperature: Sampling temperature (0.0 to 2.0)
-            tools: List of tools/functions available to the model
-            thinking_level: Level of reasoning depth (none, low, medium, high)
-            tool_choice: Tool usage preference (none/auto/required or list of tool names)
+            config: Universal configuration dict
 
         Yields:
-            Message chunks from the streaming response.
+            Universal events from the streaming response
         """
         pass
 
     @abstractmethod
-    async def stream_generate_stateful(
+    async def streaming_response_stateful(
         self,
-        message: MessageDict,
+        message: UniMessage,
         model: str,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
-        tools: Optional[List[Any]] = None,
-        thinking_level: Optional[ThinkingLevel] = None,
-        tool_choice: Optional[ToolChoice] = None,
-    ) -> AsyncIterator[Any]:
+        config: UniConfig,
+    ) -> AsyncIterator[UniEvent]:
         """
         Generate content in streaming mode (stateful).
 
-        This method should use convert_config_to_model_config,
-        convert_messages_to_model_input, and convert_model_output_to_message
-        to manage the conversation flow.
+        This method should use transform_uni_config_to_model_config,
+        transform_uni_message_to_model_input, transform_model_output_to_uni_event,
+        and transform_uni_event_to_uni_message to manage the conversation flow.
 
         Args:
-            message: Latest message dictionary to add to conversation
+            message: Latest universal message dictionary to add to conversation
             model: Model identifier to use for generation
-            max_tokens: Maximum number of tokens to generate
-            temperature: Sampling temperature (0.0 to 2.0)
-            tools: List of tools/functions available to the model
-            thinking_level: Level of reasoning depth (none, low, medium, high)
-            tool_choice: Tool usage preference (none/auto/required or list of tool names)
+            config: Universal configuration dict
 
         Yields:
-            Message chunks from the streaming response.
+            Universal events from the streaming response
         """
         pass

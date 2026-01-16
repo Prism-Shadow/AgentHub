@@ -16,7 +16,7 @@ import os
 
 import pytest
 
-from agent_adapter import GeminiClient
+from agent_adapter import AutoLLMClient, GeminiClient
 
 
 # Skip tests if no API key is available
@@ -27,116 +27,108 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.asyncio
-async def test_stream_generate_basic():
+async def test_streaming_response_basic():
     """Test basic stateless stream generation."""
     client = GeminiClient()
     messages = [{"role": "user", "content": "Say hello"}]
+    config = {}
 
-    chunks = []
-    async for chunk in client.stream_generate(messages=messages, model="gemini-2.0-flash-exp"):
-        chunks.append(chunk)
+    events = []
+    async for event in client.streaming_response(messages=messages, model="gemini-2.0-flash-exp", config=config):
+        events.append(event)
 
-    assert len(chunks) > 0
+    assert len(events) > 0
 
 
 @pytest.mark.asyncio
-async def test_stream_generate_with_all_parameters():
+async def test_streaming_response_with_all_parameters():
     """Test stream generation with all optional parameters."""
     client = GeminiClient()
     messages = [{"role": "user", "content": "What is 2+2?"}]
+    config = {"max_tokens": 100, "temperature": 0.7}
 
-    chunks = []
-    async for chunk in client.stream_generate(
-        messages=messages,
-        model="gemini-2.0-flash-exp",
-        max_tokens=100,
-        temperature=0.7,
-    ):
-        chunks.append(chunk)
+    events = []
+    async for event in client.streaming_response(messages=messages, model="gemini-2.0-flash-exp", config=config):
+        events.append(event)
 
-    assert len(chunks) > 0
+    assert len(events) > 0
 
 
 @pytest.mark.asyncio
-async def test_stream_generate_stateful():
+async def test_streaming_response_stateful():
     """Test stateful stream generation."""
     client = GeminiClient()
+    config = {}
 
     # First message
-    chunks1 = []
-    async for chunk in client.stream_generate_stateful(
-        message={"role": "user", "content": "My name is Alice"}, model="gemini-2.0-flash-exp"
+    events1 = []
+    async for event in client.streaming_response_stateful(
+        message={"role": "user", "content": "My name is Alice"}, model="gemini-2.0-flash-exp", config=config
     ):
-        chunks1.append(chunk)
+        events1.append(event)
 
-    assert len(chunks1) > 0
-    # History should contain user message and assistant response
-    assert len(client.get_history()) >= 1
+    assert len(events1) > 0
+    assert len(client.get_history()) == 2  # User message + assistant response
 
     # Second message
-    chunks2 = []
-    async for chunk in client.stream_generate_stateful(
-        message={"role": "user", "content": "What is my name?"}, model="gemini-2.0-flash-exp"
+    events2 = []
+    async for event in client.streaming_response_stateful(
+        message={"role": "user", "content": "What is my name?"}, model="gemini-2.0-flash-exp", config=config
     ):
-        chunks2.append(chunk)
+        events2.append(event)
 
-    assert len(chunks2) > 0
-    # History should now have more messages
-    assert len(client.get_history()) >= 2
+    assert len(events2) > 0
+    assert len(client.get_history()) == 4  # 2 previous + 2 new
 
 
 @pytest.mark.asyncio
 async def test_clear_history():
-    """Test clearing message history."""
+    """Test clearing conversation history."""
     client = GeminiClient()
+    config = {}
 
-    # Add a message
-    async for _ in client.stream_generate_stateful(
-        message={"role": "user", "content": "Hello"}, model="gemini-2.0-flash-exp"
+    async for event in client.streaming_response_stateful(
+        message={"role": "user", "content": "Hello"}, model="gemini-2.0-flash-exp", config=config
     ):
         pass
 
-    assert len(client.get_history()) >= 1
+    assert len(client.get_history()) > 0
 
-    # Clear history
     client.clear_history()
     assert len(client.get_history()) == 0
 
 
 @pytest.mark.asyncio
 async def test_message_with_content_list():
-    """Test message with content as a list of objects."""
+    """Test messages with content list (multimodal)."""
     client = GeminiClient()
     messages = [
         {
             "role": "user",
             "content": [
-                {"type": "text", "value": "Describe this"},
+                {"type": "text", "value": "Hello"},
             ],
         }
     ]
+    config = {}
 
-    chunks = []
-    async for chunk in client.stream_generate(messages=messages, model="gemini-2.0-flash-exp"):
-        chunks.append(chunk)
+    events = []
+    async for event in client.streaming_response(messages=messages, model="gemini-2.0-flash-exp", config=config):
+        events.append(event)
 
-    assert len(chunks) > 0
+    assert len(events) > 0
 
 
 @pytest.mark.asyncio
 async def test_unknown_model():
     """Test that unknown models raise ValueError."""
-    from agent_adapter import AutoLLMClient
-
     with pytest.raises(ValueError, match="Unknown model type"):
-        AutoLLMClient(model="unknown-model-xyz")
+        AutoLLMClient(model="unknown-model")
 
 
 @pytest.mark.asyncio
 async def test_gpt_not_implemented():
     """Test that GPT models raise NotImplementedError."""
-    from agent_adapter import AutoLLMClient
-
     with pytest.raises(NotImplementedError, match="GPT models not yet implemented"):
         AutoLLMClient(model="gpt-4")
 
@@ -144,7 +136,5 @@ async def test_gpt_not_implemented():
 @pytest.mark.asyncio
 async def test_claude_not_implemented():
     """Test that Claude models raise NotImplementedError."""
-    from agent_adapter import AutoLLMClient
-
     with pytest.raises(NotImplementedError, match="Claude models not yet implemented"):
-        AutoLLMClient(model="claude-3")
+        AutoLLMClient(model="claude-3-opus")

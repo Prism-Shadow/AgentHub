@@ -15,7 +15,14 @@
 from .auto_client import AutoLLMClient
 from .base_client import LLMClient
 from .gemini_client import GeminiClient
-from .types import MessageDict, ThinkingLevel, ToolChoice
+from .types import (
+    MessageDict,
+    ThinkingLevel,
+    ToolChoice,
+    UniConfig,
+    UniEvent,
+    UniMessage,
+)
 
 
 __all__ = [
@@ -25,4 +32,7 @@ __all__ = [
     "MessageDict",
     "ThinkingLevel",
     "ToolChoice",
+    "UniConfig",
+    "UniEvent",
+    "UniMessage",
 ]

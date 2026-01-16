@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from enum import Enum
-from typing import List, Literal, NotRequired, TypedDict, Union
+from typing import Any, List, Literal, NotRequired, TypedDict, Union
 
 
 class ThinkingLevel(str, Enum):
@@ -32,13 +32,35 @@ ToolChoice = Union[Literal["none", "auto", "required"], List[str]]
 class ContentItem(TypedDict):
     """A content item within a message."""
 
-    type: str  # "text" or "image_url"
+    type: str  # "text", "image_url", or "thought_signature"
     value: str
 
 
-class MessageDict(TypedDict):
-    """Message format for LLM communication."""
+class UniMessage(TypedDict):
+    """Universal message format for LLM communication."""
 
     role: str  # "user", "assistant", "tool", or "system"
     content: Union[str, List[ContentItem]]  # Text or list of content items
     tool_call_id: NotRequired[str]  # Optional tool call ID for tool responses
+
+
+class UniConfig(TypedDict, total=False):
+    """Universal configuration format for LLM requests."""
+
+    max_tokens: int
+    temperature: float
+    tools: List[Any]
+    thinking_level: ThinkingLevel
+    tool_choice: ToolChoice
+
+
+class UniEvent(TypedDict):
+    """Universal event format for streaming responses."""
+
+    type: str  # "text", "thought_signature", "tool_call", etc.
+    content: str  # The actual content of the event
+    metadata: NotRequired[dict]  # Optional metadata
+
+
+# Legacy aliases for backward compatibility
+MessageDict = UniMessage

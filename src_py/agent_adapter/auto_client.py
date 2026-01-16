@@ -16,7 +16,7 @@ from typing import Any, AsyncIterator, List, Optional
 
 from .base_client import LLMClient
 from .gemini_client import GeminiClient
-from .types import MessageDict, ThinkingLevel, ToolChoice
+from .types import UniConfig, UniEvent, UniMessage
 
 
 class AutoLLMClient(LLMClient):
@@ -50,81 +50,52 @@ class AutoLLMClient(LLMClient):
         else:
             raise ValueError(f"Unknown model type: {model}")
 
-    def convert_config_to_model_config(
+    def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:
+        """Delegate to underlying client's transform_uni_config_to_model_config."""
+        return self._client.transform_uni_config_to_model_config(config)
+
+    def transform_uni_message_to_model_input(self, messages: List[UniMessage]) -> Any:
+        """Delegate to underlying client's transform_uni_message_to_model_input."""
+        return self._client.transform_uni_message_to_model_input(messages)
+
+    def transform_model_output_to_uni_event(self, model_output: Any) -> UniEvent:
+        """Delegate to underlying client's transform_model_output_to_uni_event."""
+        return self._client.transform_model_output_to_uni_event(model_output)
+
+    async def streaming_response(
         self,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
-        tools: Optional[List[Any]] = None,
-        thinking_level: Optional[ThinkingLevel] = None,
-        tool_choice: Optional[ToolChoice] = None,
-    ) -> Any:
-        """Delegate to underlying client's convert_config_to_model_config."""
-        return self._client.convert_config_to_model_config(
-            max_tokens=max_tokens,
-            temperature=temperature,
-            tools=tools,
-            thinking_level=thinking_level,
-            tool_choice=tool_choice,
-        )
-
-    def convert_messages_to_model_input(self, messages: List[MessageDict]) -> Any:
-        """Delegate to underlying client's convert_messages_to_model_input."""
-        return self._client.convert_messages_to_model_input(messages)
-
-    def convert_model_output_to_message(self, model_output: Any) -> MessageDict:
-        """Delegate to underlying client's convert_model_output_to_message."""
-        return self._client.convert_model_output_to_message(model_output)
-
-    async def stream_generate(
-        self,
-        messages: List[MessageDict],
+        messages: List[UniMessage],
         model: str,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
-        tools: Optional[List[Any]] = None,
-        thinking_level: Optional[ThinkingLevel] = None,
-        tool_choice: Optional[ToolChoice] = None,
-    ) -> AsyncIterator[Any]:
-        """Route to underlying client's stream_generate."""
-        async for chunk in self._client.stream_generate(
+        config: UniConfig,
+    ) -> AsyncIterator[UniEvent]:
+        """Route to underlying client's streaming_response."""
+        async for event in self._client.streaming_response(
             messages=messages,
             model=model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            tools=tools,
-            thinking_level=thinking_level,
-            tool_choice=tool_choice,
+            config=config,
         ):
-            yield chunk
+            yield event
 
-    async def stream_generate_stateful(
+    async def streaming_response_stateful(
         self,
-        message: MessageDict,
+        message: UniMessage,
         model: str,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
-        tools: Optional[List[Any]] = None,
-        thinking_level: Optional[ThinkingLevel] = None,
-        tool_choice: Optional[ToolChoice] = None,
-    ) -> AsyncIterator[Any]:
-        """Route to underlying client's stream_generate_stateful."""
-        async for chunk in self._client.stream_generate_stateful(
+        config: UniConfig,
+    ) -> AsyncIterator[UniEvent]:
+        """Route to underlying client's streaming_response_stateful."""
+        async for event in self._client.streaming_response_stateful(
             message=message,
             model=model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            tools=tools,
-            thinking_level=thinking_level,
-            tool_choice=tool_choice,
+            config=config,
         ):
-            yield chunk
+            yield event
 
     def clear_history(self) -> None:
         """Clear history in the underlying client."""
         if hasattr(self._client, "clear_history"):
             self._client.clear_history()
 
-    def get_history(self) -> List[MessageDict]:
+    def get_history(self) -> List[UniMessage]:
         """Get history from the underlying client."""
         if hasattr(self._client, "get_history"):
             return self._client.get_history()
