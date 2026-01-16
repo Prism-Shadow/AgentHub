@@ -50,6 +50,31 @@ class AutoLLMClient(LLMClient):
         else:
             raise ValueError(f"Unknown model type: {model}")
 
+    def convert_config_to_model_config(
+        self,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+        tools: Optional[List[Any]] = None,
+        thinking_level: Optional[ThinkingLevel] = None,
+        tool_choice: Optional[ToolChoice] = None,
+    ) -> Any:
+        """Delegate to underlying client's convert_config_to_model_config."""
+        return self._client.convert_config_to_model_config(
+            max_tokens=max_tokens,
+            temperature=temperature,
+            tools=tools,
+            thinking_level=thinking_level,
+            tool_choice=tool_choice,
+        )
+
+    def convert_messages_to_model_input(self, messages: List[MessageDict]) -> Any:
+        """Delegate to underlying client's convert_messages_to_model_input."""
+        return self._client.convert_messages_to_model_input(messages)
+
+    def convert_model_output_to_message(self, model_output: Any) -> MessageDict:
+        """Delegate to underlying client's convert_model_output_to_message."""
+        return self._client.convert_model_output_to_message(model_output)
+
     async def stream_generate(
         self,
         messages: List[MessageDict],

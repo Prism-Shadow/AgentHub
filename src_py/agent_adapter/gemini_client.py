@@ -52,6 +52,50 @@ class GeminiClient(LLMClient):
         else:
             return "image/jpeg"
 
+    def convert_config_to_model_config(
+        self,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+        tools: Optional[List[Any]] = None,
+        thinking_level: Optional[ThinkingLevel] = None,
+        tool_choice: Optional[ToolChoice] = None,
+    ) -> Optional[types.GenerateContentConfig]:
+        """
+        Convert unified configuration to Gemini-specific configuration.
+
+        Args:
+            max_tokens: Maximum number of tokens to generate
+            temperature: Sampling temperature (0.0 to 2.0)
+            tools: List of tools/functions available to the model
+            thinking_level: Level of reasoning depth (none, low, medium, high)
+            tool_choice: Tool usage preference (none/auto/required or list of tool names)
+
+        Returns:
+            Gemini GenerateContentConfig object or None if no config needed
+        """
+        config_params = {}
+
+        if max_tokens is not None:
+            config_params["max_output_tokens"] = max_tokens
+        if temperature is not None:
+            config_params["temperature"] = temperature
+
+        # Convert thinking level
+        if thinking_level is not None:
+            gemini_thinking_level = self._convert_thinking_level(thinking_level)
+            if gemini_thinking_level:
+                config_params["thinking_config"] = types.ThinkingConfig(thinking_level=gemini_thinking_level)
+
+        # Convert tools and tool choice
+        if tools is not None:
+            config_params["tools"] = tools
+            if tool_choice is not None:
+                tool_config = self._convert_tool_choice(tool_choice)
+                if tool_config:
+                    config_params["tool_config"] = types.ToolConfig(function_calling_config=tool_config)
+
+        return types.GenerateContentConfig(**config_params) if config_params else None
+
     def _convert_thinking_level(self, thinking_level: Optional[ThinkingLevel]) -> Optional[types.ThinkingLevel]:
         """Convert our ThinkingLevel enum to Gemini's ThinkingLevel."""
         if thinking_level is None:
@@ -78,8 +122,16 @@ class GeminiClient(LLMClient):
             return types.FunctionCallingConfig(mode="ANY")
         return None
 
-    def _convert_messages_to_contents(self, messages: List[MessageDict]) -> List[types.Content]:
-        """Convert our message format to Gemini's Content format."""
+    def convert_messages_to_model_input(self, messages: List[MessageDict]) -> List[types.Content]:
+        """
+        Convert standard message format to Gemini's Content format.
+
+        Args:
+            messages: List of message dictionaries in standard format
+
+        Returns:
+            List of Gemini Content objects
+        """
         contents = []
         for msg in messages:
             role = msg.get("role", "user")
@@ -116,6 +168,46 @@ class GeminiClient(LLMClient):
             contents.append(types.Content(role=gemini_role, parts=parts))
         return contents
 
+    def convert_model_output_to_message(self, model_output: Any) -> MessageDict:
+        """
+        Convert Gemini model output to standard message format.
+
+        Args:
+            model_output: Gemini response chunk
+
+        Returns:
+            Standard message dictionary with role and content
+        """
+        response_text = ""
+        thought_signature = None
+
+        # Extract text and thought signature from chunk
+        try:
+            if hasattr(model_output, "candidates") and model_output.candidates:
+                for candidate in model_output.candidates:
+                    if hasattr(candidate, "content") and hasattr(candidate.content, "parts"):
+                        for part in candidate.content.parts:
+                            if hasattr(part, "text") and part.text:
+                                response_text += part.text
+                            if hasattr(part, "thought_signature") and part.thought_signature:
+                                thought_signature = part.thought_signature
+            elif hasattr(model_output, "text") and model_output.text:
+                response_text += model_output.text
+        except Exception:
+            pass
+
+        # Build standard message
+        content_items = []
+        if response_text:
+            content_items.append({"type": "text", "value": response_text})
+        if thought_signature:
+            content_items.append({"type": "thought_signature", "value": thought_signature})
+
+        return {
+            "role": "assistant",
+            "content": content_items if len(content_items) > 1 else (response_text if response_text else ""),
+        }
+
     async def stream_generate(
         self,
         messages: List[MessageDict],
@@ -126,31 +218,22 @@ class GeminiClient(LLMClient):
         thinking_level: Optional[ThinkingLevel] = None,
         tool_choice: Optional[ToolChoice] = None,
     ) -> AsyncIterator[Any]:
-        """Stream generate using Gemini SDK."""
+        """Stream generate using Gemini SDK with unified conversion methods."""
         client = self._get_gemini_client()
 
-        config_params = {}
-        if max_tokens is not None:
-            config_params["max_output_tokens"] = max_tokens
-        if temperature is not None:
-            config_params["temperature"] = temperature
+        # Use unified config conversion
+        config = self.convert_config_to_model_config(
+            max_tokens=max_tokens,
+            temperature=temperature,
+            tools=tools,
+            thinking_level=thinking_level,
+            tool_choice=tool_choice,
+        )
 
-        if thinking_level is not None:
-            gemini_thinking_level = self._convert_thinking_level(thinking_level)
-            if gemini_thinking_level:
-                config_params["thinking_config"] = types.ThinkingConfig(thinking_level=gemini_thinking_level)
+        # Use unified message conversion
+        contents = self.convert_messages_to_model_input(messages)
 
-        if tools is not None:
-            config_params["tools"] = tools
-            if tool_choice is not None:
-                tool_config = self._convert_tool_choice(tool_choice)
-                if tool_config:
-                    config_params["tool_config"] = types.ToolConfig(function_calling_config=tool_config)
-
-        config = types.GenerateContentConfig(**config_params) if config_params else None
-
-        contents = self._convert_messages_to_contents(messages)
-
+        # Stream generate
         response_stream = await client.aio.models.generate_content_stream(
             model=model, contents=contents, config=config
         )
@@ -168,11 +251,12 @@ class GeminiClient(LLMClient):
         thinking_level: Optional[ThinkingLevel] = None,
         tool_choice: Optional[ToolChoice] = None,
     ) -> AsyncIterator[Any]:
-        """Stream generate with automatic history management."""
+        """Stream generate with automatic history management using unified conversion methods."""
+        # Add user message to history
         self._history.append(message)
 
-        response_text = ""
-        thought_signature = None
+        # Accumulate complete output for conversion
+        complete_output = None
 
         async for chunk in self.stream_generate(
             messages=self._history,
@@ -184,33 +268,14 @@ class GeminiClient(LLMClient):
             tool_choice=tool_choice,
         ):
             yield chunk
+            # Keep last chunk for conversion
+            complete_output = chunk
 
-            # Extract text and thought signature from chunk
-            try:
-                if hasattr(chunk, "candidates") and chunk.candidates:
-                    for candidate in chunk.candidates:
-                        if hasattr(candidate, "content") and hasattr(candidate.content, "parts"):
-                            for part in candidate.content.parts:
-                                if hasattr(part, "text") and part.text:
-                                    response_text += part.text
-                                if hasattr(part, "thought_signature") and part.thought_signature:
-                                    thought_signature = part.thought_signature
-                elif hasattr(chunk, "text") and chunk.text:
-                    response_text += chunk.text
-            except Exception:
-                pass
-
-        # Build response content
-        if response_text or thought_signature:
-            content_items = []
-            if response_text:
-                content_items.append({"type": "text", "value": response_text})
-            if thought_signature:
-                content_items.append({"type": "thought_signature", "value": thought_signature})
-
-            self._history.append(
-                {"role": "assistant", "content": content_items if len(content_items) > 1 else response_text}
-            )
+        # Convert model output to standard message and add to history
+        if complete_output is not None:
+            standard_message = self.convert_model_output_to_message(complete_output)
+            if standard_message.get("content"):
+                self._history.append(standard_message)
 
     def clear_history(self) -> None:
         """Clear the message history."""

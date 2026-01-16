@@ -23,8 +23,63 @@ class LLMClient(ABC):
     Abstract base class for LLM clients.
 
     All model-specific clients must inherit from this class and implement
-    both abstract methods: stream_generate and stream_generate_stateful.
+    five abstract methods for complete SDK abstraction:
+    1. convert_config_to_model_config - Convert unified config to model-specific config
+    2. convert_messages_to_model_input - Convert standard messages to model input
+    3. convert_model_output_to_message - Convert model output to standard message
+    4. stream_generate - Stateless streaming generation
+    5. stream_generate_stateful - Stateful streaming generation
     """
+
+    @abstractmethod
+    def convert_config_to_model_config(
+        self,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+        tools: Optional[List[Any]] = None,
+        thinking_level: Optional[ThinkingLevel] = None,
+        tool_choice: Optional[ToolChoice] = None,
+    ) -> Any:
+        """
+        Convert unified configuration to model-specific configuration.
+
+        Args:
+            max_tokens: Maximum number of tokens to generate
+            temperature: Sampling temperature (0.0 to 2.0)
+            tools: List of tools/functions available to the model
+            thinking_level: Level of reasoning depth (none, low, medium, high)
+            tool_choice: Tool usage preference (none/auto/required or list of tool names)
+
+        Returns:
+            Model-specific configuration object
+        """
+        pass
+
+    @abstractmethod
+    def convert_messages_to_model_input(self, messages: List[MessageDict]) -> Any:
+        """
+        Convert standard message format to model-specific input format.
+
+        Args:
+            messages: List of message dictionaries in standard format
+
+        Returns:
+            Model-specific input format (e.g., Gemini's Content list, OpenAI's messages array)
+        """
+        pass
+
+    @abstractmethod
+    def convert_model_output_to_message(self, model_output: Any) -> MessageDict:
+        """
+        Convert model output to standard message format.
+
+        Args:
+            model_output: Model-specific output object
+
+        Returns:
+            Standard message dictionary with role and content
+        """
+        pass
 
     @abstractmethod
     async def stream_generate(
@@ -39,6 +94,9 @@ class LLMClient(ABC):
     ) -> AsyncIterator[Any]:
         """
         Generate content in streaming mode (stateless).
+
+        This method should use convert_config_to_model_config and
+        convert_messages_to_model_input to prepare the request.
 
         Args:
             messages: List of message dictionaries containing conversation history
@@ -67,6 +125,10 @@ class LLMClient(ABC):
     ) -> AsyncIterator[Any]:
         """
         Generate content in streaming mode (stateful).
+
+        This method should use convert_config_to_model_config,
+        convert_messages_to_model_input, and convert_model_output_to_message
+        to manage the conversation flow.
 
         Args:
             message: Latest message dictionary to add to conversation
