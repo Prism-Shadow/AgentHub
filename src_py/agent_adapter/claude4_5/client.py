@@ -39,7 +39,7 @@ class Claude45Client(LLMClient):
         """Initialize Claude 4.5 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
-        self._client = AsyncAnthropic(api_key=api_key) if api_key else AsyncAnthropic()
+        self._client = AsyncAnthropic(api_key=api_key)
         self._history: list[UniMessage] = []
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
@@ -153,14 +153,14 @@ class Claude45Client(LLMClient):
                         "type": "thinking",
                         "thinking": item["reasoning"],
                     }
-                    if "signature" in item:
+                    if "signature" in item and item["signature"]:
                         thinking_block["signature"] = item["signature"]
                     content_blocks.append(thinking_block)
 
                 elif item["type"] == "image_url":
-                    # Claude expects image in a specific format
-                    # For URLs, we need to fetch and encode, or use the URL directly if supported
-                    # For now, we'll just pass the URL as-is (this may need adjustment)
+                    # Claude expects base64 encoded images
+                    # For now, we assume the URL is accessible and should be fetched/encoded externally
+                    # This is a known limitation - images should be base64 encoded before passing to Claude
                     content_blocks.append(
                         {
                             "type": "image",
@@ -173,11 +173,17 @@ class Claude45Client(LLMClient):
 
                 elif item["type"] == "function_call":
                     # Claude's tool_use blocks
+                    try:
+                        input_dict = json.loads(item["argument"])
+                    except json.JSONDecodeError:
+                        # If parsing fails, use empty dict
+                        input_dict = {}
+
                     tool_use_block: dict[str, Any] = {
                         "type": "tool_use",
                         "id": item["tool_call_id"],
                         "name": item["name"],
-                        "input": json.loads(item["argument"]),
+                        "input": input_dict,
                     }
                     content_blocks.append(tool_use_block)
 
@@ -218,7 +224,7 @@ class Claude45Client(LLMClient):
             elif block.type == "text":
                 content_items.append({"type": "text", "text": "", "signature": None})
             elif block.type == "tool_use":
-                # Tool use block
+                # Tool use block - store metadata for later delta events
                 content_items.append(
                     {
                         "type": "function_call",
@@ -237,21 +243,14 @@ class Claude45Client(LLMClient):
             elif delta.type == "text_delta":
                 content_items.append({"type": "text", "text": delta.text, "signature": None})
             elif delta.type == "input_json_delta":
-                # Tool input being streamed
-                content_items.append(
-                    {
-                        "type": "function_call",
-                        "name": "",
-                        "argument": delta.partial_json,
-                        "tool_call_id": "",
-                        "signature": None,
-                    }
-                )
+                # Tool input being streamed - we only stream the partial JSON
+                # The name and id were already set in content_block_start
+                # Here we just append the partial JSON for incremental parsing
+                content_items.append({"type": "text", "text": delta.partial_json, "signature": None})
             elif delta.type == "signature_delta":
                 # Signature for thinking block
-                # We'll attach this to the last content item
-                if content_items and content_items[-1]["type"] == "reasoning":
-                    content_items[-1]["signature"] = delta.signature
+                # This is attached as a separate event that should be merged
+                content_items.append({"type": "text", "text": "", "signature": delta.signature})
 
         elif event_type == "content_block_stop":
             # Content block finished - nothing to add
