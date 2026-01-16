@@ -1,58 +1,37 @@
-# LLMClient Usage Examples
+# LLM Client Usage Guide
 
-This document demonstrates how to use the `LLMClient` for unified LLM interactions.
+This document demonstrates how to use `AutoLLMClient` for unified LLM interactions.
 
 ## Basic Usage
 
-### Stateless Stream Generation
-
-The stateless method requires passing the full message history on each call:
-
-```python
-import asyncio
-from agent_adapter import LLMClient, ThinkingLevel
-
-async def main():
-    client = LLMClient()
-    
-    # Simple text generation
-    messages = [
-        {"role": "user", "content": "Hello, how are you?"}
-    ]
-    
-    async for chunk in client.stream_generate(
-        messages=messages,
-        model="gemini-3-flash-preview"
-    ):
-        print(chunk)
-
-asyncio.run(main())
-```
-
 ### Stateful Stream Generation
 
-The stateful method maintains conversation history internally:
-
 ```python
 import asyncio
-from agent_adapter import LLMClient
+from agent_adapter import AutoLLMClient
 
 async def main():
-    client = LLMClient()
+    client = AutoLLMClient(model="gemini-3-flash-preview")
     
     # First message
-    async for chunk in client.stream_generate_stateful(
-        message={"role": "user", "content": "My name is Alice"},
-        model="gemini-3-flash-preview"
+    async for event in client.streaming_response_stateful(
+        message={
+            "role": "user",
+            "content_items": [{"type": "text", "text": "My name is Alice"}]
+        },
+        config={}
     ):
-        print(chunk)
+        print(event)
     
     # Second message - history is maintained
-    async for chunk in client.stream_generate_stateful(
-        message={"role": "user", "content": "What's my name?"},
-        model="gemini-3-flash-preview"
+    async for event in client.streaming_response_stateful(
+        message={
+            "role": "user",
+            "content_items": [{"type": "text", "text": "What's my name?"}]
+        },
+        config={}
     ):
-        print(chunk)
+        print(event)
     
     # View conversation history
     print("History:", client.get_history())
@@ -63,173 +42,139 @@ async def main():
 asyncio.run(main())
 ```
 
-## Advanced Features
+## Tool Calling
 
-### Message Content Types
-
-Content can be a string or a list of content objects:
+When using tools, you must handle `tool_call_id` correctly:
 
 ```python
-# Text only
-message = {
-    "role": "user",
-    "content": "Hello"
-}
+import asyncio
+import json
+from agent_adapter import AutoLLMClient
 
-# Mixed content with image
-message = {
-    "role": "user",
-    "content": [
-        {"type": "text", "value": "What's in this image?"},
-        {"type": "image_url", "value": "https://example.com/image.jpg"}
-    ]
-}
-```
+def get_weather(location: str) -> str:
+    """Mock function to get weather."""
+    return f"Temperature in {location}: 22°C"
 
-### Tool Usage
-
-```python
 async def main():
-    client = LLMClient()
-    
-    # Define tools
-    tools = [
-        {
-            "name": "get_weather",
-            "description": "Get current weather for a location",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {"type": "string"}
+    # Define tool
+    weather_function = {
+        "name": "get_weather",
+        "description": "Gets the current weather for a given location.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "The city name"
                 }
-            }
+            },
+            "required": ["location"]
         }
-    ]
+    }
     
-    messages = [
-        {"role": "user", "content": "What's the weather in Boston?"}
-    ]
+    client = AutoLLMClient(model="gemini-3-flash-preview")
+    config = {"tools": [weather_function]}
     
-    # Use tools with auto mode
-    async for chunk in client.stream_generate(
-        messages=messages,
-        model="gemini-3-flash-preview",
-        tools=tools,
-        tool_choice="auto"
+    # User asks about weather
+    events = []
+    async for event in client.streaming_response_stateful(
+        message={
+            "role": "user",
+            "content_items": [{"type": "text", "text": "What's the weather in London?"}]
+        },
+        config=config
     ):
-        print(chunk)
-
-asyncio.run(main())
-```
-
-### Thinking Levels
-
-Control the depth of reasoning:
-
-```python
-from agent_adapter import ThinkingLevel
-
-async def main():
-    client = LLMClient()
+        events.append(event)
     
-    messages = [
-        {"role": "user", "content": "Solve this complex problem..."}
-    ]
+    # Extract function call and tool_call_id
+    function_call = None
+    tool_call_id = None
+    for event in events:
+        for item in event["content_items"]:
+            if item["type"] == "function_call":
+                function_call = item
+                tool_call_id = item["tool_call_id"]
+                break
+        if function_call:
+            break
     
-    # Use high thinking level for complex reasoning
-    async for chunk in client.stream_generate(
-        messages=messages,
-        model="gemini-3-flash-preview",
-        thinking_level=ThinkingLevel.HIGH
-    ):
-        print(chunk)
-
-asyncio.run(main())
-```
-
-### Tool Choice Options
-
-```python
-# No tools (disabled)
-tool_choice = "none"
-
-# Automatic tool selection
-tool_choice = "auto"
-
-# Require tool usage
-tool_choice = "required"
-
-# Force specific tools
-tool_choice = ["get_weather", "get_forecast"]
-```
-
-### Temperature and Max Tokens
-
-```python
-async def main():
-    client = LLMClient()
-    
-    messages = [
-        {"role": "user", "content": "Tell me a creative story"}
-    ]
-    
-    async for chunk in client.stream_generate(
-        messages=messages,
-        model="gemini-3-flash-preview",
-        temperature=0.9,  # Higher for more creativity
-        max_tokens=500    # Limit response length
-    ):
-        print(chunk)
+    # Execute function and send result back with tool_call_id
+    if function_call:
+        args = json.loads(function_call["argument"])
+        result = get_weather(**args)
+        
+        # IMPORTANT: Include tool_call_id in the tool response
+        async for event in client.streaming_response_stateful(
+            message={
+                "role": "tool",
+                "content_items": [
+                    {
+                        "type": "text",
+                        "text": result,
+                        "tool_call_id": tool_call_id  # Required for tool responses
+                    }
+                ]
+            },
+            config=config
+        ):
+            print(event)
 
 asyncio.run(main())
 ```
 
 ## Message Format
 
-### Basic Message Structure
+### UniMessage Structure
 
 ```python
 {
-    "role": "user",           # Required: user, assistant, tool, or system
-    "content": "Hello",       # Required: string or list of content objects
-    "tool_call_id": "call_1"  # Optional: for tool responses
+    "role": "user" | "assistant" | "tool",
+    "content_items": [
+        {"type": "text", "text": "Hello"},
+        {"type": "image_url", "image_url": "https://..."}
+    ]
 }
 ```
 
-### Content Object Types
+### Tool Response with tool_call_id
+
+When responding to a function call, include the `tool_call_id` in the text content item:
 
 ```python
-# Text content
-{"type": "text", "value": "Hello world"}
+{
+    "role": "tool",
+    "content_items": [
+        {
+            "type": "text",
+            "text": "Result data",
+            "tool_call_id": "call_abc123"  # From function_call event
+        }
+    ]
+}
+```
 
-# Image URL
-{"type": "image_url", "value": "https://example.com/image.jpg"}
+## Configuration Options
+
+```python
+config = {
+    "max_tokens": 500,
+    "temperature": 0.9,
+    "tools": [tool_definition],
+    "tool_choice": "auto",  # "auto", "required", "none", or ["tool_name"]
+    "thinking_level": ThinkingLevel.HIGH,
+    "system_prompt": "You are a helpful assistant"
+}
 ```
 
 ## Type Definitions
 
-The package provides helpful type definitions:
-
 ```python
 from agent_adapter import (
-    LLMClient,
-    Message,
-    MessageDict,
-    ContentPart,
+    AutoLLMClient,
+    UniMessage,
+    UniEvent,
+    UniConfig,
     ThinkingLevel,
     ToolChoice
 )
 ```
-
-### ThinkingLevel Enum
-
-- `ThinkingLevel.NONE`: No reasoning
-- `ThinkingLevel.LOW`: Minimal reasoning
-- `ThinkingLevel.MEDIUM`: Moderate reasoning
-- `ThinkingLevel.HIGH`: Maximum reasoning depth
-
-### ToolChoice Type
-
-Can be one of:
-- String literal: `"none"`, `"auto"`, `"required"`
-- List of tool names: `["tool1", "tool2"]`
