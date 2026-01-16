@@ -21,7 +21,7 @@ This example shows both stateless and stateful streaming generation.
 
 import asyncio
 
-from agent_adapter import GeminiClient
+from agent_adapter import AutoLLMClient
 
 
 async def stateless_example():
@@ -30,7 +30,7 @@ async def stateless_example():
     print("Stateless Example")
     print("=" * 60)
 
-    client = GeminiClient()
+    client = AutoLLMClient(model="gemini-3-flash-preview")
 
     messages = [{"role": "user", "content": "Hello! What's 2+2?"}]
 
@@ -49,7 +49,7 @@ async def stateful_example():
     print("Stateful Example")
     print("=" * 60)
 
-    client = GeminiClient()
+    client = AutoLLMClient(model="gemini-3-flash-preview")
 
     # First message
     print("User: My name is Alice")

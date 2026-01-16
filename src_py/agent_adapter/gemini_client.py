@@ -13,78 +13,13 @@
 # limitations under the License.
 
 import os
-from abc import ABC, abstractmethod
 from typing import Any, AsyncIterator, List, Optional
 
 from google import genai
 from google.genai import types
 
+from .base_client import LLMClient
 from .types import MessageDict, ThinkingLevel, ToolChoice
-
-
-class LLMClient(ABC):
-    """
-    Abstract base class for LLM clients.
-
-    All model-specific clients must inherit from this class and implement
-    both abstract methods: stream_generate and stream_generate_stateful.
-    """
-
-    @abstractmethod
-    async def stream_generate(
-        self,
-        messages: List[MessageDict],
-        model: str,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
-        tools: Optional[List[Any]] = None,
-        thinking_level: Optional[ThinkingLevel] = None,
-        tool_choice: Optional[ToolChoice] = None,
-    ) -> AsyncIterator[Any]:
-        """
-        Generate content in streaming mode (stateless).
-
-        Args:
-            messages: List of message dictionaries containing conversation history
-            model: Model identifier to use for generation
-            max_tokens: Maximum number of tokens to generate
-            temperature: Sampling temperature (0.0 to 2.0)
-            tools: List of tools/functions available to the model
-            thinking_level: Level of reasoning depth (none, low, medium, high)
-            tool_choice: Tool usage preference (none/auto/required or list of tool names)
-
-        Yields:
-            Message chunks from the streaming response.
-        """
-        pass
-
-    @abstractmethod
-    async def stream_generate_stateful(
-        self,
-        message: MessageDict,
-        model: str,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
-        tools: Optional[List[Any]] = None,
-        thinking_level: Optional[ThinkingLevel] = None,
-        tool_choice: Optional[ToolChoice] = None,
-    ) -> AsyncIterator[Any]:
-        """
-        Generate content in streaming mode (stateful).
-
-        Args:
-            message: Latest message dictionary to add to conversation
-            model: Model identifier to use for generation
-            max_tokens: Maximum number of tokens to generate
-            temperature: Sampling temperature (0.0 to 2.0)
-            tools: List of tools/functions available to the model
-            thinking_level: Level of reasoning depth (none, low, medium, high)
-            tool_choice: Tool usage preference (none/auto/required or list of tool names)
-
-        Yields:
-            Message chunks from the streaming response.
-        """
-        pass
 
 
 class GeminiClient(LLMClient):
@@ -284,90 +219,3 @@ class GeminiClient(LLMClient):
     def get_history(self) -> List[MessageDict]:
         """Get the current message history."""
         return self._history.copy()
-
-
-class AutoLLMClient(LLMClient):
-    """
-    Auto-routing LLM client that dispatches to appropriate model-specific client.
-
-    This client is stateful - it knows the model name at initialization and maintains
-    conversation history for that specific model.
-    """
-
-    def __init__(self, model: str, api_key: Optional[str] = None):
-        """
-        Initialize AutoLLMClient with a specific model.
-
-        Args:
-            model: Model identifier (determines which client to use)
-            api_key: Optional API key
-        """
-        self._model = model
-        self._api_key = api_key
-        self._client = self._create_client_for_model(model)
-
-    def _create_client_for_model(self, model: str) -> LLMClient:
-        """Create the appropriate client for the given model."""
-        if "gemini" in model.lower():
-            return GeminiClient(self._api_key)
-        elif "gpt" in model.lower() or "o1" in model.lower():
-            raise NotImplementedError("GPT models not yet implemented")
-        elif "claude" in model.lower():
-            raise NotImplementedError("Claude models not yet implemented")
-        else:
-            raise ValueError(f"Unknown model type: {model}")
-
-    async def stream_generate(
-        self,
-        messages: List[MessageDict],
-        model: str,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
-        tools: Optional[List[Any]] = None,
-        thinking_level: Optional[ThinkingLevel] = None,
-        tool_choice: Optional[ToolChoice] = None,
-    ) -> AsyncIterator[Any]:
-        """Route to underlying client's stream_generate."""
-        async for chunk in self._client.stream_generate(
-            messages=messages,
-            model=model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            tools=tools,
-            thinking_level=thinking_level,
-            tool_choice=tool_choice,
-        ):
-            yield chunk
-
-    async def stream_generate_stateful(
-        self,
-        message: MessageDict,
-        model: str,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
-        tools: Optional[List[Any]] = None,
-        thinking_level: Optional[ThinkingLevel] = None,
-        tool_choice: Optional[ToolChoice] = None,
-    ) -> AsyncIterator[Any]:
-        """Route to underlying client's stream_generate_stateful."""
-        async for chunk in self._client.stream_generate_stateful(
-            message=message,
-            model=model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            tools=tools,
-            thinking_level=thinking_level,
-            tool_choice=tool_choice,
-        ):
-            yield chunk
-
-    def clear_history(self) -> None:
-        """Clear history in the underlying client."""
-        if hasattr(self._client, "clear_history"):
-            self._client.clear_history()
-
-    def get_history(self) -> List[MessageDict]:
-        """Get history from the underlying client."""
-        if hasattr(self._client, "get_history"):
-            return self._client.get_history()
-        return []
