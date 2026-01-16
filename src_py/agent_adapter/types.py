@@ -29,18 +29,23 @@ class ThinkingLevel(str, Enum):
 ToolChoice = Union[Literal["none", "auto", "required"], List[str]]
 
 
-class ContentItem(TypedDict):
+class ContentItem(TypedDict, total=False):
     """A content item within a message."""
 
-    type: str  # "text", "image_url", or "thought_signature"
-    value: str
+    type: Literal["text", "reasoning_text", "reasoning_signature", "reasoning_summary", "image_url", "function_call"]
+    text: str
+    image_url: str
+    signature: str
+    summary: str
+    name: str
+    argument: str
 
 
 class UniMessage(TypedDict):
     """Universal message format for LLM communication."""
 
     role: str  # "user", "assistant", "tool", or "system"
-    content: Union[str, List[ContentItem]]  # Text or list of content items
+    content_items: List[ContentItem]  # List of content items
     tool_call_id: NotRequired[str]  # Optional tool call ID for tool responses
 
 
@@ -57,10 +62,6 @@ class UniConfig(TypedDict, total=False):
 class UniEvent(TypedDict):
     """Universal event format for streaming responses."""
 
-    type: str  # "text", "thought_signature", "tool_call", etc.
-    content: str  # The actual content of the event
-    metadata: NotRequired[dict]  # Optional metadata
-
-
-# Legacy aliases for backward compatibility
-MessageDict = UniMessage
+    role: str  # "user", "assistant", "tool", or "system"
+    content_items: List[ContentItem]  # List of content items
+    tool_call_id: NotRequired[str]  # Optional tool call ID for tool responses

@@ -37,12 +37,12 @@ class AutoLLMClient(LLMClient):
         """
         self._model = model
         self._api_key = api_key
-        self._client = self._create_client_for_model(model)
+        self._client = self._create_client_for_model(model, api_key)
 
-    def _create_client_for_model(self, model: str) -> LLMClient:
+    def _create_client_for_model(self, model: str, api_key: Optional[str]) -> LLMClient:
         """Create the appropriate client for the given model."""
         if "gemini" in model.lower():
-            return GeminiClient(self._api_key)
+            return GeminiClient(model=model, api_key=api_key)
         elif "gpt" in model.lower() or "o1" in model.lower():
             raise NotImplementedError("GPT models not yet implemented")
         elif "claude" in model.lower():
@@ -65,13 +65,11 @@ class AutoLLMClient(LLMClient):
     async def streaming_response(
         self,
         messages: List[UniMessage],
-        model: str,
         config: UniConfig,
     ) -> AsyncIterator[UniEvent]:
         """Route to underlying client's streaming_response."""
         async for event in self._client.streaming_response(
             messages=messages,
-            model=model,
             config=config,
         ):
             yield event
@@ -79,24 +77,19 @@ class AutoLLMClient(LLMClient):
     async def streaming_response_stateful(
         self,
         message: UniMessage,
-        model: str,
         config: UniConfig,
     ) -> AsyncIterator[UniEvent]:
         """Route to underlying client's streaming_response_stateful."""
         async for event in self._client.streaming_response_stateful(
             message=message,
-            model=model,
             config=config,
         ):
             yield event
 
     def clear_history(self) -> None:
         """Clear history in the underlying client."""
-        if hasattr(self._client, "clear_history"):
-            self._client.clear_history()
+        self._client.clear_history()
 
     def get_history(self) -> List[UniMessage]:
         """Get history from the underlying client."""
-        if hasattr(self._client, "get_history"):
-            return self._client.get_history()
-        return []
+        return self._client.get_history()

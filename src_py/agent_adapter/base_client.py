@@ -78,32 +78,22 @@ class LLMClient(ABC):
         Returns:
             Complete universal message dictionary
         """
-        text_content = ""
-        thought_signature = None
         content_items = []
 
         for event in events:
-            if event["type"] == "text":
-                text_content += event["content"]
-            elif event["type"] == "thought_signature":
-                thought_signature = event["content"]
-
-        # Build content
-        if text_content:
-            content_items.append({"type": "text", "value": text_content})
-        if thought_signature:
-            content_items.append({"type": "thought_signature", "value": thought_signature})
+            # Merge content_items from all events
+            if "content_items" in event:
+                content_items.extend(event["content_items"])
 
         return {
             "role": "assistant",
-            "content": content_items if len(content_items) > 1 else (text_content if text_content else ""),
+            "content_items": content_items,
         }
 
     @abstractmethod
     async def streaming_response(
         self,
         messages: List[UniMessage],
-        model: str,
         config: UniConfig,
     ) -> AsyncIterator[UniEvent]:
         """
@@ -115,7 +105,6 @@ class LLMClient(ABC):
 
         Args:
             messages: List of universal message dictionaries containing conversation history
-            model: Model identifier to use for generation
             config: Universal configuration dict
 
         Yields:
@@ -127,7 +116,6 @@ class LLMClient(ABC):
     async def streaming_response_stateful(
         self,
         message: UniMessage,
-        model: str,
         config: UniConfig,
     ) -> AsyncIterator[UniEvent]:
         """
@@ -139,10 +127,19 @@ class LLMClient(ABC):
 
         Args:
             message: Latest universal message dictionary to add to conversation
-            model: Model identifier to use for generation
             config: Universal configuration dict
 
         Yields:
             Universal events from the streaming response
         """
+        pass
+
+    @abstractmethod
+    def clear_history(self) -> None:
+        """Clear the message history."""
+        pass
+
+    @abstractmethod
+    def get_history(self) -> List[UniMessage]:
+        """Get the current message history."""
         pass

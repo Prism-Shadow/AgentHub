@@ -32,15 +32,17 @@ async def stateless_example():
 
     client = AutoLLMClient(model="gemini-2.0-flash-exp")
 
-    messages = [{"role": "user", "content": "Hello! What's 2+2?"}]
+    messages = [{"role": "user", "content_items": [{"type": "text", "text": "Hello! What's 2+2?"}]}]
     config = {"temperature": 0.7}
 
     print("User: Hello! What's 2+2?")
     print("Assistant: ", end="", flush=True)
 
-    async for event in client.streaming_response(messages=messages, model="gemini-2.0-flash-exp", config=config):
-        if event["type"] == "text":
-            print(event["content"], end="", flush=True)
+    async for event in client.streaming_response(messages=messages, config=config):
+        if event["content_items"]:
+            for item in event["content_items"]:
+                if item.get("type") == "text":
+                    print(item.get("text", ""), end="", flush=True)
 
     print("\n")
 
@@ -59,10 +61,12 @@ async def stateful_example():
     print("Assistant: ", end="", flush=True)
 
     async for event in client.streaming_response_stateful(
-        message={"role": "user", "content": "My name is Alice"}, model="gemini-2.0-flash-exp", config=config
+        message={"role": "user", "content_items": [{"type": "text", "text": "My name is Alice"}]}, config=config
     ):
-        if event["type"] == "text":
-            print(event["content"], end="", flush=True)
+        if event["content_items"]:
+            for item in event["content_items"]:
+                if item.get("type") == "text":
+                    print(item.get("text", ""), end="", flush=True)
 
     print("\n")
 
@@ -71,10 +75,12 @@ async def stateful_example():
     print("Assistant: ", end="", flush=True)
 
     async for event in client.streaming_response_stateful(
-        message={"role": "user", "content": "What's my name?"}, model="gemini-2.0-flash-exp", config=config
+        message={"role": "user", "content_items": [{"type": "text", "text": "What's my name?"}]}, config=config
     ):
-        if event["type"] == "text":
-            print(event["content"], end="", flush=True)
+        if event["content_items"]:
+            for item in event["content_items"]:
+                if item.get("type") == "text":
+                    print(item.get("text", ""), end="", flush=True)
 
     print("\n")
 
