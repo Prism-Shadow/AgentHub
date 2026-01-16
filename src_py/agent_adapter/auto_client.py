@@ -15,7 +15,7 @@
 from typing import Any, AsyncIterator
 
 from .base_client import LLMClient
-from .gemini_client import GeminiClient
+from .gemini3 import Gemini3Client
 from .types import UniConfig, UniEvent, UniMessage
 
 
@@ -39,8 +39,8 @@ class AutoLLMClient(LLMClient):
 
     def _create_client_for_model(self, model: str, api_key: str | None = None) -> LLMClient:
         """Create the appropriate client for the given model."""
-        if "gemini" in model.lower():
-            return GeminiClient(model=model, api_key=api_key)
+        if "gemini-3" in model.lower():
+            return Gemini3Client(model=model, api_key=api_key)
         elif "gpt" in model.lower():
             raise NotImplementedError("GPT models not yet implemented")
         elif "claude" in model.lower():
