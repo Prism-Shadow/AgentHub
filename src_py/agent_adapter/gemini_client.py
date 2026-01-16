@@ -28,8 +28,8 @@ class GeminiClient(LLMClient):
     def __init__(self, model: str, api_key: Optional[str] = None):
         """Initialize Gemini client with model and API key."""
         self._model = model
-        self._api_key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-        self._client = genai.Client(api_key=self._api_key) if self._api_key else genai.Client()
+        api_key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        self._client = genai.Client(api_key=api_key) if api_key else genai.Client()
         self._history: List[UniMessage] = []
 
     def _detect_mime_type(self, url: str) -> str:
@@ -157,15 +157,12 @@ class GeminiClient(LLMClient):
 
         try:
             if hasattr(model_output, "candidates") and model_output.candidates:
-                for candidate in model_output.candidates:
-                    if hasattr(candidate, "content") and hasattr(candidate.content, "parts"):
-                        for part in candidate.content.parts:
-                            if hasattr(part, "text") and part.text:
-                                content_items.append({"type": "text", "text": part.text})
-                            if hasattr(part, "thought_signature") and part.thought_signature:
-                                content_items.append(
-                                    {"type": "reasoning_signature", "signature": part.thought_signature}
-                                )
+                candidate = model_output.candidates[0]
+                for part in candidate.content.parts:
+                    if hasattr(part, "text") and part.text:
+                        content_items.append({"type": "text", "text": part.text})
+                    if hasattr(part, "thought_signature") and part.thought_signature:
+                        content_items.append({"type": "reasoning_signature", "signature": part.thought_signature})
             elif hasattr(model_output, "text") and model_output.text:
                 content_items.append({"type": "text", "text": model_output.text})
         except Exception:
@@ -195,8 +192,7 @@ class GeminiClient(LLMClient):
 
         async for chunk in response_stream:
             event = self.transform_model_output_to_uni_event(chunk)
-            if event["content_items"]:  # Only yield non-empty events
-                yield event
+            yield event
 
     async def streaming_response_stateful(
         self,
@@ -220,8 +216,7 @@ class GeminiClient(LLMClient):
         # Convert events to message and add to history
         if events:
             assistant_message = self.transform_uni_event_to_uni_message(events)
-            if assistant_message.get("content_items"):
-                self._history.append(assistant_message)
+            self._history.append(assistant_message)
 
     def clear_history(self) -> None:
         """Clear the message history."""

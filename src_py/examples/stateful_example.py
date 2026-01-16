@@ -14,9 +14,9 @@
 # limitations under the License.
 
 """
-Simple example demonstrating the LLMClient usage.
+Example demonstrating stateful stream generation.
 
-This example shows both stateless and stateful streaming generation.
+This example shows how to use the AutoLLMClient with automatic conversation history management.
 """
 
 import asyncio
@@ -24,30 +24,7 @@ import asyncio
 from agent_adapter import AutoLLMClient
 
 
-async def stateless_example():
-    """Example of stateless stream generation."""
-    print("=" * 60)
-    print("Stateless Example")
-    print("=" * 60)
-
-    client = AutoLLMClient(model="gemini-3-flash")
-
-    messages = [{"role": "user", "content_items": [{"type": "text", "text": "Hello! What's 2+2?"}]}]
-    config = {"temperature": 0.7}
-
-    print("User: Hello! What's 2+2?")
-    print("Assistant: ", end="", flush=True)
-
-    async for event in client.streaming_response(messages=messages, config=config):
-        if event["content_items"]:
-            for item in event["content_items"]:
-                if item.get("type") == "text":
-                    print(item.get("text", ""), end="", flush=True)
-
-    print("\n")
-
-
-async def stateful_example():
+async def main():
     """Example of stateful stream generation."""
     print("=" * 60)
     print("Stateful Example")
@@ -90,12 +67,6 @@ async def stateful_example():
         print(f"  {i}. {msg}")
 
     print()
-
-
-async def main():
-    """Run all examples."""
-    await stateless_example()
-    await stateful_example()
 
 
 if __name__ == "__main__":

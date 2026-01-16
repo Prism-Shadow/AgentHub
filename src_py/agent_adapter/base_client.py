@@ -79,11 +79,22 @@ class LLMClient(ABC):
             Complete universal message dictionary
         """
         content_items = []
+        text_accumulator = ""
 
         for event in events:
             # Merge content_items from all events
             if "content_items" in event:
-                content_items.extend(event["content_items"])
+                for item in event["content_items"]:
+                    if item.get("type") == "text":
+                        # Accumulate text items
+                        text_accumulator += item.get("text", "")
+                    else:
+                        # Append non-text items as-is
+                        content_items.append(item)
+
+        # Add accumulated text as a single item if present
+        if text_accumulator:
+            content_items.insert(0, {"type": "text", "text": text_accumulator})
 
         return {
             "role": "assistant",

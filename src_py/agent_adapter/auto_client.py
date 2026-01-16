@@ -35,8 +35,6 @@ class AutoLLMClient(LLMClient):
             model: Model identifier (determines which client to use)
             api_key: Optional API key
         """
-        self._model = model
-        self._api_key = api_key
         self._client = self._create_client_for_model(model, api_key)
 
     def _create_client_for_model(self, model: str, api_key: Optional[str]) -> LLMClient:
