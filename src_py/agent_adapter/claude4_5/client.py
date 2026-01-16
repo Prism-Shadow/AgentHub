@@ -17,7 +17,7 @@ import os
 from typing import Any, AsyncIterator
 
 from anthropic import AsyncAnthropic
-from anthropic.types import MessageParam, ToolParam
+from anthropic.types import MessageParam
 
 from ..base_client import LLMClient
 from ..types import (

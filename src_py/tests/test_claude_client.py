@@ -39,7 +39,7 @@ async def test_claude_streaming_response_basic():
         events.append(event)
 
     assert len(events) > 0
-    
+
     # Concatenate events to get the full message
     final_message = client.concat_uni_events_to_uni_message(events)
     assert final_message["role"] == "assistant"
@@ -58,12 +58,12 @@ async def test_claude_extended_thinking():
         events.append(event)
 
     assert len(events) > 0
-    
+
     # Check if thinking (reasoning) blocks are present
     final_message = client.concat_uni_events_to_uni_message(events)
     has_reasoning = any(item["type"] == "reasoning" for item in final_message["content_items"])
     has_text = any(item["type"] == "text" for item in final_message["content_items"])
-    
+
     # Extended thinking should produce both reasoning and text
     assert has_reasoning or has_text  # At minimum we should have one of these
 
@@ -72,7 +72,7 @@ async def test_claude_extended_thinking():
 async def test_claude_tool_use():
     """Test Claude's tool use capability."""
     client = AutoLLMClient(model="claude-sonnet-4-5-20250929")
-    
+
     # Define a simple weather tool
     weather_tool = {
         "name": "get_weather",
@@ -88,7 +88,7 @@ async def test_claude_tool_use():
             "required": ["location"]
         }
     }
-    
+
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is the weather in San Francisco?"}]}]
     config = {"max_tokens": 1024, "tools": [weather_tool]}
 
@@ -97,11 +97,11 @@ async def test_claude_tool_use():
         events.append(event)
 
     assert len(events) > 0
-    
+
     # Check if a function call was made
     final_message = client.concat_uni_events_to_uni_message(events)
     has_function_call = any(item["type"] == "function_call" for item in final_message["content_items"])
-    
+
     # Claude should attempt to call the get_weather tool
     assert has_function_call
 
@@ -133,7 +133,7 @@ async def test_claude_stateful_conversation():
 
     assert len(events2) > 0
     assert len(client.get_history()) == 4  # 2 previous + 2 new
-    
+
     # The response should mention blue
     final_message = client.concat_uni_events_to_uni_message(events2)
     response_text = " ".join(
@@ -175,16 +175,12 @@ async def test_claude_with_system_prompt():
         events.append(event)
 
     assert len(events) > 0
-    
+
     # The response should have some pirate-speak characteristics
     final_message = client.concat_uni_events_to_uni_message(events)
     response_text = " ".join(
         item["text"] for item in final_message["content_items"] if item["type"] == "text"
     ).lower()
-    
-    # Check for common pirate words (this is a weak test but better than nothing)
-    pirate_indicators = ["arr", "ye", "ahoy", "matey", "aye"]
-    has_pirate_speak = any(indicator in response_text for indicator in pirate_indicators)
-    
+
     # System prompts might not always be followed perfectly, so we just check the response exists
     assert len(response_text) > 0

@@ -19,7 +19,6 @@ Demonstrates how Claude can use tools/functions to accomplish tasks.
 """
 
 import asyncio
-import json
 
 from agent_adapter import AutoLLMClient
 
