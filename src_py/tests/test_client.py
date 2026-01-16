@@ -29,7 +29,7 @@ pytestmark = pytest.mark.skipif(
 @pytest.mark.asyncio
 async def test_streaming_response_basic():
     """Test basic stateless stream generation."""
-    client = GeminiClient(model="gemini-3-flash")
+    client = GeminiClient(model="gemini-3-flash-preview")
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "Say hello"}]}]
     config = {}
 
@@ -43,7 +43,7 @@ async def test_streaming_response_basic():
 @pytest.mark.asyncio
 async def test_streaming_response_with_all_parameters():
     """Test stream generation with all optional parameters."""
-    client = GeminiClient(model="gemini-3-flash")
+    client = GeminiClient(model="gemini-3-flash-preview")
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is 2+2?"}]}]
     config = {"max_tokens": 100, "temperature": 0.7}
 
@@ -57,7 +57,7 @@ async def test_streaming_response_with_all_parameters():
 @pytest.mark.asyncio
 async def test_streaming_response_stateful():
     """Test stateful stream generation."""
-    client = GeminiClient(model="gemini-3-flash")
+    client = GeminiClient(model="gemini-3-flash-preview")
     config = {}
 
     # First message
@@ -84,7 +84,7 @@ async def test_streaming_response_stateful():
 @pytest.mark.asyncio
 async def test_clear_history():
     """Test clearing conversation history."""
-    client = GeminiClient(model="gemini-3-flash")
+    client = GeminiClient(model="gemini-3-flash-preview")
     config = {}
 
     async for event in client.streaming_response_stateful(
@@ -101,7 +101,7 @@ async def test_clear_history():
 @pytest.mark.asyncio
 async def test_message_with_content_list():
     """Test messages with content list (multimodal)."""
-    client = GeminiClient(model="gemini-3-flash")
+    client = GeminiClient(model="gemini-3-flash-preview")
     messages = [
         {
             "role": "user",

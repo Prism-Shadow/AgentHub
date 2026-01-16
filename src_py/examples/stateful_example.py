@@ -30,7 +30,7 @@ async def main():
     print("Stateful Example")
     print("=" * 60)
 
-    client = AutoLLMClient(model="gemini-3-flash")
+    client = AutoLLMClient(model="gemini-3-flash-preview")
     config = {}
 
     # First message

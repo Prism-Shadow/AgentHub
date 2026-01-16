@@ -30,7 +30,7 @@ async def main():
     print("Stateless Example")
     print("=" * 60)
 
-    client = AutoLLMClient(model="gemini-3-flash")
+    client = AutoLLMClient(model="gemini-3-flash-preview")
 
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "Hello! What's 2+2?"}]}]
     config = {"temperature": 0.7}

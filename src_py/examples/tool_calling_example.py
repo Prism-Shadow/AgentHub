@@ -60,7 +60,7 @@ async def main():
         },
     }
 
-    client = AutoLLMClient(model="gemini-3-flash")
+    client = AutoLLMClient(model="gemini-3-flash-preview")
     config = {"tools": [{"function_declarations": [weather_function]}]}
 
     # First turn: User asks about temperature
