@@ -1,10 +1,59 @@
-# LLM Client Usage Guide
+# AutoLLMClient Usage Guide
 
-This document demonstrates how to use `AutoLLMClient` for unified LLM interactions.
+This document demonstrates how to use `AutoLLMClient` for unified LLM interactions in AgentAdapter.
 
-## Basic Usage
+## AutoLLMClient Overview
 
-### Stateful Stream Generation
+`AutoLLMClient` is a stateful client that automatically routes requests to the appropriate model-specific implementation. It maintains conversation history and provides a unified interface for different LLM providers.
+
+### Initialization
+
+Create a client by specifying the model name:
+
+```python
+from agent_adapter import AutoLLMClient
+
+# Initialize with model name
+client = AutoLLMClient(model="gemini-3-flash-preview")
+
+# Initialize with custom API key
+client = AutoLLMClient(model="gemini-3-flash-preview", api_key="your-api-key")
+```
+
+The client automatically selects the appropriate backend based on the model name.
+
+## Core Methods
+
+### streaming_response
+
+Stateless method that requires passing the full message history on each call:
+
+```python
+import asyncio
+from agent_adapter import AutoLLMClient
+
+async def main():
+    client = AutoLLMClient(model="gemini-3-flash-preview")
+    
+    messages = [
+        {
+            "role": "user",
+            "content_items": [{"type": "text", "text": "Hello!"}]
+        }
+    ]
+    
+    async for event in client.streaming_response(
+        messages=messages,
+        config={}
+    ):
+        print(event)
+
+asyncio.run(main())
+```
+
+### streaming_response_stateful
+
+Stateful method that maintains conversation history internally:
 
 ```python
 import asyncio
@@ -23,7 +72,7 @@ async def main():
     ):
         print(event)
     
-    # Second message - history is maintained
+    # Second message - history is maintained automatically
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -32,14 +81,34 @@ async def main():
         config={}
     ):
         print(event)
-    
-    # View conversation history
-    print("History:", client.get_history())
-    
-    # Clear history when done
-    client.clear_history()
 
 asyncio.run(main())
+```
+
+### get_history
+
+Retrieve the conversation history:
+
+```python
+# Get all messages in the conversation
+history = client.get_history()
+print(f"Total messages: {len(history)}")
+
+for msg in history:
+    print(f"Role: {msg['role']}")
+    print(f"Content: {msg['content_items']}")
+```
+
+### clear_history
+
+Clear the conversation history:
+
+```python
+# Clear all conversation history
+client.clear_history()
+
+# Verify history is empty
+assert len(client.get_history()) == 0
 ```
 
 ## Tool Calling
