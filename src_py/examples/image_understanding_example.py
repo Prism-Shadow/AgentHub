@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+# Copyright 2025 Prism Shadow. and/or its affiliates
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+Example demonstrating image understanding capability.
+
+This example shows how to use the AutoLLMClient to analyze images.
+"""
+
+import asyncio
+
+from agent_adapter import AutoLLMClient
+
+
+async def main():
+    """Example of image understanding with AutoLLMClient."""
+    print("=" * 60)
+    print("Image Understanding Example")
+    print("=" * 60)
+
+    client = AutoLLMClient(model="gemini-3-flash-preview")
+    config = {"temperature": 0.7}
+
+    # Image URL from the problem statement
+    image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Narcissus_poeticus_subsp._radiiflorus.1658.jpg/500px-Narcissus_poeticus_subsp._radiiflorus.1658.jpg"
+
+    query = "What's in this image? Please describe what you see."
+    print(f"User: {query}")
+    print(f"Image: {image_url}")
+    print("Assistant:")
+
+    async for event in client.streaming_response(
+        messages=[
+            {
+                "role": "user",
+                "content_items": [
+                    {"type": "text", "text": query},
+                    {"type": "image_url", "image_url": image_url},
+                ],
+            }
+        ],
+        config=config,
+    ):
+        print(event)
+
+    print("\n" + "=" * 60)
+    print("Image analysis complete!")
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
