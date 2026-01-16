@@ -113,10 +113,18 @@ async def test_gpt_not_implemented():
 
 
 @pytest.mark.asyncio
-async def test_claude_not_implemented():
-    """Test that Claude models raise NotImplementedError."""
-    with pytest.raises(NotImplementedError, match="Claude models not yet implemented"):
-        AutoLLMClient(model="claude-3-opus")
+@pytest.mark.skipif(not os.getenv("ANTHROPIC_API_KEY"), reason="No Anthropic API key available")
+async def test_claude_basic():
+    """Test that Claude models work properly."""
+    client = AutoLLMClient(model="claude-sonnet-4-5-20250929")
+    messages = [{"role": "user", "content_items": [{"type": "text", "text": "Say hello"}]}]
+    config = {"max_tokens": 100}
+
+    events = []
+    async for event in client.streaming_response(messages=messages, config=config):
+        events.append(event)
+
+    assert len(events) > 0
 
 
 @pytest.mark.asyncio

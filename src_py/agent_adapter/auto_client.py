@@ -15,6 +15,7 @@
 from typing import Any, AsyncIterator
 
 from .base_client import LLMClient
+from .claude_client import ClaudeClient
 from .gemini3 import Gemini3Client
 from .types import UniConfig, UniEvent, UniMessage
 
@@ -44,7 +45,7 @@ class AutoLLMClient(LLMClient):
         elif "gpt" in model.lower():
             raise NotImplementedError("GPT models not yet implemented")
         elif "claude" in model.lower():
-            raise NotImplementedError("Claude models not yet implemented")
+            return ClaudeClient(model=model, api_key=api_key)
         else:
             raise ValueError(f"Unknown model type: {model}")
 
