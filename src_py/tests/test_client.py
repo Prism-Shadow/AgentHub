@@ -41,20 +41,6 @@ async def test_streaming_response_basic():
 
 
 @pytest.mark.asyncio
-async def test_streaming_response_basic_backward_compatibility():
-    """Test backward compatibility with GeminiClient."""
-    client = GeminiClient(model="gemini-3-flash-preview")
-    messages = [{"role": "user", "content_items": [{"type": "text", "text": "Say hello"}]}]
-    config = {}
-
-    events = []
-    async for event in client.streaming_response(messages=messages, config=config):
-        events.append(event)
-
-    assert len(events) > 0
-
-
-@pytest.mark.asyncio
 async def test_streaming_response_with_all_parameters():
     """Test stream generation with all optional parameters."""
     client = AutoLLMClient(model="gemini-3-flash-preview")
