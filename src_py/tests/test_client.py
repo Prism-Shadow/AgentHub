@@ -16,7 +16,7 @@ import os
 
 import pytest
 
-from agent_adapter import AutoLLMClient, GeminiClient
+from agent_adapter import AutoLLMClient
 
 
 # Skip tests if no API key is available
