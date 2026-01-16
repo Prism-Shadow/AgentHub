@@ -39,7 +39,7 @@ class AutoLLMClient(LLMClient):
 
     def _create_client_for_model(self, model: str, api_key: str | None = None) -> LLMClient:
         """Create the appropriate client for the given model."""
-        if "gemini" in model.lower():
+        if "gemini-3" in model.lower() or "gemini3" in model.lower():
             return Gemini3Client(model=model, api_key=api_key)
         elif "gpt" in model.lower():
             raise NotImplementedError("GPT models not yet implemented")
