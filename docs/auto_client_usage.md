@@ -15,9 +15,6 @@ from agent_adapter import AutoLLMClient
 
 # Initialize with model name
 client = AutoLLMClient(model="gemini-3-flash-preview")
-
-# Initialize with custom API key
-client = AutoLLMClient(model="gemini-3-flash-preview", api_key="your-api-key")
 ```
 
 The client automatically selects the appropriate backend based on the model name.
@@ -227,7 +224,7 @@ When responding to a function call, include the `tool_call_id` in the text conte
 ```python
 config = {
     "max_tokens": 500,
-    "temperature": 0.9,
+    "temperature": 1.0,
     "tools": [tool_definition],
     "tool_choice": "auto",  # "auto", "required", "none", or ["tool_name"]
     "thinking_level": ThinkingLevel.HIGH,
