@@ -49,6 +49,38 @@ AgentAdapter is a dual-language project containing both Python and TypeScript im
 - When making changes, ensure consistency across both implementations when applicable
 - Consult the [../docs/README.md](../docs/README.md) for model sdk usage
 
+## Model Routing Rules
+
+When adding support for new AI models in `auto_client.py`, follow these rules:
+
+### Claude Models
+
+**IMPORTANT**: Claude model detection MUST use specific version strings, NOT generic "claude" matching.
+
+Use exact model version identifiers:
+- `claude-sonnet-4-5-20250929`
+- `claude-sonnet-4-20250514`
+- `claude-opus-4-5-20251101`
+- `claude-opus-4-1-20250805`
+- `claude-opus-4-20250514`
+- `claude-haiku-4-5-20251001`
+- `claude-3-7-sonnet-20250219`
+
+Example implementation:
+```python
+elif any(
+    version in model.lower()
+    for version in [
+        "claude-sonnet-4-5-20250929",
+        "claude-sonnet-4-20250514",
+        # ... other versions
+    ]
+):
+    return Claude45Client(model=model, api_key=api_key)
+```
+
+**DO NOT** use generic matching like `if "claude" in model.lower()` as this is too broad and may match unintended model names.
+
 ## GitHub Workflow Secrets for Testing
 
 When writing tests that require calling AI models, the following secrets are available in GitHub workflows:
