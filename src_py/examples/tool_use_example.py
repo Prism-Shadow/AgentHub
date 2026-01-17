@@ -21,6 +21,7 @@ This example shows how to use function calling with AutoLLMClient to query weath
 
 import asyncio
 import json
+import os
 
 from agent_adapter import AutoLLMClient, UniEvent
 
@@ -44,24 +45,51 @@ async def main():
     print("Tool Calling Example")
     print("=" * 60)
 
-    # Define the function declaration for the model
-    weather_function = {
-        "name": "get_current_temperature",
-        "description": "Gets the current temperature for a given location.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "location": {
-                    "type": "string",
-                    "description": "The city name, e.g. San Francisco",
-                },
-            },
-            "required": ["location"],
-        },
-    }
+    # Get model from environment variable, default to gemini
+    model = os.getenv("MODEL", "gemini-3-flash-preview")
+    print(f"Using model: {model}")
 
-    client = AutoLLMClient(model="gemini-3-flash-preview")
+    # Define the function declaration for the model
+    # Different models use slightly different schemas
+    if "claude" in model.lower():
+        # Claude uses input_schema
+        weather_function = {
+            "name": "get_current_temperature",
+            "description": "Gets the current temperature for a given location.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "The city name, e.g. San Francisco",
+                    },
+                },
+                "required": ["location"],
+            },
+        }
+    else:
+        # Gemini uses parameters
+        weather_function = {
+            "name": "get_current_temperature",
+            "description": "Gets the current temperature for a given location.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "The city name, e.g. San Francisco",
+                    },
+                },
+                "required": ["location"],
+            },
+        }
+
+    client = AutoLLMClient(model=model)
     config = {"tools": [weather_function]}
+
+    # Claude requires max_tokens
+    if "claude" in model.lower():
+        config["max_tokens"] = 1024
 
     # First turn: User asks about temperature
     print("User: What's the temperature in London?")

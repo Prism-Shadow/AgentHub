@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # Copyright 2025 Prism Shadow. and/or its affiliates
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,64 +14,71 @@
 # limitations under the License.
 
 """
-Claude 4.5 extended thinking example.
-Demonstrates how Claude uses internal reasoning to solve complex problems.
+Example demonstrating extended thinking capability.
+
+This example shows how to use the AutoLLMClient with extended thinking for complex reasoning tasks.
+Both Gemini and Claude support extended thinking, though with different configurations.
 """
 
 import asyncio
+import os
 
 from agent_adapter import AutoLLMClient
 from agent_adapter.types import ThinkingLevel
 
 
 async def main():
-    # Create Claude client
-    client = AutoLLMClient(model="claude-sonnet-4-5-20250929")
+    """Example of extended thinking with AutoLLMClient."""
+    print("=" * 60)
+    print("Extended Thinking Example")
+    print("=" * 60)
 
-    # Prepare a complex math problem
-    messages = [
-        {
-            "role": "user",
-            "content_items": [
-                {
-                    "type": "text",
-                    "text": "What is 127 * 89? Show your reasoning step by step.",
-                }
-            ],
-        }
-    ]
+    # Get model from environment variable, default to gemini
+    model = os.getenv("MODEL", "gemini-3-flash-preview")
+    print(f"Using model: {model}")
 
-    # Configure with extended thinking
+    client = AutoLLMClient(model=model)
+
+    # Configure extended thinking
     config = {
-        "max_tokens": 3200,
-        "thinking_level": ThinkingLevel.HIGH,  # Enable extended thinking
+        "thinking_level": ThinkingLevel.HIGH,
+        "thinking_summary": True,
     }
 
-    # Stream response
-    print("Claude's thinking process and response:")
-    print("=" * 60)
+    # Claude requires max_tokens
+    if "claude" in model.lower():
+        config["max_tokens"] = 3200
+
+    # A complex math problem that benefits from step-by-step reasoning
+    query = "What is 127 * 89? Show your step-by-step reasoning."
+    print(f"User: {query}")
+    print("\nAssistant's response:")
+    print("-" * 60)
 
     thinking_started = False
     response_started = False
 
-    async for event in client.streaming_response(messages=messages, config=config):
+    async for event in client.streaming_response(
+        messages=[{"role": "user", "content_items": [{"type": "text", "text": query}]}],
+        config=config,
+    ):
         for item in event["content_items"]:
             if item["type"] == "reasoning" and item["reasoning"]:
                 if not thinking_started:
-                    print("\n[THINKING]")
-                    print("-" * 60)
+                    print("\n[THINKING PROCESS]")
                     thinking_started = True
                 print(item["reasoning"], end="", flush=True)
             elif item["type"] == "text" and item["text"]:
                 if not response_started:
                     if thinking_started:
                         print("\n" + "-" * 60)
-                    print("\n[RESPONSE]")
-                    print("-" * 60)
+                    print("\n[FINAL ANSWER]")
                     response_started = True
                 print(item["text"], end="", flush=True)
 
     print("\n" + "=" * 60)
+    print("Extended thinking example complete!")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

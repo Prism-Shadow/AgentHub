@@ -20,6 +20,7 @@ This example shows how to use the AutoLLMClient with automatic conversation hist
 """
 
 import asyncio
+import os
 
 from agent_adapter import AutoLLMClient
 
@@ -30,8 +31,16 @@ async def main():
     print("Stateful Example")
     print("=" * 60)
 
-    client = AutoLLMClient(model="gemini-3-flash-preview")
+    # Get model from environment variable, default to gemini
+    model = os.getenv("MODEL", "gemini-3-flash-preview")
+    print(f"Using model: {model}")
+
+    client = AutoLLMClient(model=model)
     config = {"thinking_summary": True}
+
+    # Claude requires max_tokens
+    if "claude" in model.lower():
+        config["max_tokens"] = 200
 
     # First message
     query1 = "My name is Alice"

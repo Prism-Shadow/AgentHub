@@ -44,7 +44,18 @@ class AutoLLMClient(LLMClient):
             return Gemini3Client(model=model, api_key=api_key)
         elif "gpt" in model.lower():
             raise NotImplementedError("GPT models not yet implemented")
-        elif "claude" in model.lower():
+        elif any(
+            version in model.lower()
+            for version in [
+                "claude-sonnet-4-5-20250929",
+                "claude-sonnet-4-20250514",
+                "claude-opus-4-5-20251101",
+                "claude-opus-4-1-20250805",
+                "claude-opus-4-20250514",
+                "claude-haiku-4-5-20251001",
+                "claude-3-7-sonnet-20250219",
+            ]
+        ):
             return Claude45Client(model=model, api_key=api_key)
         else:
             raise ValueError(f"Unknown model type: {model}")
