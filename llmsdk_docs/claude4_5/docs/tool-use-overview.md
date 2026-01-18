@@ -2,7 +2,7 @@
 
 ---
 
-Claude is capable of interacting with tools and functions, allowing you to extend Claude's capabilities to perform a wider variety of tasks. 
+Claude is capable of interacting with tools and functions, allowing you to extend Claude's capabilities to perform a wider variety of tasks.
 
 <Tip>
   Learn everything you need to master tool use with Claude as part of our new [courses](https://anthropic.skilljar.com/)! Please
@@ -109,9 +109,9 @@ async function main() {
         required: ["location"]
       }
     }],
-    messages: [{ 
-      role: "user", 
-      content: "Tell me the weather in San Francisco." 
+    messages: [{
+      role: "user",
+      content: "Tell me the weather in San Francisco."
     }]
   });
 
@@ -385,7 +385,7 @@ Here are a few code examples demonstrating various tool use patterns and techniq
 
     print(response)
     ```
-    
+
     ```java Java
     import java.util.List;
     import java.util.Map;
@@ -591,7 +591,7 @@ You would then need to execute the `get_weather` function with the provided inpu
 
     print(response)
     ```
-    
+
    ```java Java
     import java.util.List;
     import java.util.Map;
@@ -801,7 +801,7 @@ You can provide Claude with multiple tools to choose from in a single request. H
     )
     print(response)
     ```
-    
+
     ```java Java
     import java.util.List;
     import java.util.Map;
@@ -987,7 +987,7 @@ Here's an example of using a `get_location` tool to get the user's location, the
         }]
     )
     ```
-    
+
     ```java Java
     import java.util.List;
     import java.util.Map;

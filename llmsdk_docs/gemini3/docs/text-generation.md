@@ -302,10 +302,10 @@ For `gemini-3-pro-image-preview`, thought signatures are critical for conversati
 
 #### Multi-step Function Calling (Sequential)
 
-The user asks a question requiring two separate steps (Check Flight -\> Book Taxi) in one turn.   
+The user asks a question requiring two separate steps (Check Flight -\> Book Taxi) in one turn.  
 
 
-**Step 1: Model calls Flight Tool.**   
+**Step 1: Model calls Flight Tool.**  
 
 The model returns a signature `<Sig_A>`  
 
@@ -322,7 +322,7 @@ The model returns a signature `<Sig_A>`
   }
 ```
 
-**Step 2: User sends Flight Result**   
+**Step 2: User sends Flight Result**  
 
 We must send back `<Sig_A>` to keep the model's train of thought.  
 
@@ -330,20 +330,20 @@ We must send back `<Sig_A>` to keep the model's train of thought.
 // User Request (Turn 1, Step 2)
 [
   { "role": "user", "parts": [{ "text": "Check flight AA100..." }] },
-  { 
-    "role": "model", 
+  {
+    "role": "model",
     "parts": [
-      { 
-        "functionCall": { "name": "check_flight", "args": {...} }, 
+      {
+        "functionCall": { "name": "check_flight", "args": {...} },
         "thoughtSignature": "<Sig_A>" // REQUIRED
-      } 
+      }
     ]
   },
   { "role": "user", "parts": [{ "functionResponse": { "name": "check_flight", "response": {...} } }] }
 ]
 ```
 
-**Step 3: Model calls Taxi Tool**   
+**Step 3: Model calls Taxi Tool**  
 
 The model remembers the flight delay via `<Sig_A>` and now decides to book a taxi. It generates a *new* signature `<Sig_B>`.  
 
@@ -360,7 +360,7 @@ The model remembers the flight delay via `<Sig_A>` and now decides to book a tax
 }
 ```
 
-**Step 4: User sends Taxi Result**   
+**Step 4: User sends Taxi Result**  
 
 To complete the turn, you must send back the entire chain: `<Sig_A>` AND `<Sig_B>`.  
 
@@ -368,17 +368,17 @@ To complete the turn, you must send back the entire chain: `<Sig_A>` AND `<Sig_B
 // User Request (Turn 1, Step 4)
 [
   // ... previous history ...
-  { 
-    "role": "model", 
+  {
+    "role": "model",
     "parts": [
-       { "functionCall": { "name": "check_flight", ... }, "thoughtSignature": "<Sig_A>" } 
+       { "functionCall": { "name": "check_flight", ... }, "thoughtSignature": "<Sig_A>" }
     ]
   },
   { "role": "user", "parts": [{ "functionResponse": {...} }] },
-  { 
-    "role": "model", 
+  {
+    "role": "model",
     "parts": [
-       { "functionCall": { "name": "book_taxi", ... }, "thoughtSignature": "<Sig_B>" } 
+       { "functionCall": { "name": "book_taxi", ... }, "thoughtSignature": "<Sig_B>" }
     ]
   },
   { "role": "user", "parts": [{ "functionResponse": {...} }] }
@@ -404,12 +404,12 @@ The user asks: "Check the weather in Paris and London." The model returns two fu
       // 1. First Function Call has the signature
       {
         "functionCall": { "name": "check_weather", "args": { "city": "Paris" } },
-        "thoughtSignature": "<Signature_A>" 
+        "thoughtSignature": "<Signature_A>"
       },
       // 2. Subsequent parallel calls DO NOT have signatures
       {
         "functionCall": { "name": "check_weather", "args": { "city": "London" } }
-      } 
+      }
     ]
   },
   {
@@ -434,12 +434,12 @@ The user asks a question that requires in-context reasoning without external too
 ```java
 // User Request (Follow-up question)
 [
-  { 
-    "role": "user", 
-    "parts": [{ "text": "What are the risks of this investment?" }] 
+  {
+    "role": "user",
+    "parts": [{ "text": "What are the risks of this investment?" }]
   },
-  { 
-    "role": "model", 
+  {
+    "role": "model",
     "parts": [
       {
         "text": "I need to calculate the risk step-by-step. First, I'll look at volatility...",
@@ -447,9 +447,9 @@ The user asks a question that requires in-context reasoning without external too
       }
     ]
   },
-  { 
-    "role": "user", 
-    "parts": [{ "text": "Summarize that in one sentence." }] 
+  {
+    "role": "user",
+    "parts": [{ "text": "Summarize that in one sentence." }]
   }
 ]
 ```  
@@ -466,12 +466,12 @@ For image generation, signatures are strictly validated. They appear on the **fi
     // 1. First part ALWAYS has a signature (even if text)
     {
       "text": "I will generate a cyberpunk city...",
-      "thoughtSignature": "<Signature_D>" 
+      "thoughtSignature": "<Signature_D>"
     },
     // 2. ALL InlineData (Image) parts ALWAYS have signatures
     {
-      "inlineData": { ... }, 
-      "thoughtSignature": "<Signature_E>" 
+      "inlineData": { ... },
+      "thoughtSignature": "<Signature_E>"
     },
   ]
 }

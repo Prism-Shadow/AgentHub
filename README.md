@@ -6,12 +6,20 @@ AgentHub is the only SDK you need to connect to state-of-the-art LLMs (GPT-5/Cla
 
 Python sources live in `src_py/`.
 
+Install from PyPI:
+
+```bash
+uv install agenthub-python
+```
+
+Build from source:
+
 ```bash
 cd src_py
 make
 ```
 
-See [docs/auto_llm_client.python.md](docs/auto_llm_client.python.md) for comprehensive usage examples and API documentation.
+See [src_py/README.md](src_py/README.md) for comprehensive usage examples and API documentation.
 
 ## TypeScript package
 

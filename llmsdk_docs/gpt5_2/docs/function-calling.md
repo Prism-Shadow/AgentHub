@@ -117,7 +117,7 @@ for item in response.output:
         if item.name == "get_horoscope":
             # 3. Execute the function logic for get_horoscope
             horoscope = get_horoscope(json.loads(item.arguments))
-            
+
             # 4. Provide function call results to the model
             input_list.append({
                 "type": "function_call_output",
@@ -187,7 +187,7 @@ response.output.forEach((item) => {
     if (item.name == "get_horoscope"):
       // 3. Execute the function logic for get_horoscope
       const horoscope = get_horoscope(JSON.parse(item.arguments))
-      
+
       // 4. Provide function call results to the model
       input_list.push({
           type: "function_call_output",
@@ -261,25 +261,25 @@ Because the `parameters` are defined by a [JSON schema](https://json-schema.org/
 ### Best practices for defining functions
 
 1.  **Write clear and detailed function names, parameter descriptions, and instructions.**
-    
+
     *   **Explicitly describe the purpose of the function and each parameter** (and its format), and what the output represents.
     *   **Use the system prompt to describe when (and when not) to use each function.** Generally, tell the model _exactly_ what to do.
     *   **Include examples and edge cases**, especially to rectify any recurring failures. (**Note:** Adding examples may hurt performance for [reasoning models](https://platform.openai.com/docs/guides/reasoning).)
 2.  **Apply software engineering best practices.**
-    
+
     *   **Make the functions obvious and intuitive**. ([principle of least surprise](https://en.wikipedia.org/wiki/Principle_of_least_astonishment))
     *   **Use enums** and object structure to make invalid states unrepresentable. (e.g. `toggle_light(on: bool, off: bool)` allows for invalid calls)
     *   **Pass the intern test.** Can an intern/human correctly use the function given nothing but what you gave the model? (If not, what questions do they ask you? Add the answers to the prompt.)
 3.  **Offload the burden from the model and use code where possible.**
-    
+
     *   **Don't make the model fill arguments you already know.** For example, if you already have an `order_id` based on a previous menu, don't have an `order_id` param – instead, have no params `submit_refund()` and pass the `order_id` with code.
     *   **Combine functions that are always called in sequence.** For example, if you always call `mark_location()` after `query_location()`, just move the marking logic into the query function call.
 4.  **Keep the number of functions small for higher accuracy.**
-    
+
     *   **Evaluate your performance** with different numbers of functions.
     *   **Aim for fewer than 20 functions** at any one time, though this is just a soft suggestion.
 5.  **Leverage OpenAI resources.**
-    
+
     *   **Generate and iterate on function schemas** in the [Playground](https://platform.openai.com/playground).
     *   **Consider [fine-tuning](https://platform.openai.com/docs/guides/fine-tuning) to increase function calling accuracy** for large numbers of functions or difficult tasks. ([cookbook](https://cookbook.openai.com/examples/fine_tuning_for_function_calling))
 
