@@ -20,12 +20,11 @@ and serve them via a web interface for real-time monitoring.
 """
 
 import json
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from flask import Flask, Response, render_template_string, send_from_directory
+from flask import Flask, Response, render_template_string
 
 from .types import UniMessage
 
@@ -104,7 +103,7 @@ class ConversationMonitor:
             # Add usage metadata if available
             if "usage_metadata" in message and message["usage_metadata"]:
                 metadata = message["usage_metadata"]
-                lines.append(f"\nUsage Metadata:")
+                lines.append("\nUsage Metadata:")
                 if metadata.get("prompt_tokens"):
                     lines.append(f"  Prompt Tokens: {metadata['prompt_tokens']}")
                 if metadata.get("thoughts_tokens"):

@@ -17,4 +17,4 @@ from .monitor import ConversationMonitor, get_monitor
 from .types import ThinkingLevel
 
 
-__all__ = ["AutoLLMClient", "ThinkingLevel", "ConversationMonitor", "get_monitor"]
+__all__ = ["AutoLLMClient", "ConversationMonitor", "ThinkingLevel", "get_monitor"]
