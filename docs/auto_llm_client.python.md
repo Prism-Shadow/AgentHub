@@ -149,7 +149,7 @@ async def main():
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
-            "content_items": [{"type": "text", "text": "What's the temperature in London?"}]
+            "content_items": [{"type": "text", "text": "What's the weather in London?"}]
         },
         config=config
     ):
