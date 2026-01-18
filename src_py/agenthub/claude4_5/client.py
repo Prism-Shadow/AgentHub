@@ -283,6 +283,7 @@ class Claude4_5Client(LLMClient):
                     if event["content_items"][0]["type"] == "partial_tool_call":
                         partial_tool_call["argument"] += event["content_items"][0]["argument"]
                     else:
+                        event.pop("event")
                         yield event
 
                 elif event["event"] == "stop":

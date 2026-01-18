@@ -227,4 +227,5 @@ class Gemini3Client(LLMClient):
         async for chunk in response_stream:
             event = self.transform_model_output_to_uni_event(chunk)
             if event["event"] == "delta":
+                event.pop("event")
                 yield event
