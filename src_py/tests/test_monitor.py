@@ -18,6 +18,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
+from flask import Flask
 
 from agenthub import AutoLLMClient
 from agenthub.monitor import ConversationMonitor
@@ -154,7 +155,7 @@ def test_web_app_creation(temp_cache_dir):
     monitor = ConversationMonitor(cache_dir=temp_cache_dir)
     app = monitor.create_web_app()
     assert app is not None
-    assert app.name == "flask"
+    assert isinstance(app, Flask)
 
 
 def test_web_app_browse_empty_directory(temp_cache_dir):

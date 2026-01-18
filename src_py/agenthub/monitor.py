@@ -343,7 +343,12 @@ class ConversationMonitor:
             items = []
             try:
                 for entry in sorted(full_path.iterdir(), key=lambda x: (not x.is_dir(), x.name)):
-                    relative_path = entry.relative_to(self.cache_dir)
+                    # Calculate relative path from cache_dir
+                    try:
+                        relative_path = entry.resolve().relative_to(self.cache_dir.resolve())
+                    except ValueError:
+                        # If relative_to fails, skip this entry for security
+                        continue
                     item_info: dict[str, Any] = {
                         "name": entry.name,
                         "is_dir": entry.is_dir(),
