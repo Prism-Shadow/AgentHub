@@ -109,31 +109,45 @@ async def run_monitored_conversation():
     print("Assistant:")
 
     # First turn - model will request tool call
+    events = []
     async for event in client2.streaming_response_stateful(
         message={"role": "user", "content_items": [{"type": "text", "text": query3}]}, config=config2
     ):
+        events.append(event)
         for item in event["content_items"]:
             if item["type"] == "text":
                 print(f"  Text: {item['text']}")
             elif item["type"] == "tool_call":
                 print(f"  Tool Call: {item['name']}({item['argument']})")
-                # Execute the tool
-                result = get_weather(item["argument"]["location"])
-                print(f"  Tool Result: {result}")
 
-                # Send tool result back
-                async for event2 in client2.streaming_response_stateful(
-                    message={
-                        "role": "user",
-                        "content_items": [
-                            {"type": "tool_result", "result": result, "tool_call_id": item["tool_call_id"]}
-                        ],
-                    },
-                    config=config2,
-                ):
-                    for item2 in event2["content_items"]:
-                        if item2["type"] == "text":
-                            print(f"  Final Answer: {item2['text']}")
+    # Check if there's a tool call in the events
+    tool_call = None
+    for event in events:
+        for item in event["content_items"]:
+            if item["type"] == "tool_call":
+                tool_call = item
+                break
+        if tool_call:
+            break
+
+    if tool_call:
+        # Execute the tool
+        result = get_weather(tool_call["argument"]["location"])
+        print(f"  Tool Result: {result}")
+
+        # Send tool result back
+        async for event in client2.streaming_response_stateful(
+            message={
+                "role": "user",
+                "content_items": [
+                    {"type": "tool_result", "result": result, "tool_call_id": tool_call["tool_call_id"]}
+                ],
+            },
+            config=config2,
+        ):
+            for item in event["content_items"]:
+                if item["type"] == "text":
+                    print(f"  Final Answer: {item['text']}")
 
     print("\nConversation saved to cache/agent2/session_123.json and .txt")
 
