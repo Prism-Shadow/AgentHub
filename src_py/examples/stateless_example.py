@@ -46,10 +46,6 @@ async def main():
     ):
         print(event)
 
-    print("History:")
-    for i, msg in enumerate(client.get_history(), 1):
-        print(f"[{i}] {msg}")
-
 
 if __name__ == "__main__":
     asyncio.run(main())
