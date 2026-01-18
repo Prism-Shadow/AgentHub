@@ -232,6 +232,101 @@ config = {
     "tools": [tool_definition],
     "tool_choice": "auto",  # "auto", "required", "none", or ["tool_name"]
     "thinking_level": ThinkingLevel.HIGH,
-    "system_prompt": "You are a helpful assistant"
+    "system_prompt": "You are a helpful assistant",
+    "trace_id": "agent1/conversation_001"  # Optional: save conversation trace
 }
 ```
+
+## Conversation Tracing
+
+AgentHub provides a built-in `Tracer` to save and browse conversation history. When you specify a `trace_id` in the config, conversations are automatically saved to both JSON and TXT formats.
+
+### Basic Usage
+
+```python
+from agenthub import AutoLLMClient
+
+client = AutoLLMClient(model="gemini-3-flash-preview")
+
+# Add trace_id to config (no file extension needed)
+config = {
+    "trace_id": "agent1/conversation_001",
+    "temperature": 0.7
+}
+
+async for event in client.streaming_response_stateful(
+    message={"role": "user", "content_items": [{"type": "text", "text": "Hello"}]},
+    config=config
+):
+    pass  # Conversation is automatically saved
+```
+
+This creates two files in the `cache` directory:
+- `cache/agent1/conversation_001.json` - Structured data with full history and config
+- `cache/agent1/conversation_001.txt` - Human-readable conversation format
+
+### Browsing Traces with Web Interface
+
+Start a web server to browse and view saved conversations:
+
+```python
+from agenthub import Tracer
+
+# Create tracer instance
+tracer = Tracer(cache_dir="cache")  # default is "cache"
+
+# Start web server
+tracer.start_web_server(host="127.0.0.1", port=5000)
+```
+
+Then visit `http://127.0.0.1:5000` in your browser to:
+- Navigate through conversation folders
+- View conversation history with syntax highlighting
+- See configuration parameters and usage metadata
+- Inspect tool calls and results
+
+### Trace File Format
+
+**JSON Format** (`*.json`):
+```json
+{
+  "history": [...],  // Full message history
+  "config": {...},   // UniConfig used
+  "timestamp": "2026-01-18T12:00:00"
+}
+```
+
+**TXT Format** (`*.txt`):
+```
+===============================================================================
+Conversation History - 2026-01-18 12:00:00
+===============================================================================
+
+Configuration:
+  temperature: 0.7
+  max_tokens: 1024
+
+[1] USER:
+-------------------------------------------------------------------------------
+Text: Hello, how are you?
+
+[2] ASSISTANT:
+-------------------------------------------------------------------------------
+Text: I'm doing well, thank you!
+
+Usage Metadata:
+  Prompt Tokens: 10
+  Response Tokens: 8
+
+Finish Reason: stop
+```
+
+### Web Interface Features
+
+- **Folder navigation**: Browse conversations organized by agent/session
+- **Dual formats**: View both JSON and TXT files
+- **Message cards**: Collapsible message display (expanded by default)
+- **Tool call rendering**: Tool calls shown as Python function calls
+- **Usage tracking**: Token usage and finish reason displayed
+- **Configuration display**: Pretty-printed JSON for complex configs like tools
+- **Security**: HTML escaping and path traversal protection

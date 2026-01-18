@@ -241,67 +241,69 @@ def test_web_app_nonexistent_path(temp_cache_dir):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
-async def test_monitoring_integration(model, temp_cache_dir):
+async def test_monitoring_integration(model, temp_cache_dir, monkeypatch):
     """Test monitoring integration with AutoLLMClient."""
-    # Use a custom cache directory
-    from agenthub import tracer
+    # Patch Tracer to use custom cache directory
+    from agenthub import tracer as tracer_module
 
-    original_tracer = tracer._global_tracer
-    tracer._global_tracer = Tracer(cache_dir=temp_cache_dir)
+    original_tracer_class = tracer_module.Tracer
 
-    try:
-        client = AutoLLMClient(model=model)
-        config = {"monitor_path": "integration_test/conversation.txt"}
+    class PatchedTracer(original_tracer_class):
+        def __init__(self, cache_dir="cache"):
+            super().__init__(cache_dir=temp_cache_dir)
 
-        message = {"role": "user", "content_items": [{"type": "text", "text": "Say hello"}]}
-        async for _ in client.streaming_response_stateful(message=message, config=config):
-            pass
+    monkeypatch.setattr(tracer_module, "Tracer", PatchedTracer)
 
-        # Verify file was created
-        file_path = Path(temp_cache_dir) / "integration_test/conversation.txt"
-        assert file_path.exists()
+    client = AutoLLMClient(model=model)
+    config = {"trace_id": "integration_test/conversation.txt"}
 
-        # Verify content
-        content = file_path.read_text()
-        assert "Say hello" in content
-        assert "USER:" in content
-        assert "ASSISTANT:" in content
+    message = {"role": "user", "content_items": [{"type": "text", "text": "Say hello"}]}
+    async for _ in client.streaming_response_stateful(message=message, config=config):
+        pass
 
-    finally:
-        # Restore original tracer
-        tracer._global_tracer = original_tracer
+    # Verify file was created
+    file_path = Path(temp_cache_dir) / "integration_test/conversation.txt"
+    assert file_path.exists()
+
+    # Verify content
+    content = file_path.read_text()
+    assert "Say hello" in content
+    assert "USER:" in content
+    assert "ASSISTANT:" in content
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
-async def test_monitoring_updates_on_multiple_messages(model, temp_cache_dir):
+async def test_monitoring_updates_on_multiple_messages(model, temp_cache_dir, monkeypatch):
     """Test that monitoring file is updated with each new message."""
-    from agenthub import tracer
+    # Patch Tracer to use custom cache directory
+    from agenthub import tracer as tracer_module
 
-    original_tracer = tracer._global_tracer
-    tracer._global_tracer = Tracer(cache_dir=temp_cache_dir)
+    original_tracer_class = tracer_module.Tracer
 
-    try:
-        client = AutoLLMClient(model=model)
-        config = {"monitor_path": "multi_message_test/conversation.txt"}
+    class PatchedTracer(original_tracer_class):
+        def __init__(self, cache_dir="cache"):
+            super().__init__(cache_dir=temp_cache_dir)
 
-        # First message
-        message1 = {"role": "user", "content_items": [{"type": "text", "text": "First question"}]}
-        async for _ in client.streaming_response_stateful(message=message1, config=config):
-            pass
+    monkeypatch.setattr(tracer_module, "Tracer", PatchedTracer)
 
-        file_path = Path(temp_cache_dir) / "multi_message_test/conversation.txt"
-        content1 = file_path.read_text()
-        assert "First question" in content1
+    client = AutoLLMClient(model=model)
+    config = {"trace_id": "multi_message_test/conversation.txt"}
 
-        # Second message
-        message2 = {"role": "user", "content_items": [{"type": "text", "text": "Second question"}]}
-        async for _ in client.streaming_response_stateful(message=message2, config=config):
-            pass
+    # First message
+    message1 = {"role": "user", "content_items": [{"type": "text", "text": "First question"}]}
+    async for _ in client.streaming_response_stateful(message=message1, config=config):
+        pass
 
-        content2 = file_path.read_text()
-        assert "First question" in content2
-        assert "Second question" in content2
+    file_path = Path(temp_cache_dir) / "multi_message_test/conversation.txt"
+    content1 = file_path.read_text()
+    assert "First question" in content1
 
-    finally:
-        tracer._global_tracer = original_tracer
+    # Second message
+    message2 = {"role": "user", "content_items": [{"type": "text", "text": "Second question"}]}
+    async for _ in client.streaming_response_stateful(message=message2, config=config):
+        pass
+
+    content2 = file_path.read_text()
+    assert "First question" in content2
+    assert "Second question" in content2

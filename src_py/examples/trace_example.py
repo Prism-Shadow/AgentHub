@@ -17,7 +17,7 @@
 Example demonstrating conversation tracing functionality.
 
 This example shows how to:
-1. Use monitor_path in UniConfig to save conversation history to files
+1. Use trace_id in UniConfig to save conversation history to files
 2. Start a web server to browse and view saved conversations
 3. Use tool calling with tracing
 """
@@ -27,7 +27,7 @@ import os
 import threading
 import time
 
-from agenthub import AutoLLMClient, get_tracer
+from agenthub import AutoLLMClient, Tracer
 
 
 def get_weather(location: str) -> str:
@@ -40,7 +40,7 @@ def get_weather(location: str) -> str:
     return weather_data.get(location, "20°C and partly cloudy")
 
 
-async def run_monitored_conversation():
+async def run_traced_chat():
     """Run conversations with tracing enabled."""
     # Get model from environment variable, default to gemini-3-flash-preview
     model = os.getenv("MODEL", "gemini-3-flash-preview")
@@ -53,8 +53,8 @@ async def run_monitored_conversation():
     print("Agent 1 Conversation (Simple)")
     print("=" * 60)
 
-    # Configure with monitor_path to save history (no file extension)
-    config = {"monitor_path": "agent1/conversation_001", "temperature": 0.7}
+    # Configure with trace_id to save history (no file extension)
+    config = {"trace_id": "agent1/conversation_001", "temperature": 0.7}
 
     query1 = "My name is Alice and I like cats."
     print(f"\nUser: {query1}")
@@ -102,7 +102,7 @@ async def run_monitored_conversation():
         },
     }
 
-    config2 = {"monitor_path": "agent2/session_123", "temperature": 0.7, "tools": [weather_function]}
+    config2 = {"trace_id": "agent2/session_123", "temperature": 0.7, "tools": [weather_function]}
 
     query3 = "What's the weather in London?"
     print(f"\nUser: {query3}")
@@ -154,7 +154,7 @@ async def run_monitored_conversation():
 
 def start_web_server():
     """Start the web server in a background thread."""
-    tracer = get_tracer()
+    tracer = Tracer()
     tracer.start_web_server(host="127.0.0.1", port=5000, debug=False)
 
 
@@ -164,8 +164,8 @@ async def main():
     print("Conversation Trace Example")
     print("=" * 60)
 
-    # Run monitored conversations
-    await run_monitored_conversation()
+    # Run traced chat
+    await run_traced_chat()
 
     print("\n" + "=" * 60)
     print("Starting Web Server")

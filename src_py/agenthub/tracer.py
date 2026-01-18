@@ -115,7 +115,7 @@ class Tracer:
         # Add config information
         lines.append("Configuration:")
         for key, value in config.items():
-            if key != "monitor_path":  # Don't include monitor_path itself
+            if key != "trace_id":  # Don't include trace_id itself
                 lines.append(f"  {key}: {value}")
         lines.append("")
 
@@ -445,7 +445,7 @@ class Tracer:
             <div class="config-box">
                 <h2>Configuration</h2>
                 {% for key, value in config.items() %}
-                    {% if key != 'monitor_path' %}
+                    {% if key != 'trace_id' %}
                     <div class="config-item">
                         <strong>{{ key|e }}:</strong>
                         {% if key == 'tools' and value is iterable and value is not string %}
@@ -718,23 +718,3 @@ class Tracer:
         print(f"Starting tracer web server at http://{host}:{port}")
         print(f"Cache directory: {self.cache_dir.resolve()}")
         app.run(host=host, port=port, debug=debug)
-
-
-# Global tracer instance
-_global_tracer: Tracer | None = None
-
-
-def get_tracer(cache_dir: str = "cache") -> Tracer:
-    """
-    Get the global tracer instance.
-
-    Args:
-        cache_dir: Directory to store conversation history files
-
-    Returns:
-        Tracer instance
-    """
-    global _global_tracer
-    if _global_tracer is None:
-        _global_tracer = Tracer(cache_dir=cache_dir)
-    return _global_tracer

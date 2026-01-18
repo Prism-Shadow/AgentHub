@@ -131,4 +131,4 @@ class UniConfig(TypedDict):
     thinking_level: NotRequired[ThinkingLevel]
     tool_choice: NotRequired[ToolChoice]
     system_prompt: NotRequired[str]
-    monitor_path: NotRequired[str]
+    trace_id: NotRequired[str]

@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from .auto_client import AutoLLMClient
-from .tracer import Tracer, get_tracer
+from .tracer import Tracer
 from .types import ThinkingLevel
 
 
-__all__ = ["AutoLLMClient", "ThinkingLevel", "Tracer", "get_tracer"]
+__all__ = ["AutoLLMClient", "ThinkingLevel", "Tracer"]
