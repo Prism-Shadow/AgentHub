@@ -425,15 +425,6 @@ class Tracer:
                     color: #656d76;
                     text-align: right;
                 }
-                .finish-reason {
-                    margin-top: 12px;
-                    padding: 8px 12px;
-                    background-color: #e7ebef;
-                    border-radius: 4px;
-                    font-size: 11px;
-                    color: #656d76;
-                    font-style: italic;
-                }
                 .toggle-icon {
                     transition: transform 0.2s;
                     display: inline-block;
@@ -456,7 +447,12 @@ class Tracer:
                 {% for key, value in config.items() %}
                     {% if key != 'monitor_path' %}
                     <div class="config-item">
-                        <strong>{{ key|e }}:</strong> {{ value|e }}
+                        <strong>{{ key|e }}:</strong>
+                        {% if key == 'tools' and value is iterable and value is not string %}
+                            <pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto;">{{ value|tojson(indent=2)|e }}</pre>
+                        {% else %}
+                            {{ value|e }}
+                        {% endif %}
                     </div>
                     {% endif %}
                 {% endfor %}
@@ -497,23 +493,22 @@ class Tracer:
                         </div>
                     {% endfor %}
 
-                    {% if message.usage_metadata %}
+                    {% if message.usage_metadata or message.finish_reason %}
                     <div class="usage-box">
-                        {% if message.usage_metadata.prompt_tokens %}
-                        Prompt: {{ message.usage_metadata.prompt_tokens }} tokens
+                        {% if message.usage_metadata %}
+                            {% if message.usage_metadata.prompt_tokens %}
+                            Prompt: {{ message.usage_metadata.prompt_tokens }} tokens
+                            {% endif %}
+                            {% if message.usage_metadata.thoughts_tokens %}
+                            • Thoughts: {{ message.usage_metadata.thoughts_tokens }} tokens
+                            {% endif %}
+                            {% if message.usage_metadata.response_tokens %}
+                            • Response: {{ message.usage_metadata.response_tokens }} tokens
+                            {% endif %}
                         {% endif %}
-                        {% if message.usage_metadata.thoughts_tokens %}
-                        • Thoughts: {{ message.usage_metadata.thoughts_tokens }} tokens
+                        {% if message.finish_reason %}
+                            {% if message.usage_metadata %} • {% endif %}Finish: {{ message.finish_reason|e }}
                         {% endif %}
-                        {% if message.usage_metadata.response_tokens %}
-                        • Response: {{ message.usage_metadata.response_tokens }} tokens
-                        {% endif %}
-                    </div>
-                    {% endif %}
-
-                    {% if message.finish_reason %}
-                    <div class="finish-reason">
-                        Finish reason: {{ message.finish_reason|e }}
                     </div>
                     {% endif %}
                 </div>
