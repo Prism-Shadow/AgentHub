@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from .auto_client import AutoLLMClient
-from .monitor import ConversationMonitor, get_monitor
+from .monitor import ConversationTrace, get_trace
 from .types import ThinkingLevel
 
 
-__all__ = ["AutoLLMClient", "ConversationMonitor", "ThinkingLevel", "get_monitor"]
+__all__ = ["AutoLLMClient", "ConversationTrace", "ThinkingLevel", "get_trace"]

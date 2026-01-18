@@ -29,9 +29,9 @@ from flask import Flask, Response, render_template_string
 from .types import UniMessage
 
 
-class ConversationMonitor:
+class ConversationTrace:
     """
-    Monitor for saving conversation history to local files.
+    Trace for saving conversation history to local files.
 
     This class handles saving conversation history to files in a cache directory
     and provides a web server for browsing and viewing the saved conversations.
@@ -39,38 +39,50 @@ class ConversationMonitor:
 
     def __init__(self, cache_dir: str = "cache"):
         """
-        Initialize the conversation monitor.
+        Initialize the conversation trace.
 
         Args:
             cache_dir: Directory to store conversation history files
         """
-        self.cache_dir = Path(cache_dir)
+        self.cache_dir = Path(cache_dir).absolute()
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def save_history(self, history: list[UniMessage], relative_path: str) -> None:
+    def save_history(self, history: list[UniMessage], file_id: str, config: dict[str, Any]) -> None:
         """
-        Save conversation history to a file.
+        Save conversation history to files.
 
         Args:
             history: List of UniMessage objects representing the conversation
-            relative_path: Relative file path within cache directory (e.g., "agent1/19293.txt")
+            file_id: File identifier without extension (e.g., "agent1/00001")
+            config: The UniConfig used for this conversation
         """
-        file_path = self.cache_dir / relative_path
-        file_path.parent.mkdir(parents=True, exist_ok=True)
+        # Create directory if needed
+        file_path_base = self.cache_dir / file_id
+        file_path_base.parent.mkdir(parents=True, exist_ok=True)
 
-        # Format history in a human-readable way
-        formatted_content = self._format_history(history)
+        # Save as JSON
+        json_path = file_path_base.with_suffix(".json")
+        json_data = {
+            "history": history,
+            "config": config,
+            "timestamp": datetime.now().isoformat(),
+        }
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(json_data, f, indent=2, ensure_ascii=False)
 
-        # Overwrite the file with latest history
-        with open(file_path, "w", encoding="utf-8") as f:
+        # Save as human-readable text
+        txt_path = file_path_base.with_suffix(".txt")
+        formatted_content = self._format_history(history, config)
+        with open(txt_path, "w", encoding="utf-8") as f:
             f.write(formatted_content)
 
-    def _format_history(self, history: list[UniMessage]) -> str:
+    def _format_history(self, history: list[UniMessage], config: dict[str, Any]) -> str:
         """
         Format conversation history in a readable text format.
 
         Args:
             history: List of UniMessage objects
+            config: The UniConfig used for this conversation
 
         Returns:
             Formatted string representation of the conversation
@@ -79,6 +91,13 @@ class ConversationMonitor:
         lines.append("=" * 80)
         lines.append(f"Conversation History - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         lines.append("=" * 80)
+        lines.append("")
+
+        # Add config information
+        lines.append("Configuration:")
+        for key, value in config.items():
+            if key != "monitor_path":  # Don't include monitor_path itself
+                lines.append(f"  {key}: {value}")
         lines.append("")
 
         for i, message in enumerate(history, 1):
@@ -133,76 +152,76 @@ class ConversationMonitor:
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Conversation Monitor</title>
+            <title>Conversation Trace</title>
+            <meta charset="utf-8">
             <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
                 body {
-                    font-family: Arial, sans-serif;
-                    max-width: 1200px;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                    max-width: 1000px;
                     margin: 0 auto;
-                    padding: 20px;
-                    background-color: #f5f5f5;
+                    padding: 24px;
+                    background-color: #fafafa;
+                    color: #24292f;
                 }
                 h1 {
-                    color: #333;
-                    border-bottom: 2px solid #4CAF50;
-                    padding-bottom: 10px;
+                    font-size: 24px;
+                    font-weight: 600;
+                    margin-bottom: 16px;
+                    color: #1f2937;
                 }
                 .breadcrumb {
-                    margin: 20px 0;
-                    padding: 10px;
+                    margin-bottom: 20px;
+                    padding: 12px;
                     background-color: #fff;
-                    border-radius: 5px;
+                    border-radius: 6px;
+                    border: 1px solid #d0d7de;
+                    font-size: 14px;
                 }
                 .breadcrumb a {
-                    color: #4CAF50;
+                    color: #0969da;
                     text-decoration: none;
-                    margin-right: 5px;
                 }
-                .breadcrumb a:hover {
-                    text-decoration: underline;
-                }
+                .breadcrumb a:hover { text-decoration: underline; }
                 .file-list {
                     background-color: #fff;
-                    border-radius: 5px;
-                    padding: 20px;
+                    border-radius: 6px;
+                    border: 1px solid #d0d7de;
+                    overflow: hidden;
                 }
                 .file-item, .dir-item {
-                    padding: 10px;
-                    margin: 5px 0;
-                    border-radius: 3px;
+                    padding: 12px 16px;
+                    border-bottom: 1px solid #d0d7de;
                     display: flex;
                     align-items: center;
+                    justify-content: space-between;
+                    transition: background-color 0.1s;
                 }
-                .file-item:hover, .dir-item:hover {
-                    background-color: #f0f0f0;
-                }
+                .file-item:last-child, .dir-item:last-child { border-bottom: none; }
+                .file-item:hover, .dir-item:hover { background-color: #f6f8fa; }
                 .file-item a, .dir-item a {
-                    color: #333;
+                    color: #0969da;
                     text-decoration: none;
                     flex-grow: 1;
+                    font-size: 14px;
                 }
-                .dir-item a::before {
-                    content: "📁 ";
-                    margin-right: 5px;
-                }
-                .file-item a::before {
-                    content: "📄 ";
-                    margin-right: 5px;
-                }
+                .dir-item a::before { content: "📁 "; margin-right: 8px; }
+                .file-item a::before { content: "📄 "; margin-right: 8px; }
                 .file-size {
-                    color: #888;
-                    font-size: 0.9em;
-                    margin-left: 10px;
+                    color: #656d76;
+                    font-size: 12px;
+                    margin-left: 12px;
                 }
                 .empty {
-                    color: #888;
+                    color: #656d76;
                     font-style: italic;
-                    padding: 20px;
+                    padding: 32px;
+                    text-align: center;
                 }
             </style>
         </head>
         <body>
-            <h1>Conversation Monitor</h1>
+            <h1>Conversation Trace</h1>
             <div class="breadcrumb">
                 <strong>Path:</strong> {{ breadcrumb|safe }}
             </div>
@@ -228,60 +247,321 @@ class ConversationMonitor:
         </html>
         """
 
-        # HTML template for file viewing
-        FILE_TEMPLATE = """
+        # HTML template for JSON conversation viewing
+        JSON_VIEWER_TEMPLATE = """
         <!DOCTYPE html>
         <html>
         <head>
-            <title>{{ filename }} - Conversation Monitor</title>
+            <title>{{ filename }}</title>
+            <meta charset="utf-8">
             <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
                 body {
-                    font-family: Arial, sans-serif;
-                    max-width: 1200px;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                    max-width: 1000px;
                     margin: 0 auto;
-                    padding: 20px;
-                    background-color: #f5f5f5;
+                    padding: 24px;
+                    background-color: #fafafa;
+                    color: #24292f;
                 }
                 h1 {
-                    color: #333;
-                    border-bottom: 2px solid #4CAF50;
-                    padding-bottom: 10px;
+                    font-size: 24px;
+                    font-weight: 600;
+                    margin-bottom: 8px;
+                    color: #1f2937;
                 }
                 .breadcrumb {
-                    margin: 20px 0;
-                    padding: 10px;
+                    margin-bottom: 20px;
+                    padding: 12px;
                     background-color: #fff;
-                    border-radius: 5px;
+                    border-radius: 6px;
+                    border: 1px solid #d0d7de;
+                    font-size: 14px;
                 }
                 .breadcrumb a {
-                    color: #4CAF50;
+                    color: #0969da;
                     text-decoration: none;
-                    margin-right: 5px;
                 }
-                .breadcrumb a:hover {
-                    text-decoration: underline;
-                }
-                .file-content {
-                    background-color: #fff;
-                    border-radius: 5px;
-                    padding: 20px;
-                    white-space: pre-wrap;
-                    font-family: 'Courier New', monospace;
-                    font-size: 14px;
-                    line-height: 1.5;
-                    overflow-x: auto;
-                }
+                .breadcrumb a:hover { text-decoration: underline; }
                 .back-button {
                     display: inline-block;
-                    margin: 20px 0;
-                    padding: 10px 20px;
-                    background-color: #4CAF50;
-                    color: white;
+                    margin-bottom: 20px;
+                    padding: 8px 16px;
+                    background-color: #f6f8fa;
+                    color: #24292f;
                     text-decoration: none;
-                    border-radius: 5px;
+                    border-radius: 6px;
+                    border: 1px solid #d0d7de;
+                    font-size: 14px;
                 }
                 .back-button:hover {
-                    background-color: #45a049;
+                    background-color: #e7ebef;
+                }
+                .config-box {
+                    background-color: #fff;
+                    border-radius: 6px;
+                    border: 1px solid #d0d7de;
+                    padding: 16px;
+                    margin-bottom: 20px;
+                    font-size: 14px;
+                }
+                .config-box h2 {
+                    font-size: 16px;
+                    font-weight: 600;
+                    margin-bottom: 12px;
+                    color: #1f2937;
+                }
+                .config-item {
+                    padding: 6px 0;
+                    color: #656d76;
+                }
+                .config-item strong {
+                    color: #24292f;
+                }
+                .message-card {
+                    background-color: #fff;
+                    border-radius: 6px;
+                    border: 1px solid #d0d7de;
+                    margin-bottom: 16px;
+                    overflow: hidden;
+                }
+                .message-header {
+                    padding: 12px 16px;
+                    background-color: #f6f8fa;
+                    border-bottom: 1px solid #d0d7de;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    cursor: pointer;
+                    user-select: none;
+                }
+                .message-header:hover {
+                    background-color: #e7ebef;
+                }
+                .message-role {
+                    font-weight: 600;
+                    font-size: 14px;
+                    text-transform: uppercase;
+                }
+                .role-user { color: #0969da; }
+                .role-assistant { color: #1a7f37; }
+                .message-metadata {
+                    font-size: 12px;
+                    color: #656d76;
+                }
+                .message-content {
+                    padding: 16px;
+                    display: none;
+                }
+                .message-content.expanded {
+                    display: block;
+                }
+                .content-item {
+                    margin-bottom: 12px;
+                    padding-bottom: 12px;
+                    border-bottom: 1px solid #f6f8fa;
+                }
+                .content-item:last-child {
+                    border-bottom: none;
+                    margin-bottom: 0;
+                    padding-bottom: 0;
+                }
+                .content-type {
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: #656d76;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    margin-bottom: 6px;
+                }
+                .content-text {
+                    font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+                    font-size: 13px;
+                    line-height: 1.6;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                    background-color: #f6f8fa;
+                    padding: 12px;
+                    border-radius: 4px;
+                    color: #24292f;
+                }
+                .tool-call, .tool-result {
+                    background-color: #fff8c5;
+                    padding: 12px;
+                    border-radius: 4px;
+                    border-left: 3px solid #d4a72c;
+                }
+                .thinking {
+                    background-color: #ddf4ff;
+                    padding: 12px;
+                    border-radius: 4px;
+                    border-left: 3px solid #0969da;
+                }
+                .usage-box {
+                    margin-top: 12px;
+                    padding: 12px;
+                    background-color: #f6f8fa;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    color: #656d76;
+                    text-align: right;
+                }
+                .toggle-icon {
+                    transition: transform 0.2s;
+                    display: inline-block;
+                }
+                .toggle-icon.expanded {
+                    transform: rotate(90deg);
+                }
+            </style>
+        </head>
+        <body>
+            <h1>{{ filename }}</h1>
+            <div class="breadcrumb">
+                <strong>Path:</strong> {{ breadcrumb|safe }}
+            </div>
+            <a href="{{ back_url }}" class="back-button">← Back to Directory</a>
+
+            {% if config %}
+            <div class="config-box">
+                <h2>Configuration</h2>
+                {% for key, value in config.items() %}
+                    {% if key != 'monitor_path' %}
+                    <div class="config-item">
+                        <strong>{{ key }}:</strong> {{ value }}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% for msg_idx, message in enumerate(history) %}
+            <div class="message-card">
+                <div class="message-header" onclick="toggleMessage({{ msg_idx }})">
+                    <div>
+                        <span class="message-role role-{{ message.role }}">{{ message.role }}</span>
+                        <span class="message-metadata"> • {{ message.content_items|length }} item(s)</span>
+                    </div>
+                    <span class="toggle-icon" id="icon-{{ msg_idx }}">▶</span>
+                </div>
+                <div class="message-content" id="content-{{ msg_idx }}">
+                    {% for item in message.content_items %}
+                        <div class="content-item">
+                            <div class="content-type">{{ item.type }}</div>
+                            {% if item.type == 'text' %}
+                                <div class="content-text">{{ item.text }}</div>
+                            {% elif item.type == 'thinking' %}
+                                <div class="content-text thinking">{{ item.thinking }}</div>
+                            {% elif item.type == 'tool_call' %}
+                                <div class="tool-call">
+                                    <strong>Tool:</strong> {{ item.name }}<br>
+                                    <strong>Arguments:</strong> {{ item.argument }}<br>
+                                    <strong>Call ID:</strong> {{ item.tool_call_id }}
+                                </div>
+                            {% elif item.type == 'tool_result' %}
+                                <div class="tool-result">
+                                    <strong>Result:</strong> {{ item.result }}<br>
+                                    <strong>Call ID:</strong> {{ item.tool_call_id }}
+                                </div>
+                            {% elif item.type == 'image_url' %}
+                                <div class="content-text">
+                                    <strong>Image URL:</strong> {{ item.image_url }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+
+                    {% if message.usage_metadata %}
+                    <div class="usage-box">
+                        {% if message.usage_metadata.prompt_tokens %}
+                        Prompt: {{ message.usage_metadata.prompt_tokens }} tokens
+                        {% endif %}
+                        {% if message.usage_metadata.thoughts_tokens %}
+                        • Thoughts: {{ message.usage_metadata.thoughts_tokens }} tokens
+                        {% endif %}
+                        {% if message.usage_metadata.response_tokens %}
+                        • Response: {{ message.usage_metadata.response_tokens }} tokens
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+
+            <script>
+                function toggleMessage(idx) {
+                    const content = document.getElementById('content-' + idx);
+                    const icon = document.getElementById('icon-' + idx);
+                    content.classList.toggle('expanded');
+                    icon.classList.toggle('expanded');
+                }
+                // Expand first message by default
+                if (document.getElementById('content-0')) {
+                    toggleMessage(0);
+                }
+            </script>
+        </body>
+        </html>
+        """
+
+        # HTML template for text file viewing
+        TEXT_VIEWER_TEMPLATE = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>{{ filename }}</title>
+            <meta charset="utf-8">
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                    max-width: 1000px;
+                    margin: 0 auto;
+                    padding: 24px;
+                    background-color: #fafafa;
+                    color: #24292f;
+                }
+                h1 {
+                    font-size: 24px;
+                    font-weight: 600;
+                    margin-bottom: 8px;
+                    color: #1f2937;
+                }
+                .breadcrumb {
+                    margin-bottom: 20px;
+                    padding: 12px;
+                    background-color: #fff;
+                    border-radius: 6px;
+                    border: 1px solid #d0d7de;
+                    font-size: 14px;
+                }
+                .breadcrumb a {
+                    color: #0969da;
+                    text-decoration: none;
+                }
+                .breadcrumb a:hover { text-decoration: underline; }
+                .back-button {
+                    display: inline-block;
+                    margin-bottom: 20px;
+                    padding: 8px 16px;
+                    background-color: #f6f8fa;
+                    color: #24292f;
+                    text-decoration: none;
+                    border-radius: 6px;
+                    border: 1px solid #d0d7de;
+                    font-size: 14px;
+                }
+                .back-button:hover { background-color: #e7ebef; }
+                .file-content {
+                    background-color: #fff;
+                    border-radius: 6px;
+                    border: 1px solid #d0d7de;
+                    padding: 20px;
+                    white-space: pre-wrap;
+                    font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+                    font-size: 13px;
+                    line-height: 1.6;
+                    overflow-x: auto;
                 }
             </style>
         </head>
@@ -314,9 +594,6 @@ class ConversationMonitor:
             # If it's a file, display its content
             if full_path.is_file():
                 try:
-                    with open(full_path, "r", encoding="utf-8") as f:
-                        content = f.read()
-
                     # Build breadcrumb
                     parts = subpath.split("/") if subpath else []
                     breadcrumb_parts = ['<a href="/">cache</a>']
@@ -329,13 +606,32 @@ class ConversationMonitor:
                     # Determine back URL
                     back_url = "/" + "/".join(parts[:-1]) if len(parts) > 1 else "/"
 
-                    return render_template_string(
-                        FILE_TEMPLATE,
-                        filename=full_path.name,
-                        content=content,
-                        breadcrumb=breadcrumb,
-                        back_url=back_url,
-                    )
+                    # If it's a JSON file, render with the JSON viewer
+                    if full_path.suffix == ".json":
+                        with open(full_path, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+
+                        return render_template_string(
+                            JSON_VIEWER_TEMPLATE,
+                            filename=full_path.name,
+                            breadcrumb=breadcrumb,
+                            back_url=back_url,
+                            history=data.get("history", []),
+                            config=data.get("config", {}),
+                            enumerate=enumerate,
+                        )
+                    else:
+                        # For text files, use simple viewer
+                        with open(full_path, "r", encoding="utf-8") as f:
+                            content = f.read()
+
+                        return render_template_string(
+                            TEXT_VIEWER_TEMPLATE,
+                            filename=full_path.name,
+                            content=content,
+                            breadcrumb=breadcrumb,
+                            back_url=back_url,
+                        )
                 except Exception as e:
                     return f"Error reading file: {str(e)}", 500
 
@@ -389,26 +685,26 @@ class ConversationMonitor:
             debug: Enable debug mode
         """
         app = self.create_web_app()
-        print(f"Starting conversation monitor web server at http://{host}:{port}")
+        print(f"Starting conversation trace web server at http://{host}:{port}")
         print(f"Cache directory: {self.cache_dir.resolve()}")
         app.run(host=host, port=port, debug=debug)
 
 
-# Global monitor instance
-_global_monitor: ConversationMonitor | None = None
+# Global trace instance
+_global_trace: ConversationTrace | None = None
 
 
-def get_monitor(cache_dir: str = "cache") -> ConversationMonitor:
+def get_trace(cache_dir: str = "cache") -> ConversationTrace:
     """
-    Get the global conversation monitor instance.
+    Get the global conversation trace instance.
 
     Args:
         cache_dir: Directory to store conversation history files
 
     Returns:
-        ConversationMonitor instance
+        ConversationTrace instance
     """
-    global _global_monitor
-    if _global_monitor is None:
-        _global_monitor = ConversationMonitor(cache_dir=cache_dir)
-    return _global_monitor
+    global _global_trace
+    if _global_trace is None:
+        _global_trace = ConversationTrace(cache_dir=cache_dir)
+    return _global_trace

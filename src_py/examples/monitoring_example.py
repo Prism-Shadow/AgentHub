@@ -26,7 +26,7 @@ import os
 import threading
 import time
 
-from agenthub import AutoLLMClient, get_monitor
+from agenthub import AutoLLMClient, get_trace
 
 
 async def run_monitored_conversation():
@@ -42,8 +42,8 @@ async def run_monitored_conversation():
     print("Agent 1 Conversation")
     print("=" * 60)
 
-    # Configure with monitor_path to save history
-    config = {"monitor_path": "agent1/conversation_001.txt", "temperature": 0.7}
+    # Configure with monitor_path to save history (no file extension)
+    config = {"monitor_path": "agent1/conversation_001", "temperature": 0.7}
 
     query1 = "My name is Alice and I like cats."
     print(f"\nUser: {query1}")
@@ -67,7 +67,7 @@ async def run_monitored_conversation():
                 print(item["text"], end="", flush=True)
     print()
 
-    print("\nConversation saved to cache/agent1/conversation_001.txt")
+    print("\nConversation saved to cache/agent1/conversation_001.json and .txt")
 
     # Second conversation - agent2
     client2 = AutoLLMClient(model=model)
@@ -75,7 +75,7 @@ async def run_monitored_conversation():
     print("Agent 2 Conversation")
     print("=" * 60)
 
-    config2 = {"monitor_path": "agent2/session_123.txt", "temperature": 0.7}
+    config2 = {"monitor_path": "agent2/session_123", "temperature": 0.7}
 
     query3 = "What is 2+2?"
     print(f"\nUser: {query3}")
@@ -88,19 +88,19 @@ async def run_monitored_conversation():
                 print(item["text"], end="", flush=True)
     print()
 
-    print("\nConversation saved to cache/agent2/session_123.txt")
+    print("\nConversation saved to cache/agent2/session_123.json and .txt")
 
 
 def start_web_server():
     """Start the web server in a background thread."""
-    monitor = get_monitor()
-    monitor.start_web_server(host="127.0.0.1", port=5000, debug=False)
+    trace = get_trace()
+    trace.start_web_server(host="127.0.0.1", port=5000, debug=False)
 
 
 async def main():
     """Main function."""
     print("=" * 60)
-    print("Conversation Monitoring Example")
+    print("Conversation Trace Example")
     print("=" * 60)
 
     # Run monitored conversations

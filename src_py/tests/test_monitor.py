@@ -21,7 +21,7 @@ import pytest
 from flask import Flask
 
 from agenthub import AutoLLMClient
-from agenthub.monitor import ConversationMonitor
+from agenthub.monitor import ConversationTrace
 
 
 AVAILABLE_MODELS = []
@@ -42,15 +42,15 @@ def temp_cache_dir():
 
 
 def test_conversation_monitor_init(temp_cache_dir):
-    """Test ConversationMonitor initialization."""
-    monitor = ConversationMonitor(cache_dir=temp_cache_dir)
+    """Test ConversationTrace initialization."""
+    monitor = ConversationTrace(cache_dir=temp_cache_dir)
     assert monitor.cache_dir == Path(temp_cache_dir)
     assert monitor.cache_dir.exists()
 
 
 def test_save_history(temp_cache_dir):
     """Test saving conversation history to a file."""
-    monitor = ConversationMonitor(cache_dir=temp_cache_dir)
+    monitor = ConversationTrace(cache_dir=temp_cache_dir)
 
     # Create sample history
     history = [
@@ -59,38 +59,52 @@ def test_save_history(temp_cache_dir):
     ]
 
     # Save history
-    relative_path = "test/conversation.txt"
-    monitor.save_history(history, relative_path)
+    file_id = "test/conversation"
+    config = {"temperature": 0.7}
+    monitor.save_history(history, file_id, config)
 
-    # Verify file exists
-    file_path = Path(temp_cache_dir) / relative_path
-    assert file_path.exists()
+    # Verify files exist (both JSON and TXT)
+    json_path = Path(temp_cache_dir) / (file_id + ".json")
+    txt_path = Path(temp_cache_dir) / (file_id + ".txt")
+    assert json_path.exists()
+    assert txt_path.exists()
 
-    # Verify content
-    content = file_path.read_text()
+    # Verify TXT content
+    content = txt_path.read_text()
     assert "USER:" in content
     assert "ASSISTANT:" in content
     assert "Hello" in content
     assert "Hi there!" in content
+    assert "temperature" in content
+
+    # Verify JSON content
+    import json
+
+    with open(json_path) as f:
+        data = json.load(f)
+    assert "history" in data
+    assert "config" in data
+    assert len(data["history"]) == 2
 
 
 def test_save_history_creates_directories(temp_cache_dir):
     """Test that saving history creates necessary directories."""
-    monitor = ConversationMonitor(cache_dir=temp_cache_dir)
+    monitor = ConversationTrace(cache_dir=temp_cache_dir)
 
     history = [{"role": "user", "content_items": [{"type": "text", "text": "Test"}]}]
 
-    relative_path = "agent1/subfolder/conversation.txt"
-    monitor.save_history(history, relative_path)
+    file_id = "agent1/subfolder/conversation"
+    config = {}
+    monitor.save_history(history, file_id, config)
 
-    file_path = Path(temp_cache_dir) / relative_path
-    assert file_path.exists()
-    assert file_path.parent.exists()
+    json_path = Path(temp_cache_dir) / (file_id + ".json")
+    assert json_path.exists()
+    assert json_path.parent.exists()
 
 
 def test_save_history_overwrites_existing(temp_cache_dir):
     """Test that saving history overwrites existing files."""
-    monitor = ConversationMonitor(cache_dir=temp_cache_dir)
+    monitor = ConversationTrace(cache_dir=temp_cache_dir)
 
     history1 = [{"role": "user", "content_items": [{"type": "text", "text": "First message"}]}]
 
@@ -100,18 +114,19 @@ def test_save_history_overwrites_existing(temp_cache_dir):
         {"role": "user", "content_items": [{"type": "text", "text": "Second message"}]},
     ]
 
-    relative_path = "test/conversation.txt"
+    file_id = "test/conversation"
+    config = {}
 
     # Save first history
-    monitor.save_history(history1, relative_path)
-    file_path = Path(temp_cache_dir) / relative_path
-    content1 = file_path.read_text()
+    monitor.save_history(history1, file_id, config)
+    txt_path = Path(temp_cache_dir) / (file_id + ".txt")
+    content1 = txt_path.read_text()
     assert "First message" in content1
     assert "Second message" not in content1
 
     # Save second history (should overwrite)
-    monitor.save_history(history2, relative_path)
-    content2 = file_path.read_text()
+    monitor.save_history(history2, file_id, config)
+    content2 = txt_path.read_text()
     assert "First message" in content2
     assert "Second message" in content2
     assert "Response" in content2
@@ -119,7 +134,7 @@ def test_save_history_overwrites_existing(temp_cache_dir):
 
 def test_format_history_with_different_content_types(temp_cache_dir):
     """Test formatting history with different content item types."""
-    monitor = ConversationMonitor(cache_dir=temp_cache_dir)
+    monitor = ConversationTrace(cache_dir=temp_cache_dir)
 
     history = [
         {"role": "user", "content_items": [{"type": "text", "text": "What's in this image?"}]},
@@ -136,10 +151,11 @@ def test_format_history_with_different_content_types(temp_cache_dir):
         },
     ]
 
-    relative_path = "test/multi_content.txt"
-    monitor.save_history(history, relative_path)
+    relative_path = "test/multi_content"
+    config = {"temperature": 0.8}
+    monitor.save_history(history, relative_path, config)
 
-    file_path = Path(temp_cache_dir) / relative_path
+    file_path = Path(temp_cache_dir) / (relative_path + ".txt")
     content = file_path.read_text()
 
     assert "What's in this image?" in content
@@ -152,7 +168,7 @@ def test_format_history_with_different_content_types(temp_cache_dir):
 
 def test_web_app_creation(temp_cache_dir):
     """Test web application creation."""
-    monitor = ConversationMonitor(cache_dir=temp_cache_dir)
+    monitor = ConversationTrace(cache_dir=temp_cache_dir)
     app = monitor.create_web_app()
     assert app is not None
     assert isinstance(app, Flask)
@@ -160,24 +176,25 @@ def test_web_app_creation(temp_cache_dir):
 
 def test_web_app_browse_empty_directory(temp_cache_dir):
     """Test browsing an empty cache directory."""
-    monitor = ConversationMonitor(cache_dir=temp_cache_dir)
+    monitor = ConversationTrace(cache_dir=temp_cache_dir)
     app = monitor.create_web_app()
 
     with app.test_client() as client:
         response = client.get("/")
         assert response.status_code == 200
-        assert b"Conversation Monitor" in response.data
+        assert b"Conversation Trace" in response.data
 
 
 def test_web_app_browse_with_files(temp_cache_dir):
     """Test browsing cache directory with files."""
-    monitor = ConversationMonitor(cache_dir=temp_cache_dir)
+    monitor = ConversationTrace(cache_dir=temp_cache_dir)
 
     # Create some test files
     history = [{"role": "user", "content_items": [{"type": "text", "text": "Test"}]}]
-    monitor.save_history(history, "agent1/conv1.txt")
-    monitor.save_history(history, "agent1/conv2.txt")
-    monitor.save_history(history, "agent2/conv1.txt")
+    config = {}
+    monitor.save_history(history, "agent1/conv1", config)
+    monitor.save_history(history, "agent1/conv2", config)
+    monitor.save_history(history, "agent2/conv1", config)
 
     app = monitor.create_web_app()
 
@@ -191,19 +208,19 @@ def test_web_app_browse_with_files(temp_cache_dir):
         # Browse agent1 directory
         response = client.get("/agent1")
         assert response.status_code == 200
-        assert b"conv1.txt" in response.data
-        assert b"conv2.txt" in response.data
+        # Should see both .json and .txt files
+        assert b"conv1" in response.data
+        assert b"conv2" in response.data
 
-        # View a file
-        response = client.get("/agent1/conv1.txt")
+        # View a JSON file
+        response = client.get("/agent1/conv1.json")
         assert response.status_code == 200
         assert b"Test" in response.data
-        assert b"USER:" in response.data
 
 
 def test_web_app_security_check(temp_cache_dir):
     """Test that web app prevents access outside cache directory."""
-    monitor = ConversationMonitor(cache_dir=temp_cache_dir)
+    monitor = ConversationTrace(cache_dir=temp_cache_dir)
     app = monitor.create_web_app()
 
     with app.test_client() as client:
@@ -214,7 +231,7 @@ def test_web_app_security_check(temp_cache_dir):
 
 def test_web_app_nonexistent_path(temp_cache_dir):
     """Test accessing a nonexistent path."""
-    monitor = ConversationMonitor(cache_dir=temp_cache_dir)
+    monitor = ConversationTrace(cache_dir=temp_cache_dir)
     app = monitor.create_web_app()
 
     with app.test_client() as client:
@@ -229,8 +246,8 @@ async def test_monitoring_integration(model, temp_cache_dir):
     # Use a custom cache directory
     from agenthub import monitor
 
-    original_monitor = monitor._global_monitor
-    monitor._global_monitor = ConversationMonitor(cache_dir=temp_cache_dir)
+    original_monitor = monitor._global_trace
+    monitor._global_trace = ConversationTrace(cache_dir=temp_cache_dir)
 
     try:
         client = AutoLLMClient(model=model)
@@ -252,7 +269,7 @@ async def test_monitoring_integration(model, temp_cache_dir):
 
     finally:
         # Restore original monitor
-        monitor._global_monitor = original_monitor
+        monitor._global_trace = original_monitor
 
 
 @pytest.mark.asyncio
@@ -261,8 +278,8 @@ async def test_monitoring_updates_on_multiple_messages(model, temp_cache_dir):
     """Test that monitoring file is updated with each new message."""
     from agenthub import monitor
 
-    original_monitor = monitor._global_monitor
-    monitor._global_monitor = ConversationMonitor(cache_dir=temp_cache_dir)
+    original_monitor = monitor._global_trace
+    monitor._global_trace = ConversationTrace(cache_dir=temp_cache_dir)
 
     try:
         client = AutoLLMClient(model=model)
@@ -287,4 +304,4 @@ async def test_monitoring_updates_on_multiple_messages(model, temp_cache_dir):
         assert "Second question" in content2
 
     finally:
-        monitor._global_monitor = original_monitor
+        monitor._global_trace = original_monitor

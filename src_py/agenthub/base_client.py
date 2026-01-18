@@ -171,10 +171,10 @@ class LLMClient(ABC):
 
         # Save history to file if monitor_path is specified
         if config.get("monitor_path"):
-            from .monitor import get_monitor
+            from .monitor import get_trace
 
-            monitor = get_monitor()
-            monitor.save_history(self._history, config["monitor_path"])
+            trace = get_trace()
+            trace.save_history(self._history, config["monitor_path"], config)
 
     def clear_history(self) -> None:
         """Clear the message history."""
