@@ -271,11 +271,8 @@ Start a web server to browse and view saved conversations:
 ```python
 from agenthub import Tracer
 
-# Create tracer instance
-tracer = Tracer(cache_dir="cache")  # default is "cache"
-
 # Start web server
-tracer.start_web_server(host="127.0.0.1", port=5000)
+Tracer().start_web_server(host="127.0.0.1", port=5000)
 ```
 
 Then visit `http://127.0.0.1:5000` in your browser to browse saved conversations.
