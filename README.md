@@ -11,7 +11,7 @@ cd src_py
 make
 ```
 
-See [docs/auto_llm_client.python.md](docs/auto_llm_client.python.md) for comprehensive usage examples and API documentation.
+See [src_py/README.md](src_py/README.md) for comprehensive usage examples and API documentation.
 
 ## TypeScript package
 

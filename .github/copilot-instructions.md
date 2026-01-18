@@ -37,13 +37,6 @@ AgentHub is the only SDK you need to connect to state-of-the-art LLMs (GPT-5/Cla
 - Follow TypeScript strict mode conventions
 - Run `make lint` and `make test` from `src_ts/` before committing
 
-## Development Workflow
-
-1. Both Python and TypeScript code live in separate directories with their own build systems
-2. Each directory has its own `Makefile` for common tasks
-3. Refer to `docs/` directory for detailed development guidelines and architecture decisions
-4. Always check CONTRIBUTING.md for the contribution process
-
 ## Implementation Rules
 
 When adding support for new AI models in `auto_client.py`, follow these rules:
@@ -51,8 +44,15 @@ When adding support for new AI models in `auto_client.py`, follow these rules:
 1. **DO NOT** use generic matching like `if "claude" in model.lower()` as this is too broad and may match unintended model names.
 2. Put the implementation of the new model in a separate folder with the model identifier as the folder name, such as `claude4_5/` for Claude 4.5 series models.
 3. **DO NOT** create new files or directories in examples and tests when adding a new model, use pytest parameters or environment variables instead.
-4. **Always** consult the [../docs/README.md](../docs/README.md) for AI model sdk usage details.
+4. **Always** consult the [../llmsdk_docs/README.md](../llmsdk_docs/README.md) for AI model sdk usage details.
 5. When making changes, ensure consistency across both implementations when applicable.
+
+When writing documentation, follow these rules:
+
+1. Always provide clear and concise documentation.
+2. **DO NOT** include unnecessary details in the documentation.
+3. Ensure that the documentation is accurate and up-to-date.
+4. Remember to update the documentation whenever changes are made to the code.
 
 ## GitHub Workflow Secrets for Testing
 

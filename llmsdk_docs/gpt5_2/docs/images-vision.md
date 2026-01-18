@@ -77,7 +77,7 @@ if (imageData.length > 0) {
 from openai import OpenAI
 import base64
 
-client = OpenAI() 
+client = OpenAI()
 
 response = client.responses.create(
     model="gpt-4.1-mini",

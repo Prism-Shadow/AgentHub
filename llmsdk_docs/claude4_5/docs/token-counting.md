@@ -591,7 +591,7 @@ public class CountTokensThinkingExample {
 
 <Note>
 Token counting supports PDFs with the same [limitations](/docs/en/build-with-claude/pdf-support#pdf-support-limitations) as the Messages API.
-</Note> 
+</Note>
 
 <CodeGroup>
 ```bash Shell
@@ -762,5 +762,5 @@ Token counting is **free to use** but subject to requests per minute rate limits
   <section title="Does token counting use prompt caching?">
 
     No, token counting provides an estimate without using caching logic. While you may provide `cache_control` blocks in your token counting request, prompt caching only occurs during actual message creation.
-  
+
 </section>

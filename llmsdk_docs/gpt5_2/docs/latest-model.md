@@ -457,19 +457,19 @@ FAQ
 ---
 
 1.  **How are these models integrated into ChatGPT?**
-    
+
     In ChatGPT, there are three models: GPT‑5.2 Instant, GPT‑5.2 Thinking, and GPT-5.2 Pro. Based on the user's question, a routing layer selects the best model to use. Users can also invoke reasoning directly through the ChatGPT UI.
-    
+
     All three ChatGPT models (Instant, Thinking, and Pro) have a new knowledge cutoff of August 2025. For users, this means GPT-5.2 starts with a more current understanding of the world, so answers are more accurate and useful, with more relevant examples and context, even before turning to web search.
-    
+
 2.  **Will these models be supported in Codex?**
-    
+
     Yes, `gpt-5.2-codex` is the model that powers Codex and Codex CLI. You can also use this as a standalone model for building agentic coding applications.
-    
+
 3.  **How does GPT-5.2 compare to GPT-5.2-Codex?**
-    
+
     [GPT-5.2-Codex](https://platform.openai.com/docs/models/gpt-5.2-codex) is specifically designed for use in Codex. Unlike GPT-5.2, which is a general-purpose model, we recommend using GPT-5.2-Codex for agentic coding tasks in Codex or Codex-like environments, and GPT-5.2 for use cases in other domains. GPT-5.2-Codex is only available in the Responses API and supports `low`, `medium`, `high`, and `xhigh` reasoning effort settings along with function calling, structured outputs, streaming, and prompt caching. It does not support all GPT-5.2 parameters or API surfaces.
-    
+
 4.  **What is the deprecation plan for previous models?**
-    
+
     Any model deprecations will be posted on our [deprecations page](https://platform.openai.com/docs/deprecations#page-top). We'll send advanced notice of any model deprecations.

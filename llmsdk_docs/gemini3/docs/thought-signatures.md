@@ -413,7 +413,7 @@ Gemini may also return`thought_signatures`in the final part of the response in n
     [
       { "role": "user", "parts": [{ "text": "What is the risk?" }] },
       {
-        "role": "model", 
+        "role": "model",
         "parts": [
           {
             "text": "I need to calculate the risk. Let me think step-by-step...",
@@ -545,7 +545,7 @@ Since this user turn only contains a`functionResponse`(no fresh text), we are st
           "role": "tool",
           "name": "check_flight",
           "tool_call_id": "function-call-1",
-          "content": "{\"status\":\"delayed\",\"departure_time\":\"12 PM\"}"                 
+          "content": "{\"status\":\"delayed\",\"departure_time\":\"12 PM\"}"  
         }
       ]
 
@@ -603,7 +603,7 @@ To send the taxi booking confirmation, we must include signatures for ALL functi
           "role": "tool",
           "name": "check_flight",
           "tool_call_id": "function-call-1d6a1a61-6f4f-4029-80ce-61586bd86da5",
-          "content": "{\"status\":\"delayed\",\"departure_time\":\"12 PM\"}"                 
+          "content": "{\"status\":\"delayed\",\"departure_time\":\"12 PM\"}"  
         },
         {
           "role": "model",
@@ -748,7 +748,7 @@ You must preserve`<Signature_A>`on the first part exactly as received.
           "name": "get_current_temperature",
           "tool_call_id": "function-call-f3b9ecb3-d55f-4076-98c8-b13e9d1c0e01",
           "content": "{\"temp\":\"15C\"}"
-        },    
+        },  
         {
           "role":"tool",
           "name": "get_current_temperature",

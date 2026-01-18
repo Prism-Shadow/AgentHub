@@ -70,7 +70,7 @@ Claude Sonnet 4.5 is our most intelligent model, offering best-in-class performa
    </Warning>
 
    Update to `text_editor_20250728` (type) and `str_replace_based_edit_tool` (name). Remove any code using the `undo_edit` command.
-   
+
    ```python
    # Before (Claude Sonnet 3.7)
    tools=[{"type": "text_editor_20250124", "name": "str_replace_editor"}]
