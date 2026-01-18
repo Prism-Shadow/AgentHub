@@ -20,10 +20,9 @@ This example shows how to use function calling with AutoLLMClient to query weath
 """
 
 import asyncio
-import json
 import os
 
-from agenthub import AutoLLMClient, UniEvent
+from agenthub import AutoLLMClient
 
 
 def get_current_temperature(location: str) -> str:
@@ -72,7 +71,7 @@ async def main():
     print("User: What's the temperature in London?")
     print("Assistant:")
 
-    events: list[UniEvent] = []
+    events = []
     async for event in client.streaming_response_stateful(
         message={"role": "user", "content_items": [{"type": "text", "text": "What's the temperature in London?"}]},
         config=config,
@@ -81,25 +80,24 @@ async def main():
         events.append(event)
 
     # Check if there's a function call in the last event
-    function_call = None
-    tool_call_id = None
+    tool_call1 = None
+    tool_call_id1 = None
     for event in events:
         for item in event["content_items"]:
-            if item["type"] == "function_call":
-                function_call = item
-                tool_call_id = item["tool_call_id"]
+            if item["type"] == "tool_call":
+                tool_call1 = item
+                tool_call_id1 = item["tool_call_id"]
                 break
 
-        if function_call:
+        if tool_call1:
             break
 
-    if function_call:
-        print(f"\nFunction to call: {function_call['name']}")
-        print(f"Arguments: {function_call['argument']}")
+    if tool_call1:
+        print(f"\nFunction to call: {tool_call1['name']}")
+        print(f"Arguments: {tool_call1['argument']}")
 
         # Call the function
-        args = json.loads(function_call["argument"])
-        result = get_current_temperature(**args)
+        result = get_current_temperature(**tool_call1["argument"])
         print(f"Function result: {result}")
 
         # Second step: Send function result back to the model
@@ -108,8 +106,8 @@ async def main():
 
         async for event in client.streaming_response_stateful(
             message={
-                "role": "tool",
-                "content_items": [{"type": "text", "text": result, "tool_call_id": tool_call_id}],
+                "role": "user",
+                "content_items": [{"type": "tool_result", "result": result, "tool_call_id": tool_call_id1}],
             },
             config=config,
         ):
@@ -128,25 +126,24 @@ async def main():
             events2.append(event)
 
         # Check for another function call
-        function_call2 = None
+        tool_call2 = None
         tool_call_id2 = None
         for event in events2:
             for item in event["content_items"]:
-                if item["type"] == "function_call":
-                    function_call2 = item
+                if item["type"] == "tool_call":
+                    tool_call2 = item
                     tool_call_id2 = item["tool_call_id"]
                     break
 
-            if function_call2:
+            if tool_call2:
                 break
 
-        if function_call2:
-            print(f"\nFunction to call: {function_call2['name']}")
-            print(f"Arguments: {function_call2['argument']}")
+        if tool_call2:
+            print(f"\nFunction to call: {tool_call2['name']}")
+            print(f"Arguments: {tool_call2['argument']}")
 
             # Call the function again
-            args2 = json.loads(function_call2["argument"])
-            result2 = get_current_temperature(**args2)
+            result2 = get_current_temperature(**tool_call2["argument"])
             print(f"Function result: {result2}")
 
             # Send result back
@@ -155,8 +152,8 @@ async def main():
 
             async for event in client.streaming_response_stateful(
                 message={
-                    "role": "tool",
-                    "content_items": [{"type": "text", "text": result2, "tool_call_id": tool_call_id2}],
+                    "role": "user",
+                    "content_items": [{"type": "tool_result", "result": result2, "tool_call_id": tool_call_id2}],
                 },
                 config=config,
             ):

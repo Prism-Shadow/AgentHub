@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from enum import StrEnum
-from typing import Literal, NotRequired, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 
 
 class ThinkingLevel(StrEnum):
@@ -27,21 +27,16 @@ class ThinkingLevel(StrEnum):
 
 # Tool choice can be a literal string or a list of tool names
 ToolChoice = Literal["auto", "required", "none"] | list[str]
-Role = Literal["user", "assistant", "tool"]
+Role = Literal["user", "assistant"]
+Event = Literal["start", "delta", "stop"]
 FinishReason = Literal["stop", "length", "unknown"]
 
 
 class TextContentItem(TypedDict):
     type: Literal["text"]
     text: str
-    signature: str
-    tool_call_id: str
-
-
-class ReasoningContentItem(TypedDict):
-    type: Literal["reasoning"]
-    reasoning: str
-    signature: str
+    signature: NotRequired[str]
+    tool_call_id: NotRequired[str]
 
 
 class ImageContentItem(TypedDict):
@@ -49,23 +44,54 @@ class ImageContentItem(TypedDict):
     image_url: str
 
 
-class FunctionCallContentItem(TypedDict):
-    type: Literal["function_call"]
+class ThinkingContentItem(TypedDict):
+    type: Literal["thinking"]
+    thinking: str
+    signature: NotRequired[str]
+
+
+class ToolCallContentItem(TypedDict):
+    type: Literal["tool_call"]
+    name: str
+    argument: dict[str, Any]
+    tool_call_id: str
+    signature: NotRequired[str]
+
+
+class PartialToolCallContentItem(TypedDict):
+    type: Literal["partial_tool_call"]
     name: str
     argument: str
-    signature: str
+    tool_call_id: str
+    signature: NotRequired[str]
+
+
+class ToolResultContentItem(TypedDict):
+    type: Literal["tool_result"]
+    result: str
     tool_call_id: str
 
 
-class UnknownContentItem(TypedDict):
-    type: Literal["unknown"]
+class ExtraContentItem(TypedDict):
+    type: Literal["extra"]
     data: str
 
 
-ContentItem = TextContentItem | ReasoningContentItem | ImageContentItem | FunctionCallContentItem | UnknownContentItem
+ContentItem = (
+    TextContentItem
+    | ImageContentItem
+    | ThinkingContentItem
+    | ToolCallContentItem
+    | ToolResultContentItem
+    | ExtraContentItem
+)
+
+PartialContentItem = ContentItem | PartialToolCallContentItem
 
 
 class UsageMetadata(TypedDict):
+    """Usage metadata for model response."""
+
     prompt_tokens: int | None
     thoughts_tokens: int | None
     response_tokens: int | None
@@ -75,7 +101,7 @@ class UniMessage(TypedDict):
     """Universal message format for LLM communication."""
 
     role: Role
-    content_items: list[ContentItem]  # List of content items
+    content_items: list[ContentItem]
     usage_metadata: NotRequired[UsageMetadata]
     finish_reason: NotRequired[FinishReason]
 
@@ -84,18 +110,36 @@ class UniEvent(TypedDict):
     """Universal event format for streaming responses."""
 
     role: Role
-    content_items: list[ContentItem]  # List of content items
+    content_items: list[ContentItem]
     usage_metadata: NotRequired[UsageMetadata]
     finish_reason: NotRequired[FinishReason]
+
+
+class PartialUniEvent(TypedDict):
+    """Partial universal event format for streaming responses."""
+
+    role: Role
+    event: Event
+    content_items: list[PartialContentItem]
+    usage_metadata: NotRequired[UsageMetadata]
+    finish_reason: NotRequired[FinishReason]
+
+
+class ToolSchema(TypedDict):
+    """Available tool schema."""
+
+    name: str
+    description: str
+    parameters: NotRequired[str]
 
 
 class UniConfig(TypedDict):
     """Universal configuration format for LLM requests."""
 
-    max_tokens: int | None
-    temperature: float | None
-    tools: list[str] | None
-    thinking_summary: bool | None
-    thinking_level: ThinkingLevel | None
-    tool_choice: ToolChoice | None
-    system_prompt: str | None
+    max_tokens: NotRequired[int]
+    temperature: NotRequired[float]
+    tools: NotRequired[list[ToolSchema]]
+    thinking_summary: NotRequired[bool]
+    thinking_level: NotRequired[ThinkingLevel]
+    tool_choice: NotRequired[ToolChoice]
+    system_prompt: NotRequired[str]

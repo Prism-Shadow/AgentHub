@@ -166,7 +166,7 @@ async def test_tool_use(model):
     message1 = {"role": "user", "content_items": [{"type": "text", "text": "What is the weather in San Francisco?"}]}
     async for event in client.streaming_response_stateful(message=message1, config=config):
         for item in event["content_items"]:
-            if item["type"] == "function_call":
+            if item["type"] == "tool_call":
                 assert item["name"] == weather_tool["name"]
                 tool_call_id = item.get("tool_call_id")
 
@@ -174,8 +174,10 @@ async def test_tool_use(model):
     assert tool_call_id is not None
 
     message2 = {
-        "role": "tool",
-        "content_items": [{"type": "text", "text": "It's 20 degrees in San Francisco.", "tool_call_id": tool_call_id}],
+        "role": "user",
+        "content_items": [
+            {"type": "tool_result", "result": "It's 20 degrees in San Francisco.", "tool_call_id": tool_call_id}
+        ],
     }
     text = ""
     async for event in client.streaming_response_stateful(message=message2, config=config):
