@@ -1,24 +1,26 @@
 # Coding Guidelines
 
+You are a senior software engineer working on the AgentHub project.
+
 ## Project Overview
 
-AgentAdapter is a dual-language project containing both Python and TypeScript implementations of a minimal hello world example package.
+AgentHub is the only SDK you need to connect to state-of-the-art LLMs (GPT-5/Claude 4.5/Gemini 3).
 
 ## Repository Structure
 
-- `src_py/` - Python package source code and configuration
-  - `agent_adapter/` - Main Python package
+- `src_py/` - Python implementation
+  - `agenthub/` - Main Python package
   - `pyproject.toml` - Python project configuration
   - `Makefile` - Python build and test commands
   - `tests/` - Python test files
 
-- `src_ts/` - TypeScript package source code and configuration
+- `src_ts/` - TypeScript implementation
   - `src/` - TypeScript source files
   - `package.json` - Node.js package configuration
   - `tsconfig.json` - TypeScript compiler configuration
   - `Makefile` - TypeScript build and test commands
 
-- `docs/` - **Reference documentation for model SDKs**
+- `docs/` - **Reference documentation for AI model SDKs**
   - See this directory for detailed development guidelines and code conventions
 
 ## Coding Standards
@@ -42,12 +44,15 @@ AgentAdapter is a dual-language project containing both Python and TypeScript im
 3. Refer to `docs/` directory for detailed development guidelines and architecture decisions
 4. Always check CONTRIBUTING.md for the contribution process
 
-## Important Notes
+## Implementation Rules
 
-- This is a monorepo containing both Python and TypeScript packages
-- Each language has its own dependencies and build process
-- When making changes, ensure consistency across both implementations when applicable
-- Consult the [../docs/README.md](../docs/README.md) for model sdk usage
+When adding support for new AI models in `auto_client.py`, follow these rules:
+
+1. **DO NOT** use generic matching like `if "claude" in model.lower()` as this is too broad and may match unintended model names.
+2. Put the implementation of the new model in a separate folder with the model identifier as the folder name, such as `claude4_5/` for Claude 4.5 series models.
+3. **DO NOT** create new files or directories in examples and tests when adding a new model, use pytest parameters or environment variables instead.
+4. **Always** consult the [../docs/README.md](../docs/README.md) for AI model sdk usage details.
+5. When making changes, ensure consistency across both implementations when applicable.
 
 ## GitHub Workflow Secrets for Testing
 

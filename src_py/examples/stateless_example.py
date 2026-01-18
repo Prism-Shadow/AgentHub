@@ -20,8 +20,9 @@ This example shows how to use the AutoLLMClient without maintaining conversation
 """
 
 import asyncio
+import os
 
-from agent_adapter import AutoLLMClient
+from agenthub import AutoLLMClient
 
 
 async def main():
@@ -30,7 +31,11 @@ async def main():
     print("Stateless Example")
     print("=" * 60)
 
-    client = AutoLLMClient(model="gemini-3-flash-preview")
+    # Get model from environment variable, default to gemini-3-flash-preview
+    model = os.getenv("MODEL", "gemini-3-flash-preview")
+    print(f"Using model: {model}")
+
+    client = AutoLLMClient(model=model)
     config = {"temperature": 0.7}
 
     query = "Hello! What's 2+2?"
@@ -40,10 +45,6 @@ async def main():
         messages=[{"role": "user", "content_items": [{"type": "text", "text": query}]}], config=config
     ):
         print(event)
-
-    print("History:")
-    for i, msg in enumerate(client.get_history(), 1):
-        print(f"[{i}] {msg}")
 
 
 if __name__ == "__main__":

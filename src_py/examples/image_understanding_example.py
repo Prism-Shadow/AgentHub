@@ -20,8 +20,9 @@ This example shows how to use the AutoLLMClient to analyze images.
 """
 
 import asyncio
+import os
 
-from agent_adapter import AutoLLMClient
+from agenthub import AutoLLMClient
 
 
 async def main():
@@ -30,7 +31,11 @@ async def main():
     print("Image Understanding Example")
     print("=" * 60)
 
-    client = AutoLLMClient(model="gemini-3-flash-preview")
+    # Get model from environment variable, default to gemini-3-flash-preview
+    model = os.getenv("MODEL", "gemini-3-flash-preview")
+    print(f"Using model: {model}")
+
+    client = AutoLLMClient(model=model)
     config = {"temperature": 0.7}
 
     # Image URL from the problem statement

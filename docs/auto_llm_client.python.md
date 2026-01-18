@@ -1,6 +1,6 @@
 # AutoLLMClient Usage Guide
 
-This document demonstrates how to use `AutoLLMClient` for unified LLM interactions in AgentAdapter.
+This document demonstrates how to use `AutoLLMClient` for unified LLM interactions in AgentHub.
 
 ## AutoLLMClient Overview
 
@@ -11,7 +11,7 @@ This document demonstrates how to use `AutoLLMClient` for unified LLM interactio
 Create a client by specifying the model name:
 
 ```python
-from agent_adapter import AutoLLMClient
+from agenthub import AutoLLMClient
 
 # Initialize with model name
 client = AutoLLMClient(model="gemini-3-flash-preview")
@@ -27,7 +27,7 @@ Stateless method that requires passing the full message history on each call:
 
 ```python
 import asyncio
-from agent_adapter import AutoLLMClient
+from agenthub import AutoLLMClient
 
 async def main():
     client = AutoLLMClient(model="gemini-3-flash-preview")
@@ -54,7 +54,7 @@ Stateful method that maintains conversation history internally:
 
 ```python
 import asyncio
-from agent_adapter import AutoLLMClient
+from agenthub import AutoLLMClient
 
 async def main():
     client = AutoLLMClient(model="gemini-3-flash-preview")
@@ -115,7 +115,7 @@ When using tools, you must handle `tool_call_id` correctly:
 ```python
 import asyncio
 import json
-from agent_adapter import AutoLLMClient
+from agenthub import AutoLLMClient
 
 def get_weather(location: str) -> str:
     """Mock function to get weather."""
@@ -153,31 +153,29 @@ async def main():
         events.append(event)
 
     # Extract function call and tool_call_id
-    function_call = None
-    tool_call_id = None
+    tool_call = None
     for event in events:
         for item in event["content_items"]:
-            if item["type"] == "function_call":
-                function_call = item
-                tool_call_id = item["tool_call_id"]
+            if item["type"] == "tool_call":
+                tool_call = item
                 break
-        if function_call:
+
+        if tool_call:
             break
 
     # Execute function and send result back with tool_call_id
-    if function_call:
-        args = json.loads(function_call["argument"])
-        result = get_weather(**args)
+    if tool_call:
+        result = get_weather(**tool_call["argument"])
 
         # IMPORTANT: Include tool_call_id in the tool response
         async for event in client.streaming_response_stateful(
             message={
-                "role": "tool",
+                "role": "user",
                 "content_items": [
                     {
-                        "type": "text",
-                        "text": result,
-                        "tool_call_id": tool_call_id  # Required for tool responses
+                        "type": "tool_result",
+                        "result": result,
+                        "tool_call_id": tool_call["tool_call_id"]  # Required for tool responses
                     }
                 ]
             },
@@ -204,16 +202,16 @@ asyncio.run(main())
 
 ### Tool Response with tool_call_id
 
-When responding to a function call, include the `tool_call_id` in the text content item:
+When responding to a tool call, include the `tool_call_id` in the result content item:
 
 ```python
 {
-    "role": "tool",
+    "role": "user",
     "content_items": [
         {
-            "type": "text",
-            "text": "Result data",
-            "tool_call_id": "call_abc123"  # From function_call event
+            "type": "tool_result",
+            "result": "Tool result data",
+            "tool_call_id": "call_abc123"  # From tool_call event
         }
     ]
 }
@@ -222,6 +220,8 @@ When responding to a function call, include the `tool_call_id` in the text conte
 ## Configuration Options
 
 ```python
+from agenthub import ThinkingLevel
+
 config = {
     "max_tokens": 500,
     "temperature": 1.0,
@@ -230,17 +230,4 @@ config = {
     "thinking_level": ThinkingLevel.HIGH,
     "system_prompt": "You are a helpful assistant"
 }
-```
-
-## Type Definitions
-
-```python
-from agent_adapter import (
-    AutoLLMClient,
-    UniMessage,
-    UniEvent,
-    UniConfig,
-    ThinkingLevel,
-    ToolChoice
-)
 ```

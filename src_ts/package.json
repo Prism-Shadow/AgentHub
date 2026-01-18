@@ -1,7 +1,7 @@
 {
-  "name": "agent-adapter",
+  "name": "agenthub",
   "version": "0.1.0",
-  "description": "Agent Adapter package",
+  "description": "AgentHub package",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",

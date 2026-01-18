@@ -16,80 +16,90 @@ import os
 
 import pytest
 
-from agent_adapter import AutoLLMClient
+from agenthub import AutoLLMClient, ThinkingLevel
 
 
-# Skip tests if no API key is available
-pytestmark = pytest.mark.skipif(
-    not os.getenv("GEMINI_API_KEY") and not os.getenv("GOOGLE_API_KEY"),
-    reason="No Gemini API key available",
-)
+IMAGE = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Narcissus_poeticus_subsp._radiiflorus.1658.jpg/500px-Narcissus_poeticus_subsp._radiiflorus.1658.jpg"
+
+AVAILABLE_MODELS = []
+AVAILABLE_VISION_MODELS = []
+
+if os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"):
+    AVAILABLE_MODELS.append("gemini-3-flash-preview")
+    AVAILABLE_VISION_MODELS.append("gemini-3-flash-preview")
+
+if os.getenv("ANTHROPIC_API_KEY"):
+    AVAILABLE_MODELS.append("claude-sonnet-4-5-20250929")
+    AVAILABLE_VISION_MODELS.append("claude-sonnet-4-5-20250929")
 
 
 @pytest.mark.asyncio
-async def test_streaming_response_basic():
+@pytest.mark.parametrize("model", AVAILABLE_MODELS)
+async def test_streaming_response_basic(model):
     """Test basic stateless stream generation."""
-    client = AutoLLMClient(model="gemini-3-flash-preview")
-    messages = [{"role": "user", "content_items": [{"type": "text", "text": "Say hello"}]}]
+    client = AutoLLMClient(model=model)
+    messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is 2+3?"}]}]
     config = {}
 
-    events = []
+    text = ""
     async for event in client.streaming_response(messages=messages, config=config):
-        events.append(event)
+        for item in event["content_items"]:
+            if item["type"] == "text":
+                text += item["text"]
 
-    assert len(events) > 0
+    assert "5" in text  # 2 + 3 = 5
 
 
 @pytest.mark.asyncio
-async def test_streaming_response_with_all_parameters():
+@pytest.mark.parametrize("model", AVAILABLE_MODELS)
+async def test_streaming_response_with_all_parameters(model):
     """Test stream generation with all optional parameters."""
-    client = AutoLLMClient(model="gemini-3-flash-preview")
-    messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is 2+2?"}]}]
-    config = {"max_tokens": 100, "temperature": 0.7}
+    client = AutoLLMClient(model=model)
+    messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is 2+3?"}]}]
+    config = {"max_tokens": 8192, "temperature": 0.7, "thinking_summary": True, "thinking_level": ThinkingLevel.LOW}
 
-    events = []
+    text = ""
     async for event in client.streaming_response(messages=messages, config=config):
-        events.append(event)
+        for item in event["content_items"]:
+            if item["type"] == "text":
+                text += item["text"]
 
-    assert len(events) > 0
+    assert "5" in text  # 2 + 3 = 5
 
 
 @pytest.mark.asyncio
-async def test_streaming_response_stateful():
+@pytest.mark.parametrize("model", AVAILABLE_MODELS)
+async def test_streaming_response_stateful(model):
     """Test stateful stream generation."""
-    client = AutoLLMClient(model="gemini-3-flash-preview")
+    client = AutoLLMClient(model=model)
     config = {}
 
-    # First message
-    events1 = []
-    async for event in client.streaming_response_stateful(
-        message={"role": "user", "content_items": [{"type": "text", "text": "My name is Alice"}]}, config=config
-    ):
-        events1.append(event)
+    message1 = {"role": "user", "content_items": [{"type": "text", "text": "My name is Alice"}]}
+    async for _ in client.streaming_response_stateful(message=message1, config=config):
+        pass
 
-    assert len(events1) > 0
-    assert len(client.get_history()) == 2  # User message + assistant response
+    assert len(client.get_history()) == 2  # user message + assistant response
 
-    # Second message
-    events2 = []
-    async for event in client.streaming_response_stateful(
-        message={"role": "user", "content_items": [{"type": "text", "text": "What is my name?"}]}, config=config
-    ):
-        events2.append(event)
+    message2 = {"role": "user", "content_items": [{"type": "text", "text": "What is my name?"}]}
+    text = ""
+    async for event in client.streaming_response_stateful(message=message2, config=config):
+        for item in event["content_items"]:
+            if item["type"] == "text":
+                text += item["text"]
 
-    assert len(events2) > 0
+    assert "alice" in text.lower()
     assert len(client.get_history()) == 4  # 2 previous + 2 new
 
 
 @pytest.mark.asyncio
-async def test_clear_history():
+@pytest.mark.parametrize("model", AVAILABLE_MODELS)
+async def test_clear_history(model):
     """Test clearing conversation history."""
-    client = AutoLLMClient(model="gemini-3-flash-preview")
+    client = AutoLLMClient(model=model)
+    message = {"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}
     config = {}
 
-    async for event in client.streaming_response_stateful(
-        message={"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}, config=config
-    ):
+    async for _ in client.streaming_response_stateful(message=message, config=config):
         pass
 
     assert len(client.get_history()) > 0
@@ -99,45 +109,124 @@ async def test_clear_history():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("model", AVAILABLE_MODELS)
+async def test_concat_uni_events_to_uni_message(model):
+    """Test concatenation of events into a single message."""
+    client = AutoLLMClient(model=model)
+    messages = [{"role": "user", "content_items": [{"type": "text", "text": "Say hello"}]}]
+    config = {}
+
+    events = []
+    text = ""
+    async for event in client.streaming_response(messages=messages, config=config):
+        events.append(event)
+        for item in event["content_items"]:
+            if item["type"] == "text":
+                text += item["text"]
+
+    # Concatenate events to get the full message
+    message = client.concat_uni_events_to_uni_message(events)
+    assert message["role"] == "assistant"
+    for item in message["content_items"]:
+        if item["type"] == "text":
+            assert item["text"] == text
+
+
+@pytest.mark.asyncio
 async def test_unknown_model():
     """Test that unknown models raise ValueError."""
-    with pytest.raises(ValueError, match="Unknown model type"):
+    with pytest.raises(ValueError, match="not supported"):
         AutoLLMClient(model="unknown-model")
 
 
 @pytest.mark.asyncio
-async def test_gpt_not_implemented():
-    """Test that GPT models raise NotImplementedError."""
-    with pytest.raises(NotImplementedError, match="GPT models not yet implemented"):
-        AutoLLMClient(model="gpt-4")
+@pytest.mark.parametrize("model", AVAILABLE_MODELS)
+async def test_tool_use(model):
+    """Test tool use capability."""
+    client = AutoLLMClient(model=model)
+
+    # Define a simple weather tool
+    weather_tool = {
+        "name": "get_weather",
+        "description": "Get the current weather in a given location",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "The city name, e.g. San Francisco",
+                },
+            },
+            "required": ["location"],
+        },
+    }
+
+    config = {"tools": [weather_tool]}
+    tool_call_id = None
+    message1 = {"role": "user", "content_items": [{"type": "text", "text": "What is the weather in San Francisco?"}]}
+    async for event in client.streaming_response_stateful(message=message1, config=config):
+        for item in event["content_items"]:
+            if item["type"] == "tool_call":
+                assert item["name"] == weather_tool["name"]
+                tool_call_id = item.get("tool_call_id")
+
+    # Check if a function call was made
+    assert tool_call_id is not None
+
+    message2 = {
+        "role": "user",
+        "content_items": [
+            {"type": "tool_result", "result": "It's 20 degrees in San Francisco.", "tool_call_id": tool_call_id}
+        ],
+    }
+    text = ""
+    async for event in client.streaming_response_stateful(message=message2, config=config):
+        for item in event["content_items"]:
+            if item["type"] == "text":
+                text += item["text"]
+
+    assert "20" in text
 
 
 @pytest.mark.asyncio
-async def test_claude_not_implemented():
-    """Test that Claude models raise NotImplementedError."""
-    with pytest.raises(NotImplementedError, match="Claude models not yet implemented"):
-        AutoLLMClient(model="claude-3-opus")
-
-
-@pytest.mark.asyncio
-async def test_image_understanding():
+@pytest.mark.parametrize("model", AVAILABLE_MODELS)
+async def test_image_understanding(model):
     """Test image understanding with a URL."""
-    client = AutoLLMClient(model="gemini-3-flash-preview")
-    image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Narcissus_poeticus_subsp._radiiflorus.1658.jpg/500px-Narcissus_poeticus_subsp._radiiflorus.1658.jpg"
+    if model not in AVAILABLE_VISION_MODELS:
+        pytest.skip(f"Image understanding is not supported by {model}.")
 
+    client = AutoLLMClient(model=model)
+    config = {}
     messages = [
         {
             "role": "user",
             "content_items": [
                 {"type": "text", "text": "What's in this image?"},
-                {"type": "image_url", "image_url": image_url},
+                {"type": "image_url", "image_url": IMAGE},
             ],
         }
     ]
-    config = {}
-
-    events = []
+    text = ""
     async for event in client.streaming_response(messages=messages, config=config):
-        events.append(event)
+        for item in event["content_items"]:
+            if item["type"] == "text":
+                text += item["text"]
 
-    assert len(events) > 0
+    assert ("flower" in text.lower()) or ("narcissus" in text.lower())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", AVAILABLE_MODELS)
+async def test_system_prompt(model):
+    """Test system prompt capability."""
+    client = AutoLLMClient(model=model)
+    messages = [{"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}]
+    config = {"system_prompt": "You are a kitten that must end with the word 'meow'."}
+
+    text = ""
+    async for event in client.streaming_response(messages=messages, config=config):
+        for item in event["content_items"]:
+            if item["type"] == "text":
+                text += item["text"]
+
+    assert "meow" in text.lower()

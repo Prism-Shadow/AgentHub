@@ -20,8 +20,9 @@ This example shows how to use the AutoLLMClient with automatic conversation hist
 """
 
 import asyncio
+import os
 
-from agent_adapter import AutoLLMClient
+from agenthub import AutoLLMClient, ThinkingLevel
 
 
 async def main():
@@ -30,8 +31,12 @@ async def main():
     print("Stateful Example")
     print("=" * 60)
 
-    client = AutoLLMClient(model="gemini-3-flash-preview")
-    config = {"thinking_summary": True}
+    # Get model from environment variable, default to gemini-3-flash-preview
+    model = os.getenv("MODEL", "gemini-3-flash-preview")
+    print(f"Using model: {model}")
+
+    client = AutoLLMClient(model=model)
+    config = {"thinking_summary": True, "thinking_level": ThinkingLevel.HIGH}
 
     # First message
     query1 = "My name is Alice"

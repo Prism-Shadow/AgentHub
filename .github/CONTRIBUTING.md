@@ -11,8 +11,8 @@ We follow the [Google Python Style Guide](https://google.github.io/styleguide/py
 1. Clone the repo to local disk
 
 ```bash
-git clone https://github.com/Prism-Shadow/AgentAdapter.git
-cd AgentAdapter
+git clone https://github.com/Prism-Shadow/AgentHub.git
+cd AgentHub
 ```
 
 2. Create a new branch
@@ -61,8 +61,8 @@ We use ESLint for code quality and follow TypeScript strict mode conventions.
 1. Clone the repo to local disk
 
 ```bash
-git clone https://github.com/Prism-Shadow/AgentAdapter.git
-cd AgentAdapter
+git clone https://github.com/Prism-Shadow/AgentHub.git
+cd AgentHub
 ```
 
 2. Create a new branch

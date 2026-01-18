@@ -26,6 +26,8 @@ class LLMClient(ABC):
     the required abstract methods for complete SDK abstraction.
     """
 
+    _history: list[UniMessage] = []
+
     @abstractmethod
     def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:
         """
@@ -92,12 +94,12 @@ class LLMClient(ABC):
                             content_items[-1]["signature"] = item["signature"]
                     elif item["text"]:  # omit empty text items
                         content_items.append(item.copy())
-                elif item["type"] == "reasoning":
-                    if content_items and content_items[-1]["type"] == "reasoning":
-                        content_items[-1]["reasoning"] += item["reasoning"]
+                elif item["type"] == "thinking":
+                    if content_items and content_items[-1]["type"] == "thinking":
+                        content_items[-1]["thinking"] += item["thinking"]
                         if "signature" in item:  # signature may appear at the last item
                             content_items[-1]["signature"] = item["signature"]
-                    elif item["reasoning"]:  # omit empty reasoning items
+                    elif item["thinking"]:  # omit empty thinking items
                         content_items.append(item.copy())
                 else:
                     content_items.append(item.copy())
@@ -134,7 +136,6 @@ class LLMClient(ABC):
         """
         pass
 
-    @abstractmethod
     async def streaming_response_stateful(
         self,
         message: UniMessage,
@@ -154,14 +155,24 @@ class LLMClient(ABC):
         Yields:
             Universal events from the streaming response
         """
-        pass
+        # Add user message to history
+        self._history.append(message)
 
-    @abstractmethod
+        # Collect all events for history
+        events = []
+        async for event in self.streaming_response(messages=self._history, config=config):
+            events.append(event)
+            yield event
+
+        # Convert events to message and add to history
+        if events:
+            assistant_message = self.concat_uni_events_to_uni_message(events)
+            self._history.append(assistant_message)
+
     def clear_history(self) -> None:
         """Clear the message history."""
-        pass
+        self._history.clear()
 
-    @abstractmethod
     def get_history(self) -> list[UniMessage]:
         """Get the current message history."""
-        pass
+        return self._history.copy()

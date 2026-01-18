@@ -1,6 +1,6 @@
-# Agent Adapter
+# AgentHub
 
-This repository contains a minimal Python package and a minimal TypeScript package for the Agent Adapter.
+AgentHub is the only SDK you need to connect to state-of-the-art LLMs (GPT-5/Claude 4.5/Gemini 3).
 
 ## Python package
 
