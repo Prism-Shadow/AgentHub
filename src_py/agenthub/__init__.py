@@ -13,24 +13,7 @@
 # limitations under the License.
 
 from .auto_client import AutoLLMClient
-from .base_client import LLMClient
-from .gemini3 import Gemini3Client
-from .types import (
-    ThinkingLevel,
-    ToolChoice,
-    UniConfig,
-    UniEvent,
-    UniMessage,
-)
+from .types import ThinkingLevel, ToolChoice, UniConfig, UniEvent, UniMessage
 
 
-__all__ = [
-    "AutoLLMClient",
-    "Gemini3Client",
-    "LLMClient",
-    "ThinkingLevel",
-    "ToolChoice",
-    "UniConfig",
-    "UniEvent",
-    "UniMessage",
-]
+__all__ = ["AutoLLMClient", "ThinkingLevel", "ToolChoice", "UniConfig", "UniEvent", "UniMessage"]

@@ -15,7 +15,7 @@
 from typing import Any, AsyncIterator
 
 from .base_client import LLMClient
-from .claude4_5 import Claude45Client
+from .claude4_5 import Claude4_5Client
 from .gemini3 import Gemini3Client
 from .types import UniConfig, UniEvent, UniMessage
 
@@ -40,25 +40,14 @@ class AutoLLMClient(LLMClient):
 
     def _create_client_for_model(self, model: str, api_key: str | None = None) -> LLMClient:
         """Create the appropriate client for the given model."""
-        if "gemini-3" in model.lower():
+        if "gemini-3" in model.lower():  # e.g., gemini-3-flash-preview
             return Gemini3Client(model=model, api_key=api_key)
-        elif "gpt" in model.lower():
-            raise NotImplementedError("GPT models not yet implemented")
-        elif any(
-            version in model.lower()
-            for version in [
-                "claude-sonnet-4-5-20250929",
-                "claude-sonnet-4-20250514",
-                "claude-opus-4-5-20251101",
-                "claude-opus-4-1-20250805",
-                "claude-opus-4-20250514",
-                "claude-haiku-4-5-20251001",
-                "claude-3-7-sonnet-20250219",
-            ]
-        ):
-            return Claude45Client(model=model, api_key=api_key)
+        elif "claude" in model.lower() and "4-5" in model.lower():  # e.g., claude-sonnet-4-5
+            return Claude4_5Client(model=model, api_key=api_key)
+        elif "gpt-5.2" in model.lower():  # e.g., gpt-5.2
+            raise NotImplementedError("GPT models not yet implemented.")
         else:
-            raise ValueError(f"Unknown model type: {model}")
+            raise ValueError(f"{model} is not supported.")
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:
         """Delegate to underlying client's transform_uni_config_to_model_config."""

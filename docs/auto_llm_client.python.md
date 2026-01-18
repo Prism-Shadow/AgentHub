@@ -1,6 +1,6 @@
 # AutoLLMClient Usage Guide
 
-This document demonstrates how to use `AutoLLMClient` for unified LLM interactions in AgentAdapter.
+This document demonstrates how to use `AutoLLMClient` for unified LLM interactions in AgentHub.
 
 ## AutoLLMClient Overview
 

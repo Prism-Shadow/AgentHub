@@ -32,7 +32,7 @@ from ..types import (
 )
 
 
-class Claude45Client(LLMClient):
+class Claude4_5Client(LLMClient):
     """Claude 4.5-specific LLM client implementation."""
 
     def __init__(self, model: str, api_key: str | None = None):

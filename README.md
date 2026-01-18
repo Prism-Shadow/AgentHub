@@ -1,6 +1,6 @@
-# Agent Adapter
+# AgentHub
 
-This repository contains a minimal Python package and a minimal TypeScript package for the Agent Adapter.
+This repository contains a minimal Python package and a minimal TypeScript package for the AgentHub.
 
 ## Python package
 

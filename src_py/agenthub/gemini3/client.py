@@ -132,6 +132,9 @@ class Gemini3Client(LLMClient):
             parts = []
             for item in msg["content_items"]:
                 if role == "tool" and item["type"] == "text":
+                    if "tool_call_id" not in item:
+                        raise ValueError("tool_call_id is required for tool text.")
+
                     function_name = item["tool_call_id"]
                     function_response = {"output": item["text"]}
                     parts.append(types.Part.from_function_response(name=function_name, response=function_response))
