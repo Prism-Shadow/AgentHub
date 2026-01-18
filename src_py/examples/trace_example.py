@@ -120,7 +120,7 @@ async def run_traced_chat():
         ):
             pass
 
-    print("\nConversation saved to cache/agent2/session_123.json and .txt")
+    print("\nConversation saved to cache/session_123.json and .txt")
 
 
 def start_web_server():
