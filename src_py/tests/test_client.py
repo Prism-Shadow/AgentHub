@@ -208,7 +208,9 @@ async def test_image_understanding(model):
     ]
     text = ""
     async for event in client.streaming_response(messages=messages, config=config):
-        text += event["content_items"][0]["text"]
+        for item in event["content_items"]:
+            if item["type"] == "text":
+                text += item["text"]
 
     assert ("flower" in text.lower()) or ("narcissus" in text.lower())
 
@@ -223,7 +225,8 @@ async def test_system_prompt(model):
 
     text = ""
     async for event in client.streaming_response(messages=messages, config=config):
-        if event["content_items"][0]["type"] == "text":
-            text += event["content_items"][0]["text"]
+        for item in event["content_items"]:
+            if item["type"] == "text":
+                text += item["text"]
 
     assert "meow" in text.lower()
