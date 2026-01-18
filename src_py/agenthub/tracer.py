@@ -13,12 +13,13 @@
 # limitations under the License.
 
 """
-Conversation trace module for saving and viewing conversation history.
+Conversation tracer module for saving and viewing conversation history.
 
 This module provides functionality to save conversation history to local files
 and serve them via a web interface for real-time monitoring.
 """
 
+import base64
 import json
 from datetime import datetime
 from pathlib import Path
@@ -29,9 +30,9 @@ from flask import Flask, Response, render_template_string
 from .types import UniMessage
 
 
-class ConversationTrace:
+class Tracer:
     """
-    Trace for saving conversation history to local files.
+    Tracer for saving conversation history to local files.
 
     This class handles saving conversation history to files in a cache directory
     and provides a web server for browsing and viewing the saved conversations.
@@ -39,13 +40,31 @@ class ConversationTrace:
 
     def __init__(self, cache_dir: str = "cache"):
         """
-        Initialize the conversation trace.
+        Initialize the tracer.
 
         Args:
             cache_dir: Directory to store conversation history files
         """
         self.cache_dir = Path(cache_dir).absolute()
         self.cache_dir.mkdir(parents=True, exist_ok=True)
+
+    def _serialize_for_json(self, obj: Any) -> Any:
+        """
+        Recursively serialize objects for JSON, converting bytes to base64.
+
+        Args:
+            obj: Object to serialize
+
+        Returns:
+            JSON-serializable object
+        """
+        if isinstance(obj, bytes):
+            return base64.b64encode(obj).decode("utf-8")
+        elif isinstance(obj, dict):
+            return {k: self._serialize_for_json(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._serialize_for_json(item) for item in obj]
+        return obj
 
     def save_history(self, history: list[UniMessage], file_id: str, config: dict[str, Any]) -> None:
         """
@@ -63,8 +82,8 @@ class ConversationTrace:
         # Save as JSON
         json_path = file_path_base.with_suffix(".json")
         json_data = {
-            "history": history,
-            "config": config,
+            "history": self._serialize_for_json(history),
+            "config": self._serialize_for_json(config),
             "timestamp": datetime.now().isoformat(),
         }
         with open(json_path, "w", encoding="utf-8") as f:
@@ -152,7 +171,7 @@ class ConversationTrace:
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Conversation Trace</title>
+            <title>Tracer</title>
             <meta charset="utf-8">
             <style>
                 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -221,7 +240,7 @@ class ConversationTrace:
             </style>
         </head>
         <body>
-            <h1>Conversation Trace</h1>
+            <h1>Tracer</h1>
             <div class="breadcrumb">
                 <strong>Path:</strong> {{ breadcrumb|safe }}
             </div>
@@ -406,6 +425,15 @@ class ConversationTrace:
                     color: #656d76;
                     text-align: right;
                 }
+                .finish-reason {
+                    margin-top: 12px;
+                    padding: 8px 12px;
+                    background-color: #e7ebef;
+                    border-radius: 4px;
+                    font-size: 11px;
+                    color: #656d76;
+                    font-style: italic;
+                }
                 .toggle-icon {
                     transition: transform 0.2s;
                     display: inline-block;
@@ -454,9 +482,7 @@ class ConversationTrace:
                                 <div class="content-text thinking">{{ item.thinking|e }}</div>
                             {% elif item.type == 'tool_call' %}
                                 <div class="tool-call">
-                                    <strong>Tool:</strong> {{ item.name|e }}<br>
-                                    <strong>Arguments:</strong> {{ item.argument|e }}<br>
-                                    <strong>Call ID:</strong> {{ item.tool_call_id|e }}
+                                    <div class="content-text">{{ item.name|e }}({% for key, value in item.argument.items() %}{{ key|e }}={{ value|e|tojson }}{% if not loop.last %}, {% endif %}{% endfor %})</div>
                                 </div>
                             {% elif item.type == 'tool_result' %}
                                 <div class="tool-result">
@@ -465,7 +491,7 @@ class ConversationTrace:
                                 </div>
                             {% elif item.type == 'image_url' %}
                                 <div class="content-text">
-                                    <strong>Image URL:</strong> {{ item.image_url|e }}
+                                    <img src="{{ item.image_url|e }}" style="max-width: 200px; max-height: 200px; border-radius: 4px;" alt="Preview">
                                 </div>
                             {% endif %}
                         </div>
@@ -484,6 +510,12 @@ class ConversationTrace:
                         {% endif %}
                     </div>
                     {% endif %}
+
+                    {% if message.finish_reason %}
+                    <div class="finish-reason">
+                        Finish reason: {{ message.finish_reason|e }}
+                    </div>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}
@@ -495,9 +527,12 @@ class ConversationTrace:
                     content.classList.toggle('expanded');
                     icon.classList.toggle('expanded');
                 }
-                // Expand first message by default
-                if (document.getElementById('content-0')) {
-                    toggleMessage(0);
+                // Expand all messages by default
+                const numMessages = {{ history|length }};
+                for (let i = 0; i < numMessages; i++) {
+                    if (document.getElementById('content-' + i)) {
+                        toggleMessage(i);
+                    }
                 }
             </script>
         </body>
@@ -685,26 +720,26 @@ class ConversationTrace:
             debug: Enable debug mode
         """
         app = self.create_web_app()
-        print(f"Starting conversation trace web server at http://{host}:{port}")
+        print(f"Starting tracer web server at http://{host}:{port}")
         print(f"Cache directory: {self.cache_dir.resolve()}")
         app.run(host=host, port=port, debug=debug)
 
 
-# Global trace instance
-_global_trace: ConversationTrace | None = None
+# Global tracer instance
+_global_tracer: Tracer | None = None
 
 
-def get_trace(cache_dir: str = "cache") -> ConversationTrace:
+def get_tracer(cache_dir: str = "cache") -> Tracer:
     """
-    Get the global conversation trace instance.
+    Get the global tracer instance.
 
     Args:
         cache_dir: Directory to store conversation history files
 
     Returns:
-        ConversationTrace instance
+        Tracer instance
     """
-    global _global_trace
-    if _global_trace is None:
-        _global_trace = ConversationTrace(cache_dir=cache_dir)
-    return _global_trace
+    global _global_tracer
+    if _global_tracer is None:
+        _global_tracer = Tracer(cache_dir=cache_dir)
+    return _global_tracer

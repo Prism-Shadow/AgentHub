@@ -21,7 +21,7 @@ import pytest
 from flask import Flask
 
 from agenthub import AutoLLMClient
-from agenthub.monitor import ConversationTrace
+from agenthub.tracer import Tracer
 
 
 AVAILABLE_MODELS = []
@@ -42,15 +42,15 @@ def temp_cache_dir():
 
 
 def test_conversation_monitor_init(temp_cache_dir):
-    """Test ConversationTrace initialization."""
-    monitor = ConversationTrace(cache_dir=temp_cache_dir)
+    """Test Tracer initialization."""
+    monitor = Tracer(cache_dir=temp_cache_dir)
     assert monitor.cache_dir == Path(temp_cache_dir)
     assert monitor.cache_dir.exists()
 
 
 def test_save_history(temp_cache_dir):
     """Test saving conversation history to a file."""
-    monitor = ConversationTrace(cache_dir=temp_cache_dir)
+    monitor = Tracer(cache_dir=temp_cache_dir)
 
     # Create sample history
     history = [
@@ -89,7 +89,7 @@ def test_save_history(temp_cache_dir):
 
 def test_save_history_creates_directories(temp_cache_dir):
     """Test that saving history creates necessary directories."""
-    monitor = ConversationTrace(cache_dir=temp_cache_dir)
+    monitor = Tracer(cache_dir=temp_cache_dir)
 
     history = [{"role": "user", "content_items": [{"type": "text", "text": "Test"}]}]
 
@@ -104,7 +104,7 @@ def test_save_history_creates_directories(temp_cache_dir):
 
 def test_save_history_overwrites_existing(temp_cache_dir):
     """Test that saving history overwrites existing files."""
-    monitor = ConversationTrace(cache_dir=temp_cache_dir)
+    monitor = Tracer(cache_dir=temp_cache_dir)
 
     history1 = [{"role": "user", "content_items": [{"type": "text", "text": "First message"}]}]
 
@@ -134,7 +134,7 @@ def test_save_history_overwrites_existing(temp_cache_dir):
 
 def test_format_history_with_different_content_types(temp_cache_dir):
     """Test formatting history with different content item types."""
-    monitor = ConversationTrace(cache_dir=temp_cache_dir)
+    monitor = Tracer(cache_dir=temp_cache_dir)
 
     history = [
         {"role": "user", "content_items": [{"type": "text", "text": "What's in this image?"}]},
@@ -168,7 +168,7 @@ def test_format_history_with_different_content_types(temp_cache_dir):
 
 def test_web_app_creation(temp_cache_dir):
     """Test web application creation."""
-    monitor = ConversationTrace(cache_dir=temp_cache_dir)
+    monitor = Tracer(cache_dir=temp_cache_dir)
     app = monitor.create_web_app()
     assert app is not None
     assert isinstance(app, Flask)
@@ -176,18 +176,18 @@ def test_web_app_creation(temp_cache_dir):
 
 def test_web_app_browse_empty_directory(temp_cache_dir):
     """Test browsing an empty cache directory."""
-    monitor = ConversationTrace(cache_dir=temp_cache_dir)
+    monitor = Tracer(cache_dir=temp_cache_dir)
     app = monitor.create_web_app()
 
     with app.test_client() as client:
         response = client.get("/")
         assert response.status_code == 200
-        assert b"Conversation Trace" in response.data
+        assert b"Tracer" in response.data
 
 
 def test_web_app_browse_with_files(temp_cache_dir):
     """Test browsing cache directory with files."""
-    monitor = ConversationTrace(cache_dir=temp_cache_dir)
+    monitor = Tracer(cache_dir=temp_cache_dir)
 
     # Create some test files
     history = [{"role": "user", "content_items": [{"type": "text", "text": "Test"}]}]
@@ -220,7 +220,7 @@ def test_web_app_browse_with_files(temp_cache_dir):
 
 def test_web_app_security_check(temp_cache_dir):
     """Test that web app prevents access outside cache directory."""
-    monitor = ConversationTrace(cache_dir=temp_cache_dir)
+    monitor = Tracer(cache_dir=temp_cache_dir)
     app = monitor.create_web_app()
 
     with app.test_client() as client:
@@ -231,7 +231,7 @@ def test_web_app_security_check(temp_cache_dir):
 
 def test_web_app_nonexistent_path(temp_cache_dir):
     """Test accessing a nonexistent path."""
-    monitor = ConversationTrace(cache_dir=temp_cache_dir)
+    monitor = Tracer(cache_dir=temp_cache_dir)
     app = monitor.create_web_app()
 
     with app.test_client() as client:
@@ -244,10 +244,10 @@ def test_web_app_nonexistent_path(temp_cache_dir):
 async def test_monitoring_integration(model, temp_cache_dir):
     """Test monitoring integration with AutoLLMClient."""
     # Use a custom cache directory
-    from agenthub import monitor
+    from agenthub import tracer
 
-    original_monitor = monitor._global_trace
-    monitor._global_trace = ConversationTrace(cache_dir=temp_cache_dir)
+    original_tracer = tracer._global_tracer
+    tracer._global_tracer = Tracer(cache_dir=temp_cache_dir)
 
     try:
         client = AutoLLMClient(model=model)
@@ -268,18 +268,18 @@ async def test_monitoring_integration(model, temp_cache_dir):
         assert "ASSISTANT:" in content
 
     finally:
-        # Restore original monitor
-        monitor._global_trace = original_monitor
+        # Restore original tracer
+        tracer._global_tracer = original_tracer
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
 async def test_monitoring_updates_on_multiple_messages(model, temp_cache_dir):
     """Test that monitoring file is updated with each new message."""
-    from agenthub import monitor
+    from agenthub import tracer
 
-    original_monitor = monitor._global_trace
-    monitor._global_trace = ConversationTrace(cache_dir=temp_cache_dir)
+    original_tracer = tracer._global_tracer
+    tracer._global_tracer = Tracer(cache_dir=temp_cache_dir)
 
     try:
         client = AutoLLMClient(model=model)
@@ -304,4 +304,4 @@ async def test_monitoring_updates_on_multiple_messages(model, temp_cache_dir):
         assert "Second question" in content2
 
     finally:
-        monitor._global_trace = original_monitor
+        tracer._global_tracer = original_tracer

@@ -14,11 +14,12 @@
 # limitations under the License.
 
 """
-Example demonstrating conversation monitoring functionality.
+Example demonstrating conversation tracing functionality.
 
 This example shows how to:
 1. Use monitor_path in UniConfig to save conversation history to files
 2. Start a web server to browse and view saved conversations
+3. Use tool calling with tracing
 """
 
 import asyncio
@@ -26,20 +27,30 @@ import os
 import threading
 import time
 
-from agenthub import AutoLLMClient, get_trace
+from agenthub import AutoLLMClient, get_tracer
+
+
+def get_weather(location: str) -> str:
+    """Mock function to get weather for a location."""
+    weather_data = {
+        "London": "15°C and cloudy",
+        "San Francisco": "18°C and sunny",
+        "Tokyo": "22°C and clear",
+    }
+    return weather_data.get(location, "20°C and partly cloudy")
 
 
 async def run_monitored_conversation():
-    """Run a conversation with monitoring enabled."""
+    """Run conversations with tracing enabled."""
     # Get model from environment variable, default to gemini-3-flash-preview
     model = os.getenv("MODEL", "gemini-3-flash-preview")
     print(f"Using model: {model}")
 
     client = AutoLLMClient(model=model)
 
-    # First conversation - agent1
+    # First conversation - agent1 (simple conversation)
     print("\n" + "=" * 60)
-    print("Agent 1 Conversation")
+    print("Agent 1 Conversation (Simple)")
     print("=" * 60)
 
     # Configure with monitor_path to save history (no file extension)
@@ -69,32 +80,68 @@ async def run_monitored_conversation():
 
     print("\nConversation saved to cache/agent1/conversation_001.json and .txt")
 
-    # Second conversation - agent2
+    # Second conversation - agent2 (with tool calling)
     client2 = AutoLLMClient(model=model)
     print("\n" + "=" * 60)
-    print("Agent 2 Conversation")
+    print("Agent 2 Conversation (With Tool Calling)")
     print("=" * 60)
 
-    config2 = {"monitor_path": "agent2/session_123", "temperature": 0.7}
+    # Define the weather function
+    weather_function = {
+        "name": "get_weather",
+        "description": "Gets the current weather for a given location.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "The city name, e.g. San Francisco",
+                },
+            },
+            "required": ["location"],
+        },
+    }
 
-    query3 = "What is 2+2?"
+    config2 = {"monitor_path": "agent2/session_123", "temperature": 0.7, "tools": [weather_function]}
+
+    query3 = "What's the weather in London?"
     print(f"\nUser: {query3}")
-    print("Assistant:", end=" ")
+    print("Assistant:")
+
+    # First turn - model will request tool call
     async for event in client2.streaming_response_stateful(
         message={"role": "user", "content_items": [{"type": "text", "text": query3}]}, config=config2
     ):
         for item in event["content_items"]:
             if item["type"] == "text":
-                print(item["text"], end="", flush=True)
-    print()
+                print(f"  Text: {item['text']}")
+            elif item["type"] == "tool_call":
+                print(f"  Tool Call: {item['name']}({item['argument']})")
+                # Execute the tool
+                result = get_weather(item["argument"]["location"])
+                print(f"  Tool Result: {result}")
+
+                # Send tool result back
+                async for event2 in client2.streaming_response_stateful(
+                    message={
+                        "role": "user",
+                        "content_items": [
+                            {"type": "tool_result", "result": result, "tool_call_id": item["tool_call_id"]}
+                        ],
+                    },
+                    config=config2,
+                ):
+                    for item2 in event2["content_items"]:
+                        if item2["type"] == "text":
+                            print(f"  Final Answer: {item2['text']}")
 
     print("\nConversation saved to cache/agent2/session_123.json and .txt")
 
 
 def start_web_server():
     """Start the web server in a background thread."""
-    trace = get_trace()
-    trace.start_web_server(host="127.0.0.1", port=5000, debug=False)
+    tracer = get_tracer()
+    tracer.start_web_server(host="127.0.0.1", port=5000, debug=False)
 
 
 async def main():

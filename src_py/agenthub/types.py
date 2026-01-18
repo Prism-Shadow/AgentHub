@@ -35,7 +35,7 @@ FinishReason = Literal["stop", "length", "unknown"]
 class TextContentItem(TypedDict):
     type: Literal["text"]
     text: str
-    signature: NotRequired[str]
+    signature: NotRequired[str | bytes]
     tool_call_id: NotRequired[str]
 
 
@@ -47,7 +47,7 @@ class ImageContentItem(TypedDict):
 class ThinkingContentItem(TypedDict):
     type: Literal["thinking"]
     thinking: str
-    signature: NotRequired[str]
+    signature: NotRequired[str | bytes]
 
 
 class ToolCallContentItem(TypedDict):
@@ -55,7 +55,7 @@ class ToolCallContentItem(TypedDict):
     name: str
     argument: dict[str, Any]
     tool_call_id: str
-    signature: NotRequired[str]
+    signature: NotRequired[str | bytes]
 
 
 class PartialToolCallContentItem(TypedDict):
@@ -63,7 +63,7 @@ class PartialToolCallContentItem(TypedDict):
     name: str
     argument: str
     tool_call_id: str
-    signature: NotRequired[str]
+    signature: NotRequired[str | bytes]
 
 
 class ToolResultContentItem(TypedDict):
