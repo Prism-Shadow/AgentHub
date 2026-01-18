@@ -169,6 +169,13 @@ class LLMClient(ABC):
             assistant_message = self.concat_uni_events_to_uni_message(events)
             self._history.append(assistant_message)
 
+        # Save history to file if trace_id is specified
+        if config.get("trace_id"):
+            from .tracer import Tracer
+
+            tracer = Tracer()
+            tracer.save_history(self._history, config["trace_id"], config)
+
     def clear_history(self) -> None:
         """Clear the message history."""
         self._history.clear()

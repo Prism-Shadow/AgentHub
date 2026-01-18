@@ -232,6 +232,47 @@ config = {
     "tools": [tool_definition],
     "tool_choice": "auto",  # "auto", "required", "none", or ["tool_name"]
     "thinking_level": ThinkingLevel.HIGH,
-    "system_prompt": "You are a helpful assistant"
+    "system_prompt": "You are a helpful assistant",
+    "trace_id": "agent1/conversation_001"  # Optional: save conversation trace
 }
 ```
+
+## Conversation Tracing
+
+AgentHub provides a built-in `Tracer` to save and browse conversation history. When you specify a `trace_id` in the config, conversations are automatically saved to both JSON and TXT formats.
+
+### Basic Usage
+
+```python
+from agenthub import AutoLLMClient
+
+client = AutoLLMClient(model="gemini-3-flash-preview")
+
+# Add trace_id to config
+config = {"trace_id": "agent1/conversation_001"}
+
+async for event in client.streaming_response_stateful(
+    message={"role": "user", "content_items": [{"type": "text", "text": "Hello"}]},
+    config=config
+):
+    pass  # Conversation is automatically saved
+```
+
+The default cache directory is `cache`, you can change it by setting `AGENTHUB_CACHE_DIR` environment variable.
+
+This creates two files in the `cache` directory:
+- `cache/agent1/conversation_001.json` - Structured data with full history and config
+- `cache/agent1/conversation_001.txt` - Human-readable conversation format
+
+### Browsing Traces with Web Interface
+
+Start a web server to browse and view saved conversations:
+
+```python
+from agenthub import Tracer
+
+# Start web server
+Tracer().start_web_server(host="127.0.0.1", port=5000)
+```
+
+Then visit `http://127.0.0.1:5000` in your browser to browse saved conversations.

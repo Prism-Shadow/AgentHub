@@ -354,3 +354,6 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Conversation monitor cache
+cache/
