@@ -48,43 +48,25 @@ async def run_traced_chat():
 
     client = AutoLLMClient(model=model)
 
-    # First conversation - agent1 (simple conversation)
-    print("\n" + "=" * 60)
-    print("Agent 1 Conversation (Simple)")
-    print("=" * 60)
-
     # Configure with trace_id to save history (no file extension)
     config = {"trace_id": "agent1/conversation_001", "temperature": 0.7}
 
     query1 = "My name is Alice and I like cats."
-    print(f"\nUser: {query1}")
-    print("Assistant:", end=" ")
-    async for event in client.streaming_response_stateful(
+    async for _ in client.streaming_response_stateful(
         message={"role": "user", "content_items": [{"type": "text", "text": query1}]}, config=config
     ):
-        for item in event["content_items"]:
-            if item["type"] == "text":
-                print(item["text"], end="", flush=True)
-    print()
+        pass
 
     query2 = "What's my name and what do I like?"
-    print(f"\nUser: {query2}")
-    print("Assistant:", end=" ")
-    async for event in client.streaming_response_stateful(
+    async for _ in client.streaming_response_stateful(
         message={"role": "user", "content_items": [{"type": "text", "text": query2}]}, config=config
     ):
-        for item in event["content_items"]:
-            if item["type"] == "text":
-                print(item["text"], end="", flush=True)
-    print()
+        pass
 
     print("\nConversation saved to cache/agent1/conversation_001.json and .txt")
 
     # Second conversation - agent2 (with tool calling)
     client2 = AutoLLMClient(model=model)
-    print("\n" + "=" * 60)
-    print("Agent 2 Conversation (With Tool Calling)")
-    print("=" * 60)
 
     # Define the weather function
     weather_function = {
@@ -101,24 +83,15 @@ async def run_traced_chat():
             "required": ["location"],
         },
     }
-
-    config2 = {"trace_id": "agent2/session_123", "temperature": 0.7, "tools": [weather_function]}
+    config2 = {"trace_id": "session_123", "temperature": 0.7, "tools": [weather_function]}
 
     query3 = "What's the weather in London?"
-    print(f"\nUser: {query3}")
-    print("Assistant:")
-
     # First turn - model will request tool call
     events = []
     async for event in client2.streaming_response_stateful(
         message={"role": "user", "content_items": [{"type": "text", "text": query3}]}, config=config2
     ):
         events.append(event)
-        for item in event["content_items"]:
-            if item["type"] == "text":
-                print(f"  Text: {item['text']}")
-            elif item["type"] == "tool_call":
-                print(f"  Tool Call: {item['name']}({item['argument']})")
 
     # Check if there's a tool call in the events
     tool_call = None
@@ -127,16 +100,16 @@ async def run_traced_chat():
             if item["type"] == "tool_call":
                 tool_call = item
                 break
+
         if tool_call:
             break
 
     if tool_call:
         # Execute the tool
         result = get_weather(tool_call["argument"]["location"])
-        print(f"  Tool Result: {result}")
 
         # Send tool result back
-        async for event in client2.streaming_response_stateful(
+        async for _ in client2.streaming_response_stateful(
             message={
                 "role": "user",
                 "content_items": [
@@ -145,9 +118,7 @@ async def run_traced_chat():
             },
             config=config2,
         ):
-            for item in event["content_items"]:
-                if item["type"] == "text":
-                    print(f"  Final Answer: {item['text']}")
+            pass
 
     print("\nConversation saved to cache/agent2/session_123.json and .txt")
 
@@ -164,9 +135,6 @@ async def main():
     print("Conversation Trace Example")
     print("=" * 60)
 
-    # Run traced chat
-    await run_traced_chat()
-
     print("\n" + "=" * 60)
     print("Starting Web Server")
     print("=" * 60)
@@ -176,6 +144,9 @@ async def main():
     # Start web server in a background thread
     server_thread = threading.Thread(target=start_web_server, daemon=True)
     server_thread.start()
+
+    # Run traced chat
+    await run_traced_chat()
 
     # Keep the main thread alive
     try:

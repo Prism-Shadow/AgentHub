@@ -21,6 +21,7 @@ and serve them via a web interface for real-time monitoring.
 
 import base64
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -38,13 +39,14 @@ class Tracer:
     and provides a web server for browsing and viewing the saved conversations.
     """
 
-    def __init__(self, cache_dir: str = "cache"):
+    def __init__(self, cache_dir: str | None = None):
         """
         Initialize the tracer.
 
         Args:
             cache_dir: Directory to store conversation history files
         """
+        cache_dir = cache_dir or os.getenv("AGENTHUB_CACHE_DIR", "cache")
         self.cache_dir = Path(cache_dir).absolute()
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
