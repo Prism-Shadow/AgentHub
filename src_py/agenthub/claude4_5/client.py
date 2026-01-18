@@ -276,8 +276,8 @@ class Claude4_5Client(LLMClient):
                         partial_tool_call["argument"] = ""
                         partial_tool_call["tool_call_id"] = event["content_items"][0]["tool_call_id"]
 
-                        if event["usage_metadata"] is not None:
-                            partial_usage["prompt_tokens"] = event["usage_metadata"]["prompt_tokens"]
+                    if event["usage_metadata"] is not None:
+                        partial_usage["prompt_tokens"] = event["usage_metadata"]["prompt_tokens"]
 
                 elif event["event"] == "delta":
                     if event["content_items"][0]["type"] == "partial_tool_call":
