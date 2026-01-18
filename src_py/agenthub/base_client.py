@@ -169,6 +169,13 @@ class LLMClient(ABC):
             assistant_message = self.concat_uni_events_to_uni_message(events)
             self._history.append(assistant_message)
 
+        # Save history to file if monitor_path is specified
+        if config.get("monitor_path"):
+            from .monitor import get_monitor
+
+            monitor = get_monitor()
+            monitor.save_history(self._history, config["monitor_path"])
+
     def clear_history(self) -> None:
         """Clear the message history."""
         self._history.clear()
