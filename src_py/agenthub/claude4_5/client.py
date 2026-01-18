@@ -238,6 +238,9 @@ class Claude4_5Client(LLMClient):
         elif claude_event_type == "message_stop":
             event_type = "stop"
 
+        elif claude_event_type in ["text", "thinking", "signature", "input_json"]:
+            event_type = "unused"
+
         else:
             raise ValueError(f"Unknown output: {model_output}")
 

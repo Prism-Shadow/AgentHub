@@ -28,7 +28,7 @@ class ThinkingLevel(StrEnum):
 # Tool choice can be a literal string or a list of tool names
 ToolChoice = Literal["auto", "required", "none"] | list[str]
 Role = Literal["user", "assistant"]
-Event = Literal["start", "delta", "stop"]
+Event = Literal["start", "delta", "stop", "unused"]
 FinishReason = Literal["stop", "length", "unknown"]
 
 
