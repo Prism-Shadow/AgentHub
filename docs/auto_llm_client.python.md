@@ -15,6 +15,9 @@ from agenthub import AutoLLMClient
 
 # Initialize with model name
 client = AutoLLMClient(model="gemini-3-flash-preview")
+
+# Optionally specify API key (if not using environment variables)
+client = AutoLLMClient(model="gemini-3-flash-preview", api_key="your-api-key")
 ```
 
 The client automatically selects the appropriate backend based on the model name.
@@ -117,21 +120,21 @@ import asyncio
 import json
 from agenthub import AutoLLMClient
 
-def get_weather(location: str) -> str:
-    """Mock function to get weather."""
+def get_current_temperature(location: str) -> str:
+    """Mock function to get current temperature for a location."""
     return f"Temperature in {location}: 22°C"
 
 async def main():
     # Define tool
     weather_function = {
-        "name": "get_weather",
-        "description": "Gets the current weather for a given location.",
+        "name": "get_current_temperature",
+        "description": "Gets the current temperature for a given location.",
         "parameters": {
             "type": "object",
             "properties": {
                 "location": {
                     "type": "string",
-                    "description": "The city name"
+                    "description": "The city name, e.g. San Francisco"
                 }
             },
             "required": ["location"]
@@ -146,7 +149,7 @@ async def main():
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
-            "content_items": [{"type": "text", "text": "What's the weather in London?"}]
+            "content_items": [{"type": "text", "text": "What's the temperature in London?"}]
         },
         config=config
     ):
@@ -165,7 +168,7 @@ async def main():
 
     # Execute function and send result back with tool_call_id
     if tool_call:
-        result = get_weather(**tool_call["argument"])
+        result = get_current_temperature(**tool_call["argument"])
 
         # IMPORTANT: Include tool_call_id in the tool response
         async for event in client.streaming_response_stateful(
@@ -192,7 +195,7 @@ asyncio.run(main())
 
 ```python
 {
-    "role": "user" | "assistant" | "tool",
+    "role": "user" | "assistant",
     "content_items": [
         {"type": "text", "text": "Hello"},
         {"type": "image_url", "image_url": "https://..."}
