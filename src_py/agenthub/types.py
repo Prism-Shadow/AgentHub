@@ -72,19 +72,7 @@ class ToolResultContentItem(TypedDict):
     tool_call_id: str
 
 
-class ExtraContentItem(TypedDict):
-    type: Literal["extra"]
-    data: str
-
-
-ContentItem = (
-    TextContentItem
-    | ImageContentItem
-    | ThinkingContentItem
-    | ToolCallContentItem
-    | ToolResultContentItem
-    | ExtraContentItem
-)
+ContentItem = TextContentItem | ImageContentItem | ThinkingContentItem | ToolCallContentItem | ToolResultContentItem
 
 PartialContentItem = ContentItem | PartialToolCallContentItem
 

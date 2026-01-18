@@ -9,7 +9,7 @@ AgentHub is the only SDK you need to connect to state-of-the-art LLMs (GPT-5/Cla
 ## Repository Structure
 
 - `src_py/` - Python implementation
-  - `agent_hub/` - Main Python package
+  - `agenthub/` - Main Python package
   - `pyproject.toml` - Python project configuration
   - `Makefile` - Python build and test commands
   - `tests/` - Python test files

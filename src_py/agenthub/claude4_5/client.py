@@ -157,8 +157,6 @@ class Claude4_5Client(LLMClient):
                     content_blocks.append(
                         {"type": "tool_result", "content": item["result"], "tool_use_id": item["tool_call_id"]}
                     )
-                elif item["type"] == "unknown":
-                    content_blocks.append({"type": "redacted_thinking", "data": item["data"]})
                 else:
                     raise ValueError(f"Unknown item: {item}")
 
@@ -187,11 +185,7 @@ class Claude4_5Client(LLMClient):
         if claude_event_type == "content_block_start":
             event_type = "start"
             block = model_output.content_block
-            if block.type == "thinking":
-                content_items.append({"type": "thinking", "thinking": ""})
-            elif block.type == "text":
-                content_items.append({"type": "text", "text": ""})
-            elif block.type == "tool_use":
+            if block.type == "tool_use":
                 content_items.append(
                     {"type": "partial_tool_call", "name": block.name, "argument": "", "tool_call_id": block.id}
                 )
@@ -208,10 +202,10 @@ class Claude4_5Client(LLMClient):
             elif delta.type == "signature_delta":
                 content_items.append({"type": "thinking", "thinking": "", "signature": delta.signature})
 
-        elif event_type == "content_block_stop":
+        elif claude_event_type == "content_block_stop":
             event_type = "stop"
 
-        elif event_type == "message_start":
+        elif claude_event_type == "message_start":
             event_type = "start"
             message = model_output.message
             if getattr(message, "usage", None):
@@ -221,7 +215,7 @@ class Claude4_5Client(LLMClient):
                     "response_tokens": None,
                 }
 
-        elif event_type == "message_delta":
+        elif claude_event_type == "message_delta":
             event_type = "stop"
             delta = model_output.delta
             if getattr(delta, "stop_reason", None):
@@ -240,7 +234,7 @@ class Claude4_5Client(LLMClient):
                     "response_tokens": model_output.usage.output_tokens,
                 }
 
-        elif event_type == "message_stop":
+        elif claude_event_type == "message_stop":
             event_type = "stop"
 
         else:

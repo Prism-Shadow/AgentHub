@@ -11,7 +11,7 @@ This document demonstrates how to use `AutoLLMClient` for unified LLM interactio
 Create a client by specifying the model name:
 
 ```python
-from agent_adapter import AutoLLMClient
+from agenthub import AutoLLMClient
 
 # Initialize with model name
 client = AutoLLMClient(model="gemini-3-flash-preview")
@@ -27,7 +27,7 @@ Stateless method that requires passing the full message history on each call:
 
 ```python
 import asyncio
-from agent_adapter import AutoLLMClient
+from agenthub import AutoLLMClient
 
 async def main():
     client = AutoLLMClient(model="gemini-3-flash-preview")
@@ -54,7 +54,7 @@ Stateful method that maintains conversation history internally:
 
 ```python
 import asyncio
-from agent_adapter import AutoLLMClient
+from agenthub import AutoLLMClient
 
 async def main():
     client = AutoLLMClient(model="gemini-3-flash-preview")
@@ -115,7 +115,7 @@ When using tools, you must handle `tool_call_id` correctly:
 ```python
 import asyncio
 import json
-from agent_adapter import AutoLLMClient
+from agenthub import AutoLLMClient
 
 def get_weather(location: str) -> str:
     """Mock function to get weather."""
@@ -161,6 +161,7 @@ async def main():
                 function_call = item
                 tool_call_id = item["tool_call_id"]
                 break
+
         if function_call:
             break
 
@@ -222,6 +223,8 @@ When responding to a function call, include the `tool_call_id` in the text conte
 ## Configuration Options
 
 ```python
+from agenthub import ThinkingLevel
+
 config = {
     "max_tokens": 500,
     "temperature": 1.0,
@@ -230,17 +233,4 @@ config = {
     "thinking_level": ThinkingLevel.HIGH,
     "system_prompt": "You are a helpful assistant"
 }
-```
-
-## Type Definitions
-
-```python
-from agent_adapter import (
-    AutoLLMClient,
-    UniMessage,
-    UniEvent,
-    UniConfig,
-    ThinkingLevel,
-    ToolChoice
-)
 ```
