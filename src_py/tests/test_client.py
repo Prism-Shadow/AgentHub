@@ -56,7 +56,7 @@ async def test_streaming_response_with_all_parameters(model):
     """Test stream generation with all optional parameters."""
     client = AutoLLMClient(model=model)
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is 2+3?"}]}]
-    config = {"max_tokens": 100, "temperature": 0.7, "thinking_summary": True, "thinking_level": ThinkingLevel.HIGH}
+    config = {"max_tokens": 8192, "temperature": 0.7, "thinking_summary": True, "thinking_level": ThinkingLevel.LOW}
 
     text = ""
     async for event in client.streaming_response(messages=messages, config=config):
