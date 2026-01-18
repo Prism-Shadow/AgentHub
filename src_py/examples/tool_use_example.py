@@ -81,12 +81,10 @@ async def main():
 
     # Check if there's a function call in the last event
     tool_call1 = None
-    tool_call_id1 = None
     for event in events:
         for item in event["content_items"]:
             if item["type"] == "tool_call":
                 tool_call1 = item
-                tool_call_id1 = item["tool_call_id"]
                 break
 
         if tool_call1:
@@ -107,7 +105,7 @@ async def main():
         async for event in client.streaming_response_stateful(
             message={
                 "role": "user",
-                "content_items": [{"type": "tool_result", "result": result, "tool_call_id": tool_call_id1}],
+                "content_items": [{"type": "tool_result", "result": result, "tool_call_id": tool_call1["tool_call_id"]}],
             },
             config=config,
         ):
@@ -127,12 +125,10 @@ async def main():
 
         # Check for another function call
         tool_call2 = None
-        tool_call_id2 = None
         for event in events2:
             for item in event["content_items"]:
                 if item["type"] == "tool_call":
                     tool_call2 = item
-                    tool_call_id2 = item["tool_call_id"]
                     break
 
             if tool_call2:
@@ -153,7 +149,7 @@ async def main():
             async for event in client.streaming_response_stateful(
                 message={
                     "role": "user",
-                    "content_items": [{"type": "tool_result", "result": result2, "tool_call_id": tool_call_id2}],
+                    "content_items": [{"type": "tool_result", "result": result2, "tool_call_id": tool_call2["tool_call_id"]}],
                 },
                 config=config,
             ):

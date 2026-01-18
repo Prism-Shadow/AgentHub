@@ -267,7 +267,7 @@ class Claude4_5Client(LLMClient):
             async for event in stream:
                 event = self.transform_model_output_to_uni_event(event)
                 if event["event"] == "start":
-                    if event["content_items"][0]["type"] == "partial_tool_call":
+                    if event["content_items"] and event["content_items"][0]["type"] == "partial_tool_call":
                         partial_tool_call["name"] = event["content_items"][0]["name"]
                         partial_tool_call["argument"] = ""
                         partial_tool_call["tool_call_id"] = event["content_items"][0]["tool_call_id"]
