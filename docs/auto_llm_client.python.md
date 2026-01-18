@@ -120,21 +120,21 @@ import asyncio
 import json
 from agenthub import AutoLLMClient
 
-def get_current_temperature(location: str) -> str:
-    """Mock function to get current temperature for a location."""
+def get_weather(location: str) -> str:
+    """Mock function to get weather."""
     return f"Temperature in {location}: 22°C"
 
 async def main():
     # Define tool
     weather_function = {
-        "name": "get_current_temperature",
-        "description": "Gets the current temperature for a given location.",
+        "name": "get_weather",
+        "description": "Gets the current weather for a given location.",
         "parameters": {
             "type": "object",
             "properties": {
                 "location": {
                     "type": "string",
-                    "description": "The city name, e.g. San Francisco"
+                    "description": "The city name"
                 }
             },
             "required": ["location"]
@@ -168,7 +168,7 @@ async def main():
 
     # Execute function and send result back with tool_call_id
     if tool_call:
-        result = get_current_temperature(**tool_call["argument"])
+        result = get_weather(**tool_call["argument"])
 
         # IMPORTANT: Include tool_call_id in the tool response
         async for event in client.streaming_response_stateful(
@@ -199,6 +199,7 @@ asyncio.run(main())
     "content_items": [
         {"type": "text", "text": "Hello"},
         {"type": "image_url", "image_url": "https://..."}
+        {"type": "tool_call", "name": "get_weather", "argument": {"location": "London"}, "tool_call_id": "call_abc123"}
     ]
 }
 ```
@@ -213,7 +214,7 @@ When responding to a tool call, include the `tool_call_id` in the result content
     "content_items": [
         {
             "type": "tool_result",
-            "result": "Tool result data",
+            "result": "London is 22°C today.",
             "tool_call_id": "call_abc123"  # From tool_call event
         }
     ]
