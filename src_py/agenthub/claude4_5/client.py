@@ -97,6 +97,7 @@ class Claude4_5Client(LLMClient):
         # Convert thinking configuration
         # NOTE: Claude always provides thinking summary
         if config.get("thinking_level") is not None:
+            claude_config["temperature"] = 1.0  # `temperature` may only be set to 1 when thinking is enabled
             claude_config["thinking"] = self._convert_thinking_level_to_budget(config["thinking_level"])
 
         # Convert tools to Claude's tool schema
