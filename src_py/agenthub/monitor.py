@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Conversation monitoring module for saving and viewing conversation history.
+Conversation trace module for saving and viewing conversation history.
 
 This module provides functionality to save conversation history to local files
 and serve them via a web interface for real-time monitoring.
@@ -428,7 +428,7 @@ class ConversationTrace:
                 {% for key, value in config.items() %}
                     {% if key != 'monitor_path' %}
                     <div class="config-item">
-                        <strong>{{ key }}:</strong> {{ value }}
+                        <strong>{{ key|e }}:</strong> {{ value|e }}
                     </div>
                     {% endif %}
                 {% endfor %}
@@ -447,25 +447,25 @@ class ConversationTrace:
                 <div class="message-content" id="content-{{ msg_idx }}">
                     {% for item in message.content_items %}
                         <div class="content-item">
-                            <div class="content-type">{{ item.type }}</div>
+                            <div class="content-type">{{ item.type|e }}</div>
                             {% if item.type == 'text' %}
-                                <div class="content-text">{{ item.text }}</div>
+                                <div class="content-text">{{ item.text|e }}</div>
                             {% elif item.type == 'thinking' %}
-                                <div class="content-text thinking">{{ item.thinking }}</div>
+                                <div class="content-text thinking">{{ item.thinking|e }}</div>
                             {% elif item.type == 'tool_call' %}
                                 <div class="tool-call">
-                                    <strong>Tool:</strong> {{ item.name }}<br>
-                                    <strong>Arguments:</strong> {{ item.argument }}<br>
-                                    <strong>Call ID:</strong> {{ item.tool_call_id }}
+                                    <strong>Tool:</strong> {{ item.name|e }}<br>
+                                    <strong>Arguments:</strong> {{ item.argument|e }}<br>
+                                    <strong>Call ID:</strong> {{ item.tool_call_id|e }}
                                 </div>
                             {% elif item.type == 'tool_result' %}
                                 <div class="tool-result">
-                                    <strong>Result:</strong> {{ item.result }}<br>
-                                    <strong>Call ID:</strong> {{ item.tool_call_id }}
+                                    <strong>Result:</strong> {{ item.result|e }}<br>
+                                    <strong>Call ID:</strong> {{ item.tool_call_id|e }}
                                 </div>
                             {% elif item.type == 'image_url' %}
                                 <div class="content-text">
-                                    <strong>Image URL:</strong> {{ item.image_url }}
+                                    <strong>Image URL:</strong> {{ item.image_url|e }}
                                 </div>
                             {% endif %}
                         </div>
@@ -570,8 +570,8 @@ class ConversationTrace:
             <div class="breadcrumb">
                 <strong>Path:</strong> {{ breadcrumb|safe }}
             </div>
-            <a href="{{ back_url }}" class="back-button">← Back to Directory</a>
-            <div class="file-content">{{ content }}</div>
+            <a href="{{ back_url|e }}" class="back-button">← Back to Directory</a>
+            <div class="file-content">{{ content|e }}</div>
         </body>
         </html>
         """
