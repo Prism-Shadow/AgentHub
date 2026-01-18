@@ -22,7 +22,7 @@ This example shows how to use the AutoLLMClient with automatic conversation hist
 import asyncio
 import os
 
-from agenthub import AutoLLMClient
+from agenthub import AutoLLMClient, ThinkingLevel
 
 
 async def main():
@@ -36,7 +36,7 @@ async def main():
     print(f"Using model: {model}")
 
     client = AutoLLMClient(model=model)
-    config = {"thinking_summary": True}
+    config = {"thinking_summary": True, "thinking_level": ThinkingLevel.HIGH}
 
     # First message
     query1 = "My name is Alice"
