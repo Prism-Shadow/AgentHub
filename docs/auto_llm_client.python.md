@@ -15,6 +15,9 @@ from agenthub import AutoLLMClient
 
 # Initialize with model name
 client = AutoLLMClient(model="gemini-3-flash-preview")
+
+# Optionally specify API key (if not using environment variables)
+client = AutoLLMClient(model="gemini-3-flash-preview", api_key="your-api-key")
 ```
 
 The client automatically selects the appropriate backend based on the model name.
@@ -192,10 +195,11 @@ asyncio.run(main())
 
 ```python
 {
-    "role": "user" | "assistant" | "tool",
+    "role": "user" | "assistant",
     "content_items": [
         {"type": "text", "text": "Hello"},
         {"type": "image_url", "image_url": "https://..."}
+        {"type": "tool_call", "name": "get_weather", "argument": {"location": "London"}, "tool_call_id": "call_abc123"}
     ]
 }
 ```
@@ -210,7 +214,7 @@ When responding to a tool call, include the `tool_call_id` in the result content
     "content_items": [
         {
             "type": "tool_result",
-            "result": "Tool result data",
+            "result": "London is 22°C today.",
             "tool_call_id": "call_abc123"  # From tool_call event
         }
     ]
