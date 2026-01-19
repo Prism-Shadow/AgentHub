@@ -65,6 +65,8 @@ class GLM4_7Client(LLMClient):
             return "auto"
         elif tool_choice == "required":
             return "required"
+        else:
+            raise ValueError(f"Unexpected tool_choice value: {tool_choice}")
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """
