@@ -56,6 +56,8 @@ class GLM4_7Client(LLMClient):
     def _convert_tool_choice(self, tool_choice: ToolChoice) -> str | dict[str, Any]:
         """Convert ToolChoice to OpenAI's tool_choice format."""
         if isinstance(tool_choice, list):
+            if len(tool_choice) == 0:
+                raise ValueError("Tool choice list cannot be empty.")
             if len(tool_choice) > 1:
                 raise ValueError("GLM supports only one tool choice.")
             return {"type": "function", "function": {"name": tool_choice[0]}}
@@ -300,22 +302,27 @@ class GLM4_7Client(LLMClient):
             event = self.transform_model_output_to_uni_event(chunk)
 
             if event["event"] == "delta":
-                if event["content_items"] and event["content_items"][0]["type"] == "partial_tool_call":
-                    tool_call_item = event["content_items"][0]
-                    tool_call_id = tool_call_item.get("tool_call_id", "")
+                # Process all content items, looking for partial tool calls
+                has_partial_tool_call = False
+                for content_item in event["content_items"]:
+                    if content_item["type"] == "partial_tool_call":
+                        has_partial_tool_call = True
+                        tool_call_id = content_item.get("tool_call_id", "")
 
-                    if tool_call_id not in partial_tool_call:
-                        partial_tool_call[tool_call_id] = {
-                            "name": tool_call_item.get("name", ""),
-                            "argument": "",
-                            "tool_call_id": tool_call_id,
-                        }
+                        if tool_call_id not in partial_tool_call:
+                            partial_tool_call[tool_call_id] = {
+                                "name": content_item.get("name", ""),
+                                "argument": "",
+                                "tool_call_id": tool_call_id,
+                            }
 
-                    if tool_call_item.get("name"):
-                        partial_tool_call[tool_call_id]["name"] = tool_call_item["name"]
-                    if tool_call_item.get("argument"):
-                        partial_tool_call[tool_call_id]["argument"] += tool_call_item["argument"]
-                else:
+                        if content_item.get("name"):
+                            partial_tool_call[tool_call_id]["name"] = content_item["name"]
+                        if content_item.get("argument"):
+                            partial_tool_call[tool_call_id]["argument"] += content_item["argument"]
+
+                # Only yield the event if it doesn't contain partial tool calls
+                if not has_partial_tool_call:
                     event.pop("event")
                     yield event
 
