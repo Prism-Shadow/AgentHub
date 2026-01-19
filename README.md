@@ -9,7 +9,9 @@ Python sources live in `src_py/`.
 Install from PyPI:
 
 ```bash
-uv install agenthub-python
+uv add agenthub-python
+# or
+uv pip install agenthub-python
 ```
 
 Build from source:

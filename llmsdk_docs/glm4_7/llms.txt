@@ -1,0 +1,98 @@
+# Overview - Z.AI DEVELOPER DOCUMENT
+
+## Docs
+
+- [Agent Chat](https://docs.z.ai/api-reference/agents/agent.md): General Translation: General Translation API provides large model-based multilingual translation services, including general translation, paraphrase translation, two-step translation, and three-pass translation strategies. It supports automatic language detection, glossary customization, translation suggestions, and streaming output. Users only need to call the Translation API, input the text to be processed, specify the source language (auto-detection supported) and target language to receive high-quality translation results.
+
+ Popular Special Effects Videos: Popular special effects videos are intelligent templates launched based on trending features from pan-entertainment platforms, designed to precisely adapt to short video creative production needs. Currently, three effect templates are available: `French Kiss`, `Body Shake Dance`, and `Sexy Me`. After selecting a template, users only need to upload an image and enter corresponding prompts to generate a special effects video.
+
+ GLM Slide/Poster Agent: An intelligent creation agent built for working people and creators. It goes beyond traditional engineering-style assembly tools—supporting one-click generation of slides or posters from natural language instructions. By natively integrating content generation with layout aesthetics and design conventions, it helps you quickly produce polished, professional-grade materials while lowering design barriers and boosting creative efficiency.
+- [Conversation History](https://docs.z.ai/api-reference/agents/agent-conversation.md): This endpoint is used to query the agent conversation history.Only support slides_glm_agent
+- [File Upload](https://docs.z.ai/api-reference/agents/file-upload.md): This API is designed for uploading auxiliary files (such as glossaries, terminology lists) to support the translation service. It allows users to upload reference materials that can enhance translation accuracy and consistency.
+- [Retrieve Result](https://docs.z.ai/api-reference/agents/get-async-result.md): This endpoint is used to query the result of an asynchronous request.
+- [Errors](https://docs.z.ai/api-reference/api-code.md)
+- [Audio Transcriptions](https://docs.z.ai/api-reference/audio/audio-transcriptions.md): Use the [GLM-ASR-2512](/guides/audio/glm-asr-2512) model to transcribe audio files into text, supporting multiple languages and real-time streaming transcription.
+- [Generate Image](https://docs.z.ai/api-reference/image/generate-image.md): Use [GLM-Image](/guides/image/glm-image) series models to generate high-quality images from text prompts. Through quick and accurate understanding of user text descriptions, `AI` image expression becomes more precise and personalized.
+- [Generate Image(Async)](https://docs.z.ai/api-reference/image/generate-image-async.md): Use the [GLM-Image](/guides/image/glm-image) series models to generate high-quality images from text prompts. Through quick and accurate understanding of user text descriptions, `AI` image expression becomes more precise and personalized. Only supports `GLM-Image` model.
+- [Retrieve Result](https://docs.z.ai/api-reference/image/get-image-status.md): This endpoint is used to query the result of an asynchronous request.
+- [Introduction](https://docs.z.ai/api-reference/introduction.md)
+- [Chat Completion](https://docs.z.ai/api-reference/llm/chat-completion.md): Create a chat completion model that generates AI replies for given conversation messages. It supports multimodal inputs (text, images, audio, video, file), offers configurable parameters (like temperature, max tokens, tool use), and supports both streaming and non-streaming output modes.
+- [Rate Limits](https://docs.z.ai/api-reference/rate-limit.md)
+- [Tokenizer](https://docs.z.ai/api-reference/tools/tokenizer.md): `Tokenizer` is used to split text into `tokens` recognizable by the model and calculate the count. It receives user input text, processes it through the model for tokenization, and finally returns the corresponding `token` count. It is suitable for text length evaluation, model input estimation, dialogue context truncation, cost calculation, etc.
+- [Web Reader](https://docs.z.ai/api-reference/tools/web-reader.md): Reads and parses the content of the specified URL. Supports selectable return formats, cache control, image retention, and summary options.
+- [Web Search](https://docs.z.ai/api-reference/tools/web-search.md): The [Web Search](/guides/tools/web-search) is a specialized search engine for large language models. Building upon traditional search engine capabilities like web crawling and ranking, it enhances intent recognition to return results better suited for LLM processing (including webpage titles, URLs, summaries, site names, favicons etc.).
+- [Generate Video(Async)](https://docs.z.ai/api-reference/video/generate-video.md): CogVideoX is a video generation large model developed by Z.AI, equipped with powerful video generation capabilities. Simply inputting text or images allows for effortless video creation.
+
+Vidu: A high-performance video large model that combines high consistency and high dynamism, with precise semantic understanding and exceptional reasoning speed.
+- [Retrieve Result](https://docs.z.ai/api-reference/video/get-video-status.md): This endpoint is used to query the result of an asynchronous request.
+- [Invite Friends, Get Credits](https://docs.z.ai/devpack/credit-campaign-rules.md)
+- [Coding Tool Helper](https://docs.z.ai/devpack/extension/coding-tool-helper.md)
+- [Usage Query Plugin](https://docs.z.ai/devpack/extension/usage-query-plugin.md): Query quota and usage statistics for GLM Coding Plan.
+- [FAQs](https://docs.z.ai/devpack/faq.md)
+- [Web Reader MCP Server](https://docs.z.ai/devpack/mcp/reader-mcp-server.md)
+- [Web Search MCP Server](https://docs.z.ai/devpack/mcp/search-mcp-server.md)
+- [Vision MCP Server](https://docs.z.ai/devpack/mcp/vision-mcp-server.md)
+- [Zread MCP Server](https://docs.z.ai/devpack/mcp/zread-mcp-server.md)
+- [Overview](https://docs.z.ai/devpack/overview.md): AI-powered coding with GLM-4.7 in Claude Code, Cline, OpenCode, Roo Code and more. Plans start at $3/month to help you code faster, smarter, and more reliably.
+- [Quick Start](https://docs.z.ai/devpack/quick-start.md)
+- [Claude Code](https://docs.z.ai/devpack/tool/claude.md): Methods for Using the GLM Coding Plan in Claude Code
+- [Claude Code IDE Plugin](https://docs.z.ai/devpack/tool/claude-for-ide.md): How to use the Claude Code plugin in VS Code and JetBrains with GLM Coding Plan
+- [Cline](https://docs.z.ai/devpack/tool/cline.md): Methods for Using the GLM Coding Plan in Cline Plugin
+- [Crush](https://docs.z.ai/devpack/tool/crush.md): Methods for Using the GLM Coding Plan in Crush
+- [Cursor](https://docs.z.ai/devpack/tool/cursor.md): Methods for using the GLM Coding Plan in Cursor
+- [Factory Droid](https://docs.z.ai/devpack/tool/droid.md): Methods for Using the GLM Coding Plan in Factory Droid
+- [Eigent](https://docs.z.ai/devpack/tool/eigent.md): Methods for Using the GLM Coding Plan in Eigent
+- [Goose](https://docs.z.ai/devpack/tool/goose.md): Methods for Using the GLM Coding Plan in Goose
+- [Kilo Code](https://docs.z.ai/devpack/tool/kilo.md): Methods for Using the GLM Coding Plan in Kilo Code plugin
+- [Open Code](https://docs.z.ai/devpack/tool/opencode.md)
+- [Other Tools](https://docs.z.ai/devpack/tool/others.md): Methods for using the GLM Coding Plan in other tools
+- [Roo Code](https://docs.z.ai/devpack/tool/roo.md): Methods for Using the GLM Coding Plan in Roo Code Plugin
+- [TRAE](https://docs.z.ai/devpack/tool/trae.md): Methods for using the GLM Coding Plan in TRAE
+- [GLM Slide/Poster Agent(beta)](https://docs.z.ai/guides/agents/slide.md): A Slide & Poster Agent powered by the native capabilities of the GLM model — integrating information retrieval, content structuring, and visual layout design, enabling you to effortlessly create professional-grade slides and posters.
+- [Translation Agent](https://docs.z.ai/guides/agents/translation.md)
+- [Video Effect Template Agent](https://docs.z.ai/guides/agents/video-template.md)
+- [GLM-ASR-2512](https://docs.z.ai/guides/audio/glm-asr-2512.md)
+- [Context Caching](https://docs.z.ai/guides/capabilities/cache.md)
+- [Function Calling](https://docs.z.ai/guides/capabilities/function-calling.md)
+- [Tool Streaming Output](https://docs.z.ai/guides/capabilities/stream-tool.md)
+- [Streaming Messages](https://docs.z.ai/guides/capabilities/streaming.md)
+- [Structured Output](https://docs.z.ai/guides/capabilities/struct-output.md)
+- [Deep Thinking](https://docs.z.ai/guides/capabilities/thinking.md)
+- [Thinking Mode](https://docs.z.ai/guides/capabilities/thinking-mode.md): GLM-4.7 offers multiple thinking modes for different scenarios. The sections below explain how to enable each mode, key considerations, and example usage.
+- [HTTP API Calls](https://docs.z.ai/guides/develop/http/introduction.md)
+- [Official Java SDK](https://docs.z.ai/guides/develop/java/introduction.md)
+- [LangChain Integration](https://docs.z.ai/guides/develop/langchain/introduction.md)
+- [OpenAI Python SDK](https://docs.z.ai/guides/develop/openai/python.md)
+- [Official Python SDK](https://docs.z.ai/guides/develop/python/introduction.md)
+- [CogView-4](https://docs.z.ai/guides/image/cogview-4.md)
+- [GLM-Image](https://docs.z.ai/guides/image/glm-image.md)
+- [GLM-4-32B-0414-128K](https://docs.z.ai/guides/llm/glm-4-32b-0414-128k.md)
+- [GLM-4.5](https://docs.z.ai/guides/llm/glm-4.5.md)
+- [GLM-4.6](https://docs.z.ai/guides/llm/glm-4.6.md)
+- [GLM-4.7](https://docs.z.ai/guides/llm/glm-4.7.md)
+- [Core Parameters](https://docs.z.ai/guides/overview/concept-param.md)
+- [Migrate to GLM-4.7](https://docs.z.ai/guides/overview/migrate-to-glm-new.md)
+- [Overview](https://docs.z.ai/guides/overview/overview.md)
+- [Pricing](https://docs.z.ai/guides/overview/pricing.md): This page provides pricing information for Z.AI’s models and tools. All prices are in USD.
+- [Quick Start](https://docs.z.ai/guides/overview/quick-start.md)
+- [Stream Tool Call](https://docs.z.ai/guides/tools/stream-tool.md)
+- [Web Search](https://docs.z.ai/guides/tools/web-search.md)
+- [CogVideoX-3](https://docs.z.ai/guides/video/cogvideox-3.md)
+- [Vidu Q1](https://docs.z.ai/guides/video/vidu-q1.md)
+- [Vidu 2](https://docs.z.ai/guides/video/vidu2.md)
+- [AutoGLM-Phone-Multilingual](https://docs.z.ai/guides/vlm/autoglm-phone-multilingual.md)
+- [GLM-4.5V](https://docs.z.ai/guides/vlm/glm-4.5v.md)
+- [GLM-4.6V](https://docs.z.ai/guides/vlm/glm-4.6v.md)
+- [FAQ](https://docs.z.ai/help/faq.md)
+- [Privacy Policy](https://docs.z.ai/legal-agreement/privacy-policy.md)
+- [Subscriptions, Fees, and Payment](https://docs.z.ai/legal-agreement/subscription-terms.md)
+- [Terms of Use](https://docs.z.ai/legal-agreement/terms-of-use.md)
+- [New Released](https://docs.z.ai/release-notes/new-released.md): Follow along with updates across Z.AI’s models
+- [Claude Code](https://docs.z.ai/scenario-example/develop-tools/claude.md): Methods for integrating the latest GLM-4.7 series models from Z.AI with Claude Code
+- [Cline](https://docs.z.ai/scenario-example/develop-tools/cline.md): A complete guide to using the Cline plugin in VS Code to connect to the Z.AI GLM model
+- [Gemini CLI](https://docs.z.ai/scenario-example/develop-tools/gemini.md): Complete Guide to Accessing Z.AI GLM Models Using a Customized Gemini CLI
+- [Grok CLI](https://docs.z.ai/scenario-example/develop-tools/gork.md): Quick Start Guide for Connecting to Z.AI GLM Models Using Grok CLI
+- [Kilo Code](https://docs.z.ai/scenario-example/develop-tools/kilo.md): A complete guide to integrating the GLM model from  Z.AI using the Kilo Code plugin in VS Code
+- [n8n Workflow](https://docs.z.ai/scenario-example/develop-tools/n8n.md): Build n8n automations that call Z.AI GLM models
+- [OpenCode](https://docs.z.ai/scenario-example/develop-tools/opencode.md)
+- [Roo Code](https://docs.z.ai/scenario-example/develop-tools/roo.md): A complete guide to integrating the Roo Code plugin with the Z.AI GLM model in VS Code
