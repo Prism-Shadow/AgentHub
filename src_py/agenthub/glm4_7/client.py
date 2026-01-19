@@ -130,7 +130,11 @@ class GLM4_7Client(LLMClient):
 
             for item in msg["content_items"]:
                 if item["type"] == "text":
-                    if not content_parts or not isinstance(content_parts[-1], dict) or content_parts[-1].get("type") != "text":
+                    if (
+                        not content_parts
+                        or not isinstance(content_parts[-1], dict)
+                        or content_parts[-1].get("type") != "text"
+                    ):
                         content_parts.append({"type": "text", "text": item["text"]})
                     else:
                         content_parts[-1]["text"] += item["text"]

@@ -32,6 +32,9 @@ if os.getenv("ANTHROPIC_API_KEY"):
     AVAILABLE_MODELS.append("claude-sonnet-4-5-20250929")
     AVAILABLE_VISION_MODELS.append("claude-sonnet-4-5-20250929")
 
+if os.getenv("ZAI_API_KEY"):
+    AVAILABLE_MODELS.append("glm-4.7")
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
