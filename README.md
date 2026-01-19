@@ -8,7 +8,7 @@ AgentHub is the only SDK you need to connect to state-of-the-art LLMs (GPT-5/Cla
 |------------|------------------------|----------------------|------------------------------|
 | Gemini 3 | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | Claude 4.5 | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| GLM-4.7 | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| GLM-4.7 | :white_check_mark: | :white_check_mark: | :negative_squared_cross_mark: |
 | GPT-5.2 | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 
 ## Python package
