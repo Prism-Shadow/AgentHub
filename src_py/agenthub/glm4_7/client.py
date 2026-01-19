@@ -259,11 +259,17 @@ class GLM4_7Client(LLMClient):
 
         # Check for usage metadata
         if hasattr(model_output, "usage") and model_output.usage:
+            # Safely extract reasoning tokens from completion_tokens_details
+            completion_tokens_details = getattr(model_output.usage, "completion_tokens_details", None)
+            reasoning_tokens = None
+            if completion_tokens_details and hasattr(completion_tokens_details, "get"):
+                reasoning_tokens = completion_tokens_details.get("reasoning_tokens", None)
+            elif completion_tokens_details and hasattr(completion_tokens_details, "reasoning_tokens"):
+                reasoning_tokens = getattr(completion_tokens_details, "reasoning_tokens", None)
+
             usage_metadata = {
                 "prompt_tokens": model_output.usage.prompt_tokens,
-                "thoughts_tokens": getattr(model_output.usage, "completion_tokens_details", {}).get(
-                    "reasoning_tokens", None
-                ),
+                "thoughts_tokens": reasoning_tokens,
                 "response_tokens": model_output.usage.completion_tokens,
             }
 
@@ -346,7 +352,6 @@ class GLM4_7Client(LLMClient):
                                 }
                             ],
                         }
-                partial_tool_call = {}
 
                 # Yield final event with usage and finish reason
                 if event["usage_metadata"] or event["finish_reason"]:
@@ -356,3 +361,6 @@ class GLM4_7Client(LLMClient):
                         "usage_metadata": event["usage_metadata"],
                         "finish_reason": event["finish_reason"],
                     }
+
+                # Clear partial tool calls after processing all stop events
+                partial_tool_call = {}
