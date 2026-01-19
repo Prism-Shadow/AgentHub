@@ -17,6 +17,7 @@ import os
 from typing import Any, AsyncIterator
 
 from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionChunk, ChatCompletionMessageParam
 
 from ..base_client import LLMClient
 from ..types import (
@@ -39,7 +40,7 @@ class GLM4_7Client(LLMClient):
         """Initialize GLM-4.7 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("GLM_API_KEY")
-        base_url = os.getenv("GLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4/")
+        base_url = os.getenv("GLM_BASE_URL", "https://api.z.ai/api/paas/v4/")
         self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self._history: list[UniMessage] = []
 
@@ -53,11 +54,9 @@ class GLM4_7Client(LLMClient):
         }
         return mapping.get(thinking_level)
 
-    def _convert_tool_choice(self, tool_choice: ToolChoice) -> str | dict[str, Any]:
+    def _convert_tool_choice(self, tool_choice: ToolChoice) -> str:
         """Convert ToolChoice to OpenAI's tool_choice format."""
-        if isinstance(tool_choice, list):
-            raise ValueError("GLM only supports 'auto' for tool_choice.")
-        elif tool_choice == "auto":
+        if tool_choice == "auto":
             return "auto"
         else:
             raise ValueError("GLM only supports 'auto' for tool_choice.")
@@ -74,33 +73,20 @@ class GLM4_7Client(LLMClient):
         """
         glm_config = {"model": self._model, "stream": True}
 
-        # Add max_tokens
         if config.get("max_tokens") is not None:
             glm_config["max_tokens"] = config["max_tokens"]
 
-        # Add temperature
         if config.get("temperature") is not None:
             glm_config["temperature"] = config["temperature"]
-
-        # Prepare extra_body for additional parameters
-        extra_body = {}
 
         # Convert thinking configuration
         if config.get("thinking_level") is not None:
             thinking_config = self._convert_thinking_level_to_config(config["thinking_level"])
-            extra_body["thinking"] = thinking_config
-
-        # Add extra_body if not empty
-        if extra_body:
-            glm_config["extra_body"] = extra_body
+            glm_config["extra_body"] = {"thinking": thinking_config}
 
         # Convert tools to OpenAI's tool schema
         if config.get("tools") is not None:
-            glm_tools = []
-            for tool in config["tools"]:
-                glm_tool = {"type": "function", "function": tool}
-                glm_tools.append(glm_tool)
-            glm_config["tools"] = glm_tools
+            glm_config["tools"] = [{"type": "function", "function": tool} for tool in config["tools"]]
 
         # Convert tool_choice
         if config.get("tool_choice") is not None:
@@ -108,7 +94,7 @@ class GLM4_7Client(LLMClient):
 
         return glm_config
 
-    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[dict[str, Any]]:
+    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[ChatCompletionMessageParam]:
         """
         Transform universal message format to OpenAI's message format.
 
@@ -123,15 +109,14 @@ class GLM4_7Client(LLMClient):
         for msg in messages:
             content_parts = []
             tool_calls = []
-
+            thinking = ""
             for item in msg["content_items"]:
                 if item["type"] == "text":
                     content_parts.append({"type": "text", "text": item["text"]})
                 elif item["type"] == "image_url":
                     content_parts.append({"type": "image_url", "image_url": {"url": item["image_url"]}})
                 elif item["type"] == "thinking":
-                    # GLM stores thinking in reasoning_content
-                    pass  # Handled separately in message construction
+                    thinking += item["thinking"]
                 elif item["type"] == "tool_call":
                     tool_calls.append(
                         {
@@ -149,34 +134,25 @@ class GLM4_7Client(LLMClient):
                             "content": item["result"],
                         }
                     )
-                    continue
                 else:
                     raise ValueError(f"Unknown item type: {item['type']}")
 
             # Build the message
-            message = {"role": msg["role"]}
-
-            # Set content
-            if content_parts:
-                message["content"] = content_parts
-            else:
-                message["content"] = ""
+            message = {"role": msg["role"], "content": content_parts}
 
             # Add tool calls if present
             if tool_calls:
                 message["tool_calls"] = tool_calls
 
             # Add reasoning content for thinking
-            for item in msg["content_items"]:
-                if item["type"] == "thinking":
-                    message["reasoning_content"] = item["thinking"]
-                    break
+            if thinking:
+                message["reasoning_content"] = thinking
 
             openai_messages.append(message)
 
         return openai_messages
 
-    def transform_model_output_to_uni_event(self, model_output: Any) -> PartialUniEvent:
+    def transform_model_output_to_uni_event(self, model_output: ChatCompletionChunk) -> PartialUniEvent:
         """
         Transform GLM model output to universal event format.
 
@@ -186,37 +162,20 @@ class GLM4_7Client(LLMClient):
         Returns:
             Universal event dictionary
         """
-        event_type = None
         content_items: list[PartialContentItem] = []
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
 
-        if not model_output.choices:
-            event_type = "stop"
-            return {
-                "role": "assistant",
-                "event": event_type,
-                "content_items": content_items,
-                "usage_metadata": usage_metadata,
-                "finish_reason": finish_reason,
-            }
-
         choice = model_output.choices[0]
         delta = choice.delta
 
-        # Check for reasoning content (thinking)
-        if hasattr(delta, "reasoning_content") and delta.reasoning_content:
-            event_type = "delta"
-            content_items.append({"type": "thinking", "thinking": delta.reasoning_content})
+        if getattr(delta, "reasoning_content", None):
+            content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning_content")})
 
-        # Check for text content
-        if hasattr(delta, "content") and delta.content:
-            event_type = "delta"
+        if delta.content:
             content_items.append({"type": "text", "text": delta.content})
 
-        # Check for tool calls
-        if hasattr(delta, "tool_calls") and delta.tool_calls:
-            event_type = "delta"
+        if delta.tool_calls:
             for tool_call in delta.tool_calls:
                 if tool_call.function:
                     content_items.append(
@@ -228,9 +187,7 @@ class GLM4_7Client(LLMClient):
                         }
                     )
 
-        # Check for finish reason
         if choice.finish_reason:
-            event_type = "stop"
             finish_reason_mapping = {
                 "stop": "stop",
                 "length": "length",
@@ -239,12 +196,11 @@ class GLM4_7Client(LLMClient):
             }
             finish_reason = finish_reason_mapping.get(choice.finish_reason, "unknown")
 
-        # Check for usage metadata
-        if hasattr(model_output, "usage") and model_output.usage:
-            completion_tokens_details = getattr(model_output.usage, "completion_tokens_details", None)
-            reasoning_tokens = None
-            if completion_tokens_details:
-                reasoning_tokens = completion_tokens_details.reasoning_tokens
+        if model_output.usage:
+            if model_output.usage.completion_tokens_details:
+                reasoning_tokens = model_output.usage.completion_tokens_details.reasoning_tokens
+            else:
+                reasoning_tokens = None
 
             usage_metadata = {
                 "prompt_tokens": model_output.usage.prompt_tokens,
@@ -252,11 +208,9 @@ class GLM4_7Client(LLMClient):
                 "response_tokens": model_output.usage.completion_tokens,
             }
 
-        event_type = "delta"
-
         return {
             "role": "assistant",
-            "event": event_type,
+            "event": "delta",
             "content_items": content_items,
             "usage_metadata": usage_metadata,
             "finish_reason": finish_reason,
@@ -283,7 +237,6 @@ class GLM4_7Client(LLMClient):
 
         async for chunk in stream:
             event = self.transform_model_output_to_uni_event(chunk)
-
             if event["event"] == "delta":
                 event.pop("event")
                 yield event

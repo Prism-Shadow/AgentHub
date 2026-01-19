@@ -49,7 +49,7 @@ class Gemini3Client(LLMClient):
         mime_type, _ = mimetypes.guess_type(url)
         return mime_type
 
-    def _convert_thinking_level(self, thinking_level: ThinkingLevel) -> types.ThinkingLevel | None:
+    def _convert_thinking_level(self, thinking_level: ThinkingLevel | None) -> types.ThinkingLevel | None:
         """Convert ThinkingLevel enum to Gemini's ThinkingLevel."""
         mapping = {
             ThinkingLevel.NONE: types.ThinkingLevel.MINIMAL,
