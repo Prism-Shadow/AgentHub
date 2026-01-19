@@ -23,7 +23,7 @@ jobs:
       matrix:
         python-version:
           - "3.11"
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,18 +33,18 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           github-token: ${{ github.token }}
-    
+
       - name: Install dependencies
         working-directory: ./src_py
         run: |
           uv venv
           uv pip install -e .[dev]
-    
+
       - name: Run linter
         working-directory: ./src_py
         run: |
           make lint
-    
+
       - name: Run tests
         working-directory: ./src_py
         run: |
@@ -54,3 +54,5 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
+          GLM_BASE_URL: ${{ secrets.GLM_BASE_URL }}

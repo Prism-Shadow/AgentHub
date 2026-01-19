@@ -62,6 +62,8 @@ When writing tests that require calling AI models, the following secrets are ava
 - `GEMINI_API_KEY` - API key for Google Gemini SDK
 - `OPENAI_API_KEY` - API key for OpenAI SDK
 - `OPENAI_BASE_URL` - Base URL for OpenAI API (optional, for custom endpoints)
+- `GLM_API_KEY` - API key for Z.AI GLM SDK
+- `GLM_BASE_URL` - Base URL for Z.AI GLM SDK
 
 To use these secrets in your workflow files, reference them in the `env:` section:
 
@@ -71,6 +73,8 @@ env:
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+  GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
+  GLM_BASE_URL: ${{ secrets.GLM_BASE_URL }}
 ```
 
 These secrets can be used in your test code to authenticate with the respective AI model providers. Make sure to handle these credentials securely and never log or expose them in test output.

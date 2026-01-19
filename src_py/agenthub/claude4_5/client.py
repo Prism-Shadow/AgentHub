@@ -80,19 +80,16 @@ class Claude4_5Client(LLMClient):
         """
         claude_config = {"model": self._model}
 
-        # Add max_tokens (required for Claude)
+        if config.get("system_prompt") is not None:
+            claude_config["system"] = config["system_prompt"]
+
         if config.get("max_tokens") is not None:
             claude_config["max_tokens"] = config["max_tokens"]
         else:
             claude_config["max_tokens"] = 32768  # Claude requires max_tokens to be specified
 
-        # Add temperature
         if config.get("temperature") is not None:
             claude_config["temperature"] = config["temperature"]
-
-        # Add system prompt
-        if config.get("system_prompt") is not None:
-            claude_config["system"] = config["system_prompt"]
 
         # Convert thinking configuration
         # NOTE: Claude always provides thinking summary
