@@ -38,8 +38,8 @@ class GLM4_7Client(LLMClient):
     def __init__(self, model: str, api_key: str | None = None):
         """Initialize GLM-4.7 client with model and API key."""
         self._model = model
-        api_key = api_key or os.getenv("ZAI_API_KEY")
-        base_url = os.getenv("ZAI_BASE_URL", "https://api.z.ai/api/paas/v4/")
+        api_key = api_key or os.getenv("GLM_API_KEY")
+        base_url = os.getenv("GLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4/")
         self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self._history: list[UniMessage] = []
 
@@ -51,24 +51,16 @@ class GLM4_7Client(LLMClient):
             ThinkingLevel.MEDIUM: {"type": "enabled"},
             ThinkingLevel.HIGH: {"type": "enabled"},
         }
-        return mapping.get(thinking_level, {"type": "enabled"})
+        return mapping.get(thinking_level)
 
     def _convert_tool_choice(self, tool_choice: ToolChoice) -> str | dict[str, Any]:
         """Convert ToolChoice to OpenAI's tool_choice format."""
         if isinstance(tool_choice, list):
-            if len(tool_choice) == 0:
-                raise ValueError("Tool choice list cannot be empty.")
-            if len(tool_choice) > 1:
-                raise ValueError("GLM supports only one tool choice.")
-            return {"type": "function", "function": {"name": tool_choice[0]}}
-        elif tool_choice == "none":
-            return "none"
+            raise ValueError("GLM only supports 'auto' for tool_choice.")
         elif tool_choice == "auto":
             return "auto"
-        elif tool_choice == "required":
-            return "required"
         else:
-            raise ValueError(f"Unexpected tool_choice value: {tool_choice}")
+            raise ValueError("GLM only supports 'auto' for tool_choice.")
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """
@@ -134,14 +126,7 @@ class GLM4_7Client(LLMClient):
 
             for item in msg["content_items"]:
                 if item["type"] == "text":
-                    if (
-                        not content_parts
-                        or not isinstance(content_parts[-1], dict)
-                        or content_parts[-1].get("type") != "text"
-                    ):
-                        content_parts.append({"type": "text", "text": item["text"]})
-                    else:
-                        content_parts[-1]["text"] += item["text"]
+                    content_parts.append({"type": "text", "text": item["text"]})
                 elif item["type"] == "image_url":
                     content_parts.append({"type": "image_url", "image_url": {"url": item["image_url"]}})
                 elif item["type"] == "thinking":
@@ -169,28 +154,25 @@ class GLM4_7Client(LLMClient):
                     raise ValueError(f"Unknown item type: {item['type']}")
 
             # Build the message
-            if msg["role"] in ["user", "assistant"]:
-                message = {"role": msg["role"]}
+            message = {"role": msg["role"]}
 
-                # Simplify content if it's just text
-                if len(content_parts) == 1 and content_parts[0].get("type") == "text":
-                    message["content"] = content_parts[0]["text"]
-                elif content_parts:
-                    message["content"] = content_parts
-                else:
-                    message["content"] = ""
+            # Set content
+            if content_parts:
+                message["content"] = content_parts
+            else:
+                message["content"] = ""
 
-                # Add tool calls if present
-                if tool_calls:
-                    message["tool_calls"] = tool_calls
+            # Add tool calls if present
+            if tool_calls:
+                message["tool_calls"] = tool_calls
 
-                # Add reasoning content for thinking
-                for item in msg["content_items"]:
-                    if item["type"] == "thinking":
-                        message["reasoning_content"] = item["thinking"]
-                        break
+            # Add reasoning content for thinking
+            for item in msg["content_items"]:
+                if item["type"] == "thinking":
+                    message["reasoning_content"] = item["thinking"]
+                    break
 
-                openai_messages.append(message)
+            openai_messages.append(message)
 
         return openai_messages
 
@@ -239,10 +221,10 @@ class GLM4_7Client(LLMClient):
                 if tool_call.function:
                     content_items.append(
                         {
-                            "type": "partial_tool_call",
-                            "name": tool_call.function.name or "",
-                            "argument": tool_call.function.arguments or "",
-                            "tool_call_id": tool_call.id or "",
+                            "type": "tool_call",
+                            "name": tool_call.function.name,
+                            "argument": json.loads(tool_call.function.arguments),
+                            "tool_call_id": tool_call.id,
                         }
                     )
 
@@ -259,16 +241,10 @@ class GLM4_7Client(LLMClient):
 
         # Check for usage metadata
         if hasattr(model_output, "usage") and model_output.usage:
-            # Safely extract reasoning tokens from completion_tokens_details
             completion_tokens_details = getattr(model_output.usage, "completion_tokens_details", None)
             reasoning_tokens = None
             if completion_tokens_details:
-                # Try dict-like access first, then attribute access
-                reasoning_tokens = (
-                    completion_tokens_details.get("reasoning_tokens", None)
-                    if hasattr(completion_tokens_details, "get")
-                    else getattr(completion_tokens_details, "reasoning_tokens", None)
-                )
+                reasoning_tokens = completion_tokens_details.reasoning_tokens
 
             usage_metadata = {
                 "prompt_tokens": model_output.usage.prompt_tokens,
@@ -276,8 +252,7 @@ class GLM4_7Client(LLMClient):
                 "response_tokens": model_output.usage.completion_tokens,
             }
 
-        if event_type is None:
-            event_type = "delta"
+        event_type = "delta"
 
         return {
             "role": "assistant",
@@ -304,66 +279,11 @@ class GLM4_7Client(LLMClient):
             glm_messages.insert(0, {"role": "system", "content": config["system_prompt"]})
 
         # Stream generate
-        partial_tool_call = {}
         stream = await self._client.chat.completions.create(**glm_config, messages=glm_messages)
 
         async for chunk in stream:
             event = self.transform_model_output_to_uni_event(chunk)
 
             if event["event"] == "delta":
-                # Process all content items, looking for partial tool calls
-                has_partial_tool_call = False
-                for content_item in event["content_items"]:
-                    if content_item["type"] == "partial_tool_call":
-                        has_partial_tool_call = True
-                        tool_call_id = content_item.get("tool_call_id", "")
-
-                        if tool_call_id not in partial_tool_call:
-                            partial_tool_call[tool_call_id] = {
-                                "name": content_item.get("name", ""),
-                                "argument": "",
-                                "tool_call_id": tool_call_id,
-                            }
-
-                        if content_item.get("name"):
-                            partial_tool_call[tool_call_id]["name"] = content_item["name"]
-                        if content_item.get("argument"):
-                            partial_tool_call[tool_call_id]["argument"] += content_item["argument"]
-
-                # Only yield the event if it doesn't contain partial tool calls
-                if not has_partial_tool_call:
-                    event.pop("event")
-                    yield event
-
-            elif event["event"] == "stop":
-                # Yield any accumulated tool calls
-                for tool_call_id, tool_call_data in partial_tool_call.items():
-                    if tool_call_data["name"] and tool_call_data["argument"]:
-                        try:
-                            argument = json.loads(tool_call_data["argument"])
-                        except json.JSONDecodeError:
-                            argument = {}
-
-                        yield {
-                            "role": "assistant",
-                            "content_items": [
-                                {
-                                    "type": "tool_call",
-                                    "name": tool_call_data["name"],
-                                    "argument": argument,
-                                    "tool_call_id": tool_call_id,
-                                }
-                            ],
-                        }
-
-                # Yield final event with usage and finish reason
-                if event["usage_metadata"] or event["finish_reason"]:
-                    yield {
-                        "role": "assistant",
-                        "content_items": [],
-                        "usage_metadata": event["usage_metadata"],
-                        "finish_reason": event["finish_reason"],
-                    }
-
-                # Clear partial tool calls after processing all stop events
-                partial_tool_call = {}
+                event.pop("event")
+                yield event
