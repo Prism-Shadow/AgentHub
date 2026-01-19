@@ -262,10 +262,13 @@ class GLM4_7Client(LLMClient):
             # Safely extract reasoning tokens from completion_tokens_details
             completion_tokens_details = getattr(model_output.usage, "completion_tokens_details", None)
             reasoning_tokens = None
-            if completion_tokens_details and hasattr(completion_tokens_details, "get"):
-                reasoning_tokens = completion_tokens_details.get("reasoning_tokens", None)
-            elif completion_tokens_details and hasattr(completion_tokens_details, "reasoning_tokens"):
-                reasoning_tokens = getattr(completion_tokens_details, "reasoning_tokens", None)
+            if completion_tokens_details:
+                # Try dict-like access first, then attribute access
+                reasoning_tokens = (
+                    completion_tokens_details.get("reasoning_tokens", None)
+                    if hasattr(completion_tokens_details, "get")
+                    else getattr(completion_tokens_details, "reasoning_tokens", None)
+                )
 
             usage_metadata = {
                 "prompt_tokens": model_output.usage.prompt_tokens,
