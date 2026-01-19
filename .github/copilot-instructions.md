@@ -25,6 +25,14 @@ AgentHub is the only SDK you need to connect to state-of-the-art LLMs (GPT-5/Cla
 
 ## Coding Standards
 
+### General Code Quality
+
+- **Avoid trivial comments**: Do not add comments that simply restate what the code obviously does. Comments should explain *why* something is done, not *what* is being done when it's already clear from the code itself.
+  - ❌ Bad: `# Add temperature` before `config['temperature'] = 0.7`
+  - ❌ Bad: `# Loop through items` before `for item in items:`
+  - ✅ Good: `# Claude requires max_tokens to be specified` before `config['max_tokens'] = 1000`
+  - ✅ Good: Comments explaining complex algorithms, non-obvious business logic, or workarounds for known issues
+
 ### Python
 
 - Follow the [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)
