@@ -108,8 +108,8 @@ class GLM4_7Client(LLMClient):
         openai_messages = []
 
         for msg in messages:
-            content_parts = []
-            tool_calls = []
+            content_parts = []  # may be empty for tool results
+            tool_calls = []  # may be empty for no tool calls
             thinking = ""
             for item in msg["content_items"]:
                 if item["type"] == "text":
@@ -127,6 +127,9 @@ class GLM4_7Client(LLMClient):
                         }
                     )
                 elif item["type"] == "tool_result":
+                    if "tool_call_id" not in item:
+                        raise ValueError("tool_call_id is required for tool result.")
+
                     # Tool results are sent as separate messages
                     openai_messages.append(
                         {
@@ -138,15 +141,18 @@ class GLM4_7Client(LLMClient):
                 else:
                     raise ValueError(f"Unknown item type: {item['type']}")
 
-            if content_parts:  # Content items may be empty for tool results
-                message = {"role": msg["role"], "content": content_parts}
+            message = {"role": msg["role"]}
+            if content_parts:
+                message["content"] = content_parts
 
-                if tool_calls:
-                    message["tool_calls"] = tool_calls
+            if tool_calls:
+                message["tool_calls"] = tool_calls
 
-                if thinking:
-                    message["reasoning_content"] = thinking
+            if thinking:
+                message["reasoning_content"] = thinking
 
+            # message may be empty for tool results
+            if len(message.keys()) > 1:
                 openai_messages.append(message)
 
         return openai_messages
