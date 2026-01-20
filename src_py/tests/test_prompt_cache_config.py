@@ -20,7 +20,7 @@ from agenthub.claude4_5 import Claude4_5Client
 
 
 def test_prompt_cache_enable_config():
-    """Test that enable mode adds cache_control with 5m TTL."""
+    """Test that enable mode adds cache_control without explicit TTL (defaults to 5m)."""
     client = Claude4_5Client(model="claude-sonnet-4-5-20250929", api_key="dummy")
     config = {
         "system_prompt": "You are a helpful assistant.",

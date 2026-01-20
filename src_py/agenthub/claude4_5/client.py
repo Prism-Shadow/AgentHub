@@ -74,7 +74,8 @@ class Claude4_5Client(LLMClient):
         Transform universal configuration to Claude-specific configuration.
 
         Args:
-            config: Universal configuration dict
+            config: Universal configuration dict. If prompt_cache is not specified,
+                   defaults to PromptCache.ENABLE for Claude models.
 
         Returns:
             Claude configuration dictionary
