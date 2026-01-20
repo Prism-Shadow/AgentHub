@@ -24,6 +24,7 @@ from ..types import (
     FinishReason,
     PartialContentItem,
     PartialUniEvent,
+    PromptCaching,
     ThinkingLevel,
     ToolChoice,
     UniConfig,
@@ -79,18 +80,18 @@ class GLM4_7Client(LLMClient):
         if config.get("temperature") is not None:
             glm_config["temperature"] = config["temperature"]
 
-        # Convert thinking configuration
         if config.get("thinking_level") is not None:
             thinking_config = self._convert_thinking_level_to_config(config["thinking_level"])
             glm_config["extra_body"] = {"thinking": thinking_config}
 
-        # Convert tools to OpenAI's tool schema
         if config.get("tools") is not None:
             glm_config["tools"] = [{"type": "function", "function": tool} for tool in config["tools"]]
 
-        # Convert tool_choice
         if config.get("tool_choice") is not None:
             glm_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
+
+        if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
+            raise ValueError("prompt_caching must be ENABLE for GLM-4.7.")
 
         return glm_config
 
@@ -137,18 +138,16 @@ class GLM4_7Client(LLMClient):
                 else:
                     raise ValueError(f"Unknown item type: {item['type']}")
 
-            # Build the message
-            message = {"role": msg["role"], "content": content_parts}
+            if content_parts:  # Content items may be empty for tool results
+                message = {"role": msg["role"], "content": content_parts}
 
-            # Add tool calls if present
-            if tool_calls:
-                message["tool_calls"] = tool_calls
+                if tool_calls:
+                    message["tool_calls"] = tool_calls
 
-            # Add reasoning content for thinking
-            if thinking:
-                message["reasoning_content"] = thinking
+                if thinking:
+                    message["reasoning_content"] = thinking
 
-            openai_messages.append(message)
+                openai_messages.append(message)
 
         return openai_messages
 
@@ -206,6 +205,7 @@ class GLM4_7Client(LLMClient):
                 "prompt_tokens": model_output.usage.prompt_tokens,
                 "thoughts_tokens": reasoning_tokens,
                 "response_tokens": model_output.usage.completion_tokens,
+                "cached_tokens": model_output.usage.prompt_tokens_details.cached_tokens,
             }
 
         return {

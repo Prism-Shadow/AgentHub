@@ -25,6 +25,14 @@ class ThinkingLevel(StrEnum):
     HIGH = "high"
 
 
+class PromptCaching(StrEnum):
+    """Prompt cache configuration for Claude models."""
+
+    ENABLE = "enable"
+    DISABLE = "disable"
+    ENHANCE = "enhance"
+
+
 # Tool choice can be a literal string or a list of tool names
 ToolChoice = Literal["auto", "required", "none"] | list[str]
 Role = Literal["user", "assistant"]
@@ -83,6 +91,7 @@ class UsageMetadata(TypedDict):
     prompt_tokens: int | None
     thoughts_tokens: int | None
     response_tokens: int | None
+    cached_tokens: int | None
 
 
 class UniMessage(TypedDict):
@@ -131,4 +140,5 @@ class UniConfig(TypedDict):
     thinking_level: NotRequired[ThinkingLevel]
     tool_choice: NotRequired[ToolChoice]
     system_prompt: NotRequired[str]
+    prompt_caching: NotRequired[PromptCaching]
     trace_id: NotRequired[str]

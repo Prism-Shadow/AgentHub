@@ -150,6 +150,8 @@ class Tracer:
                     lines.append(f"  Thoughts Tokens: {metadata['thoughts_tokens']}")
                 if metadata.get("response_tokens"):
                     lines.append(f"  Response Tokens: {metadata['response_tokens']}")
+                if metadata.get("cached_tokens"):
+                    lines.append(f"  Cached Tokens: {metadata['cached_tokens']}")
 
             # Add finish reason if available
             if "finish_reason" in message:
@@ -506,6 +508,9 @@ class Tracer:
                             {% endif %}
                             {% if message.usage_metadata.response_tokens %}
                             • Response: {{ message.usage_metadata.response_tokens }} tokens
+                            {% endif %}
+                            {% if message.usage_metadata.cached_tokens %}
+                            • Cached: {{ message.usage_metadata.cached_tokens }} tokens
                             {% endif %}
                         {% endif %}
                         {% if message.finish_reason %}

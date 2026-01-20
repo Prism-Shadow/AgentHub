@@ -24,6 +24,7 @@ from ..types import (
     FinishReason,
     PartialContentItem,
     PartialUniEvent,
+    PromptCaching,
     ThinkingLevel,
     ToolChoice,
     UniConfig,
@@ -91,7 +92,6 @@ class Claude4_5Client(LLMClient):
         if config.get("temperature") is not None:
             claude_config["temperature"] = config["temperature"]
 
-        # Convert thinking configuration
         # NOTE: Claude always provides thinking summary
         if config.get("thinking_level") is not None:
             claude_config["temperature"] = 1.0  # `temperature` may only be set to 1 when thinking is enabled
@@ -211,6 +211,7 @@ class Claude4_5Client(LLMClient):
                     "prompt_tokens": message.usage.input_tokens,
                     "thoughts_tokens": None,
                     "response_tokens": None,
+                    "cached_tokens": message.usage.cache_read_input_tokens,
                 }
 
         elif claude_event_type == "message_delta":
@@ -230,6 +231,7 @@ class Claude4_5Client(LLMClient):
                     "prompt_tokens": None,
                     "thoughts_tokens": None,
                     "response_tokens": model_output.usage.output_tokens,
+                    "cached_tokens": None,
                 }
 
         elif claude_event_type == "message_stop":
@@ -261,6 +263,19 @@ class Claude4_5Client(LLMClient):
         # Use unified message conversion
         claude_messages = self.transform_uni_message_to_model_input(messages)
 
+        # Add cache_control to last user message's last item if enabled
+        prompt_caching = config.get("prompt_caching", PromptCaching.ENABLE)
+        if prompt_caching != PromptCaching.DISABLE and claude_messages:
+            try:
+                last_user_message = next(filter(lambda x: x["role"] == "user", claude_messages[::-1]))
+                last_content_item = last_user_message["content"][-1]
+                last_content_item["cache_control"] = {
+                    "type": "ephemeral",
+                    "ttl": "1h" if prompt_caching == PromptCaching.ENHANCE else "5m",
+                }
+            except StopIteration:
+                pass
+
         # Stream generate
         partial_tool_call = {}
         partial_usage = {}
@@ -275,6 +290,7 @@ class Claude4_5Client(LLMClient):
 
                     if event["usage_metadata"] is not None:
                         partial_usage["prompt_tokens"] = event["usage_metadata"]["prompt_tokens"]
+                        partial_usage["cached_tokens"] = event["usage_metadata"]["cached_tokens"]
 
                 elif event["event"] == "delta":
                     if event["content_items"][0]["type"] == "partial_tool_call":
@@ -306,6 +322,7 @@ class Claude4_5Client(LLMClient):
                                 "prompt_tokens": partial_usage["prompt_tokens"],
                                 "thoughts_tokens": None,
                                 "response_tokens": event["usage_metadata"]["response_tokens"],
+                                "cached_tokens": partial_usage["cached_tokens"],
                             },
                             "finish_reason": event["finish_reason"],
                         }
