@@ -40,7 +40,7 @@ async def main():
     async for event in client.streaming_response(messages=messages, config=config):
         if event.get("usage_metadata"):
             usage = event["usage_metadata"]
-            print(f"Usage metadata:")
+            print("Usage metadata:")
             print(f"  Prompt tokens: {usage.get('prompt_tokens')}")
             print(f"  Response tokens: {usage.get('response_tokens')}")
             print(f"  Cache creation tokens: {usage.get('cache_creation_tokens')}")
@@ -56,7 +56,7 @@ async def main():
     async for event in client.streaming_response(messages=messages, config=config_disable):
         if event.get("usage_metadata"):
             usage = event["usage_metadata"]
-            print(f"Usage metadata:")
+            print("Usage metadata:")
             print(f"  Prompt tokens: {usage.get('prompt_tokens')}")
             print(f"  Response tokens: {usage.get('response_tokens')}")
             print(f"  Cache creation tokens: {usage.get('cache_creation_tokens')}")
@@ -72,7 +72,7 @@ async def main():
     async for event in client.streaming_response(messages=messages, config=config_enhance):
         if event.get("usage_metadata"):
             usage = event["usage_metadata"]
-            print(f"Usage metadata:")
+            print("Usage metadata:")
             print(f"  Prompt tokens: {usage.get('prompt_tokens')}")
             print(f"  Response tokens: {usage.get('response_tokens')}")
             print(f"  Cache creation tokens: {usage.get('cache_creation_tokens')}")

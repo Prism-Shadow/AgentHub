@@ -14,7 +14,6 @@
 
 """Unit tests for prompt cache configuration (no API calls)."""
 
-import pytest
 
 from agenthub import PromptCache
 from agenthub.claude4_5 import Claude4_5Client
@@ -27,9 +26,9 @@ def test_prompt_cache_enable_config():
         "system_prompt": "You are a helpful assistant.",
         "prompt_cache": PromptCache.ENABLE,
     }
-    
+
     claude_config = client.transform_uni_config_to_model_config(config)
-    
+
     assert "system" in claude_config
     assert isinstance(claude_config["system"], list)
     assert len(claude_config["system"]) == 1
@@ -47,9 +46,9 @@ def test_prompt_cache_disable_config():
         "system_prompt": "You are a helpful assistant.",
         "prompt_cache": PromptCache.DISABLE,
     }
-    
+
     claude_config = client.transform_uni_config_to_model_config(config)
-    
+
     assert "system" in claude_config
     assert isinstance(claude_config["system"], str)
     assert claude_config["system"] == "You are a helpful assistant."
@@ -62,9 +61,9 @@ def test_prompt_cache_enhance_config():
         "system_prompt": "You are a helpful assistant.",
         "prompt_cache": PromptCache.ENHANCE,
     }
-    
+
     claude_config = client.transform_uni_config_to_model_config(config)
-    
+
     assert "system" in claude_config
     assert isinstance(claude_config["system"], list)
     assert len(claude_config["system"]) == 1
@@ -81,9 +80,9 @@ def test_prompt_cache_default():
     config = {
         "system_prompt": "You are a helpful assistant.",
     }
-    
+
     claude_config = client.transform_uni_config_to_model_config(config)
-    
+
     assert "system" in claude_config
     assert isinstance(claude_config["system"], list)
     assert "cache_control" in claude_config["system"][0]
@@ -95,7 +94,7 @@ def test_no_system_prompt_no_cache():
     config = {
         "prompt_cache": PromptCache.ENABLE,
     }
-    
+
     claude_config = client.transform_uni_config_to_model_config(config)
-    
+
     assert "system" not in claude_config
