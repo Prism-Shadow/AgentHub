@@ -22,10 +22,22 @@ showing token usage and stop reasons.
 """
 
 import asyncio
+import base64
 import json
 from typing import Any
 
 from flask import Flask, Response, jsonify, render_template_string, request
+
+
+def _serialize_for_json(obj: Any) -> Any:
+    """Recursively serialize objects for JSON, converting bytes to base64."""
+    if isinstance(obj, bytes):
+        return base64.b64encode(obj).decode("utf-8")
+    elif isinstance(obj, dict):
+        return {k: _serialize_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_serialize_for_json(item) for item in obj]
+    return obj
 
 
 def create_chat_app() -> Flask:
@@ -310,6 +322,10 @@ def create_chat_app() -> Flask:
                 <textarea id="systemPromptInput" rows="2" style="width: 100%; padding: 8px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 14px;"></textarea>
             </div>
             <div class="config-field" style="margin-top: 12px;">
+                <label for="toolsInput">Tools (JSON Array)</label>
+                <textarea id="toolsInput" rows="3" placeholder='[{"name": "function_name", "description": "...", "parameters": {...}}]' style="width: 100%; padding: 8px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 14px; font-family: monospace;"></textarea>
+            </div>
+            <div class="config-field" style="margin-top: 12px;">
                 <label for="traceIdInput">Trace ID</label>
                 <input type="text" id="traceIdInput" placeholder="e.g., session_001" style="width: 100%; padding: 8px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 14px;">
             </div>
@@ -364,6 +380,16 @@ def create_chat_app() -> Flask:
                 const systemPrompt = document.getElementById('systemPromptInput').value.trim();
                 if (systemPrompt) {
                     config.system_prompt = systemPrompt;
+                }
+
+                const toolsInput = document.getElementById('toolsInput').value.trim();
+                if (toolsInput) {
+                    try {
+                        config.tools = JSON.parse(toolsInput);
+                    } catch (e) {
+                        console.error('Invalid JSON in tools field:', e);
+                        alert('Invalid JSON format in Tools field. Please check your syntax.');
+                    }
                 }
 
                 const traceId = document.getElementById('traceIdInput').value.trim();
@@ -606,7 +632,9 @@ def create_chat_app() -> Flask:
                     async def stream_events():
                         """Async generator for streaming events."""
                         async for event in client.streaming_response_stateful(message=message, config=client_config):
-                            yield f"data: {json.dumps(event)}\n\n"
+                            # Serialize event to handle bytes objects
+                            serialized_event = _serialize_for_json(event)
+                            yield f"data: {json.dumps(serialized_event)}\n\n"
 
                         yield "data: [DONE]\n\n"
 
