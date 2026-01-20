@@ -633,53 +633,55 @@ def create_chat_app() -> Flask:
         if not message:
             return jsonify({"error": "No message provided"}), 400
 
-        async def generate():
-            """Generate streaming response."""
-            try:
-                # Get or create client for this session
-                if session_id not in session_clients:
-                    model = config.get("model", "gemini-3-flash-preview")
-                    session_clients[session_id] = AutoLLMClient(model=model)
+        # Get or create client for this session
+        if session_id not in session_clients:
+            model = config.get("model", "gemini-3-flash-preview")
+            session_clients[session_id] = AutoLLMClient(model=model)
 
-                client = session_clients[session_id]
+        client = session_clients[session_id]
 
-                # Prepare config for the client (all UniConfig fields)
-                client_config: dict[str, Any] = {}
+        # Prepare config for the client (all UniConfig fields)
+        client_config: dict[str, Any] = {}
 
-                # Copy all config fields to client_config
-                if "temperature" in config:
-                    client_config["temperature"] = config["temperature"]
-                if "max_tokens" in config:
-                    client_config["max_tokens"] = config["max_tokens"]
-                if "thinking_level" in config:
-                    client_config["thinking_level"] = config["thinking_level"]
-                if "thinking_summary" in config:
-                    client_config["thinking_summary"] = config["thinking_summary"]
-                if "tool_choice" in config:
-                    client_config["tool_choice"] = config["tool_choice"]
-                if "system_prompt" in config:
-                    client_config["system_prompt"] = config["system_prompt"]
-                if "trace_id" in config:
-                    client_config["trace_id"] = config["trace_id"]
-                if "tools" in config:
-                    client_config["tools"] = config["tools"]
+        # Copy all config fields to client_config
+        if "temperature" in config:
+            client_config["temperature"] = config["temperature"]
+        if "max_tokens" in config:
+            client_config["max_tokens"] = config["max_tokens"]
+        if "thinking_level" in config:
+            client_config["thinking_level"] = config["thinking_level"]
+        if "thinking_summary" in config:
+            client_config["thinking_summary"] = config["thinking_summary"]
+        if "tool_choice" in config:
+            client_config["tool_choice"] = config["tool_choice"]
+        if "system_prompt" in config:
+            client_config["system_prompt"] = config["system_prompt"]
+        if "trace_id" in config:
+            client_config["trace_id"] = config["trace_id"]
+        if "tools" in config:
+            client_config["tools"] = config["tools"]
 
-                # Stream events directly using async/await
-                async for event in client.streaming_response_stateful(message=message, config=client_config):
-                    # Serialize event to handle bytes objects
-                    serialized_event = _serialize_for_json(event)
-                    yield f"data: {json.dumps(serialized_event)}\n\n"
+        # Collect async events into a list for streaming
+        events = []
+        try:
+            async for event in client.streaming_response_stateful(message=message, config=client_config):
+                # Serialize event to handle bytes objects
+                serialized_event = _serialize_for_json(event)
+                events.append(f"data: {json.dumps(serialized_event)}\n\n")
+            events.append("data: [DONE]\n\n")
+        except Exception as e:
+            error_event = {
+                "role": "assistant",
+                "content_items": [{"type": "text", "text": f"Error: {str(e)}"}],
+                "finish_reason": "error",
+            }
+            events.append(f"data: {json.dumps(error_event)}\n\n")
+            events.append("data: [DONE]\n\n")
 
-                yield "data: [DONE]\n\n"
-
-            except Exception as e:
-                error_event = {
-                    "role": "assistant",
-                    "content_items": [{"type": "text", "text": f"Error: {str(e)}"}],
-                    "finish_reason": "error",
-                }
-                yield f"data: {json.dumps(error_event)}\n\n"
-                yield "data: [DONE]\n\n"
+        # Return as a synchronous generator
+        def generate():
+            for event in events:
+                yield event
 
         return Response(generate(), mimetype="text/event-stream")
 
