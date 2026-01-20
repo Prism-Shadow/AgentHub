@@ -693,8 +693,8 @@ def create_chat_app() -> Flask:
                 # Get the persistent event loop
                 loop = _get_event_loop()
 
-                # Create async function to stream events
-                async def stream_events():
+                # Create async generator wrapper
+                async def async_generator():
                     try:
                         async for event in client.streaming_response_stateful(message=message, config=client_config):
                             # Serialize event to handle bytes objects
@@ -711,27 +711,55 @@ def create_chat_app() -> Flask:
                         yield f"data: {json.dumps(error_event)}\n\n"
                         yield "data: [DONE]\n\n"
 
-                # Create a queue to pass events from async to sync context
-                event_queue: asyncio.Queue = asyncio.Queue()
+                # Create a synchronous generator that yields events as they arrive
+                class AsyncToSyncIterator:
+                    def __init__(self, async_gen, loop):
+                        self.async_gen = async_gen
+                        self.loop = loop
+                        self.queue = None
+                        self.producer_task = None
+                        self._started = False
 
-                async def producer():
-                    """Produce events and put them in the queue."""
-                    try:
-                        async for event_data in stream_events():
-                            await event_queue.put(event_data)
-                    finally:
-                        await event_queue.put(None)  # Signal completion
+                    def __iter__(self):
+                        return self
 
-                # Start the producer in the event loop
-                asyncio.run_coroutine_threadsafe(producer(), loop)
+                    def __next__(self):
+                        if not self._started:
+                            self._start()
 
-                # Yield events as they arrive
-                while True:
-                    # Get event from queue (blocking)
-                    future = asyncio.run_coroutine_threadsafe(event_queue.get(), loop)
-                    event = future.result()
-                    if event is None:
-                        break
+                        # Get next item from queue
+                        future = asyncio.run_coroutine_threadsafe(self.queue.get(), self.loop)
+                        item = future.result()
+
+                        if item is None:
+                            raise StopIteration
+                        if isinstance(item, Exception):
+                            raise item
+                        return item
+
+                    def _start(self):
+                        # Create queue in the event loop
+                        async def create_queue_and_start():
+                            self.queue = asyncio.Queue()
+
+                            async def producer():
+                                try:
+                                    async for item in self.async_gen:
+                                        await self.queue.put(item)
+                                except Exception as e:
+                                    await self.queue.put(e)
+                                finally:
+                                    await self.queue.put(None)
+
+                            self.producer_task = asyncio.create_task(producer())
+
+                        future = asyncio.run_coroutine_threadsafe(create_queue_and_start(), self.loop)
+                        future.result()
+                        self._started = True
+
+                # Create iterator and yield events
+                iterator = AsyncToSyncIterator(async_generator(), loop)
+                for event in iterator:
                     yield event
 
             except Exception as e:
