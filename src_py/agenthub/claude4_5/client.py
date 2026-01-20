@@ -74,8 +74,7 @@ class Claude4_5Client(LLMClient):
         Transform universal configuration to Claude-specific configuration.
 
         Args:
-            config: Universal configuration dict. If prompt_cache is not specified,
-                   defaults to PromptCaching.ENABLE for Claude models.
+            config: Universal configuration dict
 
         Returns:
             Claude configuration dictionary
@@ -117,40 +116,23 @@ class Claude4_5Client(LLMClient):
 
         return claude_config
 
-    def transform_uni_message_to_model_input(
-        self, messages: list[UniMessage], config: UniConfig | None = None
-    ) -> list[MessageParam]:
+    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[MessageParam]:
         """
         Transform universal message format to Claude's MessageParam format.
 
         Args:
             messages: List of universal message dictionaries
-            config: Optional configuration to apply cache control
 
         Returns:
             List of Claude MessageParam objects
         """
         claude_messages: list[MessageParam] = []
 
-        for idx, msg in enumerate(messages):
+        for msg in messages:
             content_blocks = []
-            for item_idx, item in enumerate(msg["content_items"]):
+            for item in msg["content_items"]:
                 if item["type"] == "text":
-                    text_block = {"type": "text", "text": item["text"]}
-                    # Add cache_control to last item of last user message if enabled
-                    if (
-                        config
-                        and msg["role"] == "user"
-                        and idx == len(messages) - 1
-                        and item_idx == len(msg["content_items"]) - 1
-                    ):
-                        prompt_cache = config.get("prompt_cache", PromptCaching.ENABLE)
-                        if prompt_cache != PromptCaching.DISABLE:
-                            cache_control = {"type": "ephemeral"}
-                            if prompt_cache == PromptCaching.ENHANCE:
-                                cache_control["ttl"] = "1h"
-                            text_block["cache_control"] = cache_control
-                    content_blocks.append(text_block)
+                    content_blocks.append({"type": "text", "text": item["text"]})
                 elif item["type"] == "image_url":
                     # TODO: support base64 encoded images
                     content_blocks.append({"type": "image", "source": {"type": "url", "url": item["image_url"]}})
@@ -226,12 +208,13 @@ class Claude4_5Client(LLMClient):
             event_type = "start"
             message = model_output.message
             if getattr(message, "usage", None):
+                # cached_tokens is cache_read_input_tokens from Claude API
+                cached_tokens = message.usage.cache_read_input_tokens if hasattr(message.usage, "cache_read_input_tokens") else None
                 usage_metadata = {
                     "prompt_tokens": message.usage.input_tokens,
                     "thoughts_tokens": None,
                     "response_tokens": None,
-                    "cache_creation_tokens": getattr(message.usage, "cache_creation_input_tokens", None),
-                    "cache_read_tokens": getattr(message.usage, "cache_read_input_tokens", None),
+                    "cached_tokens": cached_tokens,
                 }
 
         elif claude_event_type == "message_delta":
@@ -251,8 +234,7 @@ class Claude4_5Client(LLMClient):
                     "prompt_tokens": None,
                     "thoughts_tokens": None,
                     "response_tokens": model_output.usage.output_tokens,
-                    "cache_creation_tokens": None,
-                    "cache_read_tokens": None,
+                    "cached_tokens": None,
                 }
 
         elif claude_event_type == "message_stop":
@@ -282,7 +264,24 @@ class Claude4_5Client(LLMClient):
         claude_config = self.transform_uni_config_to_model_config(config)
 
         # Use unified message conversion
-        claude_messages = self.transform_uni_message_to_model_input(messages, config)
+        claude_messages = self.transform_uni_message_to_model_input(messages)
+
+        # Add cache_control to last user message's last item if enabled
+        prompt_cache = config.get("prompt_cache", PromptCaching.ENABLE)
+        if prompt_cache != PromptCaching.DISABLE and claude_messages:
+            # Find last user message
+            for i in range(len(claude_messages) - 1, -1, -1):
+                if claude_messages[i]["role"] == "user":
+                    content = claude_messages[i]["content"]
+                    if content and isinstance(content, list):
+                        # Add cache_control to last content item
+                        last_item = content[-1]
+                        if last_item.get("type") == "text":
+                            cache_control = {"type": "ephemeral"}
+                            if prompt_cache == PromptCaching.ENHANCE:
+                                cache_control["ttl"] = "1h"
+                            last_item["cache_control"] = cache_control
+                    break
 
         # Stream generate
         partial_tool_call = {}
@@ -298,8 +297,7 @@ class Claude4_5Client(LLMClient):
 
                     if event["usage_metadata"] is not None:
                         partial_usage["prompt_tokens"] = event["usage_metadata"]["prompt_tokens"]
-                        partial_usage["cache_creation_tokens"] = event["usage_metadata"]["cache_creation_tokens"]
-                        partial_usage["cache_read_tokens"] = event["usage_metadata"]["cache_read_tokens"]
+                        partial_usage["cached_tokens"] = event["usage_metadata"]["cached_tokens"]
 
                 elif event["event"] == "delta":
                     if event["content_items"][0]["type"] == "partial_tool_call":
@@ -331,8 +329,7 @@ class Claude4_5Client(LLMClient):
                                 "prompt_tokens": partial_usage["prompt_tokens"],
                                 "thoughts_tokens": None,
                                 "response_tokens": event["usage_metadata"]["response_tokens"],
-                                "cache_creation_tokens": partial_usage.get("cache_creation_tokens", None),
-                                "cache_read_tokens": partial_usage.get("cache_read_tokens", None),
+                                "cached_tokens": partial_usage.get("cached_tokens", None),
                             },
                             "finish_reason": event["finish_reason"],
                         }

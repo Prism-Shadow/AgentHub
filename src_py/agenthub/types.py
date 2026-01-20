@@ -91,8 +91,7 @@ class UsageMetadata(TypedDict):
     prompt_tokens: int | None
     thoughts_tokens: int | None
     response_tokens: int | None
-    cache_creation_tokens: int | None
-    cache_read_tokens: int | None
+    cached_tokens: int | None
 
 
 class UniMessage(TypedDict):
