@@ -23,7 +23,7 @@ chat with LLMs. The web UI supports:
 - Message cards with token usage and finish reasons
 """
 
-from integration import start_chat_server
+from agenthub.integration import start_chat_server
 
 
 if __name__ == "__main__":

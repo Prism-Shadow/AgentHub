@@ -37,12 +37,15 @@ def create_chat_app() -> Flask:
     """
     app = Flask(__name__)
 
+    # Session storage for LLM clients
+    session_clients: dict[str, Any] = {}
+
     # HTML template for the chat UI
     CHAT_TEMPLATE = """
     <!DOCTYPE html>
     <html>
     <head>
-        <title>AgentHub Chat</title>
+        <title>Chat with LLMs</title>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
@@ -256,7 +259,7 @@ def create_chat_app() -> Flask:
     </head>
     <body>
         <div class="header">
-            <h1>🤖 AgentHub Chat</h1>
+            <h1>🤖 Chat with LLMs</h1>
             <button class="config-toggle" onclick="toggleConfig()">⚙️ Config</button>
         </div>
 
@@ -278,6 +281,37 @@ def create_chat_app() -> Flask:
                     <label for="maxTokensInput">Max Tokens</label>
                     <input type="number" id="maxTokensInput" min="1" max="100000" step="1" value="4096">
                 </div>
+                <div class="config-field">
+                    <label for="thinkingLevelSelect">Thinking Level</label>
+                    <select id="thinkingLevelSelect">
+                        <option value="">None</option>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+                <div class="config-field">
+                    <label for="thinkingSummaryCheckbox">
+                        <input type="checkbox" id="thinkingSummaryCheckbox">
+                        Thinking Summary
+                    </label>
+                </div>
+                <div class="config-field">
+                    <label for="toolChoiceSelect">Tool Choice</label>
+                    <select id="toolChoiceSelect">
+                        <option value="auto">Auto</option>
+                        <option value="required">Required</option>
+                        <option value="none">None</option>
+                    </select>
+                </div>
+            </div>
+            <div class="config-field" style="margin-top: 12px;">
+                <label for="systemPromptInput">System Prompt</label>
+                <textarea id="systemPromptInput" rows="2" style="width: 100%; padding: 8px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 14px;"></textarea>
+            </div>
+            <div class="config-field" style="margin-top: 12px;">
+                <label for="traceIdInput">Trace ID</label>
+                <input type="text" id="traceIdInput" placeholder="e.g., session_001" style="width: 100%; padding: 8px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 14px;">
             </div>
         </div>
 
@@ -298,7 +332,7 @@ def create_chat_app() -> Flask:
 
         <script>
             let isStreaming = false;
-            let conversationHistory = [];
+            let sessionId = Math.random().toString(36).substring(7);
 
             function toggleConfig() {
                 const panel = document.getElementById('configPanel');
@@ -306,11 +340,38 @@ def create_chat_app() -> Flask:
             }
 
             function getConfig() {
-                return {
+                const config = {
                     model: document.getElementById('modelSelect').value,
                     temperature: parseFloat(document.getElementById('temperatureInput').value),
                     max_tokens: parseInt(document.getElementById('maxTokensInput').value)
                 };
+
+                const thinkingLevel = document.getElementById('thinkingLevelSelect').value;
+                if (thinkingLevel) {
+                    config.thinking_level = thinkingLevel;
+                }
+
+                const thinkingSummary = document.getElementById('thinkingSummaryCheckbox').checked;
+                if (thinkingSummary) {
+                    config.thinking_summary = true;
+                }
+
+                const toolChoice = document.getElementById('toolChoiceSelect').value;
+                if (toolChoice && toolChoice !== 'auto') {
+                    config.tool_choice = toolChoice;
+                }
+
+                const systemPrompt = document.getElementById('systemPromptInput').value.trim();
+                if (systemPrompt) {
+                    config.system_prompt = systemPrompt;
+                }
+
+                const traceId = document.getElementById('traceIdInput').value.trim();
+                if (traceId) {
+                    config.trace_id = traceId;
+                }
+
+                return config;
             }
 
             function addMessageCard(role, content, metadata = null) {
@@ -363,12 +424,6 @@ def create_chat_app() -> Flask:
                 // Add user message to UI
                 addMessageCard('user', message);
 
-                // Add user message to history
-                conversationHistory.push({
-                    role: 'user',
-                    content_items: [{ type: 'text', text: message }]
-                });
-
                 // Create assistant card for streaming
                 const assistantCard = addMessageCard('assistant', '');
                 const contentDiv = assistantCard.querySelector('.message-content');
@@ -381,9 +436,12 @@ def create_chat_app() -> Flask:
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            message: conversationHistory[conversationHistory.length - 1],
+                            message: {
+                                role: 'user',
+                                content_items: [{ type: 'text', text: message }]
+                            },
                             config: config,
-                            history: conversationHistory.slice(0, -1)
+                            session_id: sessionId
                         })
                     });
 
@@ -447,13 +505,6 @@ def create_chat_app() -> Flask:
                         assistantCard.innerHTML += metadataHtml;
                     }
 
-                    // Add assistant response to history
-                    conversationHistory.push({
-                        role: 'assistant',
-                        content_items: [{ type: 'text', text: fullResponse }],
-                        usage_metadata: metadata?.tokens ? { response_tokens: metadata.tokens } : undefined,
-                        finish_reason: metadata?.finish_reason
-                    });
 
                 } catch (error) {
                     contentDiv.textContent = `Error: ${error.message}`;
@@ -466,7 +517,8 @@ def create_chat_app() -> Flask:
 
             function clearChat() {
                 if (confirm('Are you sure you want to clear the conversation?')) {
-                    conversationHistory = [];
+                    // Generate new session ID to start fresh
+                    sessionId = Math.random().toString(36).substring(7);
                     const container = document.getElementById('messagesContainer');
                     container.innerHTML = `
                         <div style="text-align: center; color: #656d76; padding: 40px;">
@@ -504,12 +556,12 @@ def create_chat_app() -> Flask:
     @app.route("/api/chat", methods=["POST"])
     def chat() -> Response:
         """Handle chat requests with streaming responses."""
-        from agenthub import AutoLLMClient
+        from .. import AutoLLMClient
 
         data = request.json
         message = data.get("message")
         config = data.get("config", {})
-        history = data.get("history", [])
+        session_id = data.get("session_id", "default")
 
         if not message:
             return jsonify({"error": "No message provided"}), 400
@@ -517,16 +569,33 @@ def create_chat_app() -> Flask:
         def generate():
             """Generate streaming response."""
             try:
-                # Create client with configured model
-                model = config.get("model", "gemini-3-flash-preview")
-                client = AutoLLMClient(model=model)
+                # Get or create client for this session
+                if session_id not in session_clients:
+                    model = config.get("model", "gemini-3-flash-preview")
+                    session_clients[session_id] = AutoLLMClient(model=model)
 
-                # Prepare config for the client
+                client = session_clients[session_id]
+
+                # Prepare config for the client (all UniConfig fields)
                 client_config: dict[str, Any] = {}
+
+                # Copy all config fields to client_config
                 if "temperature" in config:
                     client_config["temperature"] = config["temperature"]
                 if "max_tokens" in config:
                     client_config["max_tokens"] = config["max_tokens"]
+                if "thinking_level" in config:
+                    client_config["thinking_level"] = config["thinking_level"]
+                if "thinking_summary" in config:
+                    client_config["thinking_summary"] = config["thinking_summary"]
+                if "tool_choice" in config:
+                    client_config["tool_choice"] = config["tool_choice"]
+                if "system_prompt" in config:
+                    client_config["system_prompt"] = config["system_prompt"]
+                if "trace_id" in config:
+                    client_config["trace_id"] = config["trace_id"]
+                if "tools" in config:
+                    client_config["tools"] = config["tools"]
 
                 # Run streaming response in event loop
                 loop = asyncio.new_event_loop()
@@ -536,10 +605,6 @@ def create_chat_app() -> Flask:
 
                     async def stream_events():
                         """Async generator for streaming events."""
-                        # Set history if provided
-                        if history:
-                            client.history = history.copy()
-
                         async for event in client.streaming_response_stateful(message=message, config=client_config):
                             yield f"data: {json.dumps(event)}\n\n"
 
@@ -580,7 +645,7 @@ def start_chat_server(host: str = "127.0.0.1", port: int = 5001, debug: bool = F
         debug: Enable debug mode
     """
     app = create_chat_app()
-    print(f"Starting AgentHub Chat at http://{host}:{port}")
+    print(f"Starting Chat with LLMs at http://{host}:{port}")
     app.run(host=host, port=port, debug=debug)
 
 

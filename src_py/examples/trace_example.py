@@ -28,7 +28,7 @@ import threading
 import time
 
 from agenthub import AutoLLMClient
-from integration import Tracer
+from agenthub.integration import Tracer
 
 
 def get_weather(location: str) -> str:

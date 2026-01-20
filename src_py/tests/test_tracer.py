@@ -21,7 +21,7 @@ import pytest
 from flask import Flask
 
 from agenthub import AutoLLMClient
-from integration.tracer import Tracer
+from agenthub.integration.tracer import Tracer
 
 
 AVAILABLE_MODELS = []
