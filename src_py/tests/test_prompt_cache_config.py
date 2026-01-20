@@ -15,28 +15,26 @@
 """Unit tests for prompt cache configuration (no API calls)."""
 
 
-from agenthub import PromptCache
+from agenthub import PromptCaching
 from agenthub.claude4_5 import Claude4_5Client
 
 
 def test_prompt_cache_enable_config():
-    """Test that enable mode adds cache_control without explicit TTL (defaults to 5m)."""
+    """Test that enable mode adds cache_control to last user message item."""
     client = Claude4_5Client(model="claude-sonnet-4-5-20250929", api_key="dummy")
     config = {
         "system_prompt": "You are a helpful assistant.",
-        "prompt_cache": PromptCache.ENABLE,
+        "prompt_cache": PromptCaching.ENABLE,
     }
+    messages = [{"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}]
 
-    claude_config = client.transform_uni_config_to_model_config(config)
+    claude_messages = client.transform_uni_message_to_model_input(messages, config)
 
-    assert "system" in claude_config
-    assert isinstance(claude_config["system"], list)
-    assert len(claude_config["system"]) == 1
-    assert claude_config["system"][0]["type"] == "text"
-    assert claude_config["system"][0]["text"] == "You are a helpful assistant."
-    assert "cache_control" in claude_config["system"][0]
-    assert claude_config["system"][0]["cache_control"]["type"] == "ephemeral"
-    assert "ttl" not in claude_config["system"][0]["cache_control"]
+    assert len(claude_messages) == 1
+    assert len(claude_messages[0]["content"]) == 1
+    assert "cache_control" in claude_messages[0]["content"][0]
+    assert claude_messages[0]["content"][0]["cache_control"]["type"] == "ephemeral"
+    assert "ttl" not in claude_messages[0]["content"][0]["cache_control"]
 
 
 def test_prompt_cache_disable_config():
@@ -44,14 +42,15 @@ def test_prompt_cache_disable_config():
     client = Claude4_5Client(model="claude-sonnet-4-5-20250929", api_key="dummy")
     config = {
         "system_prompt": "You are a helpful assistant.",
-        "prompt_cache": PromptCache.DISABLE,
+        "prompt_cache": PromptCaching.DISABLE,
     }
+    messages = [{"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}]
 
-    claude_config = client.transform_uni_config_to_model_config(config)
+    claude_messages = client.transform_uni_message_to_model_input(messages, config)
 
-    assert "system" in claude_config
-    assert isinstance(claude_config["system"], str)
-    assert claude_config["system"] == "You are a helpful assistant."
+    assert len(claude_messages) == 1
+    assert len(claude_messages[0]["content"]) == 1
+    assert "cache_control" not in claude_messages[0]["content"][0]
 
 
 def test_prompt_cache_enhance_config():
@@ -59,19 +58,17 @@ def test_prompt_cache_enhance_config():
     client = Claude4_5Client(model="claude-sonnet-4-5-20250929", api_key="dummy")
     config = {
         "system_prompt": "You are a helpful assistant.",
-        "prompt_cache": PromptCache.ENHANCE,
+        "prompt_cache": PromptCaching.ENHANCE,
     }
+    messages = [{"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}]
 
-    claude_config = client.transform_uni_config_to_model_config(config)
+    claude_messages = client.transform_uni_message_to_model_input(messages, config)
 
-    assert "system" in claude_config
-    assert isinstance(claude_config["system"], list)
-    assert len(claude_config["system"]) == 1
-    assert claude_config["system"][0]["type"] == "text"
-    assert claude_config["system"][0]["text"] == "You are a helpful assistant."
-    assert "cache_control" in claude_config["system"][0]
-    assert claude_config["system"][0]["cache_control"]["type"] == "ephemeral"
-    assert claude_config["system"][0]["cache_control"]["ttl"] == "1h"
+    assert len(claude_messages) == 1
+    assert len(claude_messages[0]["content"]) == 1
+    assert "cache_control" in claude_messages[0]["content"][0]
+    assert claude_messages[0]["content"][0]["cache_control"]["type"] == "ephemeral"
+    assert claude_messages[0]["content"][0]["cache_control"]["ttl"] == "1h"
 
 
 def test_prompt_cache_default():
@@ -80,21 +77,54 @@ def test_prompt_cache_default():
     config = {
         "system_prompt": "You are a helpful assistant.",
     }
+    messages = [{"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}]
 
-    claude_config = client.transform_uni_config_to_model_config(config)
+    claude_messages = client.transform_uni_message_to_model_input(messages, config)
 
-    assert "system" in claude_config
-    assert isinstance(claude_config["system"], list)
-    assert "cache_control" in claude_config["system"][0]
+    assert len(claude_messages) == 1
+    assert len(claude_messages[0]["content"]) == 1
+    assert "cache_control" in claude_messages[0]["content"][0]
 
 
-def test_no_system_prompt_no_cache():
-    """Test that no system prompt means no cache_control."""
+def test_cache_only_on_last_user_message():
+    """Test that cache_control is only on the last user message."""
     client = Claude4_5Client(model="claude-sonnet-4-5-20250929", api_key="dummy")
     config = {
-        "prompt_cache": PromptCache.ENABLE,
+        "prompt_cache": PromptCaching.ENABLE,
     }
+    messages = [
+        {"role": "user", "content_items": [{"type": "text", "text": "First message"}]},
+        {"role": "assistant", "content_items": [{"type": "text", "text": "Response"}]},
+        {"role": "user", "content_items": [{"type": "text", "text": "Second message"}]},
+    ]
 
-    claude_config = client.transform_uni_config_to_model_config(config)
+    claude_messages = client.transform_uni_message_to_model_input(messages, config)
 
-    assert "system" not in claude_config
+    # First user message should not have cache_control
+    assert "cache_control" not in claude_messages[0]["content"][0]
+    # Last user message should have cache_control
+    assert "cache_control" in claude_messages[2]["content"][0]
+
+
+def test_cache_on_last_item_of_last_user_message():
+    """Test that cache_control is on the last item of last user message."""
+    client = Claude4_5Client(model="claude-sonnet-4-5-20250929", api_key="dummy")
+    config = {
+        "prompt_cache": PromptCaching.ENABLE,
+    }
+    messages = [
+        {
+            "role": "user",
+            "content_items": [
+                {"type": "text", "text": "First item"},
+                {"type": "text", "text": "Second item"},
+            ],
+        }
+    ]
+
+    claude_messages = client.transform_uni_message_to_model_input(messages, config)
+
+    # First item should not have cache_control
+    assert "cache_control" not in claude_messages[0]["content"][0]
+    # Last item should have cache_control
+    assert "cache_control" in claude_messages[0]["content"][1]

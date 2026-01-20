@@ -14,7 +14,7 @@
 
 from .auto_client import AutoLLMClient
 from .tracer import Tracer
-from .types import PromptCache, ThinkingLevel
+from .types import PromptCaching, ThinkingLevel
 
 
-__all__ = ["AutoLLMClient", "PromptCache", "ThinkingLevel", "Tracer"]
+__all__ = ["AutoLLMClient", "PromptCaching", "ThinkingLevel", "Tracer"]

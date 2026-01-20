@@ -25,7 +25,7 @@ class ThinkingLevel(StrEnum):
     HIGH = "high"
 
 
-class PromptCache(StrEnum):
+class PromptCaching(StrEnum):
     """Prompt cache configuration for Claude models."""
 
     ENABLE = "enable"
@@ -91,8 +91,8 @@ class UsageMetadata(TypedDict):
     prompt_tokens: int | None
     thoughts_tokens: int | None
     response_tokens: int | None
-    cache_creation_tokens: NotRequired[int | None]
-    cache_read_tokens: NotRequired[int | None]
+    cache_creation_tokens: int | None
+    cache_read_tokens: int | None
 
 
 class UniMessage(TypedDict):
@@ -142,4 +142,4 @@ class UniConfig(TypedDict):
     tool_choice: NotRequired[ToolChoice]
     system_prompt: NotRequired[str]
     trace_id: NotRequired[str]
-    prompt_cache: NotRequired[PromptCache]
+    prompt_cache: NotRequired[PromptCaching]

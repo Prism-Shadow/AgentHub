@@ -24,7 +24,7 @@ from ..types import (
     FinishReason,
     PartialContentItem,
     PartialUniEvent,
-    PromptCache,
+    PromptCaching,
     ThinkingLevel,
     ToolChoice,
     UniConfig,
@@ -75,43 +75,31 @@ class Claude4_5Client(LLMClient):
 
         Args:
             config: Universal configuration dict. If prompt_cache is not specified,
-                   defaults to PromptCache.ENABLE for Claude models.
+                   defaults to PromptCaching.ENABLE for Claude models.
 
         Returns:
             Claude configuration dictionary
         """
         claude_config = {"model": self._model}
 
-        prompt_cache = config.get("prompt_cache", PromptCache.ENABLE)
-
         if config.get("system_prompt") is not None:
-            if prompt_cache == PromptCache.DISABLE:
-                claude_config["system"] = config["system_prompt"]
-            else:
-                cache_control = {"type": "ephemeral"}
-                if prompt_cache == PromptCache.ENHANCE:
-                    cache_control["ttl"] = "1h"
-
-                claude_config["system"] = [
-                    {
-                        "type": "text",
-                        "text": config["system_prompt"],
-                        "cache_control": cache_control,
-                    }
-                ]
+            claude_config["system"] = config["system_prompt"]
 
         if config.get("max_tokens") is not None:
             claude_config["max_tokens"] = config["max_tokens"]
         else:
-            claude_config["max_tokens"] = 32768
+            claude_config["max_tokens"] = 32768  # Claude requires max_tokens to be specified
 
         if config.get("temperature") is not None:
             claude_config["temperature"] = config["temperature"]
 
+        # Convert thinking configuration
+        # NOTE: Claude always provides thinking summary
         if config.get("thinking_level") is not None:
-            claude_config["temperature"] = 1.0
+            claude_config["temperature"] = 1.0  # `temperature` may only be set to 1 when thinking is enabled
             claude_config["thinking"] = self._convert_thinking_level_to_budget(config["thinking_level"])
 
+        # Convert tools to Claude's tool schema
         if config.get("tools") is not None:
             claude_tools = []
             for tool in config["tools"]:
@@ -123,28 +111,46 @@ class Claude4_5Client(LLMClient):
 
             claude_config["tools"] = claude_tools
 
+        # Convert tool_choice
         if config.get("tool_choice") is not None:
             claude_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
 
         return claude_config
 
-    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[MessageParam]:
+    def transform_uni_message_to_model_input(
+        self, messages: list[UniMessage], config: UniConfig = None
+    ) -> list[MessageParam]:
         """
         Transform universal message format to Claude's MessageParam format.
 
         Args:
             messages: List of universal message dictionaries
+            config: Optional configuration to apply cache control
 
         Returns:
             List of Claude MessageParam objects
         """
         claude_messages: list[MessageParam] = []
 
-        for msg in messages:
+        for idx, msg in enumerate(messages):
             content_blocks = []
-            for item in msg["content_items"]:
+            for item_idx, item in enumerate(msg["content_items"]):
                 if item["type"] == "text":
-                    content_blocks.append({"type": "text", "text": item["text"]})
+                    text_block = {"type": "text", "text": item["text"]}
+                    # Add cache_control to last item of last user message if enabled
+                    if (
+                        config
+                        and msg["role"] == "user"
+                        and idx == len(messages) - 1
+                        and item_idx == len(msg["content_items"]) - 1
+                    ):
+                        prompt_cache = config.get("prompt_cache", PromptCaching.ENABLE)
+                        if prompt_cache != PromptCaching.DISABLE:
+                            cache_control = {"type": "ephemeral"}
+                            if prompt_cache == PromptCaching.ENHANCE:
+                                cache_control["ttl"] = "1h"
+                            text_block["cache_control"] = cache_control
+                    content_blocks.append(text_block)
                 elif item["type"] == "image_url":
                     # TODO: support base64 encoded images
                     content_blocks.append({"type": "image", "source": {"type": "url", "url": item["image_url"]}})
@@ -245,6 +251,8 @@ class Claude4_5Client(LLMClient):
                     "prompt_tokens": None,
                     "thoughts_tokens": None,
                     "response_tokens": model_output.usage.output_tokens,
+                    "cache_creation_tokens": None,
+                    "cache_read_tokens": None,
                 }
 
         elif claude_event_type == "message_stop":
@@ -274,7 +282,7 @@ class Claude4_5Client(LLMClient):
         claude_config = self.transform_uni_config_to_model_config(config)
 
         # Use unified message conversion
-        claude_messages = self.transform_uni_message_to_model_input(messages)
+        claude_messages = self.transform_uni_message_to_model_input(messages, config)
 
         # Stream generate
         partial_tool_call = {}

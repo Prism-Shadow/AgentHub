@@ -224,7 +224,7 @@ When responding to a tool call, include the `tool_call_id` in the result content
 ## Configuration Options
 
 ```python
-from agenthub import ThinkingLevel, PromptCache
+from agenthub import ThinkingLevel
 
 config = {
     "max_tokens": 500,
@@ -233,61 +233,9 @@ config = {
     "tool_choice": "auto",  # "auto", "required", "none", or ["tool_name"]
     "thinking_level": ThinkingLevel.HIGH,
     "system_prompt": "You are a helpful assistant",
-    "trace_id": "agent1/conversation_001",  # Optional: save conversation trace
-    "prompt_cache": PromptCache.ENABLE,  # Optional: configure prompt caching (Claude only)
+    "trace_id": "agent1/conversation_001"  # Optional: save conversation trace
 }
 ```
-
-### Prompt Caching (Claude Models Only)
-
-Prompt caching optimizes API usage by caching prompt prefixes, reducing processing time and costs for repetitive tasks. This feature is only available for Claude 4.5 models.
-
-**Available Options:**
-- `PromptCache.ENABLE` (default): Enable prompt caching with 5-minute TTL
-- `PromptCache.DISABLE`: Disable prompt caching
-- `PromptCache.ENHANCE`: Enable prompt caching with 1-hour TTL for improved cache hit rates
-
-**Usage:**
-
-```python
-from agenthub import AutoLLMClient, PromptCache
-
-client = AutoLLMClient(model="claude-sonnet-4-5-20250929")
-
-# Enable caching (default)
-config = {
-    "system_prompt": "You are a helpful assistant.",
-    "prompt_cache": PromptCache.ENABLE,
-}
-
-# Or disable caching
-config = {
-    "system_prompt": "You are a helpful assistant.",
-    "prompt_cache": PromptCache.DISABLE,
-}
-
-# Or use enhanced caching with 1-hour TTL
-config = {
-    "system_prompt": "You are a helpful assistant.",
-    "prompt_cache": PromptCache.ENHANCE,
-}
-```
-
-**Cache Usage Tracking:**
-
-When using prompt caching, the `usage_metadata` in events includes cache-related fields:
-
-```python
-async for event in client.streaming_response(messages=messages, config=config):
-    if event.get("usage_metadata"):
-        usage = event["usage_metadata"]
-        print(f"Prompt tokens: {usage.get('prompt_tokens')}")
-        print(f"Response tokens: {usage.get('response_tokens')}")
-        print(f"Cache creation tokens: {usage.get('cache_creation_tokens')}")  # Tokens written to cache
-        print(f"Cache read tokens: {usage.get('cache_read_tokens')}")  # Tokens read from cache
-```
-
-For more details on prompt caching, see the [Claude prompt caching documentation](../llmsdk_docs/claude4_5/docs/prompt-caching.md).
 
 ## Conversation Tracing
 
