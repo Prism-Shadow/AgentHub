@@ -118,7 +118,7 @@ class Claude4_5Client(LLMClient):
         return claude_config
 
     def transform_uni_message_to_model_input(
-        self, messages: list[UniMessage], config: UniConfig = None
+        self, messages: list[UniMessage], config: UniConfig | None = None
     ) -> list[MessageParam]:
         """
         Transform universal message format to Claude's MessageParam format.
@@ -298,8 +298,8 @@ class Claude4_5Client(LLMClient):
 
                     if event["usage_metadata"] is not None:
                         partial_usage["prompt_tokens"] = event["usage_metadata"]["prompt_tokens"]
-                        partial_usage["cache_creation_tokens"] = event["usage_metadata"].get("cache_creation_tokens")
-                        partial_usage["cache_read_tokens"] = event["usage_metadata"].get("cache_read_tokens")
+                        partial_usage["cache_creation_tokens"] = event["usage_metadata"]["cache_creation_tokens"]
+                        partial_usage["cache_read_tokens"] = event["usage_metadata"]["cache_read_tokens"]
 
                 elif event["event"] == "delta":
                     if event["content_items"][0]["type"] == "partial_tool_call":
@@ -331,8 +331,8 @@ class Claude4_5Client(LLMClient):
                                 "prompt_tokens": partial_usage["prompt_tokens"],
                                 "thoughts_tokens": None,
                                 "response_tokens": event["usage_metadata"]["response_tokens"],
-                                "cache_creation_tokens": partial_usage.get("cache_creation_tokens"),
-                                "cache_read_tokens": partial_usage.get("cache_read_tokens"),
+                                "cache_creation_tokens": partial_usage.get("cache_creation_tokens", None),
+                                "cache_read_tokens": partial_usage.get("cache_read_tokens", None),
                             },
                             "finish_reason": event["finish_reason"],
                         }
