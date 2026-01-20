@@ -495,7 +495,14 @@ def create_chat_app() -> Flask:
                                     for (const item of event.content_items || []) {
                                         if (item.type === 'text') {
                                             fullResponse += item.text;
-                                            contentDiv.innerHTML = fullResponse;
+                                            // Find or create text container
+                                            let textContainer = contentDiv.querySelector('.text-content');
+                                            if (!textContainer) {
+                                                textContainer = document.createElement('div');
+                                                textContainer.className = 'text-content';
+                                                contentDiv.appendChild(textContainer);
+                                            }
+                                            textContainer.textContent = fullResponse;
                                         } else if (item.type === 'thinking') {
                                             const thinkingDiv = document.createElement('div');
                                             thinkingDiv.style.cssText = 'background-color: #ddf4ff; padding: 12px; border-radius: 4px; border-left: 3px solid #0969da; margin-bottom: 8px; font-style: italic;';
@@ -565,15 +572,28 @@ def create_chat_app() -> Flask:
 
             function clearChat() {
                 if (confirm('Are you sure you want to clear the conversation?')) {
-                    // Generate new session ID to start fresh
-                    sessionId = Math.random().toString(36).substring(7);
-                    const container = document.getElementById('messagesContainer');
-                    container.innerHTML = `
-                        <div style="text-align: center; color: #656d76; padding: 40px;">
-                            <h2>Start a conversation</h2>
-                            <p>Type your message below to begin chatting with the AI.</p>
-                        </div>
-                    `;
+                    // Call API to clear server-side history
+                    fetch('/api/clear', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            session_id: sessionId
+                        })
+                    }).then(() => {
+                        // Generate new session ID to start fresh
+                        sessionId = Math.random().toString(36).substring(7);
+                        const container = document.getElementById('messagesContainer');
+                        container.innerHTML = `
+                            <div style="text-align: center; color: #656d76; padding: 40px;">
+                                <h2>Start a conversation</h2>
+                                <p>Type your message below to begin chatting with the AI.</p>
+                            </div>
+                        `;
+                    }).catch(error => {
+                        console.error('Error clearing chat:', error);
+                    });
                 }
             }
 
@@ -646,30 +666,32 @@ def create_chat_app() -> Flask:
                     client_config["tools"] = config["tools"]
 
                 # Run streaming response in event loop
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-
                 try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_closed():
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
 
-                    async def stream_events():
-                        """Async generator for streaming events."""
-                        async for event in client.streaming_response_stateful(message=message, config=client_config):
-                            # Serialize event to handle bytes objects
-                            serialized_event = _serialize_for_json(event)
-                            yield f"data: {json.dumps(serialized_event)}\n\n"
+                async def stream_events():
+                    """Async generator for streaming events."""
+                    async for event in client.streaming_response_stateful(message=message, config=client_config):
+                        # Serialize event to handle bytes objects
+                        serialized_event = _serialize_for_json(event)
+                        yield f"data: {json.dumps(serialized_event)}\n\n"
 
-                        yield "data: [DONE]\n\n"
+                    yield "data: [DONE]\n\n"
 
-                    # Run the async generator
-                    async_gen = stream_events()
-                    while True:
-                        try:
-                            event = loop.run_until_complete(async_gen.__anext__())
-                            yield event
-                        except StopAsyncIteration:
-                            break
-                finally:
-                    loop.close()
+                # Run the async generator
+                async_gen = stream_events()
+                while True:
+                    try:
+                        event = loop.run_until_complete(async_gen.__anext__())
+                        yield event
+                    except StopAsyncIteration:
+                        break
 
             except Exception as e:
                 error_event = {
@@ -681,6 +703,19 @@ def create_chat_app() -> Flask:
                 yield "data: [DONE]\n\n"
 
         return Response(generate(), mimetype="text/event-stream")
+
+    @app.route("/api/clear", methods=["POST"])
+    def clear() -> Response:
+        """Clear chat history for a session."""
+        data = request.json
+        session_id = data.get("session_id", "default")
+
+        # Clear the client history if it exists
+        if session_id in session_clients:
+            session_clients[session_id].clear_history()
+            del session_clients[session_id]
+
+        return jsonify({"status": "success"})
 
     return app
 
