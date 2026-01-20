@@ -224,7 +224,7 @@ When responding to a tool call, include the `tool_call_id` in the result content
 ## Configuration Options
 
 ```python
-from agenthub import ThinkingLevel
+from agenthub import PromptCaching, ThinkingLevel
 
 config = {
     "max_tokens": 500,
@@ -233,6 +233,7 @@ config = {
     "tool_choice": "auto",  # "auto", "required", "none", or ["tool_name"]
     "thinking_level": ThinkingLevel.HIGH,
     "system_prompt": "You are a helpful assistant",
+    "prompt_caching": PromptCaching.ENABLE,
     "trace_id": "agent1/conversation_001"  # Optional: save conversation trace
 }
 ```
@@ -272,7 +273,7 @@ Start a web server to browse and view saved conversations:
 from agenthub import Tracer
 
 # Start web server
-Tracer().start_web_server(host="127.0.0.1", port=5000)
+Tracer("path/to/cache").start_web_server(host="127.0.0.1", port=5000)
 ```
 
 Then visit `http://127.0.0.1:5000` in your browser to browse saved conversations.

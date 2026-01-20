@@ -140,5 +140,5 @@ class UniConfig(TypedDict):
     thinking_level: NotRequired[ThinkingLevel]
     tool_choice: NotRequired[ToolChoice]
     system_prompt: NotRequired[str]
-    trace_id: NotRequired[str]
     prompt_caching: NotRequired[PromptCaching]
+    trace_id: NotRequired[str]
