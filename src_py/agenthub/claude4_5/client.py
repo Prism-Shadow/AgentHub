@@ -21,7 +21,7 @@ from anthropic.types import MessageParam, MessageStreamEvent
 
 from ..base_client import LLMClient
 from ..types import (
-    Event,
+    EventType,
     FinishReason,
     PartialContentItem,
     PartialUniEvent,
@@ -146,7 +146,7 @@ class Claude4_5Client(LLMClient):
                             "type": "tool_use",
                             "id": item["tool_call_id"],
                             "name": item["name"],
-                            "input": item["argument"],
+                            "input": item["arguments"],
                         }
                     )
                 elif item["type"] == "tool_result":
@@ -175,7 +175,7 @@ class Claude4_5Client(LLMClient):
         Returns:
             Universal event dictionary
         """
-        event_type: Event | None = None
+        event_type: EventType | None = None
         content_items: list[PartialContentItem] = []
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
@@ -186,7 +186,7 @@ class Claude4_5Client(LLMClient):
             block = model_output.content_block
             if block.type == "tool_use":
                 content_items.append(
-                    {"type": "partial_tool_call", "name": block.name, "argument": "", "tool_call_id": block.id}
+                    {"type": "partial_tool_call", "name": block.name, "arguments": "", "tool_call_id": block.id}
                 )
 
         elif claude_event_type == "content_block_delta":
@@ -197,7 +197,7 @@ class Claude4_5Client(LLMClient):
             elif delta.type == "text_delta":
                 content_items.append({"type": "text", "text": delta.text})
             elif delta.type == "input_json_delta":
-                content_items.append({"type": "partial_tool_call", "argument": delta.partial_json})
+                content_items.append({"type": "partial_tool_call", "arguments": delta.partial_json})
             elif delta.type == "signature_delta":
                 content_items.append({"type": "thinking", "thinking": "", "signature": delta.signature})
 
@@ -246,7 +246,7 @@ class Claude4_5Client(LLMClient):
 
         return {
             "role": "assistant",
-            "event": event_type,
+            "event_type": event_type,
             "content_items": content_items,
             "usage_metadata": usage_metadata,
             "finish_reason": finish_reason,
@@ -283,32 +283,32 @@ class Claude4_5Client(LLMClient):
         async with self._client.messages.stream(**claude_config, messages=claude_messages) as stream:
             async for event in stream:
                 event = self.transform_model_output_to_uni_event(event)
-                if event["event"] == "start":
+                if event["event_type"] == "start":
                     if event["content_items"] and event["content_items"][0]["type"] == "partial_tool_call":
                         partial_tool_call["name"] = event["content_items"][0]["name"]
-                        partial_tool_call["argument"] = ""
+                        partial_tool_call["arguments"] = ""
                         partial_tool_call["tool_call_id"] = event["content_items"][0]["tool_call_id"]
 
                     if event["usage_metadata"] is not None:
                         partial_usage["prompt_tokens"] = event["usage_metadata"]["prompt_tokens"]
                         partial_usage["cached_tokens"] = event["usage_metadata"]["cached_tokens"]
 
-                elif event["event"] == "delta":
+                elif event["event_type"] == "delta":
                     if event["content_items"][0]["type"] == "partial_tool_call":
-                        partial_tool_call["argument"] += event["content_items"][0]["argument"]
+                        partial_tool_call["arguments"] += event["content_items"][0]["arguments"]
                     else:
-                        event.pop("event")
+                        event.pop("event_type")
                         yield event
 
-                elif event["event"] == "stop":
-                    if "name" in partial_tool_call and "argument" in partial_tool_call:
+                elif event["event_type"] == "stop":
+                    if "name" in partial_tool_call and "arguments" in partial_tool_call:
                         yield {
                             "role": "assistant",
                             "content_items": [
                                 {
                                     "type": "tool_call",
                                     "name": partial_tool_call["name"],
-                                    "argument": json.loads(partial_tool_call["argument"]),
+                                    "arguments": json.loads(partial_tool_call["arguments"]),
                                     "tool_call_id": partial_tool_call["tool_call_id"],
                                 }
                             ],

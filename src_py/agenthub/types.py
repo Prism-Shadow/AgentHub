@@ -36,7 +36,7 @@ class PromptCaching(StrEnum):
 # Tool choice can be a literal string or a list of tool names
 ToolChoice = Literal["auto", "required", "none"] | list[str]
 Role = Literal["user", "assistant"]
-Event = Literal["start", "delta", "stop", "unused"]
+EventType = Literal["start", "delta", "stop", "unused"]
 FinishReason = Literal["stop", "length", "unknown"]
 
 
@@ -60,7 +60,7 @@ class ThinkingContentItem(TypedDict):
 class ToolCallContentItem(TypedDict):
     type: Literal["tool_call"]
     name: str
-    argument: dict[str, Any]
+    arguments: dict[str, Any]
     tool_call_id: str
     signature: NotRequired[str | bytes]
 
@@ -68,7 +68,7 @@ class ToolCallContentItem(TypedDict):
 class PartialToolCallContentItem(TypedDict):
     type: Literal["partial_tool_call"]
     name: str
-    argument: str
+    arguments: str
     tool_call_id: str
     signature: NotRequired[str | bytes]
 
@@ -115,7 +115,7 @@ class PartialUniEvent(TypedDict):
     """Partial universal event format for streaming responses."""
 
     role: Role
-    event: Event
+    event_type: EventType
     content_items: list[PartialContentItem]
     usage_metadata: NotRequired[UsageMetadata]
     finish_reason: NotRequired[FinishReason]

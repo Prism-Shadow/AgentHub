@@ -20,7 +20,19 @@ client = AutoLLMClient(model="gemini-3-flash-preview")
 client = AutoLLMClient(model="gemini-3-flash-preview", api_key="your-api-key")
 ```
 
-The client automatically selects the appropriate backend based on the model name.
+The client automatically selects the appropriate client based on the model name.
+
+You can manually switch the client type by setting the `CLIENT_TYPE` environment variable.
+
+For example, to use vLLM models, set:
+
+```python
+import os
+from agenthub import AutoLLMClient
+
+os.environ["CLIENT_TYPE"] = "gpt-5.2"
+client = AutoLLMClient(model="Qwen/Qwen3-4B-Instruct-2507")
+```
 
 ## Core Methods
 
@@ -230,8 +242,9 @@ config = {
     "max_tokens": 500,
     "temperature": 1.0,
     "tools": [tool_definition],
-    "tool_choice": "auto",  # "auto", "required", "none", or ["tool_name"]
+    "thinking_summary": True,
     "thinking_level": ThinkingLevel.HIGH,
+    "tool_choice": "auto",  # "auto", "required", "none", or ["tool_name"]
     "system_prompt": "You are a helpful assistant",
     "prompt_caching": PromptCaching.ENABLE,
     "trace_id": "agent1/conversation_001"  # Optional: save conversation trace
