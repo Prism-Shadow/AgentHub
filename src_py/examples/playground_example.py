@@ -13,24 +13,24 @@
 # limitations under the License.
 
 """
-Example demonstrating the AgentHub Chat Web UI.
+Example demonstrating the AgentHub Playground.
 
-This example shows how to start the web UI server for interactive
-chat with LLMs. The web UI supports:
+This example shows how to start the playground server for interactive
+chat with LLMs. The playground supports:
 - Config editing (model, temperature, max_tokens)
 - Streaming chat responses
 - Message cards with token usage and finish reasons
 """
 
-from agenthub.integration.web_ui import start_chat_server
+from agenthub.integration.playground import start_playground_server
 
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("AgentHub Chat Web UI")
+    print("AgentHub LLM Playground")
     print("=" * 60)
     print("\nStarting web server...")
     print("\nOpen http://127.0.0.1:5001 in your browser to start chatting!")
     print("Press Ctrl+C to stop the server.\n")
 
-    start_chat_server(host="127.0.0.1", port=5001, debug=False)
+    start_playground_server(host="127.0.0.1", port=5001, debug=False)

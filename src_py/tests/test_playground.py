@@ -14,7 +14,7 @@
 
 from flask import Flask
 
-from agenthub.integration.web_ui import create_chat_app
+from agenthub.integration.playground import create_chat_app
 
 
 def test_create_chat_app():
@@ -31,7 +31,7 @@ def test_chat_app_index_route():
     with app.test_client() as client:
         response = client.get("/")
         assert response.status_code == 200
-        assert b"Chat with LLMs" in response.data
+        assert b"LLM Playground" in response.data
         assert b"messagesContainer" in response.data
         assert b"messageInput" in response.data
 

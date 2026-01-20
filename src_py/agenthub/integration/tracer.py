@@ -725,3 +725,18 @@ class Tracer:
         print(f"Starting tracer web server at http://{host}:{port}")
         print(f"Cache directory: {self.cache_dir.resolve()}")
         app.run(host=host, port=port, debug=debug)
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Start the Tracer web server for browsing conversation files")
+    parser.add_argument("--cache_dir", type=str, default=None, help="Directory to store conversation history files")
+    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host address to bind to")
+    parser.add_argument("--port", type=int, default=5000, help="Port number to listen on")
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
+
+    args = parser.parse_args()
+
+    tracer = Tracer(cache_dir=args.cache_dir)
+    tracer.start_web_server(host=args.host, port=args.port, debug=args.debug)

@@ -14,7 +14,7 @@
 # limitations under the License.
 
 """
-Web UI for interacting with LLMs.
+Playground for interacting with LLMs.
 
 This module provides a web interface for chatting with language models,
 with support for config editing, streaming responses, and message cards
@@ -83,7 +83,7 @@ def create_chat_app() -> Flask:
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Chat with LLMs</title>
+        <title>LLM Playground</title>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
@@ -297,7 +297,7 @@ def create_chat_app() -> Flask:
     </head>
     <body>
         <div class="header">
-            <h1>🤖 Chat with LLMs</h1>
+            <h1>🤖 LLM Playground</h1>
             <button class="config-toggle" onclick="toggleConfig()">⚙️ Config</button>
         </div>
 
@@ -748,9 +748,9 @@ def create_chat_app() -> Flask:
     return app
 
 
-def start_chat_server(host: str = "127.0.0.1", port: int = 5001, debug: bool = False) -> None:
+def start_playground_server(host: str = "127.0.0.1", port: int = 5001, debug: bool = False) -> None:
     """
-    Start the chat web server.
+    Start the playground web server.
 
     Args:
         host: Host address to bind to
@@ -758,9 +758,18 @@ def start_chat_server(host: str = "127.0.0.1", port: int = 5001, debug: bool = F
         debug: Enable debug mode
     """
     app = create_chat_app()
-    print(f"Starting Chat with LLMs at http://{host}:{port}")
+    print(f"Starting LLM Playground at http://{host}:{port}")
     app.run(host=host, port=port, debug=debug)
 
 
 if __name__ == "__main__":
-    start_chat_server()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Start the LLM Playground web server")
+    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host address to bind to")
+    parser.add_argument("--port", type=int, default=5001, help="Port number to listen on")
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
+
+    args = parser.parse_args()
+
+    start_playground_server(host=args.host, port=args.port, debug=args.debug)
