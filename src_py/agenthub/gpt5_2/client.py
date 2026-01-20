@@ -75,7 +75,9 @@ class GPT5_2Client(LLMClient):
         Returns:
             OpenAI Responses API configuration dictionary
         """
-        openai_config = {"model": self._model, "include": ["reasoning.encrypted_content"]}
+        # Set store to False to avoid validation error
+        # https://community.openai.com/t/one-potential-cause-of-item-rs-xx-of-type-reasoning-was-provided-without-its-required-following-item-error-stateless-using-agents-sdk/1370540
+        openai_config = {"model": self._model, "store": False, "include": ["reasoning.encrypted_content"]}
 
         if config.get("system_prompt") is not None:
             openai_config["instructions"] = config["system_prompt"]
@@ -127,7 +129,9 @@ class GPT5_2Client(LLMClient):
                         {
                             "type": "reasoning",
                             "id": signature["id"],
-                            "summary": [{"summary_text": item["thinking"]}],
+                            "summary": [{"type": "summary_text", "text": item["thinking"]}]
+                            if item["thinking"]
+                            else [],
                             "encrypted_content": signature["encrypted_content"],
                         }
                     )
@@ -200,7 +204,7 @@ class GPT5_2Client(LLMClient):
                     "id": model_output.item.id,
                     "encrypted_content": model_output.item.encrypted_content,
                 }
-                content_items.append({"type": "thinking", "signature": json.dumps(signature)})
+                content_items.append({"type": "thinking", "thinking": "", "signature": json.dumps(signature)})
             else:
                 event_type = "unused"
 
