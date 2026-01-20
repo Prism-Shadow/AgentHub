@@ -23,6 +23,7 @@ from ..types import (
     FinishReason,
     PartialContentItem,
     PartialUniEvent,
+    PromptCaching,
     ThinkingLevel,
     ToolChoice,
     UniConfig,
@@ -90,7 +91,6 @@ class Gemini3Client(LLMClient):
         if config.get("temperature") is not None:
             config_params["temperature"] = config["temperature"]
 
-        # Convert thinking level
         thinking_summary = config.get("thinking_summary")
         thinking_level = config.get("thinking_level")
         if thinking_summary is not None or thinking_level is not None:
@@ -98,13 +98,15 @@ class Gemini3Client(LLMClient):
                 include_thoughts=thinking_summary, thinking_level=self._convert_thinking_level(thinking_level)
             )
 
-        # Convert tools and tool choice
         if config.get("tools") is not None:
             config_params["tools"] = [types.Tool(function_declarations=config["tools"])]
             tool_choice = config.get("tool_choice")
             if tool_choice is not None:
                 tool_config = self._convert_tool_choice(tool_choice)
                 config_params["tool_config"] = types.ToolConfig(function_calling_config=tool_config)
+
+        if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
+            raise ValueError("prompt_caching must be ENABLE for Gemini 3.")
 
         return types.GenerateContentConfig(**config_params) if config_params else None
 
@@ -191,6 +193,7 @@ class Gemini3Client(LLMClient):
                 "prompt_tokens": model_output.usage_metadata.prompt_token_count,
                 "thoughts_tokens": model_output.usage_metadata.thoughts_token_count,
                 "response_tokens": model_output.usage_metadata.candidates_token_count,
+                "cached_tokens": model_output.usage_metadata.cached_content_token_count,
             }
 
         if candidate.finish_reason:

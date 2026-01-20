@@ -206,6 +206,7 @@ class GLM4_7Client(LLMClient):
                 "prompt_tokens": model_output.usage.prompt_tokens,
                 "thoughts_tokens": reasoning_tokens,
                 "response_tokens": model_output.usage.completion_tokens,
+                "cached_tokens": model_output.usage.prompt_tokens_details.cached_tokens,
             }
 
         return {

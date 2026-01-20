@@ -92,7 +92,6 @@ class Claude4_5Client(LLMClient):
         if config.get("temperature") is not None:
             claude_config["temperature"] = config["temperature"]
 
-        # Convert thinking configuration
         # NOTE: Claude always provides thinking summary
         if config.get("thinking_level") is not None:
             claude_config["temperature"] = 1.0  # `temperature` may only be set to 1 when thinking is enabled
@@ -208,13 +207,11 @@ class Claude4_5Client(LLMClient):
             event_type = "start"
             message = model_output.message
             if getattr(message, "usage", None):
-                # cached_tokens is cache_read_input_tokens from Claude API
-                cached_tokens = message.usage.cache_read_input_tokens if hasattr(message.usage, "cache_read_input_tokens") else None
                 usage_metadata = {
                     "prompt_tokens": message.usage.input_tokens,
                     "thoughts_tokens": None,
                     "response_tokens": None,
-                    "cached_tokens": cached_tokens,
+                    "cached_tokens": message.usage.cache_read_input_tokens,
                 }
 
         elif claude_event_type == "message_delta":
@@ -267,21 +264,17 @@ class Claude4_5Client(LLMClient):
         claude_messages = self.transform_uni_message_to_model_input(messages)
 
         # Add cache_control to last user message's last item if enabled
-        prompt_cache = config.get("prompt_cache", PromptCaching.ENABLE)
-        if prompt_cache != PromptCaching.DISABLE and claude_messages:
-            # Find last user message
-            for i in range(len(claude_messages) - 1, -1, -1):
-                if claude_messages[i]["role"] == "user":
-                    content = claude_messages[i]["content"]
-                    if content and isinstance(content, list):
-                        # Add cache_control to last content item
-                        last_item = content[-1]
-                        if last_item.get("type") == "text":
-                            cache_control = {"type": "ephemeral"}
-                            if prompt_cache == PromptCaching.ENHANCE:
-                                cache_control["ttl"] = "1h"
-                            last_item["cache_control"] = cache_control
-                    break
+        prompt_caching = config.get("prompt_caching", PromptCaching.ENABLE)
+        if prompt_caching != PromptCaching.DISABLE and claude_messages:
+            try:
+                last_user_message = next(filter(lambda x: x["role"] == "user", claude_messages[::-1]))
+                last_content_item = last_user_message["content"][-1]
+                last_content_item["cache_control"] = {
+                    "type": "ephemeral",
+                    "ttl": "1h" if prompt_caching == PromptCaching.ENHANCE else "5m",
+                }
+            except StopIteration:
+                pass
 
         # Stream generate
         partial_tool_call = {}
@@ -329,7 +322,7 @@ class Claude4_5Client(LLMClient):
                                 "prompt_tokens": partial_usage["prompt_tokens"],
                                 "thoughts_tokens": None,
                                 "response_tokens": event["usage_metadata"]["response_tokens"],
-                                "cached_tokens": partial_usage.get("cached_tokens", None),
+                                "cached_tokens": partial_usage["cached_tokens"],
                             },
                             "finish_reason": event["finish_reason"],
                         }
