@@ -323,38 +323,44 @@ def create_chat_app() -> Flask:
                 <div class="config-field">
                     <label for="thinkingLevelSelect">Thinking Level</label>
                     <select id="thinkingLevelSelect">
-                        <option value="">None</option>
+                        <option value="">Unspecified</option>
+                        <option value="none">None</option>
                         <option value="low">Low</option>
                         <option value="medium">Medium</option>
                         <option value="high">High</option>
                     </select>
                 </div>
                 <div class="config-field">
-                    <label for="thinkingSummaryCheckbox">
-                        <input type="checkbox" id="thinkingSummaryCheckbox">
-                        Thinking Summary
-                    </label>
+                    <label for="thinkingSummaryCheckbox">Thinking Summary</label>
+                    <select id="thinkingSummaryCheckbox">
+                        <option value="">Unspecified</option>
+                        <option value="true">True</option>
+                        <option value="false">False</option>
+                    </select>
                 </div>
                 <div class="config-field">
                     <label for="toolChoiceSelect">Tool Choice</label>
                     <select id="toolChoiceSelect">
+                        <option value="">Unspecified</option>
                         <option value="auto">Auto</option>
                         <option value="required">Required</option>
                         <option value="none">None</option>
                     </select>
                 </div>
             </div>
-            <div class="config-field" style="margin-top: 12px;">
-                <label for="systemPromptInput">System Prompt</label>
-                <textarea id="systemPromptInput" rows="2" style="width: 100%; padding: 8px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 14px;"></textarea>
-            </div>
-            <div class="config-field" style="margin-top: 12px;">
-                <label for="toolsInput">Tools (JSON Array)</label>
-                <textarea id="toolsInput" rows="3" placeholder='[{"name": "function_name", "description": "...", "parameters": {...}}]' style="width: 100%; padding: 8px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 14px; font-family: monospace;"></textarea>
-            </div>
-            <div class="config-field" style="margin-top: 12px;">
-                <label for="traceIdInput">Trace ID</label>
-                <input type="text" id="traceIdInput" placeholder="e.g., session_001" style="width: 100%; padding: 8px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 14px;">
+            <div class="config-grid">
+                <div class="config-field">
+                    <label for="systemPromptInput">System Prompt</label>
+                    <textarea id="systemPromptInput" rows="2" style="width: 100%; padding: 8px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 14px;"></textarea>
+                </div>
+                <div class="config-field">
+                    <label for="toolsInput">Tools (JSON Array)</label>
+                    <textarea id="toolsInput" rows="3" placeholder='[{"name": "function_name", "description": "...", "parameters": {...}}]' style="width: 100%; padding: 8px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 14px; font-family: monospace;"></textarea>
+                </div>
+                <div class="config-field">
+                    <label for="traceIdInput">Trace ID</label>
+                    <input type="text" id="traceIdInput" placeholder="e.g., session_001" style="width: 100%; padding: 8px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 14px;">
+                </div>
             </div>
         </div>
 
@@ -394,9 +400,9 @@ def create_chat_app() -> Flask:
                     config.thinking_level = thinkingLevel;
                 }
 
-                const thinkingSummary = document.getElementById('thinkingSummaryCheckbox').checked;
+                const thinkingSummary = document.getElementById('thinkingSummaryCheckbox').value;
                 if (thinkingSummary) {
-                    config.thinking_summary = true;
+                    config.thinking_summary = JSON.parse(thinkingSummary);
                 }
 
                 const toolChoice = document.getElementById('toolChoiceSelect').value;
