@@ -46,7 +46,7 @@ class AutoLLMClient(LLMClient):
             from .claude4_5 import Claude4_5Client
 
             return Claude4_5Client(model=model, api_key=api_key)
-        elif model.lower().startswith("glm-4.7"):  # e.g., glm-4.7
+        elif "glm-4.7" in model.lower():  # e.g., glm-4.7
             from .glm4_7 import GLM4_7Client
 
             return GLM4_7Client(model=model, api_key=api_key)
