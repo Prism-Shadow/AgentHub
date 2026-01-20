@@ -541,9 +541,9 @@ def create_chat_app() -> Flask:
                             client.history = history.copy()
 
                         async for event in client.streaming_response_stateful(message=message, config=client_config):
-                            yield f"data: {json.dumps(event)}\\n\\n"
+                            yield f"data: {json.dumps(event)}\n\n"
 
-                        yield "data: [DONE]\\n\\n"
+                        yield "data: [DONE]\n\n"
 
                     # Run the async generator
                     async_gen = stream_events()
@@ -562,8 +562,8 @@ def create_chat_app() -> Flask:
                     "content_items": [{"type": "text", "text": f"Error: {str(e)}"}],
                     "finish_reason": "error",
                 }
-                yield f"data: {json.dumps(error_event)}\\n\\n"
-                yield "data: [DONE]\\n\\n"
+                yield f"data: {json.dumps(error_event)}\n\n"
+                yield "data: [DONE]\n\n"
 
         return Response(generate(), mimetype="text/event-stream")
 
