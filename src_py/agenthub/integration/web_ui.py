@@ -21,7 +21,6 @@ with support for config editing, streaming responses, and message cards
 showing token usage and stop reasons.
 """
 
-import asyncio
 import base64
 import json
 from typing import Any
@@ -622,7 +621,7 @@ def create_chat_app() -> Flask:
         return render_template_string(CHAT_TEMPLATE)
 
     @app.route("/api/chat", methods=["POST"])
-    def chat() -> Response:
+    async def chat() -> Response:
         """Handle chat requests with streaming responses."""
         from .. import AutoLLMClient
 
@@ -634,7 +633,7 @@ def create_chat_app() -> Flask:
         if not message:
             return jsonify({"error": "No message provided"}), 400
 
-        def generate():
+        async def generate():
             """Generate streaming response."""
             try:
                 # Get or create client for this session
@@ -665,35 +664,13 @@ def create_chat_app() -> Flask:
                 if "tools" in config:
                     client_config["tools"] = config["tools"]
 
-                # Run streaming response in event loop
-                # Create new event loop for this request (Flask runs in worker threads)
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
+                # Stream events directly using async/await
+                async for event in client.streaming_response_stateful(message=message, config=client_config):
+                    # Serialize event to handle bytes objects
+                    serialized_event = _serialize_for_json(event)
+                    yield f"data: {json.dumps(serialized_event)}\n\n"
 
-                try:
-                    async def stream_events():
-                        """Async generator for streaming events."""
-                        async for event in client.streaming_response_stateful(message=message, config=client_config):
-                            # Serialize event to handle bytes objects
-                            serialized_event = _serialize_for_json(event)
-                            yield f"data: {json.dumps(serialized_event)}\n\n"
-
-                        yield "data: [DONE]\n\n"
-
-                    # Run the async generator
-                    async_gen = stream_events()
-                    while True:
-                        try:
-                            event = loop.run_until_complete(async_gen.__anext__())
-                            yield event
-                        except StopAsyncIteration:
-                            break
-                finally:
-                    # Clean up the loop after request is done
-                    try:
-                        loop.run_until_complete(loop.shutdown_asyncgens())
-                    except Exception:
-                        pass
+                yield "data: [DONE]\n\n"
 
             except Exception as e:
                 error_event = {
@@ -707,7 +684,7 @@ def create_chat_app() -> Flask:
         return Response(generate(), mimetype="text/event-stream")
 
     @app.route("/api/clear", methods=["POST"])
-    def clear() -> Response:
+    async def clear() -> Response:
         """Clear chat history for a session."""
         data = request.json
         session_id = data.get("session_id", "default")
