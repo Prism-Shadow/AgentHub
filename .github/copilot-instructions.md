@@ -54,6 +54,7 @@ When adding support for new AI models in `auto_client.py`, follow these rules:
 3. **DO NOT** create new files or directories in examples and tests when adding a new model, use pytest parameters or environment variables instead.
 4. **Always** consult the [../llmsdk_docs/README.md](../llmsdk_docs/README.md) for AI model sdk usage details.
 5. When making changes, ensure consistency across both implementations when applicable.
+6. When using JSON serialization, ensure that CJK strings are serialized correctly by using `ensure_ascii=False`.
 
 When writing documentation, follow these rules:
 
