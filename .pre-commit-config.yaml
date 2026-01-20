@@ -9,5 +9,5 @@ repos:
         args: ['--maxkb=25000']
     -   id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
-    # -   id: no-commit-to-branch
-    #     args: ['--branch', 'main']
+    -   id: no-commit-to-branch
+        args: ['--branch', 'main']
