@@ -287,7 +287,7 @@ def create_chat_app() -> Flask:
                 </div>
                 <div class="config-field">
                     <label for="temperatureInput">Temperature</label>
-                    <input type="number" id="temperatureInput" min="0" max="2" step="0.1" value="0.7">
+                    <input type="number" id="temperatureInput" min="0" max="2" step="0.1" value="1.0">
                 </div>
                 <div class="config-field">
                     <label for="maxTokensInput">Max Tokens</label>
@@ -491,21 +491,38 @@ def create_chat_app() -> Flask:
                                 try {
                                     const event = JSON.parse(data);
 
-                                    // Handle text content
+                                    // Handle all content types
                                     for (const item of event.content_items || []) {
                                         if (item.type === 'text') {
                                             fullResponse += item.text;
-                                            contentDiv.textContent = fullResponse;
+                                            contentDiv.innerHTML = fullResponse;
+                                        } else if (item.type === 'thinking') {
+                                            const thinkingDiv = document.createElement('div');
+                                            thinkingDiv.style.cssText = 'background-color: #ddf4ff; padding: 12px; border-radius: 4px; border-left: 3px solid #0969da; margin-bottom: 8px; font-style: italic;';
+                                            thinkingDiv.textContent = `💭 ${item.thinking}`;
+                                            contentDiv.appendChild(thinkingDiv);
+                                        } else if (item.type === 'tool_call') {
+                                            const toolCallDiv = document.createElement('div');
+                                            toolCallDiv.style.cssText = 'background-color: #fff8c5; padding: 12px; border-radius: 4px; border-left: 3px solid #d4a72c; margin-bottom: 8px;';
+                                            toolCallDiv.innerHTML = `<strong>🛠️ Tool Call:</strong> ${item.name}<br><pre style="margin: 4px 0 0 0; font-size: 12px;">${JSON.stringify(item.argument, null, 2)}</pre>`;
+                                            contentDiv.appendChild(toolCallDiv);
+                                        } else if (item.type === 'tool_result') {
+                                            const toolResultDiv = document.createElement('div');
+                                            toolResultDiv.style.cssText = 'background-color: #d1f0e8; padding: 12px; border-radius: 4px; border-left: 3px solid #1a7f37; margin-bottom: 8px;';
+                                            toolResultDiv.innerHTML = `<strong>✅ Tool Result:</strong><br><pre style="margin: 4px 0 0 0; font-size: 12px;">${item.result}</pre>`;
+                                            contentDiv.appendChild(toolResultDiv);
                                         }
                                     }
 
-                                    // Store metadata
+                                    // Store detailed metadata
                                     if (event.usage_metadata) {
                                         const usage = event.usage_metadata;
-                                        const totalTokens = (usage.prompt_tokens || 0) +
-                                                          (usage.thoughts_tokens || 0) +
-                                                          (usage.response_tokens || 0);
-                                        metadata = { tokens: totalTokens };
+                                        metadata = {
+                                            prompt_tokens: usage.prompt_tokens || 0,
+                                            thoughts_tokens: usage.thoughts_tokens || 0,
+                                            response_tokens: usage.response_tokens || 0,
+                                            total_tokens: (usage.prompt_tokens || 0) + (usage.thoughts_tokens || 0) + (usage.response_tokens || 0)
+                                        };
                                     }
                                     if (event.finish_reason) {
                                         metadata = metadata || {};
@@ -521,8 +538,13 @@ def create_chat_app() -> Flask:
                     // Update card with metadata
                     if (metadata) {
                         let metadataHtml = '<div class="message-metadata">';
-                        if (metadata.tokens) {
-                            metadataHtml += `<div class="metadata-item">📊 ${metadata.tokens} tokens</div>`;
+                        if (metadata.prompt_tokens || metadata.thoughts_tokens || metadata.response_tokens) {
+                            const parts = [];
+                            if (metadata.prompt_tokens) parts.push(`Prompt: ${metadata.prompt_tokens}`);
+                            if (metadata.thoughts_tokens) parts.push(`Thoughts: ${metadata.thoughts_tokens}`);
+                            if (metadata.response_tokens) parts.push(`Response: ${metadata.response_tokens}`);
+                            if (metadata.total_tokens) parts.push(`Total: ${metadata.total_tokens}`);
+                            metadataHtml += `<div class="metadata-item">📊 ${parts.join(' | ')}</div>`;
                         }
                         if (metadata.finish_reason) {
                             metadataHtml += `<div class="metadata-item">🏁 ${metadata.finish_reason}</div>`;
