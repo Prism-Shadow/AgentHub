@@ -24,6 +24,7 @@ from ..types import (
     FinishReason,
     PartialContentItem,
     PartialUniEvent,
+    PromptCache,
     ThinkingLevel,
     ToolChoice,
     UniConfig,
@@ -80,24 +81,36 @@ class Claude4_5Client(LLMClient):
         """
         claude_config = {"model": self._model}
 
+        prompt_cache = config.get("prompt_cache", PromptCache.ENABLE)
+
         if config.get("system_prompt") is not None:
-            claude_config["system"] = config["system_prompt"]
+            if prompt_cache == PromptCache.DISABLE:
+                claude_config["system"] = config["system_prompt"]
+            else:
+                cache_control = {"type": "ephemeral"}
+                if prompt_cache == PromptCache.ENHANCE:
+                    cache_control["ttl"] = "1h"
+
+                claude_config["system"] = [
+                    {
+                        "type": "text",
+                        "text": config["system_prompt"],
+                        "cache_control": cache_control,
+                    }
+                ]
 
         if config.get("max_tokens") is not None:
             claude_config["max_tokens"] = config["max_tokens"]
         else:
-            claude_config["max_tokens"] = 32768  # Claude requires max_tokens to be specified
+            claude_config["max_tokens"] = 32768
 
         if config.get("temperature") is not None:
             claude_config["temperature"] = config["temperature"]
 
-        # Convert thinking configuration
-        # NOTE: Claude always provides thinking summary
         if config.get("thinking_level") is not None:
-            claude_config["temperature"] = 1.0  # `temperature` may only be set to 1 when thinking is enabled
+            claude_config["temperature"] = 1.0
             claude_config["thinking"] = self._convert_thinking_level_to_budget(config["thinking_level"])
 
-        # Convert tools to Claude's tool schema
         if config.get("tools") is not None:
             claude_tools = []
             for tool in config["tools"]:
@@ -109,7 +122,6 @@ class Claude4_5Client(LLMClient):
 
             claude_config["tools"] = claude_tools
 
-        # Convert tool_choice
         if config.get("tool_choice") is not None:
             claude_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
 
@@ -211,6 +223,8 @@ class Claude4_5Client(LLMClient):
                     "prompt_tokens": message.usage.input_tokens,
                     "thoughts_tokens": None,
                     "response_tokens": None,
+                    "cache_creation_tokens": getattr(message.usage, "cache_creation_input_tokens", None),
+                    "cache_read_tokens": getattr(message.usage, "cache_read_input_tokens", None),
                 }
 
         elif claude_event_type == "message_delta":
@@ -275,6 +289,8 @@ class Claude4_5Client(LLMClient):
 
                     if event["usage_metadata"] is not None:
                         partial_usage["prompt_tokens"] = event["usage_metadata"]["prompt_tokens"]
+                        partial_usage["cache_creation_tokens"] = event["usage_metadata"].get("cache_creation_tokens")
+                        partial_usage["cache_read_tokens"] = event["usage_metadata"].get("cache_read_tokens")
 
                 elif event["event"] == "delta":
                     if event["content_items"][0]["type"] == "partial_tool_call":
@@ -306,6 +322,8 @@ class Claude4_5Client(LLMClient):
                                 "prompt_tokens": partial_usage["prompt_tokens"],
                                 "thoughts_tokens": None,
                                 "response_tokens": event["usage_metadata"]["response_tokens"],
+                                "cache_creation_tokens": partial_usage.get("cache_creation_tokens"),
+                                "cache_read_tokens": partial_usage.get("cache_read_tokens"),
                             },
                             "finish_reason": event["finish_reason"],
                         }
