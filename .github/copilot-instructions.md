@@ -69,7 +69,9 @@ When writing tests that require calling AI models, the following secrets are ava
 - `ANTHROPIC_API_KEY` - API key for Anthropic Claude SDK
 - `GEMINI_API_KEY` - API key for Google Gemini SDK
 - `OPENAI_API_KEY` - API key for OpenAI SDK
-- `GLM_API_KEY` - API key for Z.AI GLM SDK SDK
+- `GLM_API_KEY` - API key for Z.AI GLM SDK
+- `QWEN3_API_KEY` - API key for Qwen3 SDK
+- `QWEN3_BASE_URL` - Base URL for Qwen3 SDK
 
 To use these secrets in your workflow files, reference them in the `env:` section:
 
@@ -79,6 +81,8 @@ env:
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
+  QWEN3_API_KEY: ${{ secrets.QWEN3_API_KEY }}
+  QWEN3_BASE_URL: ${{ secrets.QWEN3_BASE_URL }}
 ```
 
 These secrets can be used in your test code to authenticate with the respective AI model providers. Make sure to handle these credentials securely and never log or expose them in test output.
