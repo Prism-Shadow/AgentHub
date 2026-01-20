@@ -26,8 +26,10 @@ import base64
 import json
 import threading
 from typing import Any
-from .. import AutoLLMClient
+
 from flask import Flask, Response, jsonify, render_template_string, request
+
+from .. import AutoLLMClient
 
 
 # Global event loop and lock for thread-safe async operations
@@ -44,6 +46,7 @@ def _get_event_loop() -> asyncio.AbstractEventLoop:
             # Double-check after acquiring lock
             if _event_loop is None or _event_loop.is_closed():
                 _event_loop = asyncio.new_event_loop()
+
                 # Start the loop in a background thread
                 def run_loop():
                     asyncio.set_event_loop(_event_loop)
