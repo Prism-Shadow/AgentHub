@@ -666,32 +666,34 @@ def create_chat_app() -> Flask:
                     client_config["tools"] = config["tools"]
 
                 # Run streaming response in event loop
+                # Create new event loop for this request (Flask runs in worker threads)
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
                 try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_closed():
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
-                except RuntimeError:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
+                    async def stream_events():
+                        """Async generator for streaming events."""
+                        async for event in client.streaming_response_stateful(message=message, config=client_config):
+                            # Serialize event to handle bytes objects
+                            serialized_event = _serialize_for_json(event)
+                            yield f"data: {json.dumps(serialized_event)}\n\n"
 
-                async def stream_events():
-                    """Async generator for streaming events."""
-                    async for event in client.streaming_response_stateful(message=message, config=client_config):
-                        # Serialize event to handle bytes objects
-                        serialized_event = _serialize_for_json(event)
-                        yield f"data: {json.dumps(serialized_event)}\n\n"
+                        yield "data: [DONE]\n\n"
 
-                    yield "data: [DONE]\n\n"
-
-                # Run the async generator
-                async_gen = stream_events()
-                while True:
+                    # Run the async generator
+                    async_gen = stream_events()
+                    while True:
+                        try:
+                            event = loop.run_until_complete(async_gen.__anext__())
+                            yield event
+                        except StopAsyncIteration:
+                            break
+                finally:
+                    # Clean up the loop after request is done
                     try:
-                        event = loop.run_until_complete(async_gen.__anext__())
-                        yield event
-                    except StopAsyncIteration:
-                        break
+                        loop.run_until_complete(loop.shutdown_asyncgens())
+                    except Exception:
+                        pass
 
             except Exception as e:
                 error_event = {
