@@ -276,16 +276,28 @@ from agenthub.integration.tracer import Tracer
 Tracer("path/to/cache").start_web_server(host="127.0.0.1", port=5000)
 ```
 
-Then visit `http://127.0.0.1:5000` in your browser to browse saved conversations.
+Or use the CLI:
 
-### Test with Web UI
-
-Start a web server to test with the UI:
-
-```python
-from agenthub.integration.web_ui import start_chat_server
-
-start_chat_server()
+```bash
+python -m agenthub.integration.tracer --cache_dir ./cache --host 127.0.0.1 --port 5000
 ```
 
-Then visit `http://127.0.0.1:5001` in your browser to test with the UI.
+Then visit `http://127.0.0.1:5000` in your browser to browse saved conversations.
+
+### Test with Playground
+
+Start a web server to test with the playground:
+
+```python
+from agenthub.integration.playground import start_playground_server
+
+start_playground_server()
+```
+
+Or use the CLI:
+
+```bash
+python -m agenthub.integration.playground --host 127.0.0.1 --port 5001
+```
+
+Then visit `http://127.0.0.1:5001` in your browser to test with the playground.

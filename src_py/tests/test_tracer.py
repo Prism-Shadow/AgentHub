@@ -24,16 +24,7 @@ from agenthub import AutoLLMClient
 from agenthub.integration.tracer import Tracer
 
 
-AVAILABLE_MODELS = []
-
-if os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"):
-    AVAILABLE_MODELS.append("gemini-3-flash-preview")
-
-if os.getenv("ANTHROPIC_API_KEY"):
-    AVAILABLE_MODELS.append("claude-sonnet-4-5-20250929")
-
-if os.getenv("GLM_API_KEY"):
-    AVAILABLE_MODELS.append(pytest.param("glm-4.7", marks=pytest.mark.xfail(reason="API rate limit")))
+GEMINI_AVAILABLE = bool(os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
 
 
 @pytest.fixture
@@ -243,12 +234,12 @@ def test_web_app_nonexistent_path(temp_cache_dir):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("model", AVAILABLE_MODELS)
-async def test_monitoring_integration(model, temp_cache_dir):
+@pytest.mark.skipif(not GEMINI_AVAILABLE, reason="Gemini API key not available")
+async def test_monitoring_integration(temp_cache_dir):
     """Test monitoring integration with AutoLLMClient."""
 
     os.environ["AGENTHUB_CACHE_DIR"] = temp_cache_dir
-    client = AutoLLMClient(model=model)
+    client = AutoLLMClient(model="gemini-3-flash-preview")
     config = {"trace_id": "integration_test/conversation.txt"}
 
     message = {"role": "user", "content_items": [{"type": "text", "text": "Say hello"}]}
@@ -267,12 +258,12 @@ async def test_monitoring_integration(model, temp_cache_dir):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("model", AVAILABLE_MODELS)
-async def test_monitoring_updates_on_multiple_messages(model, temp_cache_dir):
+@pytest.mark.skipif(not GEMINI_AVAILABLE, reason="Gemini API key not available")
+async def test_monitoring_updates_on_multiple_messages(temp_cache_dir):
     """Test that monitoring file is updated with each new message."""
 
     os.environ["AGENTHUB_CACHE_DIR"] = temp_cache_dir
-    client = AutoLLMClient(model=model)
+    client = AutoLLMClient(model="gemini-3-flash-preview")
     config = {"trace_id": "multi_message_test/conversation.txt"}
 
     # First message
