@@ -33,7 +33,7 @@ if os.getenv("ANTHROPIC_API_KEY"):
     AVAILABLE_MODELS.append("claude-sonnet-4-5-20250929")
 
 if os.getenv("GLM_API_KEY"):
-    AVAILABLE_MODELS.append("glm-4.7")
+    AVAILABLE_MODELS.append(pytest.param("glm-4.7", marks=pytest.mark.xfail(reason="API rate limit")))
 
 
 @pytest.fixture
