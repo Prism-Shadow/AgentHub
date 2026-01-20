@@ -40,7 +40,7 @@ class GPT5_2Client(LLMClient):
         self._model = model
         api_key = api_key or os.getenv("OPENAI_API_KEY")
         base_url = os.getenv("OPENAI_BASE_URL")
-        self._client = AsyncOpenAI(api_key=api_key, base_url=base_url) if base_url else AsyncOpenAI(api_key=api_key)
+        self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self._history: list[UniMessage] = []
 
     def _convert_tool_choice(self, tool_choice: ToolChoice) -> str | dict[str, Any]:
@@ -55,6 +55,8 @@ class GPT5_2Client(LLMClient):
             return "auto"
         elif tool_choice == "required":
             return "required"
+        else:
+            raise ValueError(f"Unknown tool_choice value: {tool_choice}")
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """
@@ -230,13 +232,17 @@ class GPT5_2Client(LLMClient):
             if event["finish_reason"] or event["usage_metadata"]:
                 if partial_tool_calls:
                     for tool_call in partial_tool_calls.values():
+                        try:
+                            argument = json.loads(tool_call["argument"]) if tool_call["argument"] else {}
+                        except json.JSONDecodeError:
+                            argument = {}
                         yield {
                             "role": "assistant",
                             "content_items": [
                                 {
                                     "type": "tool_call",
                                     "name": tool_call["name"],
-                                    "argument": json.loads(tool_call["argument"]) if tool_call["argument"] else {},
+                                    "argument": argument,
                                     "tool_call_id": tool_call["tool_call_id"],
                                 }
                             ],
