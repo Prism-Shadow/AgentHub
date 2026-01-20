@@ -49,7 +49,7 @@ async def run_traced_chat():
     client = AutoLLMClient(model=model)
 
     # Configure with trace_id to save history (no file extension)
-    config = {"trace_id": "agent1/conversation_001", "temperature": 0.7}
+    config = {"trace_id": "agent1/conversation_001"}
 
     query1 = "My name is Alice and I like cats."
     async for _ in client.streaming_response_stateful(
@@ -83,7 +83,7 @@ async def run_traced_chat():
             "required": ["location"],
         },
     }
-    config2 = {"trace_id": "session_123", "temperature": 0.7, "tools": [weather_function]}
+    config2 = {"trace_id": "session_123", "tools": [weather_function]}
 
     query3 = "What's the weather in London?"
     # First turn - model will request tool call

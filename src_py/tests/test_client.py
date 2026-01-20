@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+from contextlib import nullcontext
 
 import pytest
 
@@ -31,6 +32,10 @@ if os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"):
 if os.getenv("ANTHROPIC_API_KEY"):
     AVAILABLE_MODELS.append("claude-sonnet-4-5-20250929")
     AVAILABLE_VISION_MODELS.append("claude-sonnet-4-5-20250929")
+
+if os.getenv("OPENAI_API_KEY"):
+    AVAILABLE_MODELS.append("gpt-5.2")
+    AVAILABLE_VISION_MODELS.append("gpt-5.2")
 
 if os.getenv("GLM_API_KEY"):
     AVAILABLE_MODELS.append("glm-4.7")
@@ -61,13 +66,19 @@ async def test_streaming_response_with_all_parameters(model):
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is 2+3?"}]}]
     config = {"max_tokens": 8192, "temperature": 0.7, "thinking_summary": True, "thinking_level": ThinkingLevel.LOW}
 
-    text = ""
-    async for event in client.streaming_response(messages=messages, config=config):
-        for item in event["content_items"]:
-            if item["type"] == "text":
-                text += item["text"]
+    if model == "gpt-5.2":
+        context = pytest.raises(ValueError, match="not support")
+    else:
+        context = nullcontext()
 
-    assert "5" in text  # 2 + 3 = 5
+    with context:
+        text = ""
+        async for event in client.streaming_response(messages=messages, config=config):
+            for item in event["content_items"]:
+                if item["type"] == "text":
+                    text += item["text"]
+
+        assert "5" in text  # 2 + 3 = 5
 
 
 @pytest.mark.asyncio
@@ -138,7 +149,7 @@ async def test_concat_uni_events_to_uni_message(model):
 @pytest.mark.asyncio
 async def test_unknown_model():
     """Test that unknown models raise ValueError."""
-    with pytest.raises(ValueError, match="not supported"):
+    with pytest.raises(ValueError, match="not support"):
         AutoLLMClient(model="unknown-model")
 
 
