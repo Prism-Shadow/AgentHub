@@ -233,3 +233,82 @@ async def test_system_prompt(model):
                 text += item["text"]
 
     assert "meow" in text.lower()
+
+
+@pytest.mark.asyncio
+async def test_prompt_cache_claude():
+    """Test prompt cache capability for Claude models."""
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        pytest.skip("ANTHROPIC_API_KEY not set")
+
+    from agenthub import PromptCache
+
+    client = AutoLLMClient(model="claude-sonnet-4-5-20250929")
+    messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is 2+3?"}]}]
+
+    config_enable = {
+        "system_prompt": "You are a helpful assistant.",
+        "prompt_cache": PromptCache.ENABLE,
+    }
+
+    cache_creation_tokens = None
+    cache_read_tokens = None
+    async for event in client.streaming_response(messages=messages, config=config_enable):
+        if event.get("usage_metadata"):
+            cache_creation_tokens = event["usage_metadata"].get("cache_creation_tokens")
+            cache_read_tokens = event["usage_metadata"].get("cache_read_tokens")
+
+    assert cache_creation_tokens is not None or cache_read_tokens is not None
+
+
+@pytest.mark.asyncio
+async def test_prompt_cache_disable():
+    """Test prompt cache can be disabled for Claude models."""
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        pytest.skip("ANTHROPIC_API_KEY not set")
+
+    from agenthub import PromptCache
+
+    client = AutoLLMClient(model="claude-sonnet-4-5-20250929")
+    messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is 2+3?"}]}]
+
+    config_disable = {
+        "system_prompt": "You are a helpful assistant.",
+        "prompt_cache": PromptCache.DISABLE,
+    }
+
+    cache_creation_tokens = None
+    cache_read_tokens = None
+    async for event in client.streaming_response(messages=messages, config=config_disable):
+        if event.get("usage_metadata"):
+            cache_creation_tokens = event["usage_metadata"].get("cache_creation_tokens")
+            cache_read_tokens = event["usage_metadata"].get("cache_read_tokens")
+
+    assert cache_creation_tokens is None
+    assert cache_read_tokens is None
+
+
+@pytest.mark.asyncio
+async def test_prompt_cache_enhance():
+    """Test prompt cache enhance mode with 1-hour TTL for Claude models."""
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        pytest.skip("ANTHROPIC_API_KEY not set")
+
+    from agenthub import PromptCache
+
+    client = AutoLLMClient(model="claude-sonnet-4-5-20250929")
+    messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is 2+3?"}]}]
+
+    config_enhance = {
+        "system_prompt": "You are a helpful assistant.",
+        "prompt_cache": PromptCache.ENHANCE,
+    }
+
+    cache_creation_tokens = None
+    cache_read_tokens = None
+    async for event in client.streaming_response(messages=messages, config=config_enhance):
+        if event.get("usage_metadata"):
+            cache_creation_tokens = event["usage_metadata"].get("cache_creation_tokens")
+            cache_read_tokens = event["usage_metadata"].get("cache_read_tokens")
+
+    assert cache_creation_tokens is not None or cache_read_tokens is not None
