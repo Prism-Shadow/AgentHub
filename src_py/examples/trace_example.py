@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # Copyright 2025 Prism Shadow. and/or its affiliates
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +26,8 @@ import os
 import threading
 import time
 
-from agenthub import AutoLLMClient, Tracer
+from agenthub import AutoLLMClient
+from agenthub.integration.tracer import Tracer
 
 
 def get_weather(location: str) -> str:

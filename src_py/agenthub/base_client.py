@@ -171,7 +171,7 @@ class LLMClient(ABC):
 
         # Save history to file if trace_id is specified
         if config.get("trace_id"):
-            from .tracer import Tracer
+            from .integration.tracer import Tracer
 
             tracer = Tracer()
             tracer.save_history(self._history, config["trace_id"], config)

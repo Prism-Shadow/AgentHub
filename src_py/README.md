@@ -270,10 +270,22 @@ This creates two files in the `cache` directory:
 Start a web server to browse and view saved conversations:
 
 ```python
-from agenthub import Tracer
+from agenthub.integration.tracer import Tracer
 
 # Start web server
 Tracer("path/to/cache").start_web_server(host="127.0.0.1", port=5000)
 ```
 
 Then visit `http://127.0.0.1:5000` in your browser to browse saved conversations.
+
+### Test with Web UI
+
+Start a web server to test with the UI:
+
+```python
+from agenthub.integration.web_ui import start_chat_server
+
+start_chat_server()
+```
+
+Then visit `http://127.0.0.1:5001` in your browser to test with the UI.

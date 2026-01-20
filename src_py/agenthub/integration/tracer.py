@@ -28,7 +28,7 @@ from typing import Any
 
 from flask import Flask, Response, render_template_string
 
-from .types import UniMessage
+from ..types import UniMessage
 
 
 class Tracer:
