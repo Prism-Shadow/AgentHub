@@ -17,7 +17,6 @@ import os
 from typing import Any, AsyncIterator
 
 from openai import AsyncOpenAI
-from openai.types.chat import ChatCompletionChunk
 
 from ..base_client import LLMClient
 from ..types import (
@@ -60,13 +59,13 @@ class GPT5_2Client(LLMClient):
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """
-        Transform universal configuration to OpenAI-specific configuration.
+        Transform universal configuration to OpenAI Responses API configuration.
 
         Args:
             config: Universal configuration dict
 
         Returns:
-            OpenAI configuration dictionary
+            OpenAI Responses API configuration dictionary
         """
         openai_config = {"model": self._model}
 
@@ -76,10 +75,13 @@ class GPT5_2Client(LLMClient):
         if config.get("temperature") is not None:
             openai_config["temperature"] = config["temperature"]
 
+        if config.get("system_prompt") is not None:
+            openai_config["instructions"] = config["system_prompt"]
+
         if config.get("tools") is not None:
             openai_tools = []
             for tool in config["tools"]:
-                openai_tool = {"type": "function", "function": tool}
+                openai_tool = {"type": "function", **tool}
                 openai_tools.append(openai_tool)
             openai_config["tools"] = openai_tools
 
@@ -90,58 +92,60 @@ class GPT5_2Client(LLMClient):
 
     def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[dict[str, Any]]:
         """
-        Transform universal message format to OpenAI's message format.
+        Transform universal message format to OpenAI Responses API input format.
 
         Args:
             messages: List of universal message dictionaries
 
         Returns:
-            List of OpenAI message dictionaries
+            List of input items for OpenAI Responses API
         """
-        openai_messages = []
+        input_list = []
 
         for msg in messages:
-            content_blocks = []
-            tool_calls = []
+            content_items = []
 
             for item in msg["content_items"]:
                 if item["type"] == "text":
-                    content_blocks.append({"type": "text", "text": item["text"]})
+                    content_items.append({"type": "input_text", "text": item["text"]})
                 elif item["type"] == "image_url":
-                    content_blocks.append({"type": "image_url", "image_url": {"url": item["image_url"]}})
+                    content_items.append({"type": "input_image", "image_url": item["image_url"]})
                 elif item["type"] == "tool_call":
-                    tool_calls.append(
+                    input_list.append(
                         {
-                            "id": item["tool_call_id"],
-                            "type": "function",
-                            "function": {"name": item["name"], "arguments": json.dumps(item["argument"])},
+                            "type": "function_call",
+                            "call_id": item["tool_call_id"],
+                            "name": item["name"],
+                            "arguments": json.dumps(item["argument"]),
                         }
                     )
                 elif item["type"] == "tool_result":
                     if "tool_call_id" not in item:
                         raise ValueError("tool_call_id is required for tool result.")
-                    openai_messages.append(
-                        {"role": "tool", "content": item["result"], "tool_call_id": item["tool_call_id"]}
+                    input_list.append(
+                        {
+                            "type": "function_call_output",
+                            "call_id": item["tool_call_id"],
+                            "output": item["result"],
+                        }
                     )
                 else:
                     raise ValueError(f"Unknown item type: {item['type']}")
 
-            if content_blocks or msg["role"] == "user":
-                message = {"role": msg["role"], "content": content_blocks if content_blocks else ""}
-                if tool_calls:
-                    message["tool_calls"] = tool_calls
-                openai_messages.append(message)
-            elif tool_calls:
-                openai_messages.append({"role": "assistant", "content": None, "tool_calls": tool_calls})
+            if content_items:
+                if len(content_items) == 1 and content_items[0]["type"] == "input_text":
+                    input_list.append({"role": msg["role"], "content": content_items[0]["text"]})
+                else:
+                    input_list.append({"role": msg["role"], "content": content_items})
 
-        return openai_messages
+        return input_list
 
-    def transform_model_output_to_uni_event(self, model_output: ChatCompletionChunk) -> PartialUniEvent:
+    def transform_model_output_to_uni_event(self, model_output: Any) -> PartialUniEvent:
         """
-        Transform OpenAI model output to universal event format.
+        Transform OpenAI Responses API streaming event to universal event format.
 
         Args:
-            model_output: OpenAI streaming chunk
+            model_output: OpenAI Responses API streaming event
 
         Returns:
             Universal event dictionary
@@ -151,40 +155,53 @@ class GPT5_2Client(LLMClient):
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
 
-        if model_output.choices:
-            choice = model_output.choices[0]
-            delta = choice.delta
+        if hasattr(model_output, "type"):
+            event_obj_type = model_output.type
 
-            if delta.content:
-                content_items.append({"type": "text", "text": delta.content})
+            if event_obj_type == "response.output_text.delta":
+                if hasattr(model_output, "delta"):
+                    content_items.append({"type": "text", "text": model_output.delta})
 
-            if delta.tool_calls:
-                for tool_call in delta.tool_calls:
-                    if tool_call.function:
-                        content_items.append(
-                            {
-                                "type": "partial_tool_call",
-                                "name": tool_call.function.name or "",
-                                "argument": tool_call.function.arguments or "",
-                                "tool_call_id": tool_call.id or "",
-                            }
-                        )
+            elif event_obj_type == "response.function_call_arguments.delta":
+                if hasattr(model_output, "delta") and hasattr(model_output, "call_id"):
+                    content_items.append(
+                        {
+                            "type": "partial_tool_call",
+                            "name": getattr(model_output, "name", ""),
+                            "argument": model_output.delta,
+                            "tool_call_id": model_output.call_id,
+                        }
+                    )
 
-            if choice.finish_reason:
-                finish_reason_mapping = {
-                    "stop": "stop",
-                    "length": "length",
-                    "tool_calls": "stop",
-                    "content_filter": "stop",
-                }
-                finish_reason = finish_reason_mapping.get(choice.finish_reason, "unknown")
+            elif event_obj_type == "response.function_call_arguments.done":
+                if hasattr(model_output, "name") and hasattr(model_output, "call_id"):
+                    content_items.append(
+                        {
+                            "type": "partial_tool_call",
+                            "name": model_output.name,
+                            "argument": "",
+                            "tool_call_id": model_output.call_id,
+                        }
+                    )
 
-        if model_output.usage:
-            usage_metadata = {
-                "prompt_tokens": model_output.usage.prompt_tokens,
-                "thoughts_tokens": None,
-                "response_tokens": model_output.usage.completion_tokens,
-            }
+            elif event_obj_type == "response.done":
+                if hasattr(model_output, "response"):
+                    response_obj = model_output.response
+                    if hasattr(response_obj, "status"):
+                        status_mapping = {
+                            "completed": "stop",
+                            "incomplete": "length",
+                            "failed": "stop",
+                        }
+                        finish_reason = status_mapping.get(response_obj.status, "unknown")
+
+                    if hasattr(response_obj, "usage"):
+                        usage = response_obj.usage
+                        usage_metadata = {
+                            "prompt_tokens": getattr(usage, "input_tokens", None),
+                            "thoughts_tokens": None,
+                            "response_tokens": getattr(usage, "output_tokens", None),
+                        }
 
         return {
             "role": "assistant",
@@ -199,22 +216,21 @@ class GPT5_2Client(LLMClient):
         messages: list[UniMessage],
         config: UniConfig,
     ) -> AsyncIterator[UniEvent]:
-        """Stream generate using OpenAI SDK with unified conversion methods."""
+        """Stream generate using OpenAI Responses API with unified conversion methods."""
         openai_config = self.transform_uni_config_to_model_config(config)
-        openai_messages = self.transform_uni_message_to_model_input(messages)
+        input_list = self.transform_uni_message_to_model_input(messages)
 
-        if config.get("system_prompt"):
-            openai_messages.insert(0, {"role": "system", "content": config["system_prompt"]})
+        openai_config["input"] = input_list
 
         partial_tool_calls = {}
-        stream = await self._client.chat.completions.create(**openai_config, messages=openai_messages, stream=True)
+        stream = await self._client.responses.create(**openai_config, stream=True)
 
-        async for chunk in stream:
-            event = self.transform_model_output_to_uni_event(chunk)
+        async for event in stream:
+            transformed_event = self.transform_model_output_to_uni_event(event)
 
-            if event["event"] == "delta":
-                if event["content_items"]:
-                    for item in event["content_items"]:
+            if transformed_event["event"] == "delta":
+                if transformed_event["content_items"]:
+                    for item in transformed_event["content_items"]:
                         if item["type"] == "partial_tool_call":
                             tool_call_id = item["tool_call_id"]
                             if tool_call_id not in partial_tool_calls:
@@ -229,7 +245,7 @@ class GPT5_2Client(LLMClient):
                         else:
                             yield {"role": "assistant", "content_items": [item]}
 
-            if event["finish_reason"] or event["usage_metadata"]:
+            if transformed_event["finish_reason"] or transformed_event["usage_metadata"]:
                 if partial_tool_calls:
                     for tool_call in partial_tool_calls.values():
                         try:
@@ -249,10 +265,10 @@ class GPT5_2Client(LLMClient):
                         }
                     partial_tool_calls = {}
 
-                if event["usage_metadata"] or event["finish_reason"]:
+                if transformed_event["usage_metadata"] or transformed_event["finish_reason"]:
                     final_event = {"role": "assistant", "content_items": []}
-                    if event["usage_metadata"]:
-                        final_event["usage_metadata"] = event["usage_metadata"]
-                    if event["finish_reason"]:
-                        final_event["finish_reason"] = event["finish_reason"]
+                    if transformed_event["usage_metadata"]:
+                        final_event["usage_metadata"] = transformed_event["usage_metadata"]
+                    if transformed_event["finish_reason"]:
+                        final_event["finish_reason"] = transformed_event["finish_reason"]
                     yield final_event
