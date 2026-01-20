@@ -99,7 +99,7 @@ class LLMClient(ABC):
                         content_items[-1]["thinking"] += item["thinking"]
                         if "signature" in item:  # signature may appear at the last item
                             content_items[-1]["signature"] = item["signature"]
-                    elif item["thinking"]:  # omit empty thinking items
+                    elif item["thinking"] or item.get("signature"):  # omit empty thinking items
                         content_items.append(item.copy())
                 else:
                     content_items.append(item.copy())

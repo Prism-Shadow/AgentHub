@@ -45,7 +45,7 @@ class GLM4_7Client(LLMClient):
         self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self._history: list[UniMessage] = []
 
-    def _convert_thinking_level_to_config(self, thinking_level: ThinkingLevel) -> dict:
+    def _convert_thinking_level_to_config(self, thinking_level: ThinkingLevel) -> dict[str, str]:
         """Convert ThinkingLevel enum to GLM's thinking configuration."""
         mapping = {
             ThinkingLevel.NONE: {"type": "disabled"},
@@ -72,7 +72,7 @@ class GLM4_7Client(LLMClient):
         Returns:
             GLM configuration dictionary
         """
-        glm_config = {"model": self._model, "stream": True}
+        glm_config = {"model": self._model}
 
         if config.get("max_tokens") is not None:
             glm_config["max_tokens"] = config["max_tokens"]
@@ -239,7 +239,7 @@ class GLM4_7Client(LLMClient):
             glm_messages.insert(0, {"role": "system", "content": config["system_prompt"]})
 
         # Stream generate
-        stream = await self._client.chat.completions.create(**glm_config, messages=glm_messages)
+        stream = await self._client.chat.completions.create(**glm_config, messages=glm_messages, stream=True)
 
         async for chunk in stream:
             event = self.transform_model_output_to_uni_event(chunk)

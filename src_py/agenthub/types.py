@@ -44,7 +44,6 @@ class TextContentItem(TypedDict):
     type: Literal["text"]
     text: str
     signature: NotRequired[str | bytes]
-    tool_call_id: NotRequired[str]
 
 
 class ImageContentItem(TypedDict):

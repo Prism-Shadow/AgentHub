@@ -51,7 +51,9 @@ class AutoLLMClient(LLMClient):
 
             return GLM4_7Client(model=model, api_key=api_key)
         elif "gpt-5.2" in model.lower():  # e.g., gpt-5.2
-            raise NotImplementedError("GPT models not yet implemented.")
+            from .gpt5_2 import GPT5_2Client
+
+            return GPT5_2Client(model=model, api_key=api_key)
         else:
             raise ValueError(f"{model} is not supported.")
 

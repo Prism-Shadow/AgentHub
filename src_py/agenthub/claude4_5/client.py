@@ -21,6 +21,7 @@ from anthropic.types import MessageParam, MessageStreamEvent
 
 from ..base_client import LLMClient
 from ..types import (
+    Event,
     FinishReason,
     PartialContentItem,
     PartialUniEvent,
@@ -44,7 +45,7 @@ class Claude4_5Client(LLMClient):
         self._client = AsyncAnthropic(api_key=api_key)
         self._history: list[UniMessage] = []
 
-    def _convert_thinking_level_to_budget(self, thinking_level: ThinkingLevel) -> dict:
+    def _convert_thinking_level_to_budget(self, thinking_level: ThinkingLevel) -> dict[str, Any]:
         """Convert ThinkingLevel enum to Claude's budget_tokens."""
 
         mapping = {
@@ -55,7 +56,7 @@ class Claude4_5Client(LLMClient):
         }
         return mapping.get(thinking_level)
 
-    def _convert_tool_choice(self, tool_choice: ToolChoice) -> dict[str, Any]:
+    def _convert_tool_choice(self, tool_choice: ToolChoice) -> dict[str, str]:
         """Convert ToolChoice to Claude's tool_choice format."""
         if isinstance(tool_choice, list):
             if len(tool_choice) > 1:
@@ -174,7 +175,7 @@ class Claude4_5Client(LLMClient):
         Returns:
             Universal event dictionary
         """
-        event_type = None
+        event_type: Event | None = None
         content_items: list[PartialContentItem] = []
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
@@ -311,6 +312,8 @@ class Claude4_5Client(LLMClient):
                                     "tool_call_id": partial_tool_call["tool_call_id"],
                                 }
                             ],
+                            "usage_metadata": None,
+                            "finish_reason": None,
                         }
                         partial_tool_call = {}
 
