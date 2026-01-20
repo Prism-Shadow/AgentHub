@@ -127,6 +127,9 @@ class GLM4_7Client(LLMClient):
                         }
                     )
                 elif item["type"] == "tool_result":
+                    if "tool_call_id" not in item:
+                        raise ValueError("tool_call_id is required for tool result.")
+
                     # Tool results are sent as separate messages
                     openai_messages.append(
                         {
