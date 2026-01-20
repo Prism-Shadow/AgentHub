@@ -308,6 +308,7 @@ def create_chat_app() -> Flask:
                     <select id="modelSelect">
                         <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
                         <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
+                        <option value="gpt-5.2">GPT 5.2</option>
                         <option value="glm-4.7">GLM 4.7</option>
                     </select>
                 </div>
@@ -668,58 +669,23 @@ def create_chat_app() -> Flask:
 
                 client = _session_clients[session_id]
 
-                # Prepare config for the client (all UniConfig fields)
-                client_config: dict[str, Any] = {}
-
-                # Copy all config fields to client_config
-                if "temperature" in config:
-                    client_config["temperature"] = config["temperature"]
-                if "max_tokens" in config:
-                    client_config["max_tokens"] = config["max_tokens"]
-                if "thinking_level" in config:
-                    client_config["thinking_level"] = config["thinking_level"]
-                if "thinking_summary" in config:
-                    client_config["thinking_summary"] = config["thinking_summary"]
-                if "tool_choice" in config:
-                    client_config["tool_choice"] = config["tool_choice"]
-                if "system_prompt" in config:
-                    client_config["system_prompt"] = config["system_prompt"]
-                if "tools" in config:
-                    client_config["tools"] = config["tools"]
-                if "trace_id" in config:
-                    client_config["trace_id"] = config["trace_id"]
-
                 # Get the persistent event loop
                 loop = _get_event_loop()
 
                 # Create async function to collect events
-                async def collect_events():
-                    events = []
+                async def stream_events():
+                    async for event in client.streaming_response_stateful(message=message, config=config):
+                        # Serialize event to handle bytes objects
+                        serialized_event = _serialize_for_json(event)
+                        yield f"data: {json.dumps(serialized_event)}\n\n"
+
+                async_gen = stream_events()
+                while True:
                     try:
-                        async for event in client.streaming_response_stateful(message=message, config=client_config):
-                            # Serialize event to handle bytes objects
-                            serialized_event = _serialize_for_json(event)
-                            events.append(f"data: {json.dumps(serialized_event)}\n\n")
-
-                        events.append("data: [DONE]\n\n")
-                    except Exception as e:
-                        error_event = {
-                            "role": "assistant",
-                            "content_items": [{"type": "text", "text": f"Error: {str(e)}"}],
-                            "finish_reason": "error",
-                        }
-                        events.append(f"data: {json.dumps(error_event)}\n\n")
-                        events.append("data: [DONE]\n\n")
-
-                    return events
-
-                # Run the async function in the persistent loop
-                future = asyncio.run_coroutine_threadsafe(collect_events(), loop)
-                events = future.result()
-
-                # Yield events
-                for event in events:
-                    yield event
+                        event = asyncio.run_coroutine_threadsafe(async_gen.__anext__(), loop).result()
+                        yield event
+                    except StopAsyncIteration:
+                        break
 
             except Exception as e:
                 error_event = {
