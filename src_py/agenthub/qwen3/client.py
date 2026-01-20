@@ -40,8 +40,9 @@ class Qwen3Client(LLMClient):
     def __init__(self, model: str, api_key: str | None = None):
         """Initialize Qwen3 client with model and API key."""
         self._model = model
-        api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self._client = AsyncOpenAI(api_key=api_key)
+        api_key = api_key or os.getenv("QWEN3_API_KEY")
+        base_url = os.getenv("QWEN3_BASE_URL", "http://192.168.1.10:8000/v1/")
+        self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self._history: list[UniMessage] = []
 
     def _convert_tool_choice(self, tool_choice: ToolChoice) -> str:
@@ -208,11 +209,16 @@ class Qwen3Client(LLMClient):
             else:
                 reasoning_tokens = None
 
+            if model_output.usage.prompt_tokens_details:
+                cached_tokens = model_output.usage.prompt_tokens_details.cached_tokens
+            else:
+                cached_tokens = None
+
             usage_metadata = {
                 "prompt_tokens": model_output.usage.prompt_tokens,
                 "thoughts_tokens": reasoning_tokens,
                 "response_tokens": model_output.usage.completion_tokens,
-                "cached_tokens": model_output.usage.prompt_tokens_details.cached_tokens,
+                "cached_tokens": cached_tokens,
             }
 
         return {
@@ -244,6 +250,7 @@ class Qwen3Client(LLMClient):
 
         partial_tool_call = {}
         async for chunk in stream:
+            print(chunk)
             event = self.transform_model_output_to_uni_event(chunk)
             if event["event_type"] == "start":
                 partial_tool_call = {"data": ""}

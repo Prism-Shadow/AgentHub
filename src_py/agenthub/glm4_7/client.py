@@ -212,11 +212,16 @@ class GLM4_7Client(LLMClient):
             else:
                 reasoning_tokens = None
 
+            if model_output.usage.prompt_tokens_details:
+                cached_tokens = model_output.usage.prompt_tokens_details.cached_tokens
+            else:
+                cached_tokens = None
+
             usage_metadata = {
                 "prompt_tokens": model_output.usage.prompt_tokens,
                 "thoughts_tokens": reasoning_tokens,
                 "response_tokens": model_output.usage.completion_tokens,
-                "cached_tokens": model_output.usage.prompt_tokens_details.cached_tokens,
+                "cached_tokens": cached_tokens,
             }
 
         return {

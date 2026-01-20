@@ -40,6 +40,9 @@ if os.getenv("OPENAI_API_KEY"):
 if os.getenv("GLM_API_KEY"):
     AVAILABLE_MODELS.append(pytest.param("glm-4.7", marks=pytest.mark.xfail(reason="API rate limit")))
 
+if os.getenv("QWEN3_API_KEY"):
+    AVAILABLE_MODELS.append("Qwen/Qwen3-8B")
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)

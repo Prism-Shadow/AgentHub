@@ -22,9 +22,7 @@ client = AutoLLMClient(model="gemini-3-flash-preview", api_key="your-api-key")
 
 The client automatically selects the appropriate client based on the model name.
 
-You can manually switch the client type by setting the `CLIENT_TYPE` environment variable.
-
-For example, to use vLLM models, set:
+You can manually switch the client type by setting the `CLIENT_TYPE` environment variable instead of automatic selection.
 
 ```python
 import os
