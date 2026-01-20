@@ -26,13 +26,14 @@ import base64
 import json
 import threading
 from typing import Any
-
+from .. import AutoLLMClient
 from flask import Flask, Response, jsonify, render_template_string, request
 
 
 # Global event loop and lock for thread-safe async operations
 _event_loop: asyncio.AbstractEventLoop | None = None
 _loop_lock = threading.Lock()
+_session_clients: dict[str, AutoLLMClient] = {}
 
 
 def _get_event_loop() -> asyncio.AbstractEventLoop:
@@ -50,6 +51,7 @@ def _get_event_loop() -> asyncio.AbstractEventLoop:
 
                 loop_thread = threading.Thread(target=run_loop, daemon=True)
                 loop_thread.start()
+
     return _event_loop
 
 
@@ -72,9 +74,6 @@ def create_chat_app() -> Flask:
         Flask application instance
     """
     app = Flask(__name__)
-
-    # Session storage for LLM clients
-    session_clients: dict[str, Any] = {}
 
     # HTML template for the chat UI
     CHAT_TEMPLATE = """
@@ -648,8 +647,6 @@ def create_chat_app() -> Flask:
     @app.route("/api/chat", methods=["POST"])
     def chat() -> Response:
         """Handle chat requests with streaming responses."""
-        from .. import AutoLLMClient
-
         data = request.json
         message = data.get("message")
         config = data.get("config", {})
@@ -662,11 +659,11 @@ def create_chat_app() -> Flask:
             """Generate streaming response using the persistent event loop."""
             try:
                 # Get or create client for this session
-                if session_id not in session_clients:
+                if session_id not in _session_clients:
                     model = config.get("model", "gemini-3-flash-preview")
-                    session_clients[session_id] = AutoLLMClient(model=model)
+                    _session_clients[session_id] = AutoLLMClient(model=model)
 
-                client = session_clients[session_id]
+                client = _session_clients[session_id]
 
                 # Prepare config for the client (all UniConfig fields)
                 client_config: dict[str, Any] = {}
@@ -684,10 +681,10 @@ def create_chat_app() -> Flask:
                     client_config["tool_choice"] = config["tool_choice"]
                 if "system_prompt" in config:
                     client_config["system_prompt"] = config["system_prompt"]
-                if "trace_id" in config:
-                    client_config["trace_id"] = config["trace_id"]
                 if "tools" in config:
                     client_config["tools"] = config["tools"]
+                if "trace_id" in config:
+                    client_config["trace_id"] = config["trace_id"]
 
                 # Get the persistent event loop
                 loop = _get_event_loop()
@@ -700,6 +697,7 @@ def create_chat_app() -> Flask:
                             # Serialize event to handle bytes objects
                             serialized_event = _serialize_for_json(event)
                             events.append(f"data: {json.dumps(serialized_event)}\n\n")
+
                         events.append("data: [DONE]\n\n")
                     except Exception as e:
                         error_event = {
@@ -709,6 +707,7 @@ def create_chat_app() -> Flask:
                         }
                         events.append(f"data: {json.dumps(error_event)}\n\n")
                         events.append("data: [DONE]\n\n")
+
                     return events
 
                 # Run the async function in the persistent loop
@@ -737,9 +736,9 @@ def create_chat_app() -> Flask:
         session_id = data.get("session_id", "default")
 
         # Clear the client history if it exists
-        if session_id in session_clients:
-            session_clients[session_id].clear_history()
-            del session_clients[session_id]
+        if session_id in _session_clients:
+            _session_clients[session_id].clear_history()
+            del _session_clients[session_id]
 
         return jsonify({"status": "success"})
 
