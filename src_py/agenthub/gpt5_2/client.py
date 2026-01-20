@@ -42,12 +42,14 @@ class GPT5_2Client(LLMClient):
         self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self._history: list[UniMessage] = []
 
-    def _convert_tool_choice(self, tool_choice: ToolChoice) -> str | dict[str, Any]:
-        """Convert ToolChoice to OpenAI's tool_choice format."""
+    def _convert_tool_choice(self, tool_choice: ToolChoice, tools: list[dict] | None = None) -> str | dict[str, Any]:
+        """Convert ToolChoice to OpenAI's tool_choice format with allowed tools support."""
         if isinstance(tool_choice, list):
-            if len(tool_choice) > 1:
-                raise ValueError("OpenAI supports only one tool choice at a time.")
-            return {"type": "function", "function": {"name": tool_choice[0]}}
+            # Allowed tools format for Responses API
+            tool_refs = []
+            for tool_name in tool_choice:
+                tool_refs.append({"type": "function", "name": tool_name})
+            return {"mode": "auto", "tools": tool_refs}
         elif tool_choice == "none":
             return "none"
         elif tool_choice == "auto":
@@ -70,13 +72,40 @@ class GPT5_2Client(LLMClient):
         openai_config = {"model": self._model}
 
         if config.get("max_tokens") is not None:
-            openai_config["max_tokens"] = config["max_tokens"]
+            openai_config["max_output_tokens"] = config["max_tokens"]
 
         if config.get("temperature") is not None:
             openai_config["temperature"] = config["temperature"]
 
         if config.get("system_prompt") is not None:
             openai_config["instructions"] = config["system_prompt"]
+
+        # Handle thinking_level and thinking_summary -> reasoning effort
+        thinking_level = config.get("thinking_level")
+        thinking_summary = config.get("thinking_summary")
+        if thinking_level is not None or thinking_summary is not None:
+            reasoning_config = {}
+            if thinking_level is not None:
+                # Map thinking levels to reasoning effort
+                effort_mapping = {
+                    "none": "none",
+                    "low": "low",
+                    "medium": "medium",
+                    "high": "high",
+                }
+                from ..types import ThinkingLevel
+
+                if isinstance(thinking_level, ThinkingLevel):
+                    effort_mapping_enum = {
+                        ThinkingLevel.NONE: "none",
+                        ThinkingLevel.LOW: "low",
+                        ThinkingLevel.MEDIUM: "medium",
+                        ThinkingLevel.HIGH: "high",
+                    }
+                    reasoning_config["effort"] = effort_mapping_enum.get(thinking_level, "medium")
+                else:
+                    reasoning_config["effort"] = effort_mapping.get(str(thinking_level).lower(), "medium")
+            openai_config["reasoning"] = reasoning_config
 
         if config.get("tools") is not None:
             openai_tools = []
@@ -86,7 +115,9 @@ class GPT5_2Client(LLMClient):
             openai_config["tools"] = openai_tools
 
         if config.get("tool_choice") is not None:
-            openai_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
+            openai_config["tool_choice"] = self._convert_tool_choice(
+                config["tool_choice"], config.get("tools")
+            )
 
         return openai_config
 
@@ -150,7 +181,7 @@ class GPT5_2Client(LLMClient):
         Returns:
             Universal event dictionary
         """
-        event_type = "delta"
+        event_type = None
         content_items: list[PartialContentItem] = []
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
@@ -158,33 +189,46 @@ class GPT5_2Client(LLMClient):
         if hasattr(model_output, "type"):
             event_obj_type = model_output.type
 
+            # Handle text delta events
             if event_obj_type == "response.output_text.delta":
+                event_type = "delta"
                 if hasattr(model_output, "delta"):
                     content_items.append({"type": "text", "text": model_output.delta})
 
+            # Handle function call start (output_item.added for function_call)
+            elif event_obj_type == "response.output_item.added":
+                if hasattr(model_output, "item") and hasattr(model_output.item, "type"):
+                    if model_output.item.type == "function_call":
+                        event_type = "start"
+                        content_items.append(
+                            {
+                                "type": "partial_tool_call",
+                                "name": getattr(model_output.item, "name", ""),
+                                "argument": "",
+                                "tool_call_id": getattr(model_output.item, "call_id", ""),
+                            }
+                        )
+
+            # Handle function call arguments delta
             elif event_obj_type == "response.function_call_arguments.delta":
-                if hasattr(model_output, "delta") and hasattr(model_output, "call_id"):
+                event_type = "delta"
+                if hasattr(model_output, "delta"):
                     content_items.append(
                         {
                             "type": "partial_tool_call",
-                            "name": getattr(model_output, "name", ""),
+                            "name": "",
                             "argument": model_output.delta,
-                            "tool_call_id": model_output.call_id,
+                            "tool_call_id": getattr(model_output, "item_id", ""),
                         }
                     )
 
+            # Handle function call arguments done
             elif event_obj_type == "response.function_call_arguments.done":
-                if hasattr(model_output, "name") and hasattr(model_output, "call_id"):
-                    content_items.append(
-                        {
-                            "type": "partial_tool_call",
-                            "name": model_output.name,
-                            "argument": "",
-                            "tool_call_id": model_output.call_id,
-                        }
-                    )
+                event_type = "stop"
 
-            elif event_obj_type == "response.done":
+            # Handle response completed
+            elif event_obj_type == "response.completed":
+                event_type = "stop"
                 if hasattr(model_output, "response"):
                     response_obj = model_output.response
                     if hasattr(response_obj, "status"):
@@ -199,9 +243,33 @@ class GPT5_2Client(LLMClient):
                         usage = response_obj.usage
                         usage_metadata = {
                             "prompt_tokens": getattr(usage, "input_tokens", None),
-                            "thoughts_tokens": None,
+                            "thoughts_tokens": getattr(
+                                getattr(usage, "output_tokens_details", None), "reasoning_tokens", None
+                            ),
                             "response_tokens": getattr(usage, "output_tokens", None),
                         }
+
+            # Handle other response events
+            elif event_obj_type in ["response.created", "response.in_progress"]:
+                event_type = "start"
+                if event_obj_type == "response.created" and hasattr(model_output, "response"):
+                    response_obj = model_output.response
+                    if hasattr(response_obj, "usage"):
+                        usage = response_obj.usage
+                        usage_metadata = {
+                            "prompt_tokens": getattr(usage, "input_tokens", None),
+                            "thoughts_tokens": None,
+                            "response_tokens": None,
+                        }
+
+            # Ignore unused event types
+            elif event_obj_type in [
+                "response.output_text.done",
+                "response.content_part.added",
+                "response.content_part.done",
+                "response.output_item.done",
+            ]:
+                event_type = "unused"
 
         return {
             "role": "assistant",
@@ -217,58 +285,63 @@ class GPT5_2Client(LLMClient):
         config: UniConfig,
     ) -> AsyncIterator[UniEvent]:
         """Stream generate using OpenAI Responses API with unified conversion methods."""
+        # Use unified config conversion
         openai_config = self.transform_uni_config_to_model_config(config)
+
+        # Use unified message conversion
         input_list = self.transform_uni_message_to_model_input(messages)
 
-        openai_config["input"] = input_list
-
-        partial_tool_calls = {}
-        stream = await self._client.responses.create(**openai_config, stream=True)
+        # Stream generate
+        partial_tool_call = {}
+        partial_usage = {}
+        stream = await self._client.responses.create(**openai_config, input=input_list, stream=True)
 
         async for event in stream:
-            transformed_event = self.transform_model_output_to_uni_event(event)
+            event = self.transform_model_output_to_uni_event(event)
+            if event["event"] == "start":
+                if event["content_items"] and event["content_items"][0]["type"] == "partial_tool_call":
+                    partial_tool_call["name"] = event["content_items"][0]["name"]
+                    partial_tool_call["argument"] = ""
+                    partial_tool_call["tool_call_id"] = event["content_items"][0]["tool_call_id"]
 
-            if transformed_event["event"] == "delta":
-                if transformed_event["content_items"]:
-                    for item in transformed_event["content_items"]:
-                        if item["type"] == "partial_tool_call":
-                            tool_call_id = item["tool_call_id"]
-                            if tool_call_id not in partial_tool_calls:
-                                partial_tool_calls[tool_call_id] = {
-                                    "name": item["name"],
-                                    "argument": "",
-                                    "tool_call_id": tool_call_id,
-                                }
-                            if item["name"]:
-                                partial_tool_calls[tool_call_id]["name"] = item["name"]
-                            partial_tool_calls[tool_call_id]["argument"] += item["argument"]
-                        else:
-                            yield {"role": "assistant", "content_items": [item]}
+                if event["usage_metadata"] is not None:
+                    partial_usage["prompt_tokens"] = event["usage_metadata"]["prompt_tokens"]
 
-            if transformed_event["finish_reason"] or transformed_event["usage_metadata"]:
-                if partial_tool_calls:
-                    for tool_call in partial_tool_calls.values():
-                        try:
-                            argument = json.loads(tool_call["argument"]) if tool_call["argument"] else {}
-                        except json.JSONDecodeError:
-                            argument = {}
-                        yield {
-                            "role": "assistant",
-                            "content_items": [
-                                {
-                                    "type": "tool_call",
-                                    "name": tool_call["name"],
-                                    "argument": argument,
-                                    "tool_call_id": tool_call["tool_call_id"],
-                                }
-                            ],
-                        }
-                    partial_tool_calls = {}
+            elif event["event"] == "delta":
+                if event["content_items"] and event["content_items"][0]["type"] == "partial_tool_call":
+                    partial_tool_call["argument"] += event["content_items"][0]["argument"]
+                else:
+                    event.pop("event")
+                    yield event
 
-                if transformed_event["usage_metadata"] or transformed_event["finish_reason"]:
-                    final_event = {"role": "assistant", "content_items": []}
-                    if transformed_event["usage_metadata"]:
-                        final_event["usage_metadata"] = transformed_event["usage_metadata"]
-                    if transformed_event["finish_reason"]:
-                        final_event["finish_reason"] = transformed_event["finish_reason"]
-                    yield final_event
+            elif event["event"] == "stop":
+                if "name" in partial_tool_call and "argument" in partial_tool_call:
+                    try:
+                        argument = json.loads(partial_tool_call["argument"])
+                    except json.JSONDecodeError:
+                        argument = {}
+                    yield {
+                        "role": "assistant",
+                        "content_items": [
+                            {
+                                "type": "tool_call",
+                                "name": partial_tool_call["name"],
+                                "argument": argument,
+                                "tool_call_id": partial_tool_call["tool_call_id"],
+                            }
+                        ],
+                    }
+                    partial_tool_call = {}
+
+                if "prompt_tokens" in partial_usage and event["usage_metadata"] is not None:
+                    yield {
+                        "role": "assistant",
+                        "content_items": [],
+                        "usage_metadata": {
+                            "prompt_tokens": partial_usage["prompt_tokens"],
+                            "thoughts_tokens": event["usage_metadata"]["thoughts_tokens"],
+                            "response_tokens": event["usage_metadata"]["response_tokens"],
+                        },
+                        "finish_reason": event["finish_reason"],
+                    }
+                    partial_usage = {}
