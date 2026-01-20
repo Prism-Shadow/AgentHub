@@ -20,7 +20,7 @@ import pytest
 from agenthub import AutoLLMClient, ThinkingLevel
 
 
-IMAGE = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Narcissus_poeticus_subsp._radiiflorus.1658.jpg/500px-Narcissus_poeticus_subsp._radiiflorus.1658.jpg"
+IMAGE = "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg"
 
 AVAILABLE_MODELS = []
 AVAILABLE_VISION_MODELS = []
