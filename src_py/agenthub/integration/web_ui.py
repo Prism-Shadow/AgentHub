@@ -21,11 +21,36 @@ with support for config editing, streaming responses, and message cards
 showing token usage and stop reasons.
 """
 
+import asyncio
 import base64
 import json
+import threading
 from typing import Any
 
 from flask import Flask, Response, jsonify, render_template_string, request
+
+
+# Global event loop and lock for thread-safe async operations
+_event_loop: asyncio.AbstractEventLoop | None = None
+_loop_lock = threading.Lock()
+
+
+def _get_event_loop() -> asyncio.AbstractEventLoop:
+    """Get or create the global event loop for async operations."""
+    global _event_loop
+    if _event_loop is None or _event_loop.is_closed():
+        with _loop_lock:
+            # Double-check after acquiring lock
+            if _event_loop is None or _event_loop.is_closed():
+                _event_loop = asyncio.new_event_loop()
+                # Start the loop in a background thread
+                def run_loop():
+                    asyncio.set_event_loop(_event_loop)
+                    _event_loop.run_forever()
+
+                loop_thread = threading.Thread(target=run_loop, daemon=True)
+                loop_thread.start()
+    return _event_loop
 
 
 def _serialize_for_json(obj: Any) -> Any:
@@ -621,7 +646,7 @@ def create_chat_app() -> Flask:
         return render_template_string(CHAT_TEMPLATE)
 
     @app.route("/api/chat", methods=["POST"])
-    async def chat() -> Response:
+    def chat() -> Response:
         """Handle chat requests with streaming responses."""
         from .. import AutoLLMClient
 
@@ -633,60 +658,80 @@ def create_chat_app() -> Flask:
         if not message:
             return jsonify({"error": "No message provided"}), 400
 
-        # Get or create client for this session
-        if session_id not in session_clients:
-            model = config.get("model", "gemini-3-flash-preview")
-            session_clients[session_id] = AutoLLMClient(model=model)
-
-        client = session_clients[session_id]
-
-        # Prepare config for the client (all UniConfig fields)
-        client_config: dict[str, Any] = {}
-
-        # Copy all config fields to client_config
-        if "temperature" in config:
-            client_config["temperature"] = config["temperature"]
-        if "max_tokens" in config:
-            client_config["max_tokens"] = config["max_tokens"]
-        if "thinking_level" in config:
-            client_config["thinking_level"] = config["thinking_level"]
-        if "thinking_summary" in config:
-            client_config["thinking_summary"] = config["thinking_summary"]
-        if "tool_choice" in config:
-            client_config["tool_choice"] = config["tool_choice"]
-        if "system_prompt" in config:
-            client_config["system_prompt"] = config["system_prompt"]
-        if "trace_id" in config:
-            client_config["trace_id"] = config["trace_id"]
-        if "tools" in config:
-            client_config["tools"] = config["tools"]
-
-        # Collect async events into a list for streaming
-        events = []
-        try:
-            async for event in client.streaming_response_stateful(message=message, config=client_config):
-                # Serialize event to handle bytes objects
-                serialized_event = _serialize_for_json(event)
-                events.append(f"data: {json.dumps(serialized_event)}\n\n")
-            events.append("data: [DONE]\n\n")
-        except Exception as e:
-            error_event = {
-                "role": "assistant",
-                "content_items": [{"type": "text", "text": f"Error: {str(e)}"}],
-                "finish_reason": "error",
-            }
-            events.append(f"data: {json.dumps(error_event)}\n\n")
-            events.append("data: [DONE]\n\n")
-
-        # Return as a synchronous generator
         def generate():
-            for event in events:
-                yield event
+            """Generate streaming response using the persistent event loop."""
+            try:
+                # Get or create client for this session
+                if session_id not in session_clients:
+                    model = config.get("model", "gemini-3-flash-preview")
+                    session_clients[session_id] = AutoLLMClient(model=model)
+
+                client = session_clients[session_id]
+
+                # Prepare config for the client (all UniConfig fields)
+                client_config: dict[str, Any] = {}
+
+                # Copy all config fields to client_config
+                if "temperature" in config:
+                    client_config["temperature"] = config["temperature"]
+                if "max_tokens" in config:
+                    client_config["max_tokens"] = config["max_tokens"]
+                if "thinking_level" in config:
+                    client_config["thinking_level"] = config["thinking_level"]
+                if "thinking_summary" in config:
+                    client_config["thinking_summary"] = config["thinking_summary"]
+                if "tool_choice" in config:
+                    client_config["tool_choice"] = config["tool_choice"]
+                if "system_prompt" in config:
+                    client_config["system_prompt"] = config["system_prompt"]
+                if "trace_id" in config:
+                    client_config["trace_id"] = config["trace_id"]
+                if "tools" in config:
+                    client_config["tools"] = config["tools"]
+
+                # Get the persistent event loop
+                loop = _get_event_loop()
+
+                # Create async function to collect events
+                async def collect_events():
+                    events = []
+                    try:
+                        async for event in client.streaming_response_stateful(message=message, config=client_config):
+                            # Serialize event to handle bytes objects
+                            serialized_event = _serialize_for_json(event)
+                            events.append(f"data: {json.dumps(serialized_event)}\n\n")
+                        events.append("data: [DONE]\n\n")
+                    except Exception as e:
+                        error_event = {
+                            "role": "assistant",
+                            "content_items": [{"type": "text", "text": f"Error: {str(e)}"}],
+                            "finish_reason": "error",
+                        }
+                        events.append(f"data: {json.dumps(error_event)}\n\n")
+                        events.append("data: [DONE]\n\n")
+                    return events
+
+                # Run the async function in the persistent loop
+                future = asyncio.run_coroutine_threadsafe(collect_events(), loop)
+                events = future.result()
+
+                # Yield events
+                for event in events:
+                    yield event
+
+            except Exception as e:
+                error_event = {
+                    "role": "assistant",
+                    "content_items": [{"type": "text", "text": f"Error: {str(e)}"}],
+                    "finish_reason": "error",
+                }
+                yield f"data: {json.dumps(error_event)}\n\n"
+                yield "data: [DONE]\n\n"
 
         return Response(generate(), mimetype="text/event-stream")
 
     @app.route("/api/clear", methods=["POST"])
-    async def clear() -> Response:
+    def clear() -> Response:
         """Clear chat history for a session."""
         data = request.json
         session_id = data.get("session_id", "default")
