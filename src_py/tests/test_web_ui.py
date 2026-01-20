@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
 from flask import Flask
 
 from integration.web_ui import create_chat_app
