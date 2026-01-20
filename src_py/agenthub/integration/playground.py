@@ -309,6 +309,7 @@ def create_chat_app() -> Flask:
                         <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
                         <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
                         <option value="glm-4.7">GLM 4.7</option>
+                        <option value="gpt-5.2">GPT 5.2</option>
                     </select>
                 </div>
                 <div class="config-field">
@@ -692,33 +693,45 @@ def create_chat_app() -> Flask:
                 # Get the persistent event loop
                 loop = _get_event_loop()
 
-                # Create async function to collect events
-                async def collect_events():
-                    events = []
+                # Create async function to stream events
+                async def stream_events():
                     try:
                         async for event in client.streaming_response_stateful(message=message, config=client_config):
                             # Serialize event to handle bytes objects
                             serialized_event = _serialize_for_json(event)
-                            events.append(f"data: {json.dumps(serialized_event)}\n\n")
+                            yield f"data: {json.dumps(serialized_event)}\n\n"
 
-                        events.append("data: [DONE]\n\n")
+                        yield "data: [DONE]\n\n"
                     except Exception as e:
                         error_event = {
                             "role": "assistant",
                             "content_items": [{"type": "text", "text": f"Error: {str(e)}"}],
                             "finish_reason": "error",
                         }
-                        events.append(f"data: {json.dumps(error_event)}\n\n")
-                        events.append("data: [DONE]\n\n")
+                        yield f"data: {json.dumps(error_event)}\n\n"
+                        yield "data: [DONE]\n\n"
 
-                    return events
+                # Create a queue to pass events from async to sync context
+                event_queue: asyncio.Queue = asyncio.Queue()
 
-                # Run the async function in the persistent loop
-                future = asyncio.run_coroutine_threadsafe(collect_events(), loop)
-                events = future.result()
+                async def producer():
+                    """Produce events and put them in the queue."""
+                    try:
+                        async for event_data in stream_events():
+                            await event_queue.put(event_data)
+                    finally:
+                        await event_queue.put(None)  # Signal completion
 
-                # Yield events
-                for event in events:
+                # Start the producer in the event loop
+                asyncio.run_coroutine_threadsafe(producer(), loop)
+
+                # Yield events as they arrive
+                while True:
+                    # Get event from queue (blocking)
+                    future = asyncio.run_coroutine_threadsafe(event_queue.get(), loop)
+                    event = future.result()
+                    if event is None:
+                        break
                     yield event
 
             except Exception as e:
