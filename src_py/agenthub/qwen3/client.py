@@ -250,7 +250,6 @@ class Qwen3Client(LLMClient):
 
         partial_tool_call = {}
         async for chunk in stream:
-            print(chunk)
             event = self.transform_model_output_to_uni_event(chunk)
             if event["event_type"] == "start":
                 partial_tool_call = {"data": ""}
