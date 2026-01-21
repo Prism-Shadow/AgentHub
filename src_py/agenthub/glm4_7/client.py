@@ -263,23 +263,29 @@ class GLM4_7Client(LLMClient):
             if event["event_type"] == "delta":
                 if event["content_items"] and event["content_items"][0]["type"] == "partial_tool_call":
                     if event["content_items"][0]["name"]:
-                        partial_tool_call = {"name": event["content_items"][0]["name"], "arguments": ""}
-                        partial_tool_call["tool_call_id"] = event["content_items"][0]["tool_call_id"]
-                    else:
-                        if "arguments" in partial_tool_call:
-                            partial_tool_call["arguments"] += event["content_items"][0]["arguments"]
+                        partial_tool_call = {
+                            "name": event["content_items"][0]["name"],
+                            "arguments": "",
+                            "tool_call_id": event["content_items"][0]["tool_call_id"],
+                        }
+                    elif "arguments" in partial_tool_call and event["content_items"][0].get("arguments"):
+                        partial_tool_call["arguments"] += event["content_items"][0]["arguments"]
                 else:
                     event.pop("event_type")
                     yield event
             elif event["event_type"] == "stop":
-                if "name" in partial_tool_call and "arguments" in partial_tool_call:
+                if "name" in partial_tool_call and "arguments" in partial_tool_call and "tool_call_id" in partial_tool_call:
+                    try:
+                        arguments = json.loads(partial_tool_call["arguments"])
+                    except json.JSONDecodeError:
+                        arguments = {}
                     yield {
                         "role": "assistant",
                         "content_items": [
                             {
                                 "type": "tool_call",
                                 "name": partial_tool_call["name"],
-                                "arguments": json.loads(partial_tool_call["arguments"]),
+                                "arguments": arguments,
                                 "tool_call_id": partial_tool_call["tool_call_id"],
                             }
                         ],
