@@ -305,15 +305,17 @@ def create_chat_app() -> Flask:
             <div class="config-grid">
                 <div class="config-field">
                     <label for="modelSelect">Model</label>
-                    <select id="modelSelect">
+                    <input
+                        id="modelSelect"
+                        list="modelList"
+                        placeholder="Select or enter a model name"
+                    />
+                    <datalist id="modelList">
                         <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
                         <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
                         <option value="gpt-5.2">GPT 5.2</option>
                         <option value="glm-4.7">GLM 4.7</option>
-                        <option value="Qwen/Qwen3-0.6B">Qwen3-0.6B</option>
-                        <option value="Qwen/Qwen3-8B">Qwen3-8B</option>
-                        <option value="Qwen/Qwen3-4B-Instruct-2507">Qwen3-4B-Instruct-2507</option>
-                    </select>
+                    </datalist>
                 </div>
                 <div class="config-field">
                     <label for="temperatureInput">Temperature</label>
@@ -511,6 +513,8 @@ def create_chat_app() -> Flask:
                     const decoder = new TextDecoder();
                     let fullResponse = '';
                     let fullThinking = '';
+                    let fullToolName = '';
+                    let fullToolArgs = '';
                     let metadata = null;
 
                     while (true) {
@@ -552,11 +556,17 @@ def create_chat_app() -> Flask:
                                             }
                                             thinkingContainer.textContent = `💭 ${fullThinking}`;
                                         } else if (item.type === 'partial_tool_call') {
-                                            // Playground shows streaming tool calls (partial_tool_call)
-                                            const toolCallDiv = document.createElement('div');
-                                            toolCallDiv.style.cssText = 'background-color: #fff8c5; padding: 12px; border-radius: 4px; border-left: 3px solid #d4a72c; margin-bottom: 8px;';
-                                            toolCallDiv.innerHTML = `<strong>🛠️ Tool Call:</strong> ${item.name || '...'}<br><pre style="margin: 4px 0 0 0; font-size: 12px;">${item.arguments || ''}</pre>`;
-                                            contentDiv.appendChild(toolCallDiv);
+                                            fullToolName += item.name || '';
+                                            fullToolArgs += item.arguments || '';
+                                            // Find or create toolcall container
+                                            let toolcallContainer = contentDiv.querySelector('.toolcall-content');
+                                            if (!toolcallContainer) {
+                                                toolcallContainer = document.createElement('div');
+                                                toolcallContainer.className = 'toolcall-content';
+                                                toolcallContainer.style.cssText = 'background-color: #fff8c5; padding: 12px; border-radius: 4px; border-left: 3px solid #d4a72c; margin-bottom: 8px;';
+                                                contentDiv.appendChild(toolcallContainer);
+                                            }
+                                            toolcallContainer.innerHTML = `<strong>🛠️ Tool Call:</strong> ${fullToolName || '...'}<br><pre style="margin: 4px 0 0 0; font-size: 12px;">${fullToolArgs || ''}</pre>`;
                                         } else if (item.type === 'tool_call') {
                                             // Skip complete tool_call - playground only shows streaming (partial) tool calls
                                             continue;
