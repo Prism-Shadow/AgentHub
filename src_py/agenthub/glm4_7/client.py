@@ -261,15 +261,17 @@ class GLM4_7Client(LLMClient):
         async for chunk in stream:
             event = self.transform_model_output_to_uni_event(chunk)
             if event["event_type"] == "delta":
-                if event["content_items"] and event["content_items"][0]["type"] == "partial_tool_call":
-                    if event["content_items"][0]["name"]:
+                if event["content_items"] and len(event["content_items"]) > 0 and event["content_items"][0]["type"] == "partial_tool_call":
+                    item = event["content_items"][0]
+                    if item.get("name"):
                         partial_tool_call = {
-                            "name": event["content_items"][0]["name"],
+                            "name": item["name"],
                             "arguments": "",
-                            "tool_call_id": event["content_items"][0]["tool_call_id"],
+                            "tool_call_id": item["tool_call_id"],
                         }
-                    elif "arguments" in partial_tool_call and event["content_items"][0].get("arguments"):
-                        partial_tool_call["arguments"] += event["content_items"][0]["arguments"]
+                    elif item.get("arguments"):
+                        partial_tool_call.setdefault("arguments", "")
+                        partial_tool_call["arguments"] += item["arguments"]
                 else:
                     event.pop("event_type")
                     yield event
