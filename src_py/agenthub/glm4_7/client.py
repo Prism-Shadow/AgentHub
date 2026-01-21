@@ -24,7 +24,6 @@ from ..types import (
     EventType,
     FinishReason,
     PartialContentItem,
-    PartialUniEvent,
     PromptCaching,
     ThinkingLevel,
     ToolChoice,
@@ -73,7 +72,7 @@ class GLM4_7Client(LLMClient):
         Returns:
             GLM configuration dictionary
         """
-        glm_config = {"model": self._model, "stream": True, "tool_stream": True}
+        glm_config = {"model": self._model, "stream": True, "extra_body": {"tool_stream": True}}
 
         if config.get("max_tokens") is not None:
             glm_config["max_tokens"] = config["max_tokens"]
@@ -161,7 +160,7 @@ class GLM4_7Client(LLMClient):
 
         return openai_messages
 
-    def transform_model_output_to_uni_event(self, model_output: ChatCompletionChunk) -> PartialUniEvent:
+    def transform_model_output_to_uni_event(self, model_output: ChatCompletionChunk) -> UniEvent:
         """
         Transform GLM model output to universal event format.
 
@@ -210,7 +209,7 @@ class GLM4_7Client(LLMClient):
             finish_reason = finish_reason_mapping.get(choice.finish_reason, "unknown")
 
         else:
-            event_type = "stop"
+            raise ValueError(f"Unknown output: {model_output}")
 
         if model_output.usage:
             if model_output.usage.completion_tokens_details:
@@ -255,39 +254,32 @@ class GLM4_7Client(LLMClient):
             glm_messages.insert(0, {"role": "system", "content": config["system_prompt"]})
 
         # Stream generate
-        stream = await self._client.chat.completions.create(**glm_config, messages=glm_messages, stream=True)
+        stream = await self._client.chat.completions.create(**glm_config, messages=glm_messages)
 
         partial_tool_call = {}
         async for chunk in stream:
             event = self.transform_model_output_to_uni_event(chunk)
             if event["event_type"] == "delta":
-                if event["content_items"] and len(event["content_items"]) > 0 and event["content_items"][0]["type"] == "partial_tool_call":
-                    item = event["content_items"][0]
-                    if item.get("name"):
+                if event["content_items"] and event["content_items"][0]["type"] == "partial_tool_call":
+                    if not partial_tool_call:
                         partial_tool_call = {
-                            "name": item["name"],
-                            "arguments": "",
-                            "tool_call_id": item["tool_call_id"],
+                            "name": event["content_items"][0]["name"],
+                            "arguments": event["content_items"][0]["arguments"],
+                            "tool_call_id": event["content_items"][0]["tool_call_id"],
                         }
-                    elif item.get("arguments"):
-                        partial_tool_call.setdefault("arguments", "")
-                        partial_tool_call["arguments"] += item["arguments"]
-                else:
-                    event.pop("event_type")
-                    yield event
+                    else:
+                        partial_tool_call["arguments"] += event["content_items"][0]["arguments"]
+
             elif event["event_type"] == "stop":
-                if "name" in partial_tool_call and "arguments" in partial_tool_call and "tool_call_id" in partial_tool_call:
-                    try:
-                        arguments = json.loads(partial_tool_call["arguments"])
-                    except json.JSONDecodeError:
-                        arguments = {}
+                if "name" in partial_tool_call and "arguments" in partial_tool_call:
                     yield {
                         "role": "assistant",
+                        "event_type": "delta",
                         "content_items": [
                             {
                                 "type": "tool_call",
                                 "name": partial_tool_call["name"],
-                                "arguments": arguments,
+                                "arguments": json.loads(partial_tool_call["arguments"]),
                                 "tool_call_id": partial_tool_call["tool_call_id"],
                             }
                         ],
@@ -295,3 +287,5 @@ class GLM4_7Client(LLMClient):
                         "finish_reason": None,
                     }
                     partial_tool_call = {}
+
+            yield event
