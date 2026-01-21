@@ -101,8 +101,8 @@ export interface UsageMetadata {
 export interface UniMessage {
   role: Role;
   content_items: ContentItem[];
-  usage_metadata?: UsageMetadata;
-  finish_reason?: FinishReason;
+  usage_metadata?: UsageMetadata | null;
+  finish_reason?: FinishReason | null;
 }
 
 /**
@@ -111,8 +111,8 @@ export interface UniMessage {
 export interface UniEvent {
   role: Role;
   content_items: ContentItem[];
-  usage_metadata?: UsageMetadata;
-  finish_reason?: FinishReason;
+  usage_metadata: UsageMetadata | null;
+  finish_reason: FinishReason | null;
 }
 
 /**
@@ -122,8 +122,8 @@ export interface PartialUniEvent {
   role: Role;
   event_type: EventType;
   content_items: PartialContentItem[];
-  usage_metadata?: UsageMetadata;
-  finish_reason?: FinishReason;
+  usage_metadata: UsageMetadata | null;
+  finish_reason: FinishReason | null;
 }
 
 /**
@@ -132,7 +132,8 @@ export interface PartialUniEvent {
 export interface ToolSchema {
   name: string;
   description: string;
-  parameters?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  parameters?: Record<string, any>;
 }
 
 /**

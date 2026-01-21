@@ -13,26 +13,4 @@
 // limitations under the License.
 
 export { AutoLLMClient } from "./autoClient";
-export { LLMClient } from "./baseClient";
-export { Tracer } from "./integration/tracer";
 export { PromptCaching, ThinkingLevel } from "./types";
-export type {
-  ContentItem,
-  EventType,
-  FinishReason,
-  ImageContentItem,
-  PartialContentItem,
-  PartialToolCallContentItem,
-  PartialUniEvent,
-  Role,
-  TextContentItem,
-  ThinkingContentItem,
-  ToolCallContentItem,
-  ToolChoice,
-  ToolResultContentItem,
-  ToolSchema,
-  UniConfig,
-  UniEvent,
-  UniMessage,
-  UsageMetadata,
-} from "./types";

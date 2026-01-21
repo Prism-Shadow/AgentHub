@@ -72,8 +72,8 @@ export abstract class LLMClient {
    */
   concatUniEventsToUniMessage(events: UniEvent[]): UniMessage {
     const contentItems: ContentItem[] = [];
-    let usageMetadata: UsageMetadata | undefined;
-    let finishReason: FinishReason | undefined;
+    let usageMetadata: UsageMetadata | null = null;
+    let finishReason: FinishReason | null = null;
 
     for (const event of events) {
       for (const item of event.content_items) {
