@@ -13,6 +13,4 @@
 // limitations under the License.
 
 export { AutoLLMClient } from "./autoClient";
-export { Gemini3Client } from "./gemini3";
 export { PromptCaching, ThinkingLevel } from "./types";
-export { Tracer, createChatApp, startPlaygroundServer } from "./integration";

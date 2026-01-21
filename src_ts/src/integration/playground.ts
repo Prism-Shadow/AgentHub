@@ -88,7 +88,7 @@ export function createChatApp(): Express {
                       class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                   <datalist id="modelList">
-                      <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+                      <option value="gemini3flash">Gemini 3 Flash</option>
                       <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
                       <option value="gpt-5.2">GPT 5.2</option>
                       <option value="glm-4.7">GLM 4.7</option>
@@ -454,7 +454,7 @@ export function createChatApp(): Express {
 
     try {
       if (!sessionClients.has(session_id)) {
-        const model = config.model || "gemini-3-flash-preview";
+        const model = config.model || "gemini3flash";
         sessionClients.set(session_id, new AutoLLMClient(model));
       }
 

@@ -193,7 +193,7 @@ export class Tracer {
   createWebApp(): Express {
     const app = express();
 
-    const DIRECTORY_TEMPLATE = `
+    const DIRECTORY_TEMPLATE = (breadcrumb: string, itemsHtml: string) => `
     <!DOCTYPE html>
     <html>
     <head>
@@ -206,30 +206,10 @@ export class Tracer {
         <div class="max-w-5xl mx-auto p-6">
             <h1 class="text-3xl font-bold text-gray-900 mb-6">Tracer</h1>
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-                <p class="text-sm text-gray-600"><strong>Path:</strong> {{breadcrumb}}</p>
+                <p class="text-sm text-gray-600"><strong>Path:</strong> ${breadcrumb}</p>
             </div>
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                {{#if items.length}}
-                    {{#each items}}
-                        <div class="border-b border-gray-200 last:border-b-0 hover:bg-gray-50 transition-colors">
-                            <a href="{{url}}" class="flex items-center justify-between p-4 text-blue-600 hover:text-blue-800">
-                                <span class="flex items-center">
-                                    {{#if is_dir}}
-                                        <span class="mr-2">📁</span>
-                                    {{else}}
-                                        <span class="mr-2">📄</span>
-                                    {{/if}}
-                                    <span class="text-sm">{{name}}</span>
-                                </span>
-                                {{#if size}}
-                                    <span class="text-xs text-gray-500">{{size}}</span>
-                                {{/if}}
-                            </a>
-                        </div>
-                    {{/each}}
-                {{else}}
-                    <div class="p-8 text-center text-gray-500 italic">No files or directories found.</div>
-                {{/if}}
+                ${itemsHtml}
             </div>
         </div>
     </body>
@@ -517,13 +497,13 @@ export class Tracer {
       try {
         const items = fs
           .readdirSync(fullPath)
-          .sort((a, b) => {
+          .sort((a: string, b: string) => {
             const aIsDir = fs.statSync(path.join(fullPath, a)).isDirectory();
             const bIsDir = fs.statSync(path.join(fullPath, b)).isDirectory();
             if (aIsDir !== bIsDir) return aIsDir ? -1 : 1;
             return a.localeCompare(b);
           })
-          .map((entry) => {
+          .map((entry: string) => {
             const entryPath = path.join(fullPath, entry);
             const relativePath = path.relative(this.cacheDir, entryPath);
             const isDir = fs.statSync(entryPath).isDirectory();
@@ -562,7 +542,7 @@ export class Tracer {
 
         const itemsHtml = items.length
           ? items
-              .map((item) => {
+              .map((item: { is_dir: boolean; url: string; name: string; size: string }) => {
                 const icon = item.is_dir ? "📁" : "📄";
                 const sizeHtml = item.size ? `<span class="text-xs text-gray-500">${item.size}</span>` : "";
                 return `
@@ -580,10 +560,7 @@ export class Tracer {
               .join("")
           : '<div class="p-8 text-center text-gray-500 italic">No files or directories found.</div>';
 
-        const html = DIRECTORY_TEMPLATE.replace(/{{breadcrumb}}/g, breadcrumb).replace(
-          /{{#if items.length}}[\s\S]*?{{\/if}}/g,
-          itemsHtml
-        );
+        const html = DIRECTORY_TEMPLATE(breadcrumb, itemsHtml);
 
         return res.send(html);
       } catch (error) {
