@@ -286,24 +286,34 @@ class Claude4_5Client(LLMClient):
             async for event in stream:
                 event = self.transform_model_output_to_uni_event(event)
                 if event["event_type"] == "start":
-                    if event["content_items"] and event["content_items"][0]["type"] == "partial_tool_call":
-                        partial_tool_call["name"] = event["content_items"][0]["name"]
-                        partial_tool_call["arguments"] = ""
-                        partial_tool_call["tool_call_id"] = event["content_items"][0]["tool_call_id"]
-                        yield event
+                    for item in event["content_items"]:
+                        if item["type"] == "partial_tool_call":
+                            # initialize partial_tool_call
+                            partial_tool_call = {
+                                "name": item["name"],
+                                "arguments": "",
+                                "tool_call_id": item["tool_call_id"],
+                            }
+                            yield event
 
                     if event["usage_metadata"] is not None:
-                        partial_usage["prompt_tokens"] = event["usage_metadata"]["prompt_tokens"]
-                        partial_usage["cached_tokens"] = event["usage_metadata"]["cached_tokens"]
+                        # initialize partial_usage
+                        partial_usage = {
+                            "prompt_tokens": event["usage_metadata"]["prompt_tokens"],
+                            "cached_tokens": event["usage_metadata"]["cached_tokens"],
+                        }
 
                 elif event["event_type"] == "delta":
-                    if event["content_items"][0]["type"] == "partial_tool_call":
-                        partial_tool_call["arguments"] += event["content_items"][0]["arguments"]
+                    for item in event["content_items"]:
+                        if item["type"] == "partial_tool_call":
+                            # update partial_tool_call
+                            partial_tool_call["arguments"] += item["arguments"]
 
                     yield event
 
                 elif event["event_type"] == "stop":
                     if "name" in partial_tool_call and "arguments" in partial_tool_call:
+                        # finish partial_tool_call
                         yield {
                             "role": "assistant",
                             "event_type": "delta",
@@ -321,6 +331,7 @@ class Claude4_5Client(LLMClient):
                         partial_tool_call = {}
 
                     if "prompt_tokens" in partial_usage and event["usage_metadata"] is not None:
+                        # finish partial_usage
                         yield {
                             "role": "assistant",
                             "event_type": "stop",

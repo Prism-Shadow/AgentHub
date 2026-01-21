@@ -36,6 +36,8 @@ class AutoLLMClient(LLMClient):
         Args:
             model: Model identifier (determines which client to use)
             api_key: Optional API key
+            base_url: Optional base URL for API requests
+            client_type: Optional client type override
         """
         self._client = self._create_client_for_model(model, api_key, base_url, client_type)
 
@@ -60,14 +62,14 @@ class AutoLLMClient(LLMClient):
             from .glm4_7 import GLM4_7Client
 
             return GLM4_7Client(model=model, api_key=api_key, base_url=base_url)
-        elif "qwen3" in client_type:  # e.g., qwen3-7b
+        elif "qwen3" in client_type:
             from .qwen3 import Qwen3Client
 
             return Qwen3Client(model=model, api_key=api_key, base_url=base_url)
         else:
             raise ValueError(
                 f"{client_type} is not supported. "
-                "Supported models: gemini-3, claude-xxx-4-5, gpt-5.2, glm-4.7, qwen3-xxx."
+                "Supported client types: gemini-3, claude-4-5, gpt-5.2, glm-4.7, qwen3."
             )
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:

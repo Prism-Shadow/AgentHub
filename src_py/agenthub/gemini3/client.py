@@ -235,20 +235,23 @@ class Gemini3Client(LLMClient):
         )
         async for chunk in response_stream:
             event = self.transform_model_output_to_uni_event(chunk)
-            if event["content_items"][0]["type"] == "tool_call":
-                yield {
-                    "role": "assistant",
-                    "event_type": "delta",
-                    "content_items": [
-                        {
-                            "type": "partial_tool_call",
-                            "name": event["content_items"][0]["name"],
-                            "arguments": json.dumps(event["content_items"][0]["arguments"], ensure_ascii=False),
-                            "tool_call_id": event["content_items"][0]["tool_call_id"],
-                        }
-                    ],
-                    "usage_metadata": None,
-                    "finish_reason": None,
-                }
+            for item in event["content_items"]:
+                if item["type"] == "tool_call":
+                    # gemini 3 does not support partial tool call, mock a partial tool call event
+                    yield {
+                        "role": "assistant",
+                        "event_type": "delta",
+                        "content_items": [
+                            {
+                                "type": "partial_tool_call",
+                                "name": item["name"],
+                                "arguments": json.dumps(item["arguments"], ensure_ascii=False),
+                                "tool_call_id": item["tool_call_id"],
+                                "signature": item.get("signature"),
+                            }
+                        ],
+                        "usage_metadata": None,
+                        "finish_reason": None,
+                    }
 
             yield event

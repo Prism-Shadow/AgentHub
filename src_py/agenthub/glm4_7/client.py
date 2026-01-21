@@ -153,6 +153,7 @@ class GLM4_7Client(LLMClient):
 
             if thinking:
                 message["reasoning_content"] = thinking
+                message["reasoning"] = thinking  # openrouter compatibility
 
             # message may be empty for tool results
             if len(message.keys()) > 1:
@@ -178,20 +179,20 @@ class GLM4_7Client(LLMClient):
         choice = model_output.choices[0]
         delta = choice.delta
 
-        if delta.content is not None:
+        if delta.content:
             event_type = "delta"
             content_items.append({"type": "text", "text": delta.content})
 
-        if getattr(delta, "reasoning_content", None) is not None:
+        if getattr(delta, "reasoning_content", None):
             event_type = "delta"
             content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning_content")})
 
         # openrouter compatibility
-        elif getattr(delta, "reasoning", None) is not None:
+        elif getattr(delta, "reasoning", None):
             event_type = "delta"
             content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning")})
 
-        if delta.tool_calls is not None:
+        if delta.tool_calls:
             event_type = "delta"
             for tool_call in delta.tool_calls:
                 content_items.append(
@@ -203,7 +204,7 @@ class GLM4_7Client(LLMClient):
                     }
                 )
 
-        if choice.finish_reason is not None:
+        if choice.finish_reason:
             event_type = "stop"
             finish_reason_mapping = {
                 "stop": "stop",
@@ -230,9 +231,6 @@ class GLM4_7Client(LLMClient):
                 "response_tokens": model_output.usage.completion_tokens,
                 "cached_tokens": cached_tokens,
             }
-
-        if event_type is None:
-            raise ValueError(f"Unknown output: {model_output}")
 
         return {
             "role": "assistant",
@@ -265,18 +263,22 @@ class GLM4_7Client(LLMClient):
         async for chunk in stream:
             event = self.transform_model_output_to_uni_event(chunk)
             if event["event_type"] == "delta":
-                if event["content_items"] and event["content_items"][0]["type"] == "partial_tool_call":
-                    if not partial_tool_call:
-                        partial_tool_call = {
-                            "name": event["content_items"][0]["name"],
-                            "arguments": event["content_items"][0]["arguments"],
-                            "tool_call_id": event["content_items"][0]["tool_call_id"],
-                        }
-                    else:
-                        partial_tool_call["arguments"] += event["content_items"][0]["arguments"]
+                for item in event["content_items"]:
+                    if item["type"] == "partial_tool_call":
+                        if not partial_tool_call:
+                            # initialize partial_tool_call
+                            partial_tool_call = {
+                                "name": item["name"],
+                                "arguments": item["arguments"],
+                                "tool_call_id": item["tool_call_id"],
+                            }
+                        else:
+                            # update partial_tool_call
+                            partial_tool_call["arguments"] += item["arguments"]
 
             elif event["event_type"] == "stop":
                 if "name" in partial_tool_call and "arguments" in partial_tool_call:
+                    # finish partial_tool_call
                     yield {
                         "role": "assistant",
                         "event_type": "delta",
