@@ -359,10 +359,7 @@ export class Gemini3Client extends LLMClient {
               {
                 type: "partial_tool_call",
                 name: item.name,
-                arguments: JSON.stringify(item.arguments, null, 0).replace(
-                  /[\u007F-\uFFFF]/g,
-                  (chr) => "\\u" + ("0000" + chr.charCodeAt(0).toString(16)).slice(-4)
-                ),
+                arguments: JSON.stringify(item.arguments),
                 tool_call_id: item.tool_call_id,
                 signature: item.signature,
               },

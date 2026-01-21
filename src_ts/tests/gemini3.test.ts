@@ -293,8 +293,7 @@ describe("Gemini3Client", () => {
         tool_call_id?: string;
       } = {};
       let toolName: string | undefined;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let toolArguments: Record<string, any> | undefined;
+      let toolArguments: Record<string, unknown> | undefined;
 
       const message1: UniMessage = {
         role: "user",
