@@ -101,6 +101,9 @@ class LLMClient(ABC):
                             content_items[-1]["signature"] = item["signature"]
                     elif item["thinking"] or item.get("signature"):  # omit empty thinking items
                         content_items.append(item.copy())
+                elif item["type"] == "partial_tool_call":
+                    # Skip partial_tool_call items - they should already be converted to tool_call
+                    pass
                 else:
                     content_items.append(item.copy())
 
