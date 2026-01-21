@@ -12,80 +12,58 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Gemini3Client } from "../src/gemini3";
+import { AutoLLMClient } from "../src/autoClient";
 import { ThinkingLevel, UniMessage, UniConfig, UniEvent } from "../src/types";
 
 const IMAGE =
   "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg";
 
-describe("Gemini3Client", () => {
-  let client: Gemini3Client;
+const AVAILABLE_VISION_MODELS: string[] = [];
 
-  beforeAll(() => {
-    if (
-      !process.env.GEMINI_API_KEY &&
-      !process.env.GOOGLE_API_KEY
+if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
+  AVAILABLE_VISION_MODELS.push("gemini-3-flash-preview");
+}
+
+const AVAILABLE_MODELS = AVAILABLE_VISION_MODELS;
+
+async function createClient(model: string): Promise<AutoLLMClient> {
+  return new AutoLLMClient(model);
+}
+
+async function checkEventIntegrity(event: UniEvent): Promise<void> {
+  expect(event).toHaveProperty("role");
+  expect(event).toHaveProperty("event_type");
+  expect(event).toHaveProperty("usage_metadata");
+  expect(event).toHaveProperty("finish_reason");
+
+  for (const item of event.content_items) {
+    if (item.type === "text") {
+      expect(item).toHaveProperty("text");
+    } else if (item.type === "thinking") {
+      expect(item).toHaveProperty("thinking");
+    } else if (
+      item.type === "tool_call" ||
+      item.type === "partial_tool_call"
     ) {
-      console.log(
-        "Skipping Gemini tests - no API key found in environment"
-      );
+      expect(item).toHaveProperty("name");
+      expect(item).toHaveProperty("arguments");
+      expect(item).toHaveProperty("tool_call_id");
     }
-  });
+  }
 
-  beforeEach(() => {
-    client = new Gemini3Client("gemini-3-flash-preview");
-  });
+  if (event.usage_metadata) {
+    expect(event.usage_metadata).toHaveProperty("prompt_tokens");
+    expect(event.usage_metadata).toHaveProperty("thoughts_tokens");
+    expect(event.usage_metadata).toHaveProperty("response_tokens");
+    expect(event.usage_metadata).toHaveProperty("cached_tokens");
+  }
+}
 
-  const checkEventIntegrity = (event: UniEvent): void => {
-    expect(event).toHaveProperty("role");
-    expect(event).toHaveProperty("event_type");
-    expect(event).toHaveProperty("usage_metadata");
-    expect(event).toHaveProperty("finish_reason");
-
-    for (const item of event.content_items) {
-      if (item.type === "text") {
-        expect(item).toHaveProperty("text");
-      } else if (item.type === "thinking") {
-        expect(item).toHaveProperty("thinking");
-      } else if (
-        item.type === "tool_call" ||
-        item.type === "partial_tool_call"
-      ) {
-        expect(item).toHaveProperty("name");
-        expect(item).toHaveProperty("arguments");
-        expect(item).toHaveProperty("tool_call_id");
-      }
-    }
-
-    if (event.usage_metadata) {
-      expect(event.usage_metadata).toHaveProperty("prompt_tokens");
-      expect(event.usage_metadata).toHaveProperty("thoughts_tokens");
-      expect(event.usage_metadata).toHaveProperty("response_tokens");
-      expect(event.usage_metadata).toHaveProperty("cached_tokens");
-    }
-  };
-
-  const skipIfNoApiKey = () => {
-    if (
-      !process.env.GEMINI_API_KEY &&
-      !process.env.GOOGLE_API_KEY
-    ) {
-      return true;
-    }
-    return false;
-  };
-
-  test("should create client instance", () => {
-    expect(client).toBeInstanceOf(Gemini3Client);
-  });
-
+describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should stream basic response",
     async () => {
-      if (skipIfNoApiKey()) {
-        return;
-      }
-
+      const client = await createClient(model);
       const messages: UniMessage[] = [
         {
           role: "user",
@@ -99,7 +77,7 @@ describe("Gemini3Client", () => {
         messages,
         config
       )) {
-        checkEventIntegrity(event);
+        await checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
             text += item.text;
@@ -115,10 +93,7 @@ describe("Gemini3Client", () => {
   test(
     "should stream response with all parameters",
     async () => {
-      if (skipIfNoApiKey()) {
-        return;
-      }
-
+      const client = await createClient(model);
       const messages: UniMessage[] = [
         {
           role: "user",
@@ -137,7 +112,7 @@ describe("Gemini3Client", () => {
         messages,
         config
       )) {
-        checkEventIntegrity(event);
+        await checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
             text += item.text;
@@ -153,10 +128,7 @@ describe("Gemini3Client", () => {
   test(
     "should handle stateful streaming",
     async () => {
-      if (skipIfNoApiKey()) {
-        return;
-      }
-
+      const client = await createClient(model);
       const config: UniConfig = {};
 
       const message1: UniMessage = {
@@ -167,7 +139,7 @@ describe("Gemini3Client", () => {
         message1,
         config
       )) {
-        checkEventIntegrity(event);
+        await checkEventIntegrity(event);
       }
 
       expect(client.getHistory().length).toBe(2);
@@ -181,7 +153,7 @@ describe("Gemini3Client", () => {
         message2,
         config
       )) {
-        checkEventIntegrity(event);
+        await checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
             text += item.text;
@@ -198,10 +170,7 @@ describe("Gemini3Client", () => {
   test(
     "should clear history",
     async () => {
-      if (skipIfNoApiKey()) {
-        return;
-      }
-
+      const client = await createClient(model);
       const message: UniMessage = {
         role: "user",
         content_items: [{ type: "text", text: "Hello" }],
@@ -226,10 +195,7 @@ describe("Gemini3Client", () => {
   test(
     "should concatenate events to message",
     async () => {
-      if (skipIfNoApiKey()) {
-        return;
-      }
-
+      const client = await createClient(model);
       const messages: UniMessage[] = [
         {
           role: "user",
@@ -266,9 +232,7 @@ describe("Gemini3Client", () => {
   test(
     "should handle tool use",
     async () => {
-      if (skipIfNoApiKey()) {
-        return;
-      }
+      const client = await createClient(model);
 
       const weatherTool = {
         name: "get_weather",
@@ -305,7 +269,7 @@ describe("Gemini3Client", () => {
         message1,
         config
       )) {
-        checkEventIntegrity(event);
+        await checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "partial_tool_call") {
             if (!partialToolCallData.name) {
@@ -349,7 +313,7 @@ describe("Gemini3Client", () => {
         message2,
         config
       )) {
-        checkEventIntegrity(event);
+        await checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
             text += item.text;
@@ -361,53 +325,56 @@ describe("Gemini3Client", () => {
     },
     60000
   );
+});
 
-  test(
-    "should handle image understanding",
-    async () => {
-      if (skipIfNoApiKey()) {
-        return;
-      }
+});
 
-      const config: UniConfig = {};
-      const messages: UniMessage[] = [
-        {
-          role: "user",
-          content_items: [
-            { type: "text", text: "What's in this image?" },
-            { type: "image_url", image_url: IMAGE },
-          ],
-        },
-      ];
+describe.each(AVAILABLE_VISION_MODELS)(
+  "Vision model tests for %s",
+  (model) => {
+    test(
+      "should handle image understanding",
+      async () => {
+        const client = await createClient(model);
+        const config: UniConfig = {};
+        const messages: UniMessage[] = [
+          {
+            role: "user",
+            content_items: [
+              { type: "text", text: "What's in this image?" },
+              { type: "image_url", image_url: IMAGE },
+            ],
+          },
+        ];
 
-      let text = "";
-      for await (const event of client.streamingResponse(
-        messages,
-        config
-      )) {
-        checkEventIntegrity(event);
-        for (const item of event.content_items) {
-          if (item.type === "text") {
-            text += item.text;
+        let text = "";
+        for await (const event of client.streamingResponse(
+          messages,
+          config
+        )) {
+          await checkEventIntegrity(event);
+          for (const item of event.content_items) {
+            if (item.type === "text") {
+              text += item.text;
+            }
           }
         }
-      }
 
-      expect(
-        text.toLowerCase().includes("flower") ||
-          text.toLowerCase().includes("narcissus")
-      ).toBe(true);
-    },
-    30000
-  );
+        expect(
+          text.toLowerCase().includes("flower") ||
+            text.toLowerCase().includes("narcissus")
+        ).toBe(true);
+      },
+      30000
+    );
+  }
+);
 
+describe.each(AVAILABLE_MODELS)("System prompt tests for %s", (model) => {
   test(
     "should handle system prompt",
     async () => {
-      if (skipIfNoApiKey()) {
-        return;
-      }
-
+      const client = await createClient(model);
       const messages: UniMessage[] = [
         {
           role: "user",
@@ -424,7 +391,7 @@ describe("Gemini3Client", () => {
         messages,
         config
       )) {
-        checkEventIntegrity(event);
+        await checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
             text += item.text;
@@ -435,5 +402,11 @@ describe("Gemini3Client", () => {
       expect(text.toLowerCase()).toContain("meow");
     },
     30000
+  );
+});
+
+test("should reject unknown model", () => {
+  expect(() => new AutoLLMClient("unknown-model")).toThrow(
+    "not supported"
   );
 });
