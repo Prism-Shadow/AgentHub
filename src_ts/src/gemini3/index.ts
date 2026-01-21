@@ -12,6 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { AutoLLMClient } from "./autoClient";
-export { Gemini3Client } from "./gemini3";
-export { PromptCaching, ThinkingLevel } from "./types";
+export { Gemini3Client } from "./client";
