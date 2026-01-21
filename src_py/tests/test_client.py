@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 from contextlib import nullcontext
 
@@ -24,6 +25,8 @@ IMAGE = "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg"
 
 AVAILABLE_MODELS = []
 AVAILABLE_VISION_MODELS = []
+OPENROUTER_MODELS = []
+SILICONFLOW_MODELS = []
 
 if os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"):
     AVAILABLE_MODELS.append("gemini-3-flash-preview")
@@ -40,15 +43,35 @@ if os.getenv("OPENAI_API_KEY"):
 if os.getenv("GLM_API_KEY"):
     AVAILABLE_MODELS.append(pytest.param("glm-4.7", marks=pytest.mark.xfail(reason="API rate limit")))
 
-if os.getenv("QWEN3_API_KEY"):
+if os.getenv("OPENROUTER_API_KEY"):
+    AVAILABLE_MODELS.append("z-ai/glm-4.7")
+    AVAILABLE_MODELS.append("qwen/qwen3-30b-a3b-thinking-2507")
+    OPENROUTER_MODELS.append("z-ai/glm-4.7")
+    OPENROUTER_MODELS.append("qwen/qwen3-30b-a3b-thinking-2507")
+
+if os.getenv("SILICONFLOW_API_KEY"):
+    AVAILABLE_MODELS.append("Pro/zai-org/GLM-4.7")
     AVAILABLE_MODELS.append("Qwen/Qwen3-8B")
+    SILICONFLOW_MODELS.append("Pro/zai-org/GLM-4.7")
+    SILICONFLOW_MODELS.append("Qwen/Qwen3-8B")
+
+
+async def _create_client(model: str) -> AutoLLMClient:
+    if model in OPENROUTER_MODELS:
+        base_url, api_key, client_type = "https://openrouter.ai/api/v1", os.getenv("OPENROUTER_API_KEY"), "qwen3"
+    elif model in SILICONFLOW_MODELS:
+        base_url, api_key, client_type = "https://api.siliconflow.cn/v1", os.getenv("SILICONFLOW_API_KEY"), "qwen3"
+    else:
+        base_url, api_key, client_type = None, None, None
+
+    return AutoLLMClient(model=model, base_url=base_url, api_key=api_key, client_type=client_type)
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
 async def test_streaming_response_basic(model):
     """Test basic stateless stream generation."""
-    client = AutoLLMClient(model=model)
+    client = await _create_client(model)
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is 2+3?"}]}]
     config = {}
 
@@ -65,7 +88,7 @@ async def test_streaming_response_basic(model):
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
 async def test_streaming_response_with_all_parameters(model):
     """Test stream generation with all optional parameters."""
-    client = AutoLLMClient(model=model)
+    client = await _create_client(model)
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is 2+3?"}]}]
     config = {"max_tokens": 8192, "temperature": 0.7, "thinking_summary": True, "thinking_level": ThinkingLevel.LOW}
 
@@ -88,7 +111,7 @@ async def test_streaming_response_with_all_parameters(model):
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
 async def test_streaming_response_stateful(model):
     """Test stateful stream generation."""
-    client = AutoLLMClient(model=model)
+    client = await _create_client(model)
     config = {}
 
     message1 = {"role": "user", "content_items": [{"type": "text", "text": "My name is Alice"}]}
@@ -112,7 +135,7 @@ async def test_streaming_response_stateful(model):
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
 async def test_clear_history(model):
     """Test clearing conversation history."""
-    client = AutoLLMClient(model=model)
+    client = await _create_client(model)
     message = {"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}
     config = {}
 
@@ -129,7 +152,7 @@ async def test_clear_history(model):
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
 async def test_concat_uni_events_to_uni_message(model):
     """Test concatenation of events into a single message."""
-    client = AutoLLMClient(model=model)
+    client = await _create_client(model)
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "Say hello"}]}]
     config = {}
 
@@ -160,7 +183,7 @@ async def test_unknown_model():
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
 async def test_tool_use(model):
     """Test tool use capability."""
-    client = AutoLLMClient(model=model)
+    client = await _create_client(model)
 
     # Define a simple weather tool
     weather_tool = {
@@ -181,38 +204,31 @@ async def test_tool_use(model):
     config = {"tools": [weather_tool]}
     tool_call_id = None
     partial_tool_call_data = {}
-    complete_tool_call_data = None
-    
+    full_tool_call_data = None
+
     message1 = {"role": "user", "content_items": [{"type": "text", "text": "What is the weather in San Francisco?"}]}
     async for event in client.streaming_response_stateful(message=message1, config=config):
         for item in event["content_items"]:
             if item["type"] == "partial_tool_call":
-                # Accumulate partial tool call data
-                if item.get("name"):
-                    partial_tool_call_data["name"] = item["name"]
-                    partial_tool_call_data["arguments"] = ""
-                    partial_tool_call_data["tool_call_id"] = item.get("tool_call_id")
-                elif item.get("arguments"):
-                    partial_tool_call_data.setdefault("arguments", "")
+                if not partial_tool_call_data:
+                    partial_tool_call_data = {
+                        "name": item["name"],
+                        "arguments": item["arguments"],
+                        "tool_call_id": item["tool_call_id"],
+                    }
+                else:
                     partial_tool_call_data["arguments"] += item["arguments"]
             elif item["type"] == "tool_call":
-                # Store complete tool call
-                complete_tool_call_data = item
+                full_tool_call_data = item
                 assert item["name"] == weather_tool["name"]
                 tool_call_id = item.get("tool_call_id")
 
     # Check if a function call was made
     assert tool_call_id is not None
-    assert complete_tool_call_data is not None
-    
-    # Verify that partial and complete tool calls are equivalent (if partial exists)
-    if partial_tool_call_data:
-        import json
-        assert partial_tool_call_data["name"] == complete_tool_call_data["name"]
-        assert partial_tool_call_data["tool_call_id"] == complete_tool_call_data["tool_call_id"]
-        # Parse the accumulated partial arguments and compare with complete arguments
-        partial_args = json.loads(partial_tool_call_data["arguments"]) if partial_tool_call_data["arguments"] else {}
-        assert partial_args == complete_tool_call_data["arguments"]
+    assert full_tool_call_data is not None
+    assert partial_tool_call_data["name"] == full_tool_call_data["name"]
+    assert partial_tool_call_data["tool_call_id"] == full_tool_call_data["tool_call_id"]
+    assert json.loads(partial_tool_call_data["arguments"]) == full_tool_call_data["arguments"]
 
     message2 = {
         "role": "user",
@@ -236,7 +252,7 @@ async def test_image_understanding(model):
     if model not in AVAILABLE_VISION_MODELS:
         pytest.skip(f"Image understanding is not supported by {model}.")
 
-    client = AutoLLMClient(model=model)
+    client = await _create_client(model)
     config = {}
     messages = [
         {
@@ -260,7 +276,7 @@ async def test_image_understanding(model):
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
 async def test_system_prompt(model):
     """Test system prompt capability."""
-    client = AutoLLMClient(model=model)
+    client = await _create_client(model)
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}]
     config = {"system_prompt": "You are a kitten that must end with the word 'meow'."}
 
@@ -271,3 +287,9 @@ async def test_system_prompt(model):
                 text += item["text"]
 
     assert "meow" in text.lower()
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    asyncio.run(test_tool_use("z-ai/glm-4.7"))

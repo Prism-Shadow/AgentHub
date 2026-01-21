@@ -37,11 +37,11 @@ from ..types import (
 class GLM4_7Client(LLMClient):
     """GLM-4.7-specific LLM client implementation using OpenAI-compatible API."""
 
-    def __init__(self, model: str, api_key: str | None = None):
+    def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
         """Initialize GLM-4.7 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("GLM_API_KEY")
-        base_url = os.getenv("GLM_BASE_URL", "https://api.z.ai/api/paas/v4/")
+        base_url = base_url or os.getenv("GLM_BASE_URL", "https://api.z.ai/api/paas/v4/")
         self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self._history: list[UniMessage] = []
 
@@ -178,15 +178,20 @@ class GLM4_7Client(LLMClient):
         choice = model_output.choices[0]
         delta = choice.delta
 
-        if getattr(delta, "reasoning_content", None):
-            event_type = "delta"
-            content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning_content")})
-
-        elif delta.content:
+        if delta.content is not None:
             event_type = "delta"
             content_items.append({"type": "text", "text": delta.content})
 
-        elif delta.tool_calls:
+        if getattr(delta, "reasoning_content", None) is not None:
+            event_type = "delta"
+            content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning_content")})
+
+        # openrouter compatibility
+        elif getattr(delta, "reasoning", None) is not None:
+            event_type = "delta"
+            content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning")})
+
+        if delta.tool_calls is not None:
             event_type = "delta"
             for tool_call in delta.tool_calls:
                 content_items.append(
@@ -198,7 +203,7 @@ class GLM4_7Client(LLMClient):
                     }
                 )
 
-        elif choice.finish_reason:
+        if choice.finish_reason is not None:
             event_type = "stop"
             finish_reason_mapping = {
                 "stop": "stop",
@@ -207,9 +212,6 @@ class GLM4_7Client(LLMClient):
                 "content_filter": "stop",
             }
             finish_reason = finish_reason_mapping.get(choice.finish_reason, "unknown")
-
-        else:
-            raise ValueError(f"Unknown output: {model_output}")
 
         if model_output.usage:
             if model_output.usage.completion_tokens_details:
@@ -228,6 +230,9 @@ class GLM4_7Client(LLMClient):
                 "response_tokens": model_output.usage.completion_tokens,
                 "cached_tokens": cached_tokens,
             }
+
+        if event_type is None:
+            raise ValueError(f"Unknown output: {model_output}")
 
         return {
             "role": "assistant",

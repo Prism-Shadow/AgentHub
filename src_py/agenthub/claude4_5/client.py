@@ -24,7 +24,6 @@ from ..types import (
     EventType,
     FinishReason,
     PartialContentItem,
-    PartialUniEvent,
     PromptCaching,
     ThinkingLevel,
     ToolChoice,
@@ -38,11 +37,12 @@ from ..types import (
 class Claude4_5Client(LLMClient):
     """Claude 4.5-specific LLM client implementation."""
 
-    def __init__(self, model: str, api_key: str | None = None):
+    def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
         """Initialize Claude 4.5 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
-        self._client = AsyncAnthropic(api_key=api_key)
+        base_url = base_url or os.getenv("ANTHROPIC_BASE_URL")
+        self._client = AsyncAnthropic(api_key=api_key, base_url=base_url)
         self._history: list[UniMessage] = []
 
     def _convert_thinking_level_to_budget(self, thinking_level: ThinkingLevel) -> dict[str, Any]:
@@ -163,7 +163,7 @@ class Claude4_5Client(LLMClient):
 
         return claude_messages
 
-    def transform_model_output_to_uni_event(self, model_output: MessageStreamEvent) -> PartialUniEvent:
+    def transform_model_output_to_uni_event(self, model_output: MessageStreamEvent) -> UniEvent:
         """
         Transform Claude model output to universal event format.
 
@@ -197,7 +197,9 @@ class Claude4_5Client(LLMClient):
             elif delta.type == "text_delta":
                 content_items.append({"type": "text", "text": delta.text})
             elif delta.type == "input_json_delta":
-                content_items.append({"type": "partial_tool_call", "arguments": delta.partial_json})
+                content_items.append(
+                    {"type": "partial_tool_call", "name": "", "arguments": delta.partial_json, "tool_call_id": ""}
+                )
             elif delta.type == "signature_delta":
                 content_items.append({"type": "thinking", "thinking": "", "signature": delta.signature})
 
@@ -288,6 +290,7 @@ class Claude4_5Client(LLMClient):
                         partial_tool_call["name"] = event["content_items"][0]["name"]
                         partial_tool_call["arguments"] = ""
                         partial_tool_call["tool_call_id"] = event["content_items"][0]["tool_call_id"]
+                        yield event
 
                     if event["usage_metadata"] is not None:
                         partial_usage["prompt_tokens"] = event["usage_metadata"]["prompt_tokens"]
@@ -296,14 +299,14 @@ class Claude4_5Client(LLMClient):
                 elif event["event_type"] == "delta":
                     if event["content_items"][0]["type"] == "partial_tool_call":
                         partial_tool_call["arguments"] += event["content_items"][0]["arguments"]
-                    else:
-                        event.pop("event_type")
-                        yield event
+
+                    yield event
 
                 elif event["event_type"] == "stop":
                     if "name" in partial_tool_call and "arguments" in partial_tool_call:
                         yield {
                             "role": "assistant",
+                            "event_type": "delta",
                             "content_items": [
                                 {
                                     "type": "tool_call",
@@ -320,6 +323,7 @@ class Claude4_5Client(LLMClient):
                     if "prompt_tokens" in partial_usage and event["usage_metadata"] is not None:
                         yield {
                             "role": "assistant",
+                            "event_type": "stop",
                             "content_items": [],
                             "usage_metadata": {
                                 "prompt_tokens": partial_usage["prompt_tokens"],
