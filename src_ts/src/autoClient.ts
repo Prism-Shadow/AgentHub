@@ -46,15 +46,16 @@ export class AutoLLMClient extends LLMClient {
    * Create the appropriate client for the given model.
    *
    * @param model - Model identifier
-   * @param _apiKey - Optional API key
-   * @param _baseUrl - Optional base URL for API requests
+   * @param apiKey - API key to be passed to the client implementation (unused until clients are implemented)
+   * @param baseUrl - Base URL to be passed to the client implementation (unused until clients are implemented)
    * @param clientType - Optional client type override
    * @returns Instance of the appropriate client
+   * @throws Error when the requested client is not yet implemented
    */
   private _createClientForModel(
     model: string,
-    _apiKey?: string,
-    _baseUrl?: string,
+    apiKey?: string,
+    baseUrl?: string,
     clientType?: string
   ): LLMClient {
     const effectiveClientType = clientType || process.env.CLIENT_TYPE || model.toLowerCase();
