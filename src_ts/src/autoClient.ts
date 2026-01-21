@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { LLMClient } from "./baseClient";
+import { Gemini3Client } from "./gemini3";
 import { UniConfig, UniEvent, UniMessage } from "./types";
 
 /**
@@ -61,10 +62,7 @@ export class AutoLLMClient extends LLMClient {
     clientType = clientType || process.env.CLIENT_TYPE || model.toLowerCase();
 
     if (clientType.includes("gemini-3")) {
-      throw new Error(
-        "Gemini-3 client is not implemented in TypeScript yet. " +
-          "Please implement it following the Python version."
-      );
+      return new Gemini3Client(model, apiKey, baseUrl);
     } else if (clientType.includes("claude") && clientType.includes("4-5")) {
       throw new Error(
         "Claude 4-5 client is not implemented in TypeScript yet. " +
