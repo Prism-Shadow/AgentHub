@@ -180,15 +180,26 @@ async def test_tool_use(model):
 
     config = {"tools": [weather_tool]}
     tool_call_id = None
+    has_partial_tool_call = False
+    has_complete_tool_call = False
+    
     message1 = {"role": "user", "content_items": [{"type": "text", "text": "What is the weather in San Francisco?"}]}
     async for event in client.streaming_response_stateful(message=message1, config=config):
         for item in event["content_items"]:
-            if item["type"] == "tool_call":
+            if item["type"] == "partial_tool_call":
+                # Validate streaming tool call
+                has_partial_tool_call = True
+            elif item["type"] == "tool_call":
+                # Validate complete tool call
+                has_complete_tool_call = True
                 assert item["name"] == weather_tool["name"]
                 tool_call_id = item.get("tool_call_id")
 
     # Check if a function call was made
     assert tool_call_id is not None
+    # For models with streaming tool support, verify both partial and complete tool calls were received
+    # Note: Some models may not support streaming tool calls, so we only check if complete tool call exists
+    assert has_complete_tool_call
 
     message2 = {
         "role": "user",

@@ -551,11 +551,15 @@ def create_chat_app() -> Flask:
                                                 contentDiv.appendChild(thinkingContainer);
                                             }
                                             thinkingContainer.textContent = `💭 ${fullThinking}`;
-                                        } else if (item.type === 'tool_call') {
+                                        } else if (item.type === 'partial_tool_call') {
+                                            // Playground shows streaming tool calls (partial_tool_call)
                                             const toolCallDiv = document.createElement('div');
                                             toolCallDiv.style.cssText = 'background-color: #fff8c5; padding: 12px; border-radius: 4px; border-left: 3px solid #d4a72c; margin-bottom: 8px;';
-                                            toolCallDiv.innerHTML = `<strong>🛠️ Tool Call:</strong> ${item.name}<br><pre style="margin: 4px 0 0 0; font-size: 12px;">${JSON.stringify(item.arguments, null, 2)}</pre>`;
+                                            toolCallDiv.innerHTML = `<strong>🛠️ Streaming Tool Call:</strong> ${item.name || '...'}<br><pre style="margin: 4px 0 0 0; font-size: 12px;">${item.arguments || ''}</pre>`;
                                             contentDiv.appendChild(toolCallDiv);
+                                        } else if (item.type === 'tool_call') {
+                                            // Skip complete tool_call - playground only shows streaming (partial) tool calls
+                                            continue;
                                         } else if (item.type === 'tool_result') {
                                             const toolResultDiv = document.createElement('div');
                                             toolResultDiv.style.cssText = 'background-color: #d1f0e8; padding: 12px; border-radius: 4px; border-left: 3px solid #1a7f37; margin-bottom: 8px;';
