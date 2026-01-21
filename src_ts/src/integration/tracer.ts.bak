@@ -388,12 +388,12 @@ export class Tracer {
           for (let i = 0; i < parts.length - 1; i++) {
             const pathToPart = parts.slice(0, i + 1).join("/");
             breadcrumbParts.push(
-              `<a href="/${pathToPart}" class="text-blue-600 hover:underline">${parts[i]}</a>`
+              \`<a href="/\${pathToPart}" class="text-blue-600 hover:underline">\${parts[i]}</a>\`
             );
           }
           
           if (parts.length > 0) {
-            breadcrumbParts.push(`<strong>${parts[parts.length - 1]}</strong>`);
+            breadcrumbParts.push(\`<strong>\${parts[parts.length - 1]}</strong>\`);
           }
           
           const breadcrumb = breadcrumbParts.join(" / ");
@@ -417,7 +417,7 @@ export class Tracer {
               const configSection = configItems
                 .map(
                   (item) =>
-                    `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong> <span class="text-gray-600">${item.value}</span></div>`
+                    \`<div class="py-2 text-sm"><strong class="text-gray-900">\${item.key}:</strong> <span class="text-gray-600">\${item.value}</span></div>\`
                 )
                 .join("");
               html = html.replace(
@@ -434,18 +434,18 @@ export class Tracer {
               .map((msg: UniMessage, idx: number) => {
                 const contentItemsHtml = msg.content_items
                   .map((item) => {
-                    let itemHtml = `<div class="mb-4 pb-4 border-b border-gray-100 last:border-b-0 last:mb-0 last:pb-0"><div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">${item.type}</div>`;
+                    let itemHtml = \`<div class="mb-4 pb-4 border-b border-gray-100 last:border-b-0 last:mb-0 last:pb-0"><div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">\${item.type}</div>\`;
                     if (item.type === "text") {
-                      itemHtml += `<div class="bg-gray-50 p-4 rounded-md font-mono text-sm whitespace-pre-wrap text-gray-800">${this._escapeHtml(item.text)}</div>`;
+                      itemHtml += \`<div class="bg-gray-50 p-4 rounded-md font-mono text-sm whitespace-pre-wrap text-gray-800">\${this._escapeHtml(item.text)}</div>\`;
                     } else if (item.type === "thinking") {
-                      itemHtml += `<div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 font-mono text-sm whitespace-pre-wrap text-gray-800">${this._escapeHtml(item.thinking)}</div>`;
+                      itemHtml += \`<div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 font-mono text-sm whitespace-pre-wrap text-gray-800">\${this._escapeHtml(item.thinking)}</div>\`;
                     } else if (item.type === "tool_call") {
                       const args = JSON.stringify(item.arguments);
-                      itemHtml += `<div class="bg-yellow-50 p-4 rounded-md border-l-4 border-yellow-500"><div class="font-mono text-sm text-gray-800">${item.name}(${args})</div></div>`;
+                      itemHtml += \`<div class="bg-yellow-50 p-4 rounded-md border-l-4 border-yellow-500"><div class="font-mono text-sm text-gray-800">\${item.name}(\${args})</div></div>\`;
                     } else if (item.type === "tool_result") {
-                      itemHtml += `<div class="bg-green-50 p-4 rounded-md border-l-4 border-green-500"><strong class="text-sm text-gray-900">Result:</strong> <span class="text-sm text-gray-700">${this._escapeHtml(item.result)}</span><br><strong class="text-sm text-gray-900">Call ID:</strong> <span class="text-sm text-gray-700">${item.tool_call_id}</span></div>`;
+                      itemHtml += \`<div class="bg-green-50 p-4 rounded-md border-l-4 border-green-500"><strong class="text-sm text-gray-900">Result:</strong> <span class="text-sm text-gray-700">\${this._escapeHtml(item.result)}</span><br><strong class="text-sm text-gray-900">Call ID:</strong> <span class="text-sm text-gray-700">\${item.tool_call_id}</span></div>\`;
                     } else if (item.type === "image_url") {
-                      itemHtml += `<div class="bg-gray-50 p-4 rounded-md"><img src="${item.image_url}" class="max-w-xs max-h-48 rounded-md" alt="Preview"></div>`;
+                      itemHtml += \`<div class="bg-gray-50 p-4 rounded-md"><img src="\${item.image_url}" class="max-w-xs max-h-48 rounded-md" alt="Preview"></div>\`;
                     }
                     itemHtml += "</div>";
                     return itemHtml;
@@ -458,40 +458,40 @@ export class Tracer {
                   if (msg.usage_metadata) {
                     const parts = [];
                     if (msg.usage_metadata.prompt_tokens !== null)
-                      parts.push(`Prompt: ${msg.usage_metadata.prompt_tokens} tokens`);
+                      parts.push(\`Prompt: \${msg.usage_metadata.prompt_tokens} tokens\`);
                     if (msg.usage_metadata.thoughts_tokens !== null)
-                      parts.push(`Thoughts: ${msg.usage_metadata.thoughts_tokens} tokens`);
+                      parts.push(\`Thoughts: \${msg.usage_metadata.thoughts_tokens} tokens\`);
                     if (msg.usage_metadata.response_tokens !== null)
-                      parts.push(`Response: ${msg.usage_metadata.response_tokens} tokens`);
+                      parts.push(\`Response: \${msg.usage_metadata.response_tokens} tokens\`);
                     if (msg.usage_metadata.cached_tokens !== null)
-                      parts.push(`Cached: ${msg.usage_metadata.cached_tokens} tokens`);
+                      parts.push(\`Cached: \${msg.usage_metadata.cached_tokens} tokens\`);
                     metadataHtml += parts.join(" • ");
                   }
                   if (msg.finish_reason) {
                     if (msg.usage_metadata) metadataHtml += " • ";
-                    metadataHtml += `Finish: ${msg.finish_reason}`;
+                    metadataHtml += \`Finish: \${msg.finish_reason}\`;
                   }
                   metadataHtml += "</div>";
                 }
 
                 const roleClass = msg.role === "user" ? "text-blue-600" : "text-green-600";
-                return `
+                return \`
                   <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 overflow-hidden">
-                    <div class="bg-gray-50 border-b border-gray-200 p-4 cursor-pointer hover:bg-gray-100 transition-colors" onclick="toggleMessage(${idx})">
+                    <div class="bg-gray-50 border-b border-gray-200 p-4 cursor-pointer hover:bg-gray-100 transition-colors" onclick="toggleMessage(\${idx})">
                       <div class="flex justify-between items-center">
                         <div>
-                          <span class="font-semibold text-sm uppercase ${roleClass}">${msg.role}</span>
-                          <span class="text-xs text-gray-500 ml-2">• ${msg.content_items.length} item(s)</span>
+                          <span class="font-semibold text-sm uppercase \${roleClass}">\${msg.role}</span>
+                          <span class="text-xs text-gray-500 ml-2">• \${msg.content_items.length} item(s)</span>
                         </div>
-                        <span class="text-gray-400 transform transition-transform" id="icon-${idx}">▶</span>
+                        <span class="text-gray-400 transform transition-transform" id="icon-\${idx}">▶</span>
                       </div>
                     </div>
-                    <div class="p-6 hidden" id="content-${idx}">
-                      ${contentItemsHtml}
-                      ${metadataHtml}
+                    <div class="p-6 hidden" id="content-\${idx}">
+                      \${contentItemsHtml}
+                      \${metadataHtml}
                     </div>
                   </div>
-                `;
+                \`;
               })
               .join("");
 
@@ -510,7 +510,7 @@ export class Tracer {
             return res.send(html);
           }
         } catch (error) {
-          return res.status(500).send(`Error reading file: ${error}`);
+          return res.status(500).send(\`Error reading file: \${error}\`);
         }
       }
 
@@ -531,11 +531,11 @@ export class Tracer {
             if (!isDir) {
               const stat = fs.statSync(entryPath);
               if (stat.size < 1024) {
-                size = `${stat.size} B`;
+                size = \`\${stat.size} B\`;
               } else if (stat.size < 1024 * 1024) {
-                size = `${(stat.size / 1024).toFixed(1)} KB`;
+                size = \`\${(stat.size / 1024).toFixed(1)} KB\`;
               } else {
-                size = `${(stat.size / (1024 * 1024)).toFixed(1)} MB`;
+                size = \`\${(stat.size / (1024 * 1024)).toFixed(1)} MB\`;
               }
             }
             return {
@@ -553,7 +553,7 @@ export class Tracer {
           if (parts[i]) {
             const pathToPart = parts.slice(0, i + 1).join("/");
             breadcrumbParts.push(
-              `<a href="/${pathToPart}" class="text-blue-600 hover:underline">${parts[i]}</a>`
+              \`<a href="/\${pathToPart}" class="text-blue-600 hover:underline">\${parts[i]}</a>\`
             );
           }
         }
@@ -564,18 +564,18 @@ export class Tracer {
           ? items
               .map((item) => {
                 const icon = item.is_dir ? "📁" : "📄";
-                const sizeHtml = item.size ? `<span class="text-xs text-gray-500">${item.size}</span>` : "";
-                return `
+                const sizeHtml = item.size ? \`<span class="text-xs text-gray-500">\${item.size}</span>\` : "";
+                return \`
                   <div class="border-b border-gray-200 last:border-b-0 hover:bg-gray-50 transition-colors">
-                    <a href="${item.url}" class="flex items-center justify-between p-4 text-blue-600 hover:text-blue-800">
+                    <a href="\${item.url}" class="flex items-center justify-between p-4 text-blue-600 hover:text-blue-800">
                       <span class="flex items-center">
-                        <span class="mr-2">${icon}</span>
-                        <span class="text-sm">${item.name}</span>
+                        <span class="mr-2">\${icon}</span>
+                        <span class="text-sm">\${item.name}</span>
                       </span>
-                      ${sizeHtml}
+                      \${sizeHtml}
                     </a>
                   </div>
-                `;
+                \`;
               })
               .join("")
           : '<div class="p-8 text-center text-gray-500 italic">No files or directories found.</div>';
@@ -587,7 +587,7 @@ export class Tracer {
 
         return res.send(html);
       } catch (error) {
-        return res.status(500).send(`Error listing directory: ${error}`);
+        return res.status(500).send(\`Error listing directory: \${error}\`);
       }
     });
 
@@ -618,8 +618,8 @@ export class Tracer {
   startWebServer(host: string = "127.0.0.1", port: number = 5000): void {
     const app = this.createWebApp();
     app.listen(port, host, () => {
-      console.log(`Starting tracer web server at http://${host}:${port}`);
-      console.log(`Cache directory: ${path.resolve(this.cacheDir)}`);
+      console.log(\`Starting tracer web server at http://\${host}:\${port}\`);
+      console.log(\`Cache directory: \${path.resolve(this.cacheDir)}\`);
     });
   }
 }
