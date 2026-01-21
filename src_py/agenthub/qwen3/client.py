@@ -24,7 +24,6 @@ from ..types import (
     EventType,
     FinishReason,
     PartialContentItem,
-    PartialUniEvent,
     PromptCaching,
     ToolChoice,
     UniConfig,
@@ -37,11 +36,11 @@ from ..types import (
 class Qwen3Client(LLMClient):
     """Qwen3-specific LLM client implementation using OpenAI-compatible API."""
 
-    def __init__(self, model: str, api_key: str | None = None):
+    def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
         """Initialize Qwen3 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("QWEN3_API_KEY")
-        base_url = os.getenv("QWEN3_BASE_URL", "http://192.168.1.10:8000/v1/")
+        base_url = base_url or os.getenv("QWEN3_BASE_URL", "http://127.0.0.1:8000/v1/")
         self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self._history: list[UniMessage] = []
 
@@ -62,7 +61,7 @@ class Qwen3Client(LLMClient):
         Returns:
             Qwen3 configuration dictionary
         """
-        qwen3_config = {"model": self._model}
+        qwen3_config = {"model": self._model, "stream": True}
 
         if config.get("max_tokens") is not None:
             qwen3_config["max_tokens"] = config["max_tokens"]
@@ -139,6 +138,7 @@ class Qwen3Client(LLMClient):
 
             if thinking:
                 message["reasoning_content"] = thinking
+                message["reasoning"] = thinking  # openrouter compatibility
 
             # message may be empty for tool results
             if len(message.keys()) > 1:
@@ -146,7 +146,7 @@ class Qwen3Client(LLMClient):
 
         return qwen3_messages
 
-    def transform_model_output_to_uni_event(self, model_output: ChatCompletionChunk) -> PartialUniEvent:
+    def transform_model_output_to_uni_event(self, model_output: ChatCompletionChunk) -> UniEvent:
         """
         Transform Qwen3 model output to universal event format.
 
@@ -164,11 +164,7 @@ class Qwen3Client(LLMClient):
         choice = model_output.choices[0]
         delta = choice.delta
 
-        if getattr(delta, "reasoning_content", None):
-            event_type = "delta"
-            content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning_content")})
-
-        elif delta.content:
+        if delta.content:
             # manually check for content since tool parser of vLLM is not stable
             if delta.content == "<tool_call>":
                 event_type = "start"
@@ -178,7 +174,16 @@ class Qwen3Client(LLMClient):
                 event_type = "delta"
                 content_items.append({"type": "text", "text": delta.content})
 
-        elif delta.tool_calls:
+        if getattr(delta, "reasoning_content", None):
+            event_type = "delta"
+            content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning_content")})
+
+        # openrouter compatibility
+        elif getattr(delta, "reasoning", None):
+            event_type = "delta"
+            content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning")})
+
+        if delta.tool_calls:
             for tool_call in delta.tool_calls:
                 event_type = "delta"
                 content_items.append(
@@ -190,7 +195,7 @@ class Qwen3Client(LLMClient):
                     }
                 )
 
-        elif choice.finish_reason:
+        if choice.finish_reason:
             event_type = "stop"
             finish_reason_mapping = {
                 "stop": "stop",
@@ -199,9 +204,6 @@ class Qwen3Client(LLMClient):
                 "content_filter": "stop",
             }
             finish_reason = finish_reason_mapping.get(choice.finish_reason, "unknown")
-
-        else:
-            event_type = "stop"
 
         if model_output.usage:
             if model_output.usage.completion_tokens_details:
@@ -246,29 +248,51 @@ class Qwen3Client(LLMClient):
             qwen3_messages.insert(0, {"role": "system", "content": config["system_prompt"]})
 
         # Stream generate
-        stream = await self._client.chat.completions.create(**qwen3_config, messages=qwen3_messages, stream=True)
+        stream = await self._client.chat.completions.create(**qwen3_config, messages=qwen3_messages)
 
         partial_tool_call = {}
         async for chunk in stream:
             event = self.transform_model_output_to_uni_event(chunk)
             if event["event_type"] == "start":
+                # initialize partial_tool_call type2
                 partial_tool_call = {"data": ""}
             elif event["event_type"] == "delta":
                 if "data" in partial_tool_call:
+                    # update partial_tool_call type2
                     partial_tool_call["data"] += event["content_items"][0]["text"]
-                elif event["content_items"] and event["content_items"][0]["type"] == "partial_tool_call":
-                    if event["content_items"][0]["name"]:
-                        partial_tool_call = {"name": event["content_items"][0]["name"], "arguments": ""}
-                    else:
-                        partial_tool_call["arguments"] += event["content_items"][0]["arguments"]
-                else:
-                    event.pop("event_type")
-                    yield event
+                    continue
+
+                for item in event["content_items"]:
+                    if item["type"] == "partial_tool_call":
+                        if not partial_tool_call:
+                            # initialize partial_tool_call type1
+                            partial_tool_call = {"name": item["name"], "arguments": ""}
+                        else:
+                            # update partial_tool_call type1
+                            partial_tool_call["arguments"] += item["arguments"]
+
+                yield event
             elif event["event_type"] == "stop":
                 if "data" in partial_tool_call:
+                    # finish partial_tool_call type2
                     tool_call = json.loads(partial_tool_call["data"].strip())
                     yield {
                         "role": "assistant",
+                        "event_type": "delta",
+                        "content_items": [
+                            {
+                                "type": "partial_tool_call",
+                                "name": tool_call["name"],
+                                "arguments": json.dumps(tool_call["arguments"], ensure_ascii=False),
+                                "tool_call_id": tool_call["name"],
+                            }
+                        ],
+                        "usage_metadata": None,
+                        "finish_reason": None,
+                    }
+                    yield {
+                        "role": "assistant",
+                        "event_type": "delta",
                         "content_items": [
                             {
                                 "type": "tool_call",
@@ -283,8 +307,10 @@ class Qwen3Client(LLMClient):
                     partial_tool_call = {}
 
                 if "name" in partial_tool_call and "arguments" in partial_tool_call:
+                    # finish partial_tool_call type1
                     yield {
                         "role": "assistant",
+                        "event_type": "delta",
                         "content_items": [
                             {
                                 "type": "tool_call",

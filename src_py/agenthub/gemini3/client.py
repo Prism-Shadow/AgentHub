@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 from typing import AsyncIterator
 
@@ -20,9 +21,9 @@ from google.genai import types
 
 from ..base_client import LLMClient
 from ..types import (
+    EventType,
     FinishReason,
     PartialContentItem,
-    PartialUniEvent,
     PromptCaching,
     ThinkingLevel,
     ToolChoice,
@@ -36,11 +37,14 @@ from ..types import (
 class Gemini3Client(LLMClient):
     """Gemini 3-specific LLM client implementation."""
 
-    def __init__(self, model: str, api_key: str | None = None):
+    def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
         """Initialize Gemini 3 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-        self._client = genai.Client(api_key=api_key) if api_key else genai.Client()
+        base_url = base_url or os.getenv("GOOGLE_GEMINI_BASE_URL")
+        self._client = (
+            genai.Client(api_key=api_key, http_options={"base_url": base_url}) if api_key else genai.Client()
+        )
         self._history: list[UniMessage] = []
 
     def _detect_mime_type(self, url: str) -> str | None:
@@ -155,7 +159,7 @@ class Gemini3Client(LLMClient):
 
         return contents
 
-    def transform_model_output_to_uni_event(self, model_output: types.GenerateContentResponse) -> PartialUniEvent:
+    def transform_model_output_to_uni_event(self, model_output: types.GenerateContentResponse) -> UniEvent:
         """
         Transform Gemini model output to universal event format.
 
@@ -165,6 +169,7 @@ class Gemini3Client(LLMClient):
         Returns:
             Universal event dictionary
         """
+        event_type: EventType = "delta"
         content_items: list[PartialContentItem] = []
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
@@ -197,6 +202,7 @@ class Gemini3Client(LLMClient):
             }
 
         if candidate.finish_reason:
+            event_type = "stop"
             stop_reason_mapping = {
                 types.FinishReason.STOP: "stop",
                 types.FinishReason.MAX_TOKENS: "length",
@@ -205,7 +211,7 @@ class Gemini3Client(LLMClient):
 
         return {
             "role": "assistant",
-            "event_type": "delta",
+            "event_type": event_type,
             "content_items": content_items,
             "usage_metadata": usage_metadata,
             "finish_reason": finish_reason,
@@ -229,6 +235,23 @@ class Gemini3Client(LLMClient):
         )
         async for chunk in response_stream:
             event = self.transform_model_output_to_uni_event(chunk)
-            if event["event_type"] == "delta":
-                event.pop("event_type")
-                yield event
+            for item in event["content_items"]:
+                if item["type"] == "tool_call":
+                    # gemini 3 does not support partial tool call, mock a partial tool call event
+                    yield {
+                        "role": "assistant",
+                        "event_type": "delta",
+                        "content_items": [
+                            {
+                                "type": "partial_tool_call",
+                                "name": item["name"],
+                                "arguments": json.dumps(item["arguments"], ensure_ascii=False),
+                                "tool_call_id": item["tool_call_id"],
+                                "signature": item.get("signature"),
+                            }
+                        ],
+                        "usage_metadata": None,
+                        "finish_reason": None,
+                    }
+
+            yield event

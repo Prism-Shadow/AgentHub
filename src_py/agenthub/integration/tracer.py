@@ -139,6 +139,9 @@ class Tracer:
                     lines.append(f"Tool Call: {item['name']}")
                     lines.append(f"  Arguments: {json.dumps(item['arguments'], indent=2, ensure_ascii=False)}")
                     lines.append(f"  Tool Call ID: {item['tool_call_id']}")
+                elif item["type"] == "partial_tool_call":
+                    # Skip partial_tool_call - tracer only shows complete tool calls
+                    pass
                 elif item["type"] == "tool_result":
                     lines.append(f"Tool Result (ID: {item['tool_call_id']}): {item['result']}")
 

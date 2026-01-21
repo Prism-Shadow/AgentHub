@@ -24,7 +24,6 @@ from ..types import (
     EventType,
     FinishReason,
     PartialContentItem,
-    PartialUniEvent,
     ThinkingLevel,
     ToolChoice,
     UniConfig,
@@ -37,11 +36,12 @@ from ..types import (
 class GPT5_2Client(LLMClient):
     """GPT-5.2-specific LLM client implementation."""
 
-    def __init__(self, model: str, api_key: str | None = None):
+    def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
         """Initialize GPT-5.2 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self._client = AsyncOpenAI(api_key=api_key)
+        base_url = base_url or os.getenv("OPENAI_BASE_URL")
+        self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self._history: list[UniMessage] = []
 
     def _convert_thinking_level_to_effort(self, thinking_level: ThinkingLevel) -> str:
@@ -149,11 +149,7 @@ class GPT5_2Client(LLMClient):
                         raise ValueError("tool_call_id is required for tool result.")
 
                     input_list.append(
-                        {
-                            "type": "function_call_output",
-                            "call_id": item["tool_call_id"],
-                            "output": item["result"],
-                        }
+                        {"type": "function_call_output", "call_id": item["tool_call_id"], "output": item["result"]}
                     )
                 else:
                     raise ValueError(f"Unknown item: {item}")
@@ -163,7 +159,7 @@ class GPT5_2Client(LLMClient):
 
         return input_list
 
-    def transform_model_output_to_uni_event(self, model_output: ResponseStreamEvent) -> PartialUniEvent:
+    def transform_model_output_to_uni_event(self, model_output: ResponseStreamEvent) -> UniEvent:
         """
         Transform OpenAI Responses API streaming event to universal event format.
 
@@ -210,7 +206,9 @@ class GPT5_2Client(LLMClient):
 
         elif openai_event_type == "response.function_call_arguments.delta":
             event_type = "delta"
-            content_items.append({"type": "partial_tool_call", "arguments": model_output.delta})
+            content_items.append(
+                {"type": "partial_tool_call", "name": "", "arguments": model_output.delta, "tool_call_id": ""}
+            )
 
         elif openai_event_type == "response.function_call_arguments.done":
             event_type = "stop"
@@ -272,22 +270,28 @@ class GPT5_2Client(LLMClient):
         async for event in stream:
             event = self.transform_model_output_to_uni_event(event)
             if event["event_type"] == "start":
-                if event["content_items"] and event["content_items"][0]["type"] == "partial_tool_call":
-                    partial_tool_call["name"] = event["content_items"][0]["name"]
-                    partial_tool_call["arguments"] = ""
-                    partial_tool_call["tool_call_id"] = event["content_items"][0]["tool_call_id"]
-
+                for item in event["content_items"]:
+                    if item["type"] == "partial_tool_call":
+                        # initialize partial_tool_call
+                        partial_tool_call = {
+                            "name": item["name"],
+                            "arguments": "",
+                            "tool_call_id": item["tool_call_id"],
+                        }
+                        yield event
             elif event["event_type"] == "delta":
-                if event["content_items"] and event["content_items"][0]["type"] == "partial_tool_call":
-                    partial_tool_call["arguments"] += event["content_items"][0]["arguments"]
-                else:
-                    event.pop("event_type")
-                    yield event
+                for item in event["content_items"]:
+                    if item["type"] == "partial_tool_call":
+                        # update partial_tool_call
+                        partial_tool_call["arguments"] += item["arguments"]
 
+                yield event
             elif event["event_type"] == "stop":
                 if "name" in partial_tool_call and "arguments" in partial_tool_call:
+                    # finish partial_tool_call
                     yield {
                         "role": "assistant",
+                        "event_type": "delta",
                         "content_items": [
                             {
                                 "type": "tool_call",
@@ -302,5 +306,4 @@ class GPT5_2Client(LLMClient):
                     partial_tool_call = {}
 
                 if event["usage_metadata"] is not None:
-                    event.pop("event_type")
                     yield event
