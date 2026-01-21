@@ -28,7 +28,11 @@ import {
  * the required abstract methods for complete SDK abstraction.
  */
 export abstract class LLMClient {
-  protected _history: UniMessage[] = [];
+  protected _history: UniMessage[];
+
+  constructor() {
+    this._history = [];
+  }
 
   /**
    * Transform universal configuration to model-specific configuration.

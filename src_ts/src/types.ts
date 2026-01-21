@@ -31,7 +31,7 @@ export enum PromptCaching {
   ENHANCE = "enhance",
 }
 
-export type ToolChoice = "auto" | "required" | "none" | string[];
+export type ToolChoice = ("auto" | "required" | "none") | string[];
 export type Role = "user" | "assistant";
 export type EventType = "start" | "delta" | "stop" | "unused";
 export type FinishReason = "stop" | "length" | "unknown";
