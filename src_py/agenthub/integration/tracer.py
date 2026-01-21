@@ -41,12 +41,15 @@ class Tracer:
     and provides a web server for browsing and viewing the saved conversations.
     """
 
-    cache_dir: Path = field(init=False)
+    cache_dir: Path = field(default=None, init=True)
 
     def __post_init__(self) -> None:
         """Initialize cache directory after instance creation."""
-        cache_dir_str = os.getenv("AGENTHUB_CACHE_DIR", "cache")
-        self.cache_dir = Path(cache_dir_str).absolute()
+        if self.cache_dir is None:
+            cache_dir_str = os.getenv("AGENTHUB_CACHE_DIR", "cache")
+            self.cache_dir = Path(cache_dir_str).absolute()
+        elif isinstance(self.cache_dir, str):
+            self.cache_dir = Path(self.cache_dir).absolute()
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def _serialize_for_json(self, obj: Any) -> Any:
