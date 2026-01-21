@@ -266,7 +266,8 @@ class GLM4_7Client(LLMClient):
                         partial_tool_call = {"name": event["content_items"][0]["name"], "arguments": ""}
                         partial_tool_call["tool_call_id"] = event["content_items"][0]["tool_call_id"]
                     else:
-                        partial_tool_call["arguments"] += event["content_items"][0]["arguments"]
+                        if "arguments" in partial_tool_call:
+                            partial_tool_call["arguments"] += event["content_items"][0]["arguments"]
                 else:
                     event.pop("event_type")
                     yield event
