@@ -110,16 +110,6 @@ export interface UniMessage {
  */
 export interface UniEvent {
   role: Role;
-  content_items: ContentItem[];
-  usage_metadata: UsageMetadata | null;
-  finish_reason: FinishReason | null;
-}
-
-/**
- * Partial universal event format for streaming responses.
- */
-export interface PartialUniEvent {
-  role: Role;
   event_type: EventType;
   content_items: PartialContentItem[];
   usage_metadata: UsageMetadata | null;

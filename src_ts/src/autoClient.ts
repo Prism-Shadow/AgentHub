@@ -29,10 +29,17 @@ export class AutoLLMClient extends LLMClient {
    *
    * @param model - Model identifier (determines which client to use)
    * @param apiKey - Optional API key
+   * @param baseUrl - Optional base URL for API requests
+   * @param clientType - Optional client type override
    */
-  constructor(model: string, apiKey?: string) {
+  constructor(
+    model: string,
+    apiKey?: string,
+    baseUrl?: string,
+    clientType?: string
+  ) {
     super();
-    this._client = this._createClientForModel(model, apiKey);
+    this._client = this._createClientForModel(model, apiKey, baseUrl, clientType);
   }
 
   /**
@@ -40,44 +47,47 @@ export class AutoLLMClient extends LLMClient {
    *
    * @param model - Model identifier
    * @param _apiKey - Optional API key
+   * @param _baseUrl - Optional base URL for API requests
+   * @param clientType - Optional client type override
    * @returns Instance of the appropriate client
    */
   private _createClientForModel(
     model: string,
-    _apiKey?: string
+    _apiKey?: string,
+    _baseUrl?: string,
+    clientType?: string
   ): LLMClient {
-    const clientType = process.env.CLIENT_TYPE || model.toLowerCase();
+    const effectiveClientType = clientType || process.env.CLIENT_TYPE || model.toLowerCase();
 
-    if (clientType.includes("gemini-3")) {
+    if (effectiveClientType.includes("gemini-3")) {
       throw new Error(
         "Gemini-3 client is not implemented in TypeScript yet. " +
           "Please implement it following the Python version."
       );
-    } else if (clientType.includes("claude") && clientType.includes("4-5")) {
+    } else if (effectiveClientType.includes("claude") && effectiveClientType.includes("4-5")) {
       throw new Error(
         "Claude 4-5 client is not implemented in TypeScript yet. " +
           "Please implement it following the Python version."
       );
-    } else if (clientType.includes("gpt-5.2")) {
+    } else if (effectiveClientType.includes("gpt-5.2")) {
       throw new Error(
         "GPT-5.2 client is not implemented in TypeScript yet. " +
           "Please implement it following the Python version."
       );
-    } else if (clientType.includes("glm-4.7")) {
+    } else if (effectiveClientType.includes("glm-4.7")) {
       throw new Error(
         "GLM-4.7 client is not implemented in TypeScript yet. " +
           "Please implement it following the Python version."
       );
-    } else if (clientType.includes("qwen3")) {
-      console.warn("Warning: Qwen3 client is only compatible with vLLM Server.");
+    } else if (effectiveClientType.includes("qwen3")) {
       throw new Error(
         "Qwen3 client is not implemented in TypeScript yet. " +
           "Please implement it following the Python version."
       );
     } else {
       throw new Error(
-        `${clientType} is not supported. ` +
-          "Supported models: gemini-3, claude-xxx-4-5, gpt-5.2, glm-4.7, qwen3-xxx."
+        `${effectiveClientType} is not supported. ` +
+          "Supported client types: gemini-3, claude-4-5, gpt-5.2, glm-4.7, qwen3."
       );
     }
   }

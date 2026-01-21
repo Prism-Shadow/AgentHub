@@ -97,6 +97,8 @@ export abstract class LLMClient {
           } else if (item.thinking || item.signature) {
             contentItems.push({ ...item });
           }
+        } else if (item.type === "partial_tool_call") {
+          // Skip partial_tool_call items - they should already be converted to tool_call
         } else {
           contentItems.push({ ...item });
         }
