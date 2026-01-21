@@ -21,6 +21,7 @@ from openai.types.chat import ChatCompletionChunk, ChatCompletionMessageParam
 
 from ..base_client import LLMClient
 from ..types import (
+    EventType,
     FinishReason,
     PartialContentItem,
     PartialUniEvent,
@@ -72,7 +73,7 @@ class GLM4_7Client(LLMClient):
         Returns:
             GLM configuration dictionary
         """
-        glm_config = {"model": self._model}
+        glm_config = {"model": self._model, "stream": True, "tool_stream": True}
 
         if config.get("max_tokens") is not None:
             glm_config["max_tokens"] = config["max_tokens"]
@@ -170,6 +171,7 @@ class GLM4_7Client(LLMClient):
         Returns:
             Universal event dictionary
         """
+        event_type: EventType | None = None
         content_items: list[PartialContentItem] = []
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
@@ -178,23 +180,27 @@ class GLM4_7Client(LLMClient):
         delta = choice.delta
 
         if getattr(delta, "reasoning_content", None):
+            event_type = "delta"
             content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning_content")})
 
         elif delta.content:
+            event_type = "delta"
             content_items.append({"type": "text", "text": delta.content})
 
         elif delta.tool_calls:
+            event_type = "delta"
             for tool_call in delta.tool_calls:
                 content_items.append(
                     {
-                        "type": "tool_call",
+                        "type": "partial_tool_call",
                         "name": tool_call.function.name,
-                        "arguments": json.loads(tool_call.function.arguments),
+                        "arguments": tool_call.function.arguments,
                         "tool_call_id": tool_call.id,
                     }
                 )
 
         elif choice.finish_reason:
+            event_type = "stop"
             finish_reason_mapping = {
                 "stop": "stop",
                 "length": "length",
@@ -204,7 +210,7 @@ class GLM4_7Client(LLMClient):
             finish_reason = finish_reason_mapping.get(choice.finish_reason, "unknown")
 
         else:
-            raise ValueError(f"Unknown output: {model_output}")
+            event_type = "stop"
 
         if model_output.usage:
             if model_output.usage.completion_tokens_details:
@@ -226,7 +232,7 @@ class GLM4_7Client(LLMClient):
 
         return {
             "role": "assistant",
-            "event_type": "delta",
+            "event_type": event_type,
             "content_items": content_items,
             "usage_metadata": usage_metadata,
             "finish_reason": finish_reason,
@@ -251,8 +257,32 @@ class GLM4_7Client(LLMClient):
         # Stream generate
         stream = await self._client.chat.completions.create(**glm_config, messages=glm_messages, stream=True)
 
+        partial_tool_call = {}
         async for chunk in stream:
             event = self.transform_model_output_to_uni_event(chunk)
             if event["event_type"] == "delta":
-                event.pop("event_type")
-                yield event
+                if event["content_items"] and event["content_items"][0]["type"] == "partial_tool_call":
+                    if event["content_items"][0]["name"]:
+                        partial_tool_call = {"name": event["content_items"][0]["name"], "arguments": ""}
+                        partial_tool_call["tool_call_id"] = event["content_items"][0]["tool_call_id"]
+                    else:
+                        partial_tool_call["arguments"] += event["content_items"][0]["arguments"]
+                else:
+                    event.pop("event_type")
+                    yield event
+            elif event["event_type"] == "stop":
+                if "name" in partial_tool_call and "arguments" in partial_tool_call:
+                    yield {
+                        "role": "assistant",
+                        "content_items": [
+                            {
+                                "type": "tool_call",
+                                "name": partial_tool_call["name"],
+                                "arguments": json.loads(partial_tool_call["arguments"]),
+                                "tool_call_id": partial_tool_call["tool_call_id"],
+                            }
+                        ],
+                        "usage_metadata": None,
+                        "finish_reason": None,
+                    }
+                    partial_tool_call = {}

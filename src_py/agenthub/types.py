@@ -106,7 +106,7 @@ class UniEvent(TypedDict):
     """Universal event format for streaming responses."""
 
     role: Role
-    content_items: list[ContentItem]
+    content_items: list[PartialContentItem]
     usage_metadata: UsageMetadata | None
     finish_reason: FinishReason | None
 
