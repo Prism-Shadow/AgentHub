@@ -327,8 +327,6 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   );
 });
 
-});
-
 describe.each(AVAILABLE_VISION_MODELS)(
   "Vision model tests for %s",
   (model) => {
