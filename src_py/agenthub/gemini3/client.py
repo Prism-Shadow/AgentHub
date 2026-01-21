@@ -137,7 +137,7 @@ class Gemini3Client(LLMClient):
                         types.Part(text=item["thinking"], thought=True, thought_signature=item.get("signature"))
                     )
                 elif item["type"] == "tool_call":
-                    function_call = types.FunctionCall(name=item["name"], args=item["argument"])
+                    function_call = types.FunctionCall(name=item["name"], args=item["arguments"])
                     parts.append(types.Part(function_call=function_call, thought_signature=item.get("signature")))
                 elif item["type"] == "tool_result":
                     if "tool_call_id" not in item:
@@ -176,7 +176,7 @@ class Gemini3Client(LLMClient):
                     {
                         "type": "tool_call",
                         "name": part.function_call.name,
-                        "argument": part.function_call.args,
+                        "arguments": part.function_call.args,
                         "tool_call_id": part.function_call.name,
                         "signature": part.thought_signature,
                     }
@@ -205,7 +205,7 @@ class Gemini3Client(LLMClient):
 
         return {
             "role": "assistant",
-            "event": "delta",
+            "event_type": "delta",
             "content_items": content_items,
             "usage_metadata": usage_metadata,
             "finish_reason": finish_reason,
@@ -229,6 +229,6 @@ class Gemini3Client(LLMClient):
         )
         async for chunk in response_stream:
             event = self.transform_model_output_to_uni_event(chunk)
-            if event["event"] == "delta":
-                event.pop("event")
+            if event["event_type"] == "delta":
+                event.pop("event_type")
                 yield event

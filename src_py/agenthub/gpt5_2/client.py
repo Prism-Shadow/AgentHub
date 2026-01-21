@@ -21,7 +21,7 @@ from openai.types.responses import ResponseInputParam, ResponseStreamEvent
 
 from ..base_client import LLMClient
 from ..types import (
-    Event,
+    EventType,
     FinishReason,
     PartialContentItem,
     PartialUniEvent,
@@ -141,7 +141,7 @@ class GPT5_2Client(LLMClient):
                             "type": "function_call",
                             "call_id": item["tool_call_id"],
                             "name": item["name"],
-                            "arguments": json.dumps(item["argument"]),
+                            "arguments": json.dumps(item["arguments"], ensure_ascii=False),
                         }
                     )
                 elif item["type"] == "tool_result":
@@ -173,7 +173,7 @@ class GPT5_2Client(LLMClient):
         Returns:
             Universal event dictionary
         """
-        event_type: Event | None = None
+        event_type: EventType | None = None
         content_items: list[PartialContentItem] = []
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
@@ -194,7 +194,7 @@ class GPT5_2Client(LLMClient):
                     {
                         "type": "partial_tool_call",
                         "name": model_output.item.name,
-                        "argument": "",
+                        "arguments": "",
                         "tool_call_id": model_output.item.call_id,
                     }
                 )
@@ -210,7 +210,7 @@ class GPT5_2Client(LLMClient):
 
         elif openai_event_type == "response.function_call_arguments.delta":
             event_type = "delta"
-            content_items.append({"type": "partial_tool_call", "argument": model_output.delta})
+            content_items.append({"type": "partial_tool_call", "arguments": model_output.delta})
 
         elif openai_event_type == "response.function_call_arguments.done":
             event_type = "stop"
@@ -247,7 +247,7 @@ class GPT5_2Client(LLMClient):
 
         return {
             "role": "assistant",
-            "event": event_type,
+            "event_type": event_type,
             "content_items": content_items,
             "usage_metadata": usage_metadata,
             "finish_reason": finish_reason,
@@ -271,28 +271,28 @@ class GPT5_2Client(LLMClient):
 
         async for event in stream:
             event = self.transform_model_output_to_uni_event(event)
-            if event["event"] == "start":
+            if event["event_type"] == "start":
                 if event["content_items"] and event["content_items"][0]["type"] == "partial_tool_call":
                     partial_tool_call["name"] = event["content_items"][0]["name"]
-                    partial_tool_call["argument"] = ""
+                    partial_tool_call["arguments"] = ""
                     partial_tool_call["tool_call_id"] = event["content_items"][0]["tool_call_id"]
 
-            elif event["event"] == "delta":
+            elif event["event_type"] == "delta":
                 if event["content_items"] and event["content_items"][0]["type"] == "partial_tool_call":
-                    partial_tool_call["argument"] += event["content_items"][0]["argument"]
+                    partial_tool_call["arguments"] += event["content_items"][0]["arguments"]
                 else:
-                    event.pop("event")
+                    event.pop("event_type")
                     yield event
 
-            elif event["event"] == "stop":
-                if "name" in partial_tool_call and "argument" in partial_tool_call:
+            elif event["event_type"] == "stop":
+                if "name" in partial_tool_call and "arguments" in partial_tool_call:
                     yield {
                         "role": "assistant",
                         "content_items": [
                             {
                                 "type": "tool_call",
                                 "name": partial_tool_call["name"],
-                                "argument": json.loads(partial_tool_call["argument"]),
+                                "arguments": json.loads(partial_tool_call["arguments"]),
                                 "tool_call_id": partial_tool_call["tool_call_id"],
                             }
                         ],
@@ -302,5 +302,5 @@ class GPT5_2Client(LLMClient):
                     partial_tool_call = {}
 
                 if event["usage_metadata"] is not None:
-                    event.pop("event")
+                    event.pop("event_type")
                     yield event

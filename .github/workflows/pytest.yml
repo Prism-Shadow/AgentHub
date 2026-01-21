@@ -24,6 +24,10 @@ jobs:
         python-version:
           - "3.11"
 
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -54,3 +58,5 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
+          QWEN3_API_KEY: ${{ secrets.QWEN3_API_KEY }}
+          QWEN3_BASE_URL: ${{ secrets.QWEN3_BASE_URL }}

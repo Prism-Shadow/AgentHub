@@ -21,11 +21,11 @@ from openai.types.chat import ChatCompletionChunk, ChatCompletionMessageParam
 
 from ..base_client import LLMClient
 from ..types import (
+    EventType,
     FinishReason,
     PartialContentItem,
     PartialUniEvent,
     PromptCaching,
-    ThinkingLevel,
     ToolChoice,
     UniConfig,
     UniEvent,
@@ -34,78 +34,64 @@ from ..types import (
 )
 
 
-class GLM4_7Client(LLMClient):
-    """GLM-4.7-specific LLM client implementation using OpenAI-compatible API."""
+class Qwen3Client(LLMClient):
+    """Qwen3-specific LLM client implementation using OpenAI-compatible API."""
 
     def __init__(self, model: str, api_key: str | None = None):
-        """Initialize GLM-4.7 client with model and API key."""
+        """Initialize Qwen3 client with model and API key."""
         self._model = model
-        api_key = api_key or os.getenv("GLM_API_KEY")
-        base_url = os.getenv("GLM_BASE_URL", "https://api.z.ai/api/paas/v4/")
+        api_key = api_key or os.getenv("QWEN3_API_KEY")
+        base_url = os.getenv("QWEN3_BASE_URL", "http://192.168.1.10:8000/v1/")
         self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self._history: list[UniMessage] = []
-
-    def _convert_thinking_level_to_config(self, thinking_level: ThinkingLevel) -> dict[str, str]:
-        """Convert ThinkingLevel enum to GLM's thinking configuration."""
-        mapping = {
-            ThinkingLevel.NONE: {"type": "disabled"},
-            ThinkingLevel.LOW: {"type": "enabled"},
-            ThinkingLevel.MEDIUM: {"type": "enabled"},
-            ThinkingLevel.HIGH: {"type": "enabled"},
-        }
-        return mapping.get(thinking_level)
 
     def _convert_tool_choice(self, tool_choice: ToolChoice) -> str:
         """Convert ToolChoice to OpenAI's tool_choice format."""
         if tool_choice == "auto":
             return "auto"
         else:
-            raise ValueError("GLM only supports 'auto' for tool_choice.")
+            raise ValueError("Qwen3 only supports 'auto' for tool_choice.")
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """
-        Transform universal configuration to GLM-specific configuration.
+        Transform universal configuration to Qwen3-specific configuration.
 
         Args:
             config: Universal configuration dict
 
         Returns:
-            GLM configuration dictionary
+            Qwen3 configuration dictionary
         """
-        glm_config = {"model": self._model}
+        qwen3_config = {"model": self._model}
 
         if config.get("max_tokens") is not None:
-            glm_config["max_tokens"] = config["max_tokens"]
+            qwen3_config["max_tokens"] = config["max_tokens"]
 
         if config.get("temperature") is not None:
-            glm_config["temperature"] = config["temperature"]
-
-        if config.get("thinking_level") is not None:
-            thinking_config = self._convert_thinking_level_to_config(config["thinking_level"])
-            glm_config["extra_body"] = {"thinking": thinking_config}
+            qwen3_config["temperature"] = config["temperature"]
 
         if config.get("tools") is not None:
-            glm_config["tools"] = [{"type": "function", "function": tool} for tool in config["tools"]]
+            qwen3_config["tools"] = [{"type": "function", "function": tool} for tool in config["tools"]]
 
         if config.get("tool_choice") is not None:
-            glm_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
+            qwen3_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
 
         if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
-            raise ValueError("prompt_caching must be ENABLE for GLM-4.7.")
+            raise ValueError("prompt_caching must be ENABLE for Qwen3.")
 
-        return glm_config
+        return qwen3_config
 
     def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[ChatCompletionMessageParam]:
         """
-        Transform universal message format to OpenAI's message format.
+        Transform universal message format to Qwen3-specific message format.
 
         Args:
             messages: List of universal message dictionaries
 
         Returns:
-            List of OpenAI message dictionaries
+            List of Qwen3 message dictionaries
         """
-        openai_messages = []
+        qwen3_messages = []
 
         for msg in messages:
             content_parts = []  # may be empty for tool results
@@ -115,7 +101,7 @@ class GLM4_7Client(LLMClient):
                 if item["type"] == "text":
                     content_parts.append({"type": "text", "text": item["text"]})
                 elif item["type"] == "image_url":
-                    content_parts.append({"type": "image_url", "image_url": {"url": item["image_url"]}})
+                    raise ValueError("Qwen3 does not support image_url.")
                 elif item["type"] == "thinking":
                     thinking += item["thinking"]
                 elif item["type"] == "tool_call":
@@ -134,7 +120,7 @@ class GLM4_7Client(LLMClient):
                         raise ValueError("tool_call_id is required for tool result.")
 
                     # Tool results are sent as separate messages
-                    openai_messages.append(
+                    qwen3_messages.append(
                         {
                             "role": "tool",
                             "tool_call_id": item["tool_call_id"],
@@ -156,13 +142,13 @@ class GLM4_7Client(LLMClient):
 
             # message may be empty for tool results
             if len(message.keys()) > 1:
-                openai_messages.append(message)
+                qwen3_messages.append(message)
 
-        return openai_messages
+        return qwen3_messages
 
     def transform_model_output_to_uni_event(self, model_output: ChatCompletionChunk) -> PartialUniEvent:
         """
-        Transform GLM model output to universal event format.
+        Transform Qwen3 model output to universal event format.
 
         Args:
             model_output: OpenAI streaming chunk
@@ -170,6 +156,7 @@ class GLM4_7Client(LLMClient):
         Returns:
             Universal event dictionary
         """
+        event_type: EventType | None = None
         content_items: list[PartialContentItem] = []
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
@@ -178,23 +165,33 @@ class GLM4_7Client(LLMClient):
         delta = choice.delta
 
         if getattr(delta, "reasoning_content", None):
+            event_type = "delta"
             content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning_content")})
 
         elif delta.content:
-            content_items.append({"type": "text", "text": delta.content})
+            # manually check for content since tool parser of vLLM is not stable
+            if delta.content == "<tool_call>":
+                event_type = "start"
+            elif delta.content == "</tool_call>":
+                event_type = "stop"
+            else:
+                event_type = "delta"
+                content_items.append({"type": "text", "text": delta.content})
 
         elif delta.tool_calls:
             for tool_call in delta.tool_calls:
+                event_type = "delta"
                 content_items.append(
                     {
-                        "type": "tool_call",
+                        "type": "partial_tool_call",
                         "name": tool_call.function.name,
-                        "arguments": json.loads(tool_call.function.arguments),
-                        "tool_call_id": tool_call.id,
+                        "arguments": tool_call.function.arguments,
+                        "tool_call_id": tool_call.function.name,
                     }
                 )
 
         elif choice.finish_reason:
+            event_type = "stop"
             finish_reason_mapping = {
                 "stop": "stop",
                 "length": "length",
@@ -204,7 +201,7 @@ class GLM4_7Client(LLMClient):
             finish_reason = finish_reason_mapping.get(choice.finish_reason, "unknown")
 
         else:
-            raise ValueError(f"Unknown output: {model_output}")
+            event_type = "stop"
 
         if model_output.usage:
             if model_output.usage.completion_tokens_details:
@@ -226,7 +223,7 @@ class GLM4_7Client(LLMClient):
 
         return {
             "role": "assistant",
-            "event_type": "delta",
+            "event_type": event_type,
             "content_items": content_items,
             "usage_metadata": usage_metadata,
             "finish_reason": finish_reason,
@@ -237,22 +234,66 @@ class GLM4_7Client(LLMClient):
         messages: list[UniMessage],
         config: UniConfig,
     ) -> AsyncIterator[UniEvent]:
-        """Stream generate using GLM SDK with unified conversion methods."""
+        """Stream generate using Qwen3 SDK with unified conversion methods."""
         # Use unified config conversion
-        glm_config = self.transform_uni_config_to_model_config(config)
+        qwen3_config = self.transform_uni_config_to_model_config(config)
 
         # Use unified message conversion
-        glm_messages = self.transform_uni_message_to_model_input(messages)
+        qwen3_messages = self.transform_uni_message_to_model_input(messages)
 
         # Extract system prompt if present
         if config.get("system_prompt"):
-            glm_messages.insert(0, {"role": "system", "content": config["system_prompt"]})
+            qwen3_messages.insert(0, {"role": "system", "content": config["system_prompt"]})
 
         # Stream generate
-        stream = await self._client.chat.completions.create(**glm_config, messages=glm_messages, stream=True)
+        stream = await self._client.chat.completions.create(**qwen3_config, messages=qwen3_messages, stream=True)
 
+        partial_tool_call = {}
         async for chunk in stream:
             event = self.transform_model_output_to_uni_event(chunk)
-            if event["event_type"] == "delta":
-                event.pop("event_type")
-                yield event
+            if event["event_type"] == "start":
+                partial_tool_call = {"data": ""}
+            elif event["event_type"] == "delta":
+                if "data" in partial_tool_call:
+                    partial_tool_call["data"] += event["content_items"][0]["text"]
+                elif event["content_items"] and event["content_items"][0]["type"] == "partial_tool_call":
+                    if event["content_items"][0]["name"]:
+                        partial_tool_call = {"name": event["content_items"][0]["name"], "arguments": ""}
+                    else:
+                        partial_tool_call["arguments"] += event["content_items"][0]["arguments"]
+                else:
+                    event.pop("event_type")
+                    yield event
+            elif event["event_type"] == "stop":
+                if "data" in partial_tool_call:
+                    tool_call = json.loads(partial_tool_call["data"].strip())
+                    yield {
+                        "role": "assistant",
+                        "content_items": [
+                            {
+                                "type": "tool_call",
+                                "name": tool_call["name"],
+                                "arguments": tool_call["arguments"],
+                                "tool_call_id": tool_call["name"],
+                            }
+                        ],
+                        "usage_metadata": None,
+                        "finish_reason": None,
+                    }
+                    partial_tool_call = {}
+
+                if "name" in partial_tool_call and "arguments" in partial_tool_call:
+                    yield {
+                        "role": "assistant",
+                        "content_items": [
+                            {
+                                "type": "tool_call",
+                                "name": partial_tool_call["name"],
+                                "arguments": json.loads(partial_tool_call["arguments"]),
+                                "tool_call_id": partial_tool_call["name"],
+                            }
+                        ],
+                        "usage_metadata": None,
+                        "finish_reason": None,
+                    }
+                    partial_tool_call = {}

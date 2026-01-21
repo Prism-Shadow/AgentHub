@@ -310,6 +310,9 @@ def create_chat_app() -> Flask:
                         <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
                         <option value="gpt-5.2">GPT 5.2</option>
                         <option value="glm-4.7">GLM 4.7</option>
+                        <option value="Qwen/Qwen3-0.6B">Qwen3-0.6B</option>
+                        <option value="Qwen/Qwen3-8B">Qwen3-8B</option>
+                        <option value="Qwen/Qwen3-4B-Instruct-2507">Qwen3-4B-Instruct-2507</option>
                     </select>
                 </div>
                 <div class="config-field">
@@ -507,6 +510,7 @@ def create_chat_app() -> Flask:
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
                     let fullResponse = '';
+                    let fullThinking = '';
                     let metadata = null;
 
                     while (true) {
@@ -537,14 +541,20 @@ def create_chat_app() -> Flask:
                                             }
                                             textContainer.textContent = fullResponse;
                                         } else if (item.type === 'thinking') {
-                                            const thinkingDiv = document.createElement('div');
-                                            thinkingDiv.style.cssText = 'background-color: #ddf4ff; padding: 12px; border-radius: 4px; border-left: 3px solid #0969da; margin-bottom: 8px; font-style: italic;';
-                                            thinkingDiv.textContent = `💭 ${item.thinking}`;
-                                            contentDiv.appendChild(thinkingDiv);
+                                            fullThinking += item.thinking;
+                                            // Find or create thinking container
+                                            let thinkingContainer = contentDiv.querySelector('.thinking-content');
+                                            if (!thinkingContainer) {
+                                                thinkingContainer = document.createElement('div');
+                                                thinkingContainer.className = 'thinking-content';
+                                                thinkingContainer.style.cssText = 'background-color: #ddf4ff; padding: 12px; border-radius: 4px; border-left: 3px solid #0969da; margin-bottom: 8px; font-style: italic;';
+                                                contentDiv.appendChild(thinkingContainer);
+                                            }
+                                            thinkingContainer.textContent = `💭 ${fullThinking}`;
                                         } else if (item.type === 'tool_call') {
                                             const toolCallDiv = document.createElement('div');
                                             toolCallDiv.style.cssText = 'background-color: #fff8c5; padding: 12px; border-radius: 4px; border-left: 3px solid #d4a72c; margin-bottom: 8px;';
-                                            toolCallDiv.innerHTML = `<strong>🛠️ Tool Call:</strong> ${item.name}<br><pre style="margin: 4px 0 0 0; font-size: 12px;">${JSON.stringify(item.argument, null, 2)}</pre>`;
+                                            toolCallDiv.innerHTML = `<strong>🛠️ Tool Call:</strong> ${item.name}<br><pre style="margin: 4px 0 0 0; font-size: 12px;">${JSON.stringify(item.arguments, null, 2)}</pre>`;
                                             contentDiv.appendChild(toolCallDiv);
                                         } else if (item.type === 'tool_result') {
                                             const toolResultDiv = document.createElement('div');
@@ -683,7 +693,7 @@ def create_chat_app() -> Flask:
                     async for event in client.streaming_response_stateful(message=message, config=config):
                         # Serialize event to handle bytes objects
                         serialized_event = _serialize_for_json(event)
-                        yield f"data: {json.dumps(serialized_event)}\n\n"
+                        yield f"data: {json.dumps(serialized_event, ensure_ascii=False)}\n\n"
 
                 async_gen = stream_events()
                 while True:
@@ -699,7 +709,7 @@ def create_chat_app() -> Flask:
                     "content_items": [{"type": "text", "text": f"Error: {str(e)}"}],
                     "finish_reason": "error",
                 }
-                yield f"data: {json.dumps(error_event)}\n\n"
+                yield f"data: {json.dumps(error_event, ensure_ascii=False)}\n\n"
                 yield "data: [DONE]\n\n"
 
         return Response(generate(), mimetype="text/event-stream")

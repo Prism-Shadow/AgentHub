@@ -106,7 +106,7 @@ async def run_traced_chat():
 
     if tool_call:
         # Execute the tool
-        result = get_weather(tool_call["argument"]["location"])
+        result = get_weather(tool_call["arguments"]["location"])
 
         # Send tool result back
         async for _ in client2.streaming_response_stateful(

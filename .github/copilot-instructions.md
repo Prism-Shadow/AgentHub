@@ -54,6 +54,7 @@ When adding support for new AI models in `auto_client.py`, follow these rules:
 3. **DO NOT** create new files or directories in examples and tests when adding a new model, use pytest parameters or environment variables instead.
 4. **Always** consult the [../llmsdk_docs/README.md](../llmsdk_docs/README.md) for AI model sdk usage details.
 5. When making changes, ensure consistency across both implementations when applicable.
+6. When using JSON serialization, ensure that CJK strings are serialized correctly by using `ensure_ascii=False`.
 
 When writing documentation, follow these rules:
 
@@ -69,7 +70,9 @@ When writing tests that require calling AI models, the following secrets are ava
 - `ANTHROPIC_API_KEY` - API key for Anthropic Claude SDK
 - `GEMINI_API_KEY` - API key for Google Gemini SDK
 - `OPENAI_API_KEY` - API key for OpenAI SDK
-- `GLM_API_KEY` - API key for Z.AI GLM SDK SDK
+- `GLM_API_KEY` - API key for Z.AI GLM SDK
+- `QWEN3_API_KEY` - API key for Qwen3 SDK
+- `QWEN3_BASE_URL` - Base URL for Qwen3 SDK
 
 To use these secrets in your workflow files, reference them in the `env:` section:
 
@@ -79,6 +82,8 @@ env:
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
+  QWEN3_API_KEY: ${{ secrets.QWEN3_API_KEY }}
+  QWEN3_BASE_URL: ${{ secrets.QWEN3_BASE_URL }}
 ```
 
 These secrets can be used in your test code to authenticate with the respective AI model providers. Make sure to handle these credentials securely and never log or expose them in test output.

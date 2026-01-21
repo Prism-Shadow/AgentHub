@@ -91,10 +91,10 @@ async def main():
 
     if tool_call1:
         print(f"\nFunction to call: {tool_call1['name']}")
-        print(f"Arguments: {tool_call1['argument']}")
+        print(f"Arguments: {tool_call1['arguments']}")
 
         # Call the function
-        result = get_current_temperature(**tool_call1["argument"])
+        result = get_current_temperature(**tool_call1["arguments"])
         print(f"Function result: {result}")
 
         # Second step: Send function result back to the model
@@ -137,10 +137,10 @@ async def main():
 
         if tool_call2:
             print(f"\nFunction to call: {tool_call2['name']}")
-            print(f"Arguments: {tool_call2['argument']}")
+            print(f"Arguments: {tool_call2['arguments']}")
 
             # Call the function again
-            result2 = get_current_temperature(**tool_call2["argument"])
+            result2 = get_current_temperature(**tool_call2["arguments"])
             print(f"Function result: {result2}")
 
             # Send result back

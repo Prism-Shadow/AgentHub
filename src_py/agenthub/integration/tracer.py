@@ -135,7 +135,7 @@ class Tracer:
                     lines.append(f"Image URL: {item['image_url']}")
                 elif item["type"] == "tool_call":
                     lines.append(f"Tool Call: {item['name']}")
-                    lines.append(f"  Arguments: {json.dumps(item['argument'], indent=2)}")
+                    lines.append(f"  Arguments: {json.dumps(item['arguments'], indent=2, ensure_ascii=False)}")
                     lines.append(f"  Tool Call ID: {item['tool_call_id']}")
                 elif item["type"] == "tool_result":
                     lines.append(f"Tool Result (ID: {item['tool_call_id']}): {item['result']}")
@@ -169,6 +169,7 @@ class Tracer:
             Flask application instance
         """
         app = Flask(__name__)
+        app.jinja_env.policies["json.dumps_kwargs"] = {"ensure_ascii": False}
 
         # HTML template for directory listing
         DIRECTORY_TEMPLATE = """
@@ -482,7 +483,7 @@ class Tracer:
                                 <div class="content-text thinking">{{ item.thinking|e }}</div>
                             {% elif item.type == 'tool_call' %}
                                 <div class="tool-call">
-                                    <div class="content-text">{{ item.name|e }}({% for key, value in item.argument.items() %}{{ key|e }}={{ value|e|tojson }}{% if not loop.last %}, {% endif %}{% endfor %})</div>
+                                    <div class="content-text">{{ item.name|e }}({% for key, value in item.arguments.items() %}{{ key|e }}={{ value|e|tojson }}{% if not loop.last %}, {% endif %}{% endfor %})</div>
                                 </div>
                             {% elif item.type == 'tool_result' %}
                                 <div class="tool-result">

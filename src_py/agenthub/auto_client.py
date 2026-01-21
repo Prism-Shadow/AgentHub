@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from typing import Any, AsyncIterator
 
 from .base_client import LLMClient
@@ -38,24 +39,33 @@ class AutoLLMClient(LLMClient):
 
     def _create_client_for_model(self, model: str, api_key: str | None = None) -> LLMClient:
         """Create the appropriate client for the given model."""
-        if "gemini-3" in model.lower():  # e.g., gemini-3-flash-preview
+        client_type = os.getenv("CLIENT_TYPE", model.lower())
+        if "gemini-3" in client_type:  # e.g., gemini-3-flash-preview
             from .gemini3 import Gemini3Client
 
             return Gemini3Client(model=model, api_key=api_key)
-        elif "claude" in model.lower() and "4-5" in model.lower():  # e.g., claude-sonnet-4-5
+        elif "claude" in client_type and "4-5" in client_type:  # e.g., claude-sonnet-4-5
             from .claude4_5 import Claude4_5Client
 
             return Claude4_5Client(model=model, api_key=api_key)
-        elif "glm-4.7" in model.lower():  # e.g., glm-4.7
-            from .glm4_7 import GLM4_7Client
-
-            return GLM4_7Client(model=model, api_key=api_key)
-        elif "gpt-5.2" in model.lower():  # e.g., gpt-5.2
+        elif "gpt-5.2" in client_type:  # e.g., gpt-5.2
             from .gpt5_2 import GPT5_2Client
 
             return GPT5_2Client(model=model, api_key=api_key)
+        elif "glm-4.7" in client_type:  # e.g., glm-4.7
+            from .glm4_7 import GLM4_7Client
+
+            return GLM4_7Client(model=model, api_key=api_key)
+        elif "qwen3" in client_type:  # e.g., qwen3-7b
+            from .qwen3 import Qwen3Client
+
+            print("Warning: Qwen3 client is only compatible with vLLM Server.")
+            return Qwen3Client(model=model, api_key=api_key)
         else:
-            raise ValueError(f"{model} is not supported.")
+            raise ValueError(
+                f"{client_type} is not supported. "
+                "Supported models: gemini-3, claude-xxx-4-5, gpt-5.2, glm-4.7, qwen3-xxx."
+            )
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:
         """Delegate to underlying client's transform_uni_config_to_model_config."""
