@@ -58,36 +58,36 @@ export class AutoLLMClient extends LLMClient {
     baseUrl?: string,
     clientType?: string
   ): LLMClient {
-    const effectiveClientType = clientType || process.env.CLIENT_TYPE || model.toLowerCase();
+    clientType = clientType || process.env.CLIENT_TYPE || model.toLowerCase();
 
-    if (effectiveClientType.includes("gemini-3")) {
+    if (clientType.includes("gemini-3")) {
       throw new Error(
         "Gemini-3 client is not implemented in TypeScript yet. " +
           "Please implement it following the Python version."
       );
-    } else if (effectiveClientType.includes("claude") && effectiveClientType.includes("4-5")) {
+    } else if (clientType.includes("claude") && clientType.includes("4-5")) {
       throw new Error(
         "Claude 4-5 client is not implemented in TypeScript yet. " +
           "Please implement it following the Python version."
       );
-    } else if (effectiveClientType.includes("gpt-5.2")) {
+    } else if (clientType.includes("gpt-5.2")) {
       throw new Error(
         "GPT-5.2 client is not implemented in TypeScript yet. " +
           "Please implement it following the Python version."
       );
-    } else if (effectiveClientType.includes("glm-4.7")) {
+    } else if (clientType.includes("glm-4.7")) {
       throw new Error(
         "GLM-4.7 client is not implemented in TypeScript yet. " +
           "Please implement it following the Python version."
       );
-    } else if (effectiveClientType.includes("qwen3")) {
+    } else if (clientType.includes("qwen3")) {
       throw new Error(
         "Qwen3 client is not implemented in TypeScript yet. " +
           "Please implement it following the Python version."
       );
     } else {
       throw new Error(
-        `${effectiveClientType} is not supported. ` +
+        `${clientType} is not supported. ` +
           "Supported client types: gemini-3, claude-4-5, gpt-5.2, glm-4.7, qwen3."
       );
     }
