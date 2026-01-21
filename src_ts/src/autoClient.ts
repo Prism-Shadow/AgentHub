@@ -29,24 +29,36 @@ export class AutoLLMClient extends LLMClient {
    *
    * @param model - Model identifier (determines which client to use)
    * @param apiKey - Optional API key
+   * @param baseUrl - Optional base URL for API requests
+   * @param clientType - Optional client type override
    */
-  constructor(model: string, apiKey?: string) {
+  constructor(
+    model: string,
+    apiKey?: string,
+    baseUrl?: string,
+    clientType?: string
+  ) {
     super();
-    this._client = this._createClientForModel(model, apiKey);
+    this._client = this._createClientForModel(model, apiKey, baseUrl, clientType);
   }
 
   /**
    * Create the appropriate client for the given model.
    *
    * @param model - Model identifier
-   * @param _apiKey - Optional API key
+   * @param apiKey - API key to be passed to the client implementation (unused until clients are implemented)
+   * @param baseUrl - Base URL to be passed to the client implementation (unused until clients are implemented)
+   * @param clientType - Optional client type override
    * @returns Instance of the appropriate client
+   * @throws Error when the requested client is not yet implemented
    */
   private _createClientForModel(
     model: string,
-    _apiKey?: string
+    apiKey?: string,
+    baseUrl?: string,
+    clientType?: string
   ): LLMClient {
-    const clientType = process.env.CLIENT_TYPE || model.toLowerCase();
+    clientType = clientType || process.env.CLIENT_TYPE || model.toLowerCase();
 
     if (clientType.includes("gemini-3")) {
       throw new Error(
@@ -69,7 +81,6 @@ export class AutoLLMClient extends LLMClient {
           "Please implement it following the Python version."
       );
     } else if (clientType.includes("qwen3")) {
-      console.warn("Warning: Qwen3 client is only compatible with vLLM Server.");
       throw new Error(
         "Qwen3 client is not implemented in TypeScript yet. " +
           "Please implement it following the Python version."
@@ -77,7 +88,7 @@ export class AutoLLMClient extends LLMClient {
     } else {
       throw new Error(
         `${clientType} is not supported. ` +
-          "Supported models: gemini-3, claude-xxx-4-5, gpt-5.2, glm-4.7, qwen3-xxx."
+          "Supported client types: gemini-3, claude-4-5, gpt-5.2, glm-4.7, qwen3."
       );
     }
   }
