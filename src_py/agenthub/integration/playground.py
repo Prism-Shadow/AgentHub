@@ -555,7 +555,7 @@ def create_chat_app() -> Flask:
                                             // Playground shows streaming tool calls (partial_tool_call)
                                             const toolCallDiv = document.createElement('div');
                                             toolCallDiv.style.cssText = 'background-color: #fff8c5; padding: 12px; border-radius: 4px; border-left: 3px solid #d4a72c; margin-bottom: 8px;';
-                                            toolCallDiv.innerHTML = `<strong>🛠️ Streaming Tool Call:</strong> ${item.name || '...'}<br><pre style="margin: 4px 0 0 0; font-size: 12px;">${item.arguments || ''}</pre>`;
+                                            toolCallDiv.innerHTML = `<strong>🛠️ Tool Call:</strong> ${item.name || '...'}<br><pre style="margin: 4px 0 0 0; font-size: 12px;">${item.arguments || ''}</pre>`;
                                             contentDiv.appendChild(toolCallDiv);
                                         } else if (item.type === 'tool_call') {
                                             // Skip complete tool_call - playground only shows streaming (partial) tool calls
