@@ -98,8 +98,8 @@ class UniMessage(TypedDict):
 
     role: Role
     content_items: list[ContentItem]
-    usage_metadata: NotRequired[UsageMetadata]
-    finish_reason: NotRequired[FinishReason]
+    usage_metadata: NotRequired[UsageMetadata | None]
+    finish_reason: NotRequired[FinishReason | None]
 
 
 class UniEvent(TypedDict):
@@ -107,8 +107,8 @@ class UniEvent(TypedDict):
 
     role: Role
     content_items: list[ContentItem]
-    usage_metadata: NotRequired[UsageMetadata]
-    finish_reason: NotRequired[FinishReason]
+    usage_metadata: UsageMetadata | None
+    finish_reason: FinishReason | None
 
 
 class PartialUniEvent(TypedDict):
@@ -117,8 +117,8 @@ class PartialUniEvent(TypedDict):
     role: Role
     event_type: EventType
     content_items: list[PartialContentItem]
-    usage_metadata: NotRequired[UsageMetadata]
-    finish_reason: NotRequired[FinishReason]
+    usage_metadata: UsageMetadata | None
+    finish_reason: FinishReason | None
 
 
 class ToolSchema(TypedDict):
@@ -126,7 +126,7 @@ class ToolSchema(TypedDict):
 
     name: str
     description: str
-    parameters: NotRequired[str]
+    parameters: NotRequired[dict[str, Any]]
 
 
 class UniConfig(TypedDict):
