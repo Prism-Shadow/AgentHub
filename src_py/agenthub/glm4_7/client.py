@@ -152,7 +152,7 @@ class GLM4_7Client(LLMClient):
                 message["tool_calls"] = tool_calls
 
             if thinking:
-                message["reasoning_content"] = thinking
+                message["reasoning_content"] = thinking  # vLLM & siliconflow compatibility
                 message["reasoning"] = thinking  # openrouter compatibility
 
             # message may be empty for tool results
@@ -183,6 +183,7 @@ class GLM4_7Client(LLMClient):
             event_type = "delta"
             content_items.append({"type": "text", "text": delta.content})
 
+        # vLLM & siliconflow compatibility
         if getattr(delta, "reasoning_content", None):
             event_type = "delta"
             content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning_content")})
@@ -215,6 +216,7 @@ class GLM4_7Client(LLMClient):
             finish_reason = finish_reason_mapping.get(choice.finish_reason, "unknown")
 
         if model_output.usage:
+            event_type = event_type or "delta"  # deal with separate usage data
             if model_output.usage.completion_tokens_details:
                 reasoning_tokens = model_output.usage.completion_tokens_details.reasoning_tokens
             else:
@@ -276,6 +278,7 @@ class GLM4_7Client(LLMClient):
                             # update partial_tool_call
                             partial_tool_call["arguments"] += item["arguments"]
 
+                yield event
             elif event["event_type"] == "stop":
                 if "name" in partial_tool_call and "arguments" in partial_tool_call:
                     # finish partial_tool_call
@@ -295,4 +298,5 @@ class GLM4_7Client(LLMClient):
                     }
                     partial_tool_call = {}
 
-            yield event
+                if event["finish_reason"] or event["usage_metadata"]:
+                    yield event

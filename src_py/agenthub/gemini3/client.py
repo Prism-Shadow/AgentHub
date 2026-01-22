@@ -193,14 +193,6 @@ class Gemini3Client(LLMClient):
             else:
                 raise ValueError(f"Unknown output: {part}")
 
-        if model_output.usage_metadata:
-            usage_metadata = {
-                "prompt_tokens": model_output.usage_metadata.prompt_token_count,
-                "thoughts_tokens": model_output.usage_metadata.thoughts_token_count,
-                "response_tokens": model_output.usage_metadata.candidates_token_count,
-                "cached_tokens": model_output.usage_metadata.cached_content_token_count,
-            }
-
         if candidate.finish_reason:
             event_type = "stop"
             stop_reason_mapping = {
@@ -208,6 +200,15 @@ class Gemini3Client(LLMClient):
                 types.FinishReason.MAX_TOKENS: "length",
             }
             finish_reason = stop_reason_mapping.get(candidate.finish_reason, "unknown")
+
+        if model_output.usage_metadata:
+            event_type = event_type or "delta"  # deal with separate usage data
+            usage_metadata = {
+                "prompt_tokens": model_output.usage_metadata.prompt_token_count,
+                "thoughts_tokens": model_output.usage_metadata.thoughts_token_count,
+                "response_tokens": model_output.usage_metadata.candidates_token_count,
+                "cached_tokens": model_output.usage_metadata.cached_content_token_count,
+            }
 
         return {
             "role": "assistant",
