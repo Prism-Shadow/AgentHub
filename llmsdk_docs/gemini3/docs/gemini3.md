@@ -1,5 +1,3 @@
-| We have updated our [Terms of Service](https://ai.google.dev/gemini-api/terms).
-
 Gemini 3 is our most intelligent model family to date, built on a foundation of state-of-the-art reasoning. It is designed to bring any idea to life by mastering agentic workflows, autonomous coding, and complex multimodal tasks. This guide covers key features of the Gemini 3 model family and how to get the most out of it.  
 [Try Gemini 3 Pro](https://aistudio.google.com?model=gemini-3-pro-preview) [Try Gemini 3 Flash](https://aistudio.google.com?model=gemini-3-flash-preview) [Try Nano Banana Pro](https://aistudio.google.com?model=gemini-3-pro-image-preview)
 

@@ -85,7 +85,7 @@ demonstrated in the following [text generation](https://ai.google.dev/gemini-api
          {
            "parts": [
              {
-               "text": "Explain the concept of Occam\'s Razor and provide a simple, everyday example."
+               "text": "Explain the concept of Occam'\''s Razor and provide a simple, everyday example."
              }
            ]
          }
