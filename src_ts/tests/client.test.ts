@@ -111,6 +111,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should stream basic response",
     async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
       const client = await createClient(model);
       const messages: UniMessage[] = [
         {
@@ -141,6 +142,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should stream response with all parameters",
     async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
       const client = await createClient(model);
       const messages: UniMessage[] = [
         {
@@ -187,6 +189,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should handle stateful streaming",
     async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
       const client = await createClient(model);
       const config: UniConfig = {};
 
@@ -229,6 +232,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should clear history",
     async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
       const client = await createClient(model);
       const message: UniMessage = {
         role: "user",
@@ -254,6 +258,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should concatenate events to message",
     async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
       const client = await createClient(model);
       const messages: UniMessage[] = [
         {
@@ -291,6 +296,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should handle tool use",
     async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
       const client = await createClient(model);
 
       const weatherTool = {
@@ -387,6 +393,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should handle system prompt",
     async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
       const client = await createClient(model);
       const messages: UniMessage[] = [
         {
@@ -422,6 +429,7 @@ describe.each(AVAILABLE_VISION_MODELS)("Vision test for %s", (model) => {
   test(
     "should handle image understanding",
     async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
       const client = await createClient(model);
       const config: UniConfig = {};
       const messages: UniMessage[] = [

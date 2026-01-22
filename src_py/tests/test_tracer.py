@@ -15,6 +15,7 @@
 import os
 import shutil
 import tempfile
+import time
 from pathlib import Path
 
 import pytest
@@ -237,6 +238,7 @@ def test_web_app_nonexistent_path(temp_cache_dir):
 @pytest.mark.skipif(not GEMINI_AVAILABLE, reason="Gemini API key not available")
 async def test_monitoring_integration(temp_cache_dir):
     """Test monitoring integration with AutoLLMClient."""
+    time.sleep(1)
 
     os.environ["AGENTHUB_CACHE_DIR"] = temp_cache_dir
     client = AutoLLMClient(model="gemini-3-flash-preview")
@@ -261,6 +263,7 @@ async def test_monitoring_integration(temp_cache_dir):
 @pytest.mark.skipif(not GEMINI_AVAILABLE, reason="Gemini API key not available")
 async def test_monitoring_updates_on_multiple_messages(temp_cache_dir):
     """Test that monitoring file is updated with each new message."""
+    time.sleep(1)
 
     os.environ["AGENTHUB_CACHE_DIR"] = temp_cache_dir
     client = AutoLLMClient(model="gemini-3-flash-preview")
