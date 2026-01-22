@@ -18,8 +18,10 @@ import { ThinkingLevel, UniMessage, UniConfig, UniEvent } from "../src/types";
 const IMAGE =
   "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg";
 
-const AVAILABLE_VISION_MODELS: string[] = [];
 const AVAILABLE_TEXT_MODELS: string[] = [];
+const AVAILABLE_VISION_MODELS: string[] = [];
+const OPENROUTER_MODELS: string[] = [];
+const SILICONFLOW_MODELS: string[] = [];
 
 if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
   AVAILABLE_VISION_MODELS.push("gemini-3-flash-preview");
@@ -37,14 +39,39 @@ if (process.env.GLM_API_KEY) {
   AVAILABLE_TEXT_MODELS.push("glm-4.7");
 }
 
-if (process.env.QWEN3_API_KEY) {
-  AVAILABLE_TEXT_MODELS.push("qwen3");
+if (process.env.OPENROUTER_API_KEY) {
+  OPENROUTER_MODELS.push("z-ai/glm-4.7");
+  OPENROUTER_MODELS.push("qwen/qwen3-30b-a3b-thinking-2507");
 }
 
-const AVAILABLE_MODELS = [...AVAILABLE_VISION_MODELS, ...AVAILABLE_TEXT_MODELS];
+if (process.env.SILICONFLOW_API_KEY) {
+  SILICONFLOW_MODELS.push("Pro/zai-org/GLM-4.7");
+  SILICONFLOW_MODELS.push("Qwen/Qwen3-8B");
+}
+
+const AVAILABLE_MODELS = [
+  ...AVAILABLE_VISION_MODELS,
+  ...AVAILABLE_TEXT_MODELS,
+  ...OPENROUTER_MODELS,
+  ...SILICONFLOW_MODELS,
+];
 
 async function createClient(model: string): Promise<AutoLLMClient> {
-  return new AutoLLMClient(model);
+  let apiKey: string | undefined;
+  let baseUrl: string | undefined;
+
+  if (OPENROUTER_MODELS.includes(model)) {
+    apiKey = process.env.OPENROUTER_API_KEY;
+    baseUrl = "https://openrouter.ai/api/v1";
+  } else if (SILICONFLOW_MODELS.includes(model)) {
+    apiKey = process.env.SILICONFLOW_API_KEY;
+    baseUrl = "https://api.siliconflow.cn/v1";
+  } else {
+    apiKey = undefined;
+    baseUrl = undefined;
+  }
+
+  return new AutoLLMClient(model, apiKey, baseUrl);
 }
 
 async function checkEventIntegrity(event: UniEvent): Promise<void> {
