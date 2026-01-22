@@ -39,7 +39,6 @@ import {
   UniEvent,
   UniMessage,
   UsageMetadata,
-  ModelClientConfig,
 } from "../types";
 
 /**
@@ -52,15 +51,15 @@ export class Gemini3Client extends LLMClient {
   /**
    * Initialize Gemini 3 client with model and API key.
    */
-  constructor(config: ModelClientConfig) {
+  constructor(options: { model: string; apiKey?: string; baseUrl?: string }) {
     super();
-    this._model = config.model;
+    this._model = options.model;
     const key =
-      config.apiKey ||
+      options.apiKey ||
       process.env.GEMINI_API_KEY ||
       process.env.GOOGLE_API_KEY ||
       undefined;
-    const url = config.baseUrl || process.env.GOOGLE_GEMINI_BASE_URL || undefined;
+    const url = options.baseUrl || process.env.GOOGLE_GEMINI_BASE_URL || undefined;
 
     const httpOptions = url ? { baseUrl: url } : undefined;
     this._client = new GoogleGenAI({

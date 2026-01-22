@@ -460,10 +460,10 @@ export function createChatApp(): Express {
 
       const client = sessionClients.get(session_id)!;
 
-      for await (const event of client.streamingResponseStateful(
+      for await (const event of client.streamingResponseStateful({
         message,
-        config
-      )) {
+        config,
+      })) {
         const serializedEvent = serializeForJson(event);
         res.write(`data: ${JSON.stringify(serializedEvent)}\n\n`);
       }

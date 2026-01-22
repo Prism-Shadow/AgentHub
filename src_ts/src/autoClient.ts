@@ -18,12 +18,7 @@ import { Claude4_5Client } from "./claude4_5";
 import { GPT5_2Client } from "./gpt5_2";
 import { GLM4_7Client } from "./glm4_7";
 import { Qwen3Client } from "./qwen3";
-import {
-  UniConfig,
-  UniEvent,
-  UniMessage,
-  AutoLLMClientConfig,
-} from "./types";
+import { UniConfig, UniEvent, UniMessage } from "./types";
 
 /**
  * Auto-routing LLM client that dispatches to appropriate model-specific client.
@@ -37,15 +32,20 @@ export class AutoLLMClient extends LLMClient {
   /**
    * Initialize AutoLLMClient with a specific model.
    *
-   * @param config - Configuration object with model, apiKey, baseUrl, and clientType
+   * @param options - Configuration object with model, apiKey, baseUrl, and clientType
    */
-  constructor(config: AutoLLMClientConfig) {
+  constructor(options: {
+    model: string;
+    apiKey?: string;
+    baseUrl?: string;
+    clientType?: string;
+  }) {
     super();
     this._client = this._createClientForModel(
-      config.model,
-      config.apiKey,
-      config.baseUrl,
-      config.clientType
+      options.model,
+      options.apiKey,
+      options.baseUrl,
+      options.clientType
     );
   }
 
@@ -112,13 +112,13 @@ export class AutoLLMClient extends LLMClient {
   /**
    * Route to underlying client's streamingResponse.
    */
-  async *streamingResponse(
-    messages: UniMessage[],
-    config: UniConfig
-  ): AsyncGenerator<UniEvent> {
+  async *streamingResponse(options: {
+    messages: UniMessage[];
+    config: UniConfig;
+  }): AsyncGenerator<UniEvent> {
     for await (const event of this._client.streamingResponse(
-      messages,
-      config
+      options.messages,
+      options.config
     )) {
       yield event;
     }
@@ -127,13 +127,13 @@ export class AutoLLMClient extends LLMClient {
   /**
    * Route to underlying client's streamingResponseStateful.
    */
-  async *streamingResponseStateful(
-    message: UniMessage,
-    config: UniConfig
-  ): AsyncGenerator<UniEvent> {
+  async *streamingResponseStateful(options: {
+    message: UniMessage;
+    config: UniConfig;
+  }): AsyncGenerator<UniEvent> {
     for await (const event of this._client.streamingResponseStateful(
-      message,
-      config
+      options.message,
+      options.config
     )) {
       yield event;
     }

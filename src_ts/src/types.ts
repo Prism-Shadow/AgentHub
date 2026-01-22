@@ -140,22 +140,3 @@ export interface UniConfig {
   prompt_caching?: PromptCaching;
   trace_id?: string;
 }
-
-/**
- * Configuration for AutoLLMClient constructor.
- */
-export interface AutoLLMClientConfig {
-  model: string;
-  apiKey?: string;
-  baseUrl?: string;
-  clientType?: string;
-}
-
-/**
- * Configuration for model-specific client constructors.
- */
-export interface ModelClientConfig {
-  model: string;
-  apiKey?: string;
-  baseUrl?: string;
-}

@@ -27,6 +27,17 @@ const client = new AutoLLMClient({
   apiKey: 'your-api-key',
   baseUrl: 'https://api.anthropic.com'
 });
+
+// Using streaming methods with options
+const message = {
+  role: 'user',
+  content_items: [{ type: 'text', text: 'Hello!' }]
+};
+const config = { temperature: 0.7 };
+
+for await (const event of client.streamingResponseStateful({ message, config })) {
+  console.log(event);
+}
 ```
 
 ### Tracer Usage

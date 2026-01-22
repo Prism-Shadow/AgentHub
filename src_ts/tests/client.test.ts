@@ -157,19 +157,19 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
 
       if (model.includes("gpt-5.2")) {
         await expect(async () => {
-          for await (const event of client.streamingResponse(
+          for await (const event of client.streamingResponse({
             messages,
-            config
-          )) {
+            config,
+          })) {
             // This should throw before we get here
           }
         }).rejects.toThrow("GPT-5.2 does not support setting temperature.");
       } else {
         let text = "";
-        for await (const event of client.streamingResponse(
+        for await (const event of client.streamingResponse({
           messages,
-          config
-        )) {
+          config,
+        })) {
           await checkEventIntegrity(event);
           for (const item of event.content_items) {
             if (item.type === "text") {
@@ -194,10 +194,10 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
         role: "user",
         content_items: [{ type: "text", text: "My name is Alice" }],
       };
-      for await (const event of client.streamingResponseStateful(
-        message1,
-        config
-      )) {
+      for await (const event of client.streamingResponseStateful({
+        message: message1,
+        config,
+      })) {
         await checkEventIntegrity(event);
       }
 
@@ -208,10 +208,10 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
         content_items: [{ type: "text", text: "What is my name?" }],
       };
       let text = "";
-      for await (const event of client.streamingResponseStateful(
-        message2,
-        config
-      )) {
+      for await (const event of client.streamingResponseStateful({
+        message: message2,
+        config,
+      })) {
         await checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
@@ -236,10 +236,10 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
       };
       const config: UniConfig = {};
 
-      for await (const _ of client.streamingResponseStateful(
+      for await (const _ of client.streamingResponseStateful({
         message,
-        config
-      )) {
+        config,
+      })) {
         // consume the stream
       }
 
@@ -265,10 +265,10 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
 
       const events: UniEvent[] = [];
       let text = "";
-      for await (const event of client.streamingResponse(
+      for await (const event of client.streamingResponse({
         messages,
-        config
-      )) {
+        config,
+      })) {
         events.push(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
@@ -324,10 +324,10 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
           { type: "text", text: "What is the weather in San Francisco?" },
         ],
       };
-      for await (const event of client.streamingResponseStateful(
-        message1,
-        config
-      )) {
+      for await (const event of client.streamingResponseStateful({
+        message: message1,
+        config,
+      })) {
         await checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "partial_tool_call") {
@@ -368,10 +368,10 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
         ],
       };
       let text = "";
-      for await (const event of client.streamingResponseStateful(
-        message2,
-        config
-      )) {
+      for await (const event of client.streamingResponseStateful({
+        message: message2,
+        config,
+      })) {
         await checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
@@ -400,10 +400,10 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
       };
 
       let text = "";
-      for await (const event of client.streamingResponse(
+      for await (const event of client.streamingResponse({
         messages,
-        config
-      )) {
+        config,
+      })) {
         await checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
@@ -435,10 +435,10 @@ describe.each(AVAILABLE_VISION_MODELS)("Vision test for %s", (model) => {
       ];
 
       let text = "";
-      for await (const event of client.streamingResponse(
+      for await (const event of client.streamingResponse({
         messages,
-        config
-      )) {
+        config,
+      })) {
         await checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "text") {

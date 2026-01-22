@@ -117,13 +117,13 @@ import { AutoLLMClient } from "@prismshadow/agenthub";
 process.env.OPENAI_API_KEY = "your-api-key";
 
 async function main() {
-  const client = new AutoLLMClient("gpt-5.2");
+  const client = new AutoLLMClient({ model: "gpt-5.2" });
   const message = {
     role: "user",
     content_items: [{ type: "text", text: "Say 'Hello, World!'" }],
   }
   const config = {};
-  for await (const event of client.streamingResponseStateful(message, config)) {
+  for await (const event of client.streamingResponseStateful({ message, config })) {
     console.log(event);
   }
 }
@@ -170,13 +170,13 @@ import { AutoLLMClient } from "@prismshadow/agenthub";
 process.env.OPENAI_API_KEY = "your-api-key";
 
 async function main() {
-  const client = new AutoLLMClient("claude-sonnet-4-5-20250929");
+  const client = new AutoLLMClient({ model: "claude-sonnet-4-5-20250929" });
   const message = {
     role: "user",
     content_items: [{ type: "text", text: "Say 'Hello, World!'" }],
   }
   const config = {};
-  for await (const event of client.streamingResponseStateful(message, config)) {
+  for await (const event of client.streamingResponseStateful({ message, config })) {
     console.log(event);
   }
 }

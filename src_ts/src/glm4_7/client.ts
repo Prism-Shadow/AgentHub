@@ -30,7 +30,6 @@ import {
   UniEvent,
   UniMessage,
   UsageMetadata,
-  ModelClientConfig,
 } from "../types";
 
 /**
@@ -43,12 +42,12 @@ export class GLM4_7Client extends LLMClient {
   /**
    * Initialize GLM-4.7 client with model and API key.
    */
-  constructor(config: ModelClientConfig) {
+  constructor(options: { model: string; apiKey?: string; baseUrl?: string }) {
     super();
-    this._model = config.model;
-    const key = config.apiKey || process.env.GLM_API_KEY || undefined;
+    this._model = options.model;
+    const key = options.apiKey || process.env.GLM_API_KEY || undefined;
     const url =
-      config.baseUrl || process.env.GLM_BASE_URL || "https://api.z.ai/api/paas/v4/";
+      options.baseUrl || process.env.GLM_BASE_URL || "https://api.z.ai/api/paas/v4/";
     this._client = new OpenAI({ apiKey: key, baseURL: url });
   }
 
