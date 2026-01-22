@@ -12,6 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { AutoLLMClient } from "./autoClient";
-export { PromptCaching, ThinkingLevel } from "./types";
-export { GPT5_2Client } from "./gpt5_2";
+export { GPT5_2Client } from "./client";

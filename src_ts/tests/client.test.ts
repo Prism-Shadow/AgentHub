@@ -28,6 +28,10 @@ if (process.env.ANTHROPIC_API_KEY) {
   AVAILABLE_VISION_MODELS.push("claude-sonnet-4-5-20250929");
 }
 
+if (process.env.OPENAI_API_KEY) {
+  AVAILABLE_VISION_MODELS.push("gpt-5.2-turbo-preview");
+}
+
 const AVAILABLE_MODELS = AVAILABLE_VISION_MODELS;
 
 async function createClient(model: string): Promise<AutoLLMClient> {
