@@ -58,7 +58,7 @@ export class GPT5_2Client extends LLMClient {
    */
   private _convertThinkingLevelToEffort(
     thinkingLevel: ThinkingLevel
-  ): string | undefined {
+  ): string {
     const mapping: { [key: string]: string } = {
       [ThinkingLevel.NONE]: "none",
       [ThinkingLevel.LOW]: "low",
@@ -157,7 +157,10 @@ export class GPT5_2Client extends LLMClient {
             image_url: item.image_url,
           });
         } else if (item.type === "thinking") {
-          const signature = JSON.parse(item.signature as string);
+          const signatureStr = typeof item.signature === 'string' 
+            ? item.signature 
+            : item.signature?.toString() || '{}';
+          const signature = JSON.parse(signatureStr);
           inputList.push({
             type: "reasoning",
             id: signature.id,
