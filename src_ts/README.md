@@ -48,7 +48,13 @@ import { Tracer } from '@prismshadow/agenthub/integration/tracer';
 const tracer = new Tracer('./cache');
 
 // Save conversation history
-tracer.saveHistory(history, 'session/conv_001', config);
+const model = 'gpt-5.2';
+const history = [
+  { role: 'user', content_items: [{ type: 'text', text: 'Hello!' }] },
+  { role: 'assistant', content_items: [{ type: 'text', text: 'Hi there!' }] }
+];
+const config = {};
+tracer.saveHistory(model, history, 'session/conv_001', config);
 
 // Start web server to view saved conversations
 tracer.startWebServer('127.0.0.1', 5000);

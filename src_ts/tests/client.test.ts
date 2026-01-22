@@ -157,7 +157,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
 
       if (model.includes("gpt-5.2")) {
         await expect(async () => {
-          for await (const event of client.streamingResponse({
+          for await (const _ of client.streamingResponse({
             messages,
             config,
           })) {
