@@ -72,17 +72,17 @@ class AutoLLMClient(LLMClient):
                 "Supported client types: gemini-3, claude-4-5, gpt-5.2, glm-4.7, qwen3."
             )
 
-    def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:
+    async def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:
         """Delegate to underlying client's transform_uni_config_to_model_config."""
-        return self._client.transform_uni_config_to_model_config(config)
+        return await self._client.transform_uni_config_to_model_config(config)
 
-    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> Any:
+    async def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> Any:
         """Delegate to underlying client's transform_uni_message_to_model_input."""
-        return self._client.transform_uni_message_to_model_input(messages)
+        return await self._client.transform_uni_message_to_model_input(messages)
 
-    def transform_model_output_to_uni_event(self, model_output: Any) -> UniEvent:
+    async def transform_model_output_to_uni_event(self, model_output: Any) -> UniEvent:
         """Delegate to underlying client's transform_model_output_to_uni_event."""
-        return self._client.transform_model_output_to_uni_event(model_output)
+        return await self._client.transform_model_output_to_uni_event(model_output)
 
     async def streaming_response(
         self,
@@ -108,10 +108,10 @@ class AutoLLMClient(LLMClient):
         ):
             yield event
 
-    def clear_history(self) -> None:
+    async def clear_history(self) -> None:
         """Clear history in the underlying client."""
-        self._client.clear_history()
+        await self._client.clear_history()
 
-    def get_history(self) -> list[UniMessage]:
+    async def get_history(self) -> list[UniMessage]:
         """Get history from the underlying client."""
-        return self._client.get_history()
+        return await self._client.get_history()

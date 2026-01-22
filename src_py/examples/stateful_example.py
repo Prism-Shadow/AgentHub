@@ -56,7 +56,7 @@ async def main():
         print(event)
 
     print("History:")
-    for i, msg in enumerate(client.get_history(), 1):
+    for i, msg in enumerate(await client.get_history(), 1):
         print(f"[{i}] {msg}")
 
 

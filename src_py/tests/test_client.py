@@ -144,7 +144,7 @@ async def test_streaming_response_stateful(model):
     async for event in client.streaming_response_stateful(message=message1, config=config):
         await _check_event_integrity(event)
 
-    assert len(client.get_history()) == 2  # user message + assistant response
+    assert len(await client.get_history()) == 2  # user message + assistant response
 
     message2 = {"role": "user", "content_items": [{"type": "text", "text": "What is my name?"}]}
     text = ""
@@ -155,7 +155,7 @@ async def test_streaming_response_stateful(model):
                 text += item["text"]
 
     assert "alice" in text.lower()
-    assert len(client.get_history()) == 4  # 2 previous + 2 new
+    assert len(await client.get_history()) == 4  # 2 previous + 2 new
 
 
 @pytest.mark.asyncio
@@ -169,10 +169,10 @@ async def test_clear_history(model):
     async for _ in client.streaming_response_stateful(message=message, config=config):
         pass
 
-    assert len(client.get_history()) > 0
+    assert len(await client.get_history()) > 0
 
-    client.clear_history()
-    assert len(client.get_history()) == 0
+    await client.clear_history()
+    assert len(await client.get_history()) == 0
 
 
 @pytest.mark.asyncio
@@ -192,7 +192,7 @@ async def test_concat_uni_events_to_uni_message(model):
                 text += item["text"]
 
     # Concatenate events to get the full message
-    message = client.concat_uni_events_to_uni_message(events)
+    message = await client.concat_uni_events_to_uni_message(events)
     assert message["role"] == "assistant"
     for item in message["content_items"]:
         if item["type"] == "text":

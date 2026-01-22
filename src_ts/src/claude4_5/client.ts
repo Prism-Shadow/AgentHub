@@ -41,15 +41,15 @@ export class Claude4_5Client extends LLMClient {
   /**
    * Initialize Claude 4.5 client with model and API key.
    */
-  constructor(
-    model: string,
-    apiKey?: string | null,
-    baseUrl?: string | null
-  ) {
+  constructor(options: {
+    model: string;
+    apiKey?: string | null;
+    baseUrl?: string | null;
+  }) {
     super();
-    this._model = model;
-    const key = apiKey || process.env.ANTHROPIC_API_KEY || undefined;
-    const url = baseUrl || process.env.ANTHROPIC_BASE_URL || undefined;
+    this._model = options.model;
+    const key = options.apiKey || process.env.ANTHROPIC_API_KEY || undefined;
+    const url = options.baseUrl || process.env.ANTHROPIC_BASE_URL || undefined;
 
     this._client = new Anthropic({
       apiKey: key,

@@ -29,7 +29,7 @@ class LLMClient(ABC):
     _history: list[UniMessage] = []
 
     @abstractmethod
-    def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:
+    async def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:
         """
         Transform universal configuration to model-specific configuration.
 
@@ -42,7 +42,7 @@ class LLMClient(ABC):
         pass
 
     @abstractmethod
-    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> Any:
+    async def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> Any:
         """
         Transform universal message format to model-specific input format.
 
@@ -55,7 +55,7 @@ class LLMClient(ABC):
         pass
 
     @abstractmethod
-    def transform_model_output_to_uni_event(self, model_output: Any) -> UniEvent:
+    async def transform_model_output_to_uni_event(self, model_output: Any) -> UniEvent:
         """
         Transform model output to universal event format.
 
@@ -67,7 +67,7 @@ class LLMClient(ABC):
         """
         pass
 
-    def concat_uni_events_to_uni_message(self, events: list[UniEvent]) -> UniMessage:
+    async def concat_uni_events_to_uni_message(self, events: list[UniEvent]) -> UniMessage:
         """
         Concatenate a stream of universal events into a single universal message.
 
@@ -169,7 +169,7 @@ class LLMClient(ABC):
 
         # Convert events to message and add to history
         if events:
-            assistant_message = self.concat_uni_events_to_uni_message(events)
+            assistant_message = await self.concat_uni_events_to_uni_message(events)
             self._history.append(assistant_message)
 
         # Save history to file if trace_id is specified
@@ -179,10 +179,10 @@ class LLMClient(ABC):
             tracer = Tracer()
             tracer.save_history(self._history, config["trace_id"], config)
 
-    def clear_history(self) -> None:
+    async def clear_history(self) -> None:
         """Clear the message history."""
         self._history.clear()
 
-    def get_history(self) -> list[UniMessage]:
+    async def get_history(self) -> list[UniMessage]:
         """Get the current message history."""
         return self._history.copy()

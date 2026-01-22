@@ -65,7 +65,7 @@ class GPT5_2Client(LLMClient):
         elif tool_choice == "required":
             return "required"
 
-    def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
+    async def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """
         Transform universal configuration to OpenAI Responses API configuration.
 
@@ -101,7 +101,7 @@ class GPT5_2Client(LLMClient):
 
         return openai_config
 
-    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> ResponseInputParam:
+    async def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> ResponseInputParam:
         """
         Transform universal message format to OpenAI Responses API input format.
 
@@ -159,7 +159,7 @@ class GPT5_2Client(LLMClient):
 
         return input_list
 
-    def transform_model_output_to_uni_event(self, model_output: ResponseStreamEvent) -> UniEvent:
+    async def transform_model_output_to_uni_event(self, model_output: ResponseStreamEvent) -> UniEvent:
         """
         Transform OpenAI Responses API streaming event to universal event format.
 
@@ -258,17 +258,17 @@ class GPT5_2Client(LLMClient):
     ) -> AsyncIterator[UniEvent]:
         """Stream generate using OpenAI Responses API with unified conversion methods."""
         # Use unified config conversion
-        openai_config = self.transform_uni_config_to_model_config(config)
+        openai_config = await self.transform_uni_config_to_model_config(config)
 
         # Use unified message conversion
-        input_list = self.transform_uni_message_to_model_input(messages)
+        input_list = await self.transform_uni_message_to_model_input(messages)
 
         # Stream generate
         partial_tool_call = {}
         stream = await self._client.responses.create(**openai_config, input=input_list, stream=True)
 
         async for event in stream:
-            event = self.transform_model_output_to_uni_event(event)
+            event = await self.transform_model_output_to_uni_event(event)
             if event["event_type"] == "start":
                 for item in event["content_items"]:
                     if item["type"] == "partial_tool_call":

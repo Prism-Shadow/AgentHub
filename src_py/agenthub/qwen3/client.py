@@ -51,7 +51,7 @@ class Qwen3Client(LLMClient):
         else:
             raise ValueError("Qwen3 only supports 'auto' for tool_choice.")
 
-    def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
+    async def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """
         Transform universal configuration to Qwen3-specific configuration.
 
@@ -80,7 +80,7 @@ class Qwen3Client(LLMClient):
 
         return qwen3_config
 
-    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[ChatCompletionMessageParam]:
+    async def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[ChatCompletionMessageParam]:
         """
         Transform universal message format to Qwen3-specific message format.
 
@@ -146,7 +146,7 @@ class Qwen3Client(LLMClient):
 
         return qwen3_messages
 
-    def transform_model_output_to_uni_event(self, model_output: ChatCompletionChunk) -> UniEvent:
+    async def transform_model_output_to_uni_event(self, model_output: ChatCompletionChunk) -> UniEvent:
         """
         Transform Qwen3 model output to universal event format.
 
@@ -240,10 +240,10 @@ class Qwen3Client(LLMClient):
     ) -> AsyncIterator[UniEvent]:
         """Stream generate using Qwen3 SDK with unified conversion methods."""
         # Use unified config conversion
-        qwen3_config = self.transform_uni_config_to_model_config(config)
+        qwen3_config = await self.transform_uni_config_to_model_config(config)
 
         # Use unified message conversion
-        qwen3_messages = self.transform_uni_message_to_model_input(messages)
+        qwen3_messages = await self.transform_uni_message_to_model_input(messages)
 
         # Extract system prompt if present
         if config.get("system_prompt"):
@@ -254,7 +254,7 @@ class Qwen3Client(LLMClient):
 
         partial_tool_call = {}
         async for chunk in stream:
-            event = self.transform_model_output_to_uni_event(chunk)
+            event = await self.transform_model_output_to_uni_event(chunk)
             if event["event_type"] == "start":
                 # initialize partial_tool_call type2
                 partial_tool_call = {"data": ""}

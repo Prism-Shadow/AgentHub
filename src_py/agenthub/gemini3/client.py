@@ -75,7 +75,7 @@ class Gemini3Client(LLMClient):
         elif tool_choice == "required":
             return types.FunctionCallingConfig(mode="ANY")
 
-    def transform_uni_config_to_model_config(self, config: UniConfig) -> types.GenerateContentConfig | None:
+    async def transform_uni_config_to_model_config(self, config: UniConfig) -> types.GenerateContentConfig | None:
         """
         Transform universal configuration to Gemini-specific configuration.
 
@@ -114,7 +114,7 @@ class Gemini3Client(LLMClient):
 
         return types.GenerateContentConfig(**config_params) if config_params else None
 
-    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[types.Content]:
+    async def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[types.Content]:
         """
         Transform universal message format to Gemini's Content format.
 
@@ -159,7 +159,7 @@ class Gemini3Client(LLMClient):
 
         return contents
 
-    def transform_model_output_to_uni_event(self, model_output: types.GenerateContentResponse) -> UniEvent:
+    async def transform_model_output_to_uni_event(self, model_output: types.GenerateContentResponse) -> UniEvent:
         """
         Transform Gemini model output to universal event format.
 
@@ -225,7 +225,7 @@ class Gemini3Client(LLMClient):
     ) -> AsyncIterator[UniEvent]:
         """Stream generate using Gemini SDK with unified conversion methods."""
         # Use unified config conversion
-        gemini_config = self.transform_uni_config_to_model_config(config)
+        gemini_config = await self.transform_uni_config_to_model_config(config)
 
         # Use unified message conversion
         contents = self.transform_uni_message_to_model_input(messages)

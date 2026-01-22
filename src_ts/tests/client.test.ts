@@ -71,7 +71,7 @@ async function createClient(model: string): Promise<AutoLLMClient> {
     baseUrl = undefined;
   }
 
-  return new AutoLLMClient(model, apiKey, baseUrl);
+  return new AutoLLMClient({ model, apiKey, baseUrl });
 }
 
 async function checkEventIntegrity(event: UniEvent): Promise<void> {
@@ -457,7 +457,7 @@ describe.each(AVAILABLE_VISION_MODELS)("Vision test for %s", (model) => {
 });
 
 test("should reject unknown model", () => {
-  expect(() => new AutoLLMClient("unknown-model")).toThrow(
+  expect(() => new AutoLLMClient({ model: "unknown-model" })).toThrow(
     "not supported"
   );
 });

@@ -62,7 +62,7 @@ class GLM4_7Client(LLMClient):
         else:
             raise ValueError("GLM only supports 'auto' for tool_choice.")
 
-    def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
+    async def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """
         Transform universal configuration to GLM-specific configuration.
 
@@ -95,7 +95,7 @@ class GLM4_7Client(LLMClient):
 
         return glm_config
 
-    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[ChatCompletionMessageParam]:
+    async def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[ChatCompletionMessageParam]:
         """
         Transform universal message format to OpenAI's message format.
 
@@ -161,7 +161,7 @@ class GLM4_7Client(LLMClient):
 
         return openai_messages
 
-    def transform_model_output_to_uni_event(self, model_output: ChatCompletionChunk) -> UniEvent:
+    async def transform_model_output_to_uni_event(self, model_output: ChatCompletionChunk) -> UniEvent:
         """
         Transform GLM model output to universal event format.
 
@@ -249,10 +249,10 @@ class GLM4_7Client(LLMClient):
     ) -> AsyncIterator[UniEvent]:
         """Stream generate using GLM SDK with unified conversion methods."""
         # Use unified config conversion
-        glm_config = self.transform_uni_config_to_model_config(config)
+        glm_config = await self.transform_uni_config_to_model_config(config)
 
         # Use unified message conversion
-        glm_messages = self.transform_uni_message_to_model_input(messages)
+        glm_messages = await self.transform_uni_message_to_model_input(messages)
 
         # Extract system prompt if present
         if config.get("system_prompt"):
@@ -263,7 +263,7 @@ class GLM4_7Client(LLMClient):
 
         partial_tool_call = {}
         async for chunk in stream:
-            event = self.transform_model_output_to_uni_event(chunk)
+            event = await self.transform_model_output_to_uni_event(chunk)
             if event["event_type"] == "delta":
                 for item in event["content_items"]:
                     if item["type"] == "partial_tool_call":

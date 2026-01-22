@@ -70,7 +70,7 @@ class Claude4_5Client(LLMClient):
         elif tool_choice == "required":
             return {"type": "any"}
 
-    def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
+    async def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """
         Transform universal configuration to Claude-specific configuration.
 
@@ -116,7 +116,7 @@ class Claude4_5Client(LLMClient):
 
         return claude_config
 
-    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[MessageParam]:
+    async def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[MessageParam]:
         """
         Transform universal message format to Claude's MessageParam format.
 
@@ -163,7 +163,7 @@ class Claude4_5Client(LLMClient):
 
         return claude_messages
 
-    def transform_model_output_to_uni_event(self, model_output: MessageStreamEvent) -> UniEvent:
+    async def transform_model_output_to_uni_event(self, model_output: MessageStreamEvent) -> UniEvent:
         """
         Transform Claude model output to universal event format.
 
@@ -261,10 +261,10 @@ class Claude4_5Client(LLMClient):
     ) -> AsyncIterator[UniEvent]:
         """Stream generate using Claude SDK with unified conversion methods."""
         # Use unified config conversion
-        claude_config = self.transform_uni_config_to_model_config(config)
+        claude_config = await self.transform_uni_config_to_model_config(config)
 
         # Use unified message conversion
-        claude_messages = self.transform_uni_message_to_model_input(messages)
+        claude_messages = await self.transform_uni_message_to_model_input(messages)
 
         # Add cache_control to last user message's last item if enabled
         prompt_caching = config.get("prompt_caching", PromptCaching.ENABLE)
@@ -284,7 +284,7 @@ class Claude4_5Client(LLMClient):
         partial_usage = {}
         async with self._client.messages.stream(**claude_config, messages=claude_messages) as stream:
             async for event in stream:
-                event = self.transform_model_output_to_uni_event(event)
+                event = await self.transform_model_output_to_uni_event(event)
                 if event["event_type"] == "start":
                     for item in event["content_items"]:
                         if item["type"] == "partial_tool_call":
