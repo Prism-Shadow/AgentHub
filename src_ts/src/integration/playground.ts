@@ -454,7 +454,7 @@ export function createChatApp(): Express {
 
     try {
       if (!sessionClients.has(session_id)) {
-        const model = config.model || "gemini-3-flash-preview";
+        const model = config.model || "gpt-5.2";
         sessionClients.set(session_id, new AutoLLMClient({ model }));
       }
 
