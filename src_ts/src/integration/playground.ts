@@ -458,7 +458,7 @@ export function createChatApp(): Express {
         sessionClients.set(session_id, new AutoLLMClient({ model }));
       }
 
-      const client = sessionClients.get(session_id)!;;
+      const client = sessionClients.get(session_id)!;
 
       for await (const event of client.streamingResponseStateful(
         message,

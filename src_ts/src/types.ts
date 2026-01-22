@@ -156,6 +156,6 @@ export interface AutoLLMClientConfig {
  */
 export interface ModelClientConfig {
   model: string;
-  apiKey?: string | null;
-  baseUrl?: string | null;
+  apiKey?: string;
+  baseUrl?: string;
 }
