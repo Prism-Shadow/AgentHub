@@ -61,8 +61,8 @@ Run the examples:
 npm run build
 
 # Run tracer example
-node dist/examples/tracerExample.js
+npm run tracer
 
 # Run playground example
-node dist/examples/playgroundExample.js
+npm run playground
 ```

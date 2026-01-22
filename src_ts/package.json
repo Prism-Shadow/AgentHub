@@ -1,6 +1,6 @@
 {
-  "name": "agenthub-typescript",
-  "version": "0.1.0",
+  "name": "@prismshadow/agenthub",
+  "version": "0.1.1",
   "description": "AgentHub package",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,7 +16,7 @@
     "build": "tsc -p tsconfig.json",
     "lint": "eslint src --ext .ts",
     "start": "node dist/index.js",
-    "test": "jest",
+    "test": "jest --verbose",
     "tracer": "tsx examples/tracerExample.ts",
     "playground": "tsx examples/playgroundExample.ts"
   },

@@ -69,7 +69,7 @@ export class AutoLLMClient extends LLMClient {
       return new Gemini3Client(model, apiKey, baseUrl);
     } else if (clientType.includes("claude") && clientType.includes("4-5")) {
       return new Claude4_5Client(model, apiKey, baseUrl);
-    } else if (clientType.includes("gpt-5.2")) {
+    } else if (clientType.includes("gpt-5.1") || clientType.includes("gpt-5.2")) {
       return new GPT5_2Client(model, apiKey, baseUrl);
     } else if (clientType.includes("glm-4.7")) {
       return new GLM4_7Client(model, apiKey, baseUrl);
