@@ -36,9 +36,9 @@ async function checkEventIntegrity(event: UniEvent): Promise<void> {
   expect(event).toHaveProperty("usage_metadata");
   expect(event).toHaveProperty("finish_reason");
 
-  expect(event.role).toBe("user" | "assistant");
-  expect(event.event_type).toBe("delta" | "stop");
-  expect(event.finish_reason).toBe("stop" | "length" | "unknown" | null);
+  expect(["user", "assistant"]).toContain(event.role);
+  expect(["delta", "stop"]).toContain(event.event_type);
+  expect(["stop", "length", "unknown", null]).toContain(event.finish_reason);
 
   for (const item of event.content_items) {
     if (item.type === "text") {
@@ -412,3 +412,6 @@ test("should reject unknown model", () => {
     "not supported"
   );
 });
+function expect(event: UniEvent) {
+  throw new Error("Function not implemented.");
+}
