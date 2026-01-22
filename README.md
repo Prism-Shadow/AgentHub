@@ -69,18 +69,20 @@ Build from source:
 cd src_ts && make install && make build
 ```
 
+See [src_ts/README.md](src_ts/README.md) for comprehensive usage examples and API documentation.
+
 ## APIs
 
-`AutoLLMClient` is the main class for interacting with the AgentHub SDK. It provides the following asynchronous methods:
+`AutoLLMClient` is the main class for interacting with the AgentHub SDK. It provides the following methods:
 
-- `streaming_response(message, config)`: Streams the response of the LLM model in a stateless manner.
-- `streaming_response_stateful(message, config)`: Streams the response of the LLM model in a stateful manner.
+- `(async) streaming_response(messages, config)`: Streams the response of the LLM model in a stateless manner.
+- `(async) streaming_response_stateful(message, config)`: Streams the response of the LLM model in a stateful manner.
 - `clear_history()`: Clears the history of the stateful LLM model.
 - `get_history()`: Returns the history of the stateful LLM model.
 
 ## Basic Usage
 
-### GPT-5.2
+### OpenAI GPT-5.2
 
 Python Example:
 
@@ -93,7 +95,6 @@ os.environ["OPENAI_API_KEY"] = "your-openai-api-key"
 
 async def main():
     client = AutoLLMClient(model="gpt-5.2")
-
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -120,7 +121,6 @@ process.env.OPENAI_API_KEY = "your-openai-api-key";
 
 async function main() {
   const client = new AutoLLMClient({ model: "gpt-5.2" });
-
   for await (const event of client.streamingResponseStateful({
     message: {
       role: "user",
@@ -140,7 +140,7 @@ main().catch(console.error);
 // {'role': 'assistant', 'event_type': 'stop', 'content_items': [], 'usage_metadata': {'prompt_tokens': 12, 'thoughts_tokens': 0, 'response_tokens': 8, 'cached_tokens': 0}, 'finish_reason': 'stop'}
 ```
 
-### Claude 4.5
+### Anthropic Claude 4.5
 
 <details><summary><strong>Python Example</strong></summary>
 
@@ -153,7 +153,6 @@ os.environ["ANTHROPIC_API_KEY"] = "your-anthropic-api-key"
 
 async def main():
     client = AutoLLMClient(model="claude-sonnet-4-5-20250929")
-
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -177,7 +176,6 @@ process.env.ANTHROPIC_API_KEY = "your-anthropic-api-key";
 
 async function main() {
   const client = new AutoLLMClient({ model: "claude-sonnet-4-5-20250929" });
-
   for await (const event of client.streamingResponseStateful({
     message: {
       role: "user",
@@ -208,7 +206,6 @@ os.environ["GLM_BASE_URL"] = "https://openrouter.ai/api/v1"
 
 async def main():
     client = AutoLLMClient(model="glm-4.7")
-
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -261,7 +258,6 @@ os.environ["QWEN3_BASE_URL"] = "https://api.siliconflow.cn/v1"
 
 async def main():  
     client = AutoLLMClient(model="Qwen/Qwen3-8B")
-
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -304,74 +300,78 @@ main().catch(console.error);
 
 ### UniConfig
 
-UniConfig is an object that contains the configuration for the LLM model.
+UniConfig is an object that contains the configuration for LLMs.
 
 Example UniConfig:
 
 ```json
 {
-    "max_tokens": 1024,
-    "temperature": 1.0,
-    "tools": [
-        {
-            "name": "get_current_weather",
-            "description": "Get the current weather in a given location",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "The city and state, e.g. San Francisco, CA"
-                    }
-                },
-                "required": ["location"]
-            }
-        }
-    ],
-    "thinking_summary": true,
-    "thinking_level": "high",
-    "tool_choice": "auto",
-    "system_prompt": "You are a helpful assistant.",
-    "prompt_caching": "enable",
-    "trace_id": null
+  "max_tokens": 1024,
+  "temperature": 1.0,
+  "tools": [
+    {
+      "name": "get_current_weather",
+      "description": "Get the current weather in a given location",
+      "parameters": {
+          "type": "object",
+          "properties": {
+              "location": {
+                  "type": "string",
+                  "description": "The city and state, e.g. San Francisco, CA"
+              }
+          },
+          "required": ["location"]
+      }
+    }
+  ],
+  "thinking_summary": true,
+  "thinking_level": "none | low | medium | high",
+  "tool_choice": "auto | required | none",
+  "system_prompt": "You are a helpful assistant.",
+  "prompt_caching": "enable | disable | enhance",
+  "trace_id": null
 }
 ```
 
 ### UniMessage
 
-UniMessage is an object that contains the input for the LLM model.
+UniMessage is an object that contains the input for LLMs.
 
 Example UniMessage:
 
 ```json
 {
-    "role": "user",
-    "content_items": [
-        {"type": "text", "text": "How are you doing?"}
-    ]
+  "role": "user | assistant",
+  "content_items": [
+    {"type": "text", "text": "How are you doing?"},
+    {"type": "image_url", "image_url": "https://example.com/image.jpg"},
+    {"type": "thinking", "thinking": "I am thinking.", "signature": "0x123456"},
+    {"type": "tool_call", "name": "math", "arguments": {"expression": "2 + 3"}, "tool_call_id": "123"},
+    {"type": "tool_result", "result": "2 + 3 = 5", "tool_call_id": "123"}
+  ]
 }
 ```
 
 ### UniEvent
 
-UniEvent is an object that contains streaming output of the LLM model.
+UniEvent is an object that contains streaming output of LLMs.
 
 Example UniEvent:
 
 ```json
 {
-    "role": "assistant",
-    "event_type": "delta",
-    "content_items": [
-        {"type": "text", "text": "I am"}
-    ],
-    "usage_metadata": {
-        "prompt_tokens": 10,
-        "thought_tokens": null,
-        "completion_tokens": 1,
-        "cached_tokens": null
-    },
-    "finish_reason": null
+  "role": "assistant",
+  "event_type": "delta",
+  "content_items": [
+    {"type": "partial_tool_call", "name": "math", "arguments": "", "tool_call_id": "123"}
+  ],
+  "usage_metadata": {
+    "prompt_tokens": 10,
+    "thoughts_tokens": null,
+    "response_tokens": 1,
+    "cached_tokens": null
+  },
+  "finish_reason": null
 }
 ```
 
@@ -379,7 +379,7 @@ Example UniEvent:
 
 ![Tracer Screenshot](.github/images/tracer.png)
 
-We provide a tracing feature to help you monitor and debug your LLM executions. You can enable tracing by setting the `trace_id` parameter to a unique identifier in the `config` object.
+We provide a tracer to help you monitor and debug your LLM executions. You can enable tracing by setting the `trace_id` parameter to a unique identifier in the `config` object.
 
 ```python
 async for event in client.streaming_response_stateful(
@@ -418,3 +418,7 @@ You can access the playground at `http://localhost:5001/`.
 ## License
 
 Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
+
+## Star History
+
+![Star History Chart](https://api.star-history.com/svg?repos=Prism-Shadow/AgentHub&type=Date)
