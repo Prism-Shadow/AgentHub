@@ -15,7 +15,6 @@ The `docs/` folder contains detailed guides on various Claude 4.5 features:
 - [migrating-to-claude-4.md](./docs/migrating-to-claude-4.md) - Migration guide from previous versions
 - [reasoning-effort.md](./docs/reasoning-effort.md) - Understanding reasoning effort parameters
 - [streaming.md](./docs/streaming.md) - Streaming responses
-- [token-counting.md](./docs/token-counting.md) - Token usage and counting
 - [tool-use-overview.md](./docs/tool-use-overview.md) - Function calling and tool use
 - [vision.md](./docs/vision.md) - Image and vision capabilities
 - [working-with-messages.md](./docs/working-with-messages.md) - Message formatting and conversation management

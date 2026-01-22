@@ -1,298 +1,510 @@
-# Token counting
+# Vision
+
+Claude's vision capabilities allow it to understand and analyze images, opening up exciting possibilities for multimodal interaction.
 
 ---
 
-Token counting enables you to determine the number of tokens in a message before sending it to Claude, helping you make informed decisions about your prompts and usage. With token counting, you can
-- Proactively manage rate limits and costs
-- Make smart model routing decisions
-- Optimize prompts to be a specific length
+This guide describes how to work with images in Claude, including best practices, code examples, and limitations to keep in mind.
+
 ---
 
-## How to count message tokens
+## How to use vision
 
-The [token counting](/docs/en/api/messages-count-tokens) endpoint accepts the same structured list of inputs for creating a message, including support for system prompts, [tools](/docs/en/agents-and-tools/tool-use/overview), [images](/docs/en/build-with-claude/vision), and [PDFs](/docs/en/build-with-claude/pdf-support). The response contains the total number of input tokens.
+Use Claude’s vision capabilities via:
 
-<Note>
-The token count should be considered an **estimate**. In some cases, the actual number of input tokens used when creating a message may differ by a small amount.
+- [claude.ai](https://claude.ai/). Upload an image like you would a file, or drag and drop an image directly into the chat window.
+- The [Console Workbench](/workbench/). A button to add images appears at the top right of every User message block.
+- **API request**. See the examples in this guide.
 
-Token counts may include tokens added automatically by Anthropic for system optimizations. **You are not billed for system-added tokens**. Billing reflects only your content.
-</Note>
+---
 
-### Supported models
-All [active models](/docs/en/about-claude/models/overview) support token counting.
+## Before you upload
 
-### Count tokens in basic messages
+### Basics and Limits
 
-<CodeGroup>
+You can include multiple images in a single request (up to 20 for [claude.ai](https://claude.ai/) and 100 for API requests). Claude will analyze all provided images when formulating its response. This can be helpful for comparing or contrasting images.
 
-```python Python
-import anthropic
-
-client = anthropic.Anthropic()
-
-response = client.messages.count_tokens(
-    model="claude-sonnet-4-5",
-    system="You are a scientist",
-    messages=[{
-        "role": "user",
-        "content": "Hello, Claude"
-    }],
-)
-
-print(response.json())
-```
-
-```typescript TypeScript
-import Anthropic from '@anthropic-ai/sdk';
-
-const client = new Anthropic();
-
-const response = await client.messages.countTokens({
-  model: 'claude-sonnet-4-5',
-  system: 'You are a scientist',
-  messages: [{
-    role: 'user',
-    content: 'Hello, Claude'
-  }]
-});
-
-console.log(response);
-```
-
-```bash Shell
-curl https://api.anthropic.com/v1/messages/count_tokens \
-    --header "x-api-key: $ANTHROPIC_API_KEY" \
-    --header "content-type: application/json" \
-    --header "anthropic-version: 2023-06-01" \
-    --data '{
-      "model": "claude-sonnet-4-5",
-      "system": "You are a scientist",
-      "messages": [{
-        "role": "user",
-        "content": "Hello, Claude"
-      }]
-    }'
-```
-
-```java Java
-import com.anthropic.client.AnthropicClient;
-import com.anthropic.client.okhttp.AnthropicOkHttpClient;
-import com.anthropic.models.messages.MessageCountTokensParams;
-import com.anthropic.models.messages.MessageTokensCount;
-import com.anthropic.models.messages.Model;
-
-public class CountTokensExample {
-
-    public static void main(String[] args) {
-        AnthropicClient client = AnthropicOkHttpClient.fromEnv();
-
-        MessageCountTokensParams params = MessageCountTokensParams.builder()
-                .model(Model.CLAUDE_SONNET_4_20250514)
-                .system("You are a scientist")
-                .addUserMessage("Hello, Claude")
-                .build();
-
-        MessageTokensCount count = client.messages().countTokens(params);
-        System.out.println(count);
-    }
-}
-```
-</CodeGroup>
-
-```json JSON
-{ "input_tokens": 14 }
-```
-
-### Count tokens in messages with tools
+If you submit an image larger than 8000x8000 px, it will be rejected. If you submit more than 20 images in one API request, this limit is 2000x2000 px.
 
 <Note>
-[Server tool](/docs/en/agents-and-tools/tool-use/overview#server-tools) token counts only apply to the first sampling call.
+While the API supports 100 images per request, there is a [32MB request size limit](/docs/en/api/overview#request-size-limits) for standard endpoints.
 </Note>
 
-<CodeGroup>
+### Evaluate image size
 
-```python Python
-import anthropic
+For optimal performance, we recommend resizing images before uploading if they are too large. If your image’s long edge is more than 1568 pixels, or your image is more than ~1,600 tokens, it will first be scaled down, preserving aspect ratio, until it’s within the size limits.
 
-client = anthropic.Anthropic()
+If your input image is too large and needs to be resized, it will increase latency of [time-to-first-token](/docs/en/about-claude/glossary), without giving you any additional model performance. Very small images under 200 pixels on any given edge may degrade performance.
 
-response = client.messages.count_tokens(
-    model="claude-sonnet-4-5",
-    tools=[
-        {
-            "name": "get_weather",
-            "description": "Get the current weather in a given location",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "The city and state, e.g. San Francisco, CA",
-                    }
-                },
-                "required": ["location"],
-            },
-        }
-    ],
-    messages=[{"role": "user", "content": "What's the weather like in San Francisco?"}]
-)
+<Tip>
+  To improve [time-to-first-token](/docs/en/about-claude/glossary), we recommend
+  resizing images to no more than 1.15 megapixels (and within 1568 pixels in
+  both dimensions).
+</Tip>
 
-print(response.json())
-```
+Here is a table of maximum image sizes accepted by our API that will not be resized for common aspect ratios. With Claude Sonnet 4.5, these images use approximately 1,600 tokens and around $4.80/1K images.
 
-```typescript TypeScript
-import Anthropic from '@anthropic-ai/sdk';
+| Aspect ratio | Image size   |
+| ------------ | ------------ |
+| 1&#58;1      | 1092x1092 px |
+| 3&#58;4      | 951x1268 px  |
+| 2&#58;3      | 896x1344 px  |
+| 9&#58;16     | 819x1456 px  |
+| 1&#58;2      | 784x1568 px  |
 
-const client = new Anthropic();
+### Calculate image costs
 
-const response = await client.messages.countTokens({
-  model: 'claude-sonnet-4-5',
-  tools: [
-    {
-      name: "get_weather",
-      description: "Get the current weather in a given location",
-      input_schema: {
-        type: "object",
-        properties: {
-          location: {
-            type: "string",
-            description: "The city and state, e.g. San Francisco, CA",
-          }
-        },
-        required: ["location"],
-      }
-    }
-  ],
-  messages: [{ role: "user", content: "What's the weather like in San Francisco?" }]
-});
+Each image you include in a request to Claude counts towards your token usage. To calculate the approximate cost, multiply the approximate number of image tokens by the [per-token price of the model](https://claude.com/pricing) you’re using.
 
-console.log(response);
-```
+If your image does not need to be resized, you can estimate the number of tokens used through this algorithm: `tokens = (width px * height px)/750`
 
-```bash Shell
-curl https://api.anthropic.com/v1/messages/count_tokens \
-    --header "x-api-key: $ANTHROPIC_API_KEY" \
-    --header "content-type: application/json" \
-    --header "anthropic-version: 2023-06-01" \
-    --data '{
-      "model": "claude-sonnet-4-5",
-      "tools": [
-        {
-          "name": "get_weather",
-          "description": "Get the current weather in a given location",
-          "input_schema": {
-            "type": "object",
-            "properties": {
-              "location": {
-                "type": "string",
-                "description": "The city and state, e.g. San Francisco, CA"
-              }
-            },
-            "required": ["location"]
-          }
-        }
-      ],
-      "messages": [
-        {
-          "role": "user",
-          "content": "What'\''s the weather like in San Francisco?"
-        }
-      ]
-    }'
-```
+Here are examples of approximate tokenization and costs for different image sizes within our API's size constraints based on Claude Sonnet 4.5 per-token price of $3 per million input tokens:
 
-```java Java
-import java.util.List;
-import java.util.Map;
+| Image size                    | \# of Tokens | Cost / image | Cost / 1K images |
+| ----------------------------- | ------------ | ------------ | ---------------- |
+| 200x200 px(0.04 megapixels)   | \~54         | \~$0.00016   | \~$0.16          |
+| 1000x1000 px(1 megapixel)     | \~1334       | \~$0.004     | \~$4.00          |
+| 1092x1092 px(1.19 megapixels) | \~1590       | \~$0.0048    | \~$4.80          |
 
-import com.anthropic.client.AnthropicClient;
-import com.anthropic.client.okhttp.AnthropicOkHttpClient;
-import com.anthropic.core.JsonValue;
-import com.anthropic.models.messages.MessageCountTokensParams;
-import com.anthropic.models.messages.MessageTokensCount;
-import com.anthropic.models.messages.Model;
-import com.anthropic.models.messages.Tool;
-import com.anthropic.models.messages.Tool.InputSchema;
+### Ensuring image quality
 
-public class CountTokensWithToolsExample {
+When providing images to Claude, keep the following in mind for best results:
 
-    public static void main(String[] args) {
-        AnthropicClient client = AnthropicOkHttpClient.fromEnv();
+- **Image format**: Use a supported image format: JPEG, PNG, GIF, or WebP.
+- **Image clarity**: Ensure images are clear and not too blurry or pixelated.
+- **Text**: If the image contains important text, make sure it’s legible and not too small. Avoid cropping out key visual context just to enlarge the text.
 
-        InputSchema schema = InputSchema.builder()
-                .properties(JsonValue.from(Map.of(
-                        "location", Map.of(
-                                "type", "string",
-                                "description", "The city and state, e.g. San Francisco, CA"
-                        )
-                )))
-                .putAdditionalProperty("required", JsonValue.from(List.of("location")))
-                .build();
+---
 
-        MessageCountTokensParams params = MessageCountTokensParams.builder()
-                .model(Model.CLAUDE_SONNET_4_20250514)
-                .addTool(Tool.builder()
-                        .name("get_weather")
-                        .description("Get the current weather in a given location")
-                        .inputSchema(schema)
-                        .build())
-                .addUserMessage("What's the weather like in San Francisco?")
-                .build();
+## Prompt examples
 
-        MessageTokensCount count = client.messages().countTokens(params);
-        System.out.println(count);
-    }
-}
-```
-</CodeGroup>
+Many of the [prompting techniques](/docs/en/build-with-claude/prompt-engineering/overview) that work well for text-based interactions with Claude can also be applied to image-based prompts.
 
-```json JSON
-{ "input_tokens": 403 }
-```
+These examples demonstrate best practice prompt structures involving images.
 
-### Count tokens in messages with images
+<Tip>
+  Just as with document-query placement, Claude works best when images come
+  before text. Images placed after text or interpolated with text will still
+  perform well, but if your use case allows it, we recommend an image-then-text
+  structure.
+</Tip>
+
+### About the prompt examples
+
+The following examples demonstrate how to use Claude's vision capabilities using various programming languages and approaches. You can provide images to Claude in three ways:
+
+1. As a base64-encoded image in `image` content blocks
+2. As a URL reference to an image hosted online  
+3. Using the Files API (upload once, use multiple times)
+
+The base64 example prompts use these variables:
 
 <CodeGroup>
 ```bash Shell
-#!/bin/sh
+    # For URL-based images, you can use the URL directly in your JSON request
 
-IMAGE_URL="https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg"
-IMAGE_MEDIA_TYPE="image/jpeg"
-IMAGE_BASE64=$(curl "$IMAGE_URL" | base64)
+    # For base64-encoded images, you need to first encode the image
+    # Example of how to encode an image to base64 in bash:
+    BASE64_IMAGE_DATA=$(curl -s "https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg" | base64)
 
-curl https://api.anthropic.com/v1/messages/count_tokens \
-     --header "x-api-key: $ANTHROPIC_API_KEY" \
-     --header "anthropic-version: 2023-06-01" \
-     --header "content-type: application/json" \
-     --data \
-'{
-    "model": "claude-sonnet-4-5",
-    "messages": [
-        {"role": "user", "content": [
-            {"type": "image", "source": {
-                "type": "base64",
-                "media_type": "'$IMAGE_MEDIA_TYPE'",
-                "data": "'$IMAGE_BASE64'"
-            }},
-            {"type": "text", "text": "Describe this image"}
-        ]}
-    ]
-}'
+    # The encoded data can now be used in your API calls
 ```
 
 ```python Python
-import anthropic
 import base64
 import httpx
 
-image_url = "https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg"
-image_media_type = "image/jpeg"
-image_data = base64.standard_b64encode(httpx.get(image_url).content).decode("utf-8")
+# For base64-encoded images
+image1_url = "https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg"
+image1_media_type = "image/jpeg"
+image1_data = base64.standard_b64encode(httpx.get(image1_url).content).decode("utf-8")
+
+image2_url = "https://upload.wikimedia.org/wikipedia/commons/b/b5/Iridescent.green.sweat.bee1.jpg"
+image2_media_type = "image/jpeg"
+image2_data = base64.standard_b64encode(httpx.get(image2_url).content).decode("utf-8")
+
+# For URL-based images, you can use the URLs directly in your requests
+```
+
+```typescript TypeScript
+import axios from 'axios';
+
+// For base64-encoded images
+async function getBase64Image(url: string): Promise<string> {
+  const response = await axios.get(url, { responseType: 'arraybuffer' });
+  return Buffer.from(response.data, 'binary').toString('base64');
+}
+
+// Usage
+async function prepareImages() {
+  const imageData = await getBase64Image('https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg');
+  // Now you can use imageData in your API calls
+}
+
+// For URL-based images, you can use the URLs directly in your requests
+```
+
+```java Java
+import java.io.IOException;
+import java.util.Base64;
+import java.io.InputStream;
+import java.net.URL;
+
+public class ImageHandlingExample {
+
+    public static void main(String[] args) throws IOException, InterruptedException {
+        // For base64-encoded images
+        String image1Url = "https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg";
+        String image1MediaType = "image/jpeg";
+        String image1Data = downloadAndEncodeImage(image1Url);
+
+        String image2Url = "https://upload.wikimedia.org/wikipedia/commons/b/b5/Iridescent.green.sweat.bee1.jpg";
+        String image2MediaType = "image/jpeg";
+        String image2Data = downloadAndEncodeImage(image2Url);
+
+        // For URL-based images, you can use the URLs directly in your requests
+    }
+
+    private static String downloadAndEncodeImage(String imageUrl) throws IOException {
+        try (InputStream inputStream = new URL(imageUrl).openStream()) {
+            return Base64.getEncoder().encodeToString(inputStream.readAllBytes());
+        }
+    }
+
+}
+```
+</CodeGroup>
+
+Below are examples of how to include images in a Messages API request using base64-encoded images and URL references:
+
+### Base64-encoded image example
+
+<CodeGroup>
+    ```bash Shell
+    curl https://api.anthropic.com/v1/messages \
+      -H "x-api-key: $ANTHROPIC_API_KEY" \
+      -H "anthropic-version: 2023-06-01" \
+      -H "content-type: application/json" \
+      -d '{
+        "model": "claude-sonnet-4-5",
+        "max_tokens": 1024,
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "image",
+                "source": {
+                  "type": "base64",
+                  "media_type": "image/jpeg",
+                  "data": "'"$BASE64_IMAGE_DATA"'"
+                }
+              },
+              {
+                "type": "text",
+                "text": "Describe this image."
+              }
+            ]
+          }
+        ]
+      }'
+    ```
+    ```python Python
+    import anthropic
+
+    client = anthropic.Anthropic()
+    message = client.messages.create(
+        model="claude-sonnet-4-5",
+        max_tokens=1024,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": image1_media_type,
+                            "data": image1_data,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": "Describe this image."
+                    }
+                ],
+            }
+        ],
+    )
+    print(message)
+    ```
+    ```typescript TypeScript
+    import Anthropic from '@anthropic-ai/sdk';
+
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
+
+    async function main() {
+      const message = await anthropic.messages.create({
+        model: "claude-sonnet-4-5",
+        max_tokens: 1024,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: "image/jpeg",
+                  data: imageData, // Base64-encoded image data as string
+                }
+              },
+              {
+                type: "text",
+                text: "Describe this image."
+              }
+            ]
+          }
+        ]
+      });
+
+      console.log(message);
+    }
+
+    main();
+    ```
+
+    ```java Java
+    import java.io.IOException;
+    import java.util.List;
+
+    import com.anthropic.client.AnthropicClient;
+    import com.anthropic.client.okhttp.AnthropicOkHttpClient;
+    import com.anthropic.models.messages.*;
+
+    public class VisionExample {
+        public static void main(String[] args) throws IOException, InterruptedException {
+            AnthropicClient client = AnthropicOkHttpClient.fromEnv();
+            String imageData = ""; // // Base64-encoded image data as string
+
+            List<ContentBlockParam> contentBlockParams = List.of(
+                    ContentBlockParam.ofImage(
+                            ImageBlockParam.builder()
+                                    .source(Base64ImageSource.builder()
+                                            .data(imageData)
+                                            .build())
+                                    .build()
+                    ),
+                    ContentBlockParam.ofText(TextBlockParam.builder()
+                            .text("Describe this image.")
+                            .build())
+            );
+            Message message = client.messages().create(
+                    MessageCreateParams.builder()
+                            .model(Model.CLAUDE_SONNET_4_5_LATEST)
+                            .maxTokens(1024)
+                            .addUserMessageOfBlockParams(contentBlockParams)
+                            .build()
+            );
+
+            System.out.println(message);
+        }
+    }
+    ```
+</CodeGroup>
+
+### URL-based image example
+
+<CodeGroup>
+    ```bash Shell
+    curl https://api.anthropic.com/v1/messages \
+      -H "x-api-key: $ANTHROPIC_API_KEY" \
+      -H "anthropic-version: 2023-06-01" \
+      -H "content-type: application/json" \
+      -d '{
+        "model": "claude-sonnet-4-5",
+        "max_tokens": 1024,
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "image",
+                "source": {
+                  "type": "url",
+                  "url": "https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg"
+                }
+              },
+              {
+                "type": "text",
+                "text": "Describe this image."
+              }
+            ]
+          }
+        ]
+      }'
+    ```
+    ```python Python
+    import anthropic
+
+    client = anthropic.Anthropic()
+    message = client.messages.create(
+        model="claude-sonnet-4-5",
+        max_tokens=1024,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "url",
+                            "url": "https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg",
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": "Describe this image."
+                    }
+                ],
+            }
+        ],
+    )
+    print(message)
+    ```
+    ```typescript TypeScript
+    import Anthropic from '@anthropic-ai/sdk';
+
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
+
+    async function main() {
+      const message = await anthropic.messages.create({
+        model: "claude-sonnet-4-5",
+        max_tokens: 1024,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: {
+                  type: "url",
+                  url: "https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg"
+                }
+              },
+              {
+                type: "text",
+                text: "Describe this image."
+              }
+            ]
+          }
+        ]
+      });
+
+      console.log(message);
+    }
+
+    main();
+    ```
+    ```java Java
+    import java.io.IOException;
+    import java.util.List;
+
+    import com.anthropic.client.AnthropicClient;
+    import com.anthropic.client.okhttp.AnthropicOkHttpClient;
+    import com.anthropic.models.messages.*;
+
+    public class VisionExample {
+
+        public static void main(String[] args) throws IOException, InterruptedException {
+            AnthropicClient client = AnthropicOkHttpClient.fromEnv();
+
+            List<ContentBlockParam> contentBlockParams = List.of(
+                    ContentBlockParam.ofImage(
+                            ImageBlockParam.builder()
+                                    .source(UrlImageSource.builder()
+                                            .url("https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg")
+                                            .build())
+                                    .build()
+                    ),
+                    ContentBlockParam.ofText(TextBlockParam.builder()
+                            .text("Describe this image.")
+                            .build())
+            );
+            Message message = client.messages().create(
+                    MessageCreateParams.builder()
+                            .model(Model.CLAUDE_SONNET_4_5_LATEST)
+                            .maxTokens(1024)
+                            .addUserMessageOfBlockParams(contentBlockParams)
+                            .build()
+            );
+            System.out.println(message);
+        }
+    }
+    ```
+</CodeGroup>
+
+### Files API image example
+
+For images you'll use repeatedly or when you want to avoid encoding overhead, use the [Files API](/docs/en/build-with-claude/files):
+
+<CodeGroup>
+```bash Shell
+# First, upload your image to the Files API
+curl -X POST https://api.anthropic.com/v1/files \
+  -H "x-api-key: $ANTHROPIC_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "anthropic-beta: files-api-2025-04-14" \
+  -F "file=@image.jpg"
+
+# Then use the returned file_id in your message
+curl https://api.anthropic.com/v1/messages \
+  -H "x-api-key: $ANTHROPIC_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "anthropic-beta: files-api-2025-04-14" \
+  -H "content-type: application/json" \
+  -d '{
+    "model": "claude-sonnet-4-5",
+    "max_tokens": 1024,
+    "messages": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "image",
+            "source": {
+              "type": "file",
+              "file_id": "file_abc123"
+            }
+          },
+          {
+            "type": "text",
+            "text": "Describe this image."
+          }
+        ]
+      }
+    ]
+  }'
+```
+
+```python Python
+import anthropic
 
 client = anthropic.Anthropic()
 
-response = client.messages.count_tokens(
+# Upload the image file
+with open("image.jpg", "rb") as f:
+    file_upload = client.beta.files.upload(file=("image.jpg", f, "image/jpeg"))
+
+# Use the uploaded file in a message
+message = client.beta.messages.create(
     model="claude-sonnet-4-5",
+    max_tokens=1024,
+    betas=["files-api-2025-04-14"],
     messages=[
         {
             "role": "user",
@@ -300,467 +512,520 @@ response = client.messages.count_tokens(
                 {
                     "type": "image",
                     "source": {
-                        "type": "base64",
-                        "media_type": image_media_type,
-                        "data": image_data,
-                    },
+                        "type": "file",
+                        "file_id": file_upload.id
+                    }
                 },
                 {
                     "type": "text",
-                    "text": "Describe this image"
+                    "text": "Describe this image."
                 }
-            ],
+            ]
         }
     ],
 )
-print(response.json())
+
+print(message.content)
 ```
 
 ```typescript TypeScript
-import Anthropic from '@anthropic-ai/sdk';
+import { Anthropic, toFile } from '@anthropic-ai/sdk';
+import fs from 'fs';
 
 const anthropic = new Anthropic();
 
-const image_url = "https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg"
-const image_media_type = "image/jpeg"
-const image_array_buffer = await ((await fetch(image_url)).arrayBuffer());
-const image_data = Buffer.from(image_array_buffer).toString('base64');
+async function main() {
+  // Upload the image file
+  const fileUpload = await anthropic.beta.files.upload({
+    file: toFile(fs.createReadStream('image.jpg'), undefined, { type: "image/jpeg" })
+  }, {
+    betas: ['files-api-2025-04-14']
+  });
 
-const response = await anthropic.messages.countTokens({
-  model: 'claude-sonnet-4-5',
-  messages: [
-    {
-      "role": "user",
-      "content": [
-        {
-          "type": "image",
-          "source": {
-            "type": "base64",
-            "media_type": image_media_type,
-            "data": image_data,
-          },
-        }
-      ],
-    },
-    {
-      "type": "text",
-      "text": "Describe this image"
-    }
-  ]
-});
-console.log(response);
-```
-
-```java Java
-import java.util.Base64;
-import java.util.List;
-
-import com.anthropic.client.AnthropicClient;
-import com.anthropic.client.okhttp.AnthropicOkHttpClient;
-import com.anthropic.models.messages.Base64ImageSource;
-import com.anthropic.models.messages.ContentBlockParam;
-import com.anthropic.models.messages.ImageBlockParam;
-import com.anthropic.models.messages.MessageCountTokensParams;
-import com.anthropic.models.messages.MessageTokensCount;
-import com.anthropic.models.messages.Model;
-import com.anthropic.models.messages.TextBlockParam;
-
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-
-public class CountTokensImageExample {
-
-    public static void main(String[] args) throws Exception {
-        AnthropicClient client = AnthropicOkHttpClient.fromEnv();
-
-        String imageUrl = "https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg";
-        String imageMediaType = "image/jpeg";
-
-        HttpClient httpClient = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(imageUrl))
-                .build();
-        byte[] imageBytes = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray()).body();
-        String imageBase64 = Base64.getEncoder().encodeToString(imageBytes);
-
-        ContentBlockParam imageBlock = ContentBlockParam.ofImage(
-                ImageBlockParam.builder()
-                        .source(Base64ImageSource.builder()
-                                .mediaType(Base64ImageSource.MediaType.IMAGE_JPEG)
-                                .data(imageBase64)
-                                .build())
-                        .build());
-
-        ContentBlockParam textBlock = ContentBlockParam.ofText(
-                TextBlockParam.builder()
-                        .text("Describe this image")
-                        .build());
-
-        MessageCountTokensParams params = MessageCountTokensParams.builder()
-                .model(Model.CLAUDE_SONNET_4_20250514)
-                .addUserMessageOfBlockParams(List.of(imageBlock, textBlock))
-                .build();
-
-        MessageTokensCount count = client.messages().countTokens(params);
-        System.out.println(count);
-    }
-}
-```
-</CodeGroup>
-
-```json JSON
-{ "input_tokens": 1551 }
-```
-
-### Count tokens in messages with extended thinking
-
-<Note>
-See [here](/docs/en/build-with-claude/extended-thinking#how-context-window-is-calculated-with-extended-thinking) for more details about how the context window is calculated with extended thinking
-- Thinking blocks from **previous** assistant turns are ignored and **do not** count toward your input tokens
-- **Current** assistant turn thinking **does** count toward your input tokens
-</Note>
-
-<CodeGroup>
-```bash Shell
-curl https://api.anthropic.com/v1/messages/count_tokens \
-    --header "x-api-key: $ANTHROPIC_API_KEY" \
-    --header "content-type: application/json" \
-    --header "anthropic-version: 2023-06-01" \
-    --data '{
-      "model": "claude-sonnet-4-5",
-      "thinking": {
-        "type": "enabled",
-        "budget_tokens": 16000
-      },
-      "messages": [
-        {
-          "role": "user",
-          "content": "Are there an infinite number of prime numbers such that n mod 4 == 3?"
-        },
-        {
-          "role": "assistant",
-          "content": [
-            {
-              "type": "thinking",
-              "thinking": "This is a nice number theory question. Lets think about it step by step...",
-              "signature": "EuYBCkQYAiJAgCs1le6/Pol5Z4/JMomVOouGrWdhYNsH3ukzUECbB6iWrSQtsQuRHJID6lWV..."
-            },
-            {
-              "type": "text",
-              "text": "Yes, there are infinitely many prime numbers p such that p mod 4 = 3..."
-            }
-          ]
-        },
-        {
-          "role": "user",
-          "content": "Can you write a formal proof?"
-        }
-      ]
-    }'
-```
-
-```python Python
-import anthropic
-
-client = anthropic.Anthropic()
-
-response = client.messages.count_tokens(
-    model="claude-sonnet-4-5",
-    thinking={
-        "type": "enabled",
-        "budget_tokens": 16000
-    },
-    messages=[
-        {
-            "role": "user",
-            "content": "Are there an infinite number of prime numbers such that n mod 4 == 3?"
-        },
-        {
-            "role": "assistant",
-            "content": [
-                {
-                    "type": "thinking",
-                    "thinking": "This is a nice number theory question. Let's think about it step by step...",
-                    "signature": "EuYBCkQYAiJAgCs1le6/Pol5Z4/JMomVOouGrWdhYNsH3ukzUECbB6iWrSQtsQuRHJID6lWV..."
-                },
-                {
-                  "type": "text",
-                  "text": "Yes, there are infinitely many prime numbers p such that p mod 4 = 3..."
-                }
-            ]
-        },
-        {
-            "role": "user",
-            "content": "Can you write a formal proof?"
-        }
-    ]
-)
-
-print(response.json())
-```
-
-```typescript TypeScript
-import Anthropic from '@anthropic-ai/sdk';
-
-const client = new Anthropic();
-
-const response = await client.messages.countTokens({
-  model: 'claude-sonnet-4-5',
-  thinking: {
-    'type': 'enabled',
-    'budget_tokens': 16000
-  },
-  messages: [
-    {
-      'role': 'user',
-      'content': 'Are there an infinite number of prime numbers such that n mod 4 == 3?'
-    },
-    {
-      'role': 'assistant',
-      'content': [
-        {
-          'type': 'thinking',
-          'thinking': "This is a nice number theory question. Let's think about it step by step...",
-          'signature': 'EuYBCkQYAiJAgCs1le6/Pol5Z4/JMomVOouGrWdhYNsH3ukzUECbB6iWrSQtsQuRHJID6lWV...'
-        },
-        {
-          'type': 'text',
-          'text': 'Yes, there are infinitely many prime numbers p such that p mod 4 = 3...',
-        }
-      ]
-    },
-    {
-      'role': 'user',
-      'content': 'Can you write a formal proof?'
-    }
-  ]
-});
-
-console.log(response);
-```
-
-```java Java
-import java.util.List;
-
-import com.anthropic.client.AnthropicClient;
-import com.anthropic.client.okhttp.AnthropicOkHttpClient;
-import com.anthropic.models.messages.ContentBlockParam;
-import com.anthropic.models.messages.MessageCountTokensParams;
-import com.anthropic.models.messages.MessageTokensCount;
-import com.anthropic.models.messages.Model;
-import com.anthropic.models.messages.TextBlockParam;
-import com.anthropic.models.messages.ThinkingBlockParam;
-
-public class CountTokensThinkingExample {
-
-    public static void main(String[] args) {
-        AnthropicClient client = AnthropicOkHttpClient.fromEnv();
-
-        List<ContentBlockParam> assistantBlocks = List.of(
-                ContentBlockParam.ofThinking(ThinkingBlockParam.builder()
-                        .thinking("This is a nice number theory question. Let's think about it step by step...")
-                        .signature("EuYBCkQYAiJAgCs1le6/Pol5Z4/JMomVOouGrWdhYNsH3ukzUECbB6iWrSQtsQuRHJID6lWV...")
-                        .build()),
-                ContentBlockParam.ofText(TextBlockParam.builder()
-                        .text("Yes, there are infinitely many prime numbers p such that p mod 4 = 3...")
-                        .build())
-        );
-
-        MessageCountTokensParams params = MessageCountTokensParams.builder()
-                .model(Model.CLAUDE_SONNET_4_20250514)
-                .enabledThinking(16000)
-                .addUserMessage("Are there an infinite number of prime numbers such that n mod 4 == 3?")
-                .addAssistantMessageOfBlockParams(assistantBlocks)
-                .addUserMessage("Can you write a formal proof?")
-                .build();
-
-        MessageTokensCount count = client.messages().countTokens(params);
-        System.out.println(count);
-    }
-}
-```
-</CodeGroup>
-
-```json JSON
-{ "input_tokens": 88 }
-```
-
-### Count tokens in messages with PDFs
-
-<Note>
-Token counting supports PDFs with the same [limitations](/docs/en/build-with-claude/pdf-support#pdf-support-limitations) as the Messages API.
-</Note>
-
-<CodeGroup>
-```bash Shell
-curl https://api.anthropic.com/v1/messages/count_tokens \
-    --header "x-api-key: $ANTHROPIC_API_KEY" \
-    --header "content-type: application/json" \
-    --header "anthropic-version: 2023-06-01" \
-    --data '{
-      "model": "claude-sonnet-4-5",
-      "messages": [{
-        "role": "user",
-        "content": [
+  // Use the uploaded file in a message
+  const response = await anthropic.beta.messages.create({
+    model: 'claude-sonnet-4-5',
+    max_tokens: 1024,
+    betas: ['files-api-2025-04-14'],
+    messages: [
+      {
+        role: 'user',
+        content: [
           {
-            "type": "document",
-            "source": {
-              "type": "base64",
-              "media_type": "application/pdf",
-              "data": "'$(base64 -i document.pdf)'"
+            type: 'image',
+            source: {
+              type: 'file',
+              file_id: fileUpload.id
             }
           },
           {
-            "type": "text",
-            "text": "Please summarize this document."
+            type: 'text',
+            text: 'Describe this image.'
           }
         ]
-      }]
-    }'
-```
-
-```python Python
-import base64
-import anthropic
-
-client = anthropic.Anthropic()
-
-with open("document.pdf", "rb") as pdf_file:
-    pdf_base64 = base64.standard_b64encode(pdf_file.read()).decode("utf-8")
-
-response = client.messages.count_tokens(
-    model="claude-sonnet-4-5",
-    messages=[{
-        "role": "user",
-        "content": [
-            {
-                "type": "document",
-                "source": {
-                    "type": "base64",
-                    "media_type": "application/pdf",
-                    "data": pdf_base64
-                }
-            },
-            {
-                "type": "text",
-                "text": "Please summarize this document."
-            }
-        ]
-    }]
-)
-
-print(response.json())
-```
-
-```typescript TypeScript
-import Anthropic from '@anthropic-ai/sdk';
-import { readFileSync } from 'fs';
-
-const client = new Anthropic();
-
-const pdfBase64 = readFileSync('document.pdf', { encoding: 'base64' });
-
-const response = await client.messages.countTokens({
-  model: 'claude-sonnet-4-5',
-  messages: [{
-    role: 'user',
-    content: [
-      {
-        type: 'document',
-        source: {
-          type: 'base64',
-          media_type: 'application/pdf',
-          data: pdfBase64
-        }
-      },
-      {
-        type: 'text',
-        text: 'Please summarize this document.'
       }
     ]
-  }]
-});
+  });
 
-console.log(response);
+  console.log(response);
+}
+
+main();
 ```
 
 ```java Java
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Base64;
 import java.util.List;
 
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
-import com.anthropic.models.messages.Base64PdfSource;
-import com.anthropic.models.messages.ContentBlockParam;
-import com.anthropic.models.messages.DocumentBlockParam;
-import com.anthropic.models.messages.MessageCountTokensParams;
-import com.anthropic.models.messages.MessageTokensCount;
-import com.anthropic.models.messages.Model;
-import com.anthropic.models.messages.TextBlockParam;
+import com.anthropic.models.File;
+import com.anthropic.models.files.FileUploadParams;
+import com.anthropic.models.messages.*;
 
-public class CountTokensPdfExample {
-
-    public static void main(String[] args) throws Exception {
+public class ImageFilesExample {
+    public static void main(String[] args) throws IOException {
         AnthropicClient client = AnthropicOkHttpClient.fromEnv();
 
-        byte[] fileBytes = Files.readAllBytes(Path.of("document.pdf"));
-        String pdfBase64 = Base64.getEncoder().encodeToString(fileBytes);
+        // Upload the image file
+        File file = client.beta().files().upload(FileUploadParams.builder()
+                .file(Files.newInputStream(Path.of("image.jpg")))
+                .build());
 
-        ContentBlockParam documentBlock = ContentBlockParam.ofDocument(
-                DocumentBlockParam.builder()
-                        .source(Base64PdfSource.builder()
-                                .mediaType(Base64PdfSource.MediaType.APPLICATION_PDF)
-                                .data(pdfBase64)
-                                .build())
-                        .build());
-
-        ContentBlockParam textBlock = ContentBlockParam.ofText(
-                TextBlockParam.builder()
-                        .text("Please summarize this document.")
-                        .build());
-
-        MessageCountTokensParams params = MessageCountTokensParams.builder()
-                .model(Model.CLAUDE_SONNET_4_20250514)
-                .addUserMessageOfBlockParams(List.of(documentBlock, textBlock))
+        // Use the uploaded file in a message
+        ImageBlockParam imageParam = ImageBlockParam.builder()
+                .fileSource(file.id())
                 .build();
 
-        MessageTokensCount count = client.messages().countTokens(params);
-        System.out.println(count);
+        MessageCreateParams params = MessageCreateParams.builder()
+                .model(Model.CLAUDE_SONNET_4_5_LATEST)
+                .maxTokens(1024)
+                .addUserMessageOfBlockParams(
+                        List.of(
+                                ContentBlockParam.ofImage(imageParam),
+                                ContentBlockParam.ofText(
+                                        TextBlockParam.builder()
+                                                .text("Describe this image.")
+                                                .build()
+                                )
+                        )
+                )
+                .build();
+
+        Message message = client.messages().create(params);
+        System.out.println(message.content());
     }
 }
 ```
 </CodeGroup>
 
-```json JSON
-{ "input_tokens": 2188 }
-```
+See [Messages API examples](/docs/en/api/messages) for more example code and parameter details.
 
----
+<section title="Example: One image">
 
-## Pricing and rate limits
+It’s best to place images earlier in the prompt than questions about them or instructions for tasks that use them.
 
-Token counting is **free to use** but subject to requests per minute rate limits based on your [usage tier](/docs/en/api/rate-limits#rate-limits). If you need higher limits, contact sales through the [Claude Console](/settings/limits).
+Ask Claude to describe one image.
 
-| Usage tier | Requests per minute (RPM) |
-|------------|---------------------------|
-| 1          | 100                       |
-| 2          | 2,000                     |
-| 3          | 4,000                     |
-| 4          | 8,000                     |
+| Role | Content                        |
+| ---- | ------------------------------ |
+| User | \[Image\] Describe this image. |
 
-<Note>
-  Token counting and message creation have separate and independent rate limits -- usage of one does not count against the limits of the other.
-</Note>
-
----
-## FAQ
-
-  <section title="Does token counting use prompt caching?">
-
-    No, token counting provides an estimate without using caching logic. While you may provide `cache_control` blocks in your token counting request, prompt caching only occurs during actual message creation.
+<Tabs>
+  <Tab title="Using Base64">
+    ```python Python
+    message = client.messages.create(
+        model="claude-sonnet-4-5",
+        max_tokens=1024,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": image1_media_type,
+                            "data": image1_data,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": "Describe this image."
+                    }
+                ],
+            }
+        ],
+    )
+    ```
+  </Tab>
+  <Tab title="Using URL">
+    ```python Python
+    message = client.messages.create(
+        model="claude-sonnet-4-5",
+        max_tokens=1024,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "url",
+                            "url": "https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg",
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": "Describe this image."
+                    }
+                ],
+            }
+        ],
+    )
+    ```
+  </Tab>
+</Tabs>
 
 </section>
+<section title="Example: Multiple images">
+
+In situations where there are multiple images, introduce each image with `Image 1:` and `Image 2:` and so on. You don’t need newlines between images or between images and the prompt.
+
+Ask Claude to describe the differences between multiple images.
+| Role | Content |
+| ---- | ------------------------------------------------------------------------- |
+| User | Image 1: \[Image 1\] Image 2: \[Image 2\] How are these images different? |
+
+<Tabs>
+  <Tab title="Using Base64">
+    ```python Python
+    message = client.messages.create(
+        model="claude-sonnet-4-5",
+        max_tokens=1024,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Image 1:"
+                    },
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": image1_media_type,
+                            "data": image1_data,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": "Image 2:"
+                    },
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": image2_media_type,
+                            "data": image2_data,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": "How are these images different?"
+                    }
+                ],
+            }
+        ],
+    )
+    ```
+  </Tab>
+  <Tab title="Using URL">
+    ```python Python
+    message = client.messages.create(
+        model="claude-sonnet-4-5",
+        max_tokens=1024,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Image 1:"
+                    },
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "url",
+                            "url": "https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg",
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": "Image 2:"
+                    },
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "url",
+                            "url": "https://upload.wikimedia.org/wikipedia/commons/b/b5/Iridescent.green.sweat.bee1.jpg",
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": "How are these images different?"
+                    }
+                ],
+            }
+        ],
+    )
+    ```
+  </Tab>
+</Tabs>
+
+</section>
+<section title="Example: Multiple images with a system prompt">
+
+Ask Claude to describe the differences between multiple images, while giving it a system prompt for how to respond.
+
+| Content |                                                                           |
+| ------- | ------------------------------------------------------------------------- |
+| System  | Respond only in Spanish.                                                  |
+| User    | Image 1: \[Image 1\] Image 2: \[Image 2\] How are these images different? |
+
+<Tabs>
+  <Tab title="Using Base64">
+    ```python Python
+    message = client.messages.create(
+        model="claude-sonnet-4-5",
+        max_tokens=1024,
+        system="Respond only in Spanish.",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Image 1:"
+                    },
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": image1_media_type,
+                            "data": image1_data,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": "Image 2:"
+                    },
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": image2_media_type,
+                            "data": image2_data,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": "How are these images different?"
+                    }
+                ],
+            }
+        ],
+    )
+    ```
+  </Tab>
+  <Tab title="Using URL">
+    ```python Python
+    message = client.messages.create(
+        model="claude-sonnet-4-5",
+        max_tokens=1024,
+        system="Respond only in Spanish.",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Image 1:"
+                    },
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "url",
+                            "url": "https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg",
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": "Image 2:"
+                    },
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "url",
+                            "url": "https://upload.wikimedia.org/wikipedia/commons/b/b5/Iridescent.green.sweat.bee1.jpg",
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": "How are these images different?"
+                    }
+                ],
+            }
+        ],
+    )
+    ```
+  </Tab>
+</Tabs>
+
+</section>
+<section title="Example: Four images across two conversation turns">
+
+Claude’s vision capabilities shine in multimodal conversations that mix images and text. You can have extended back-and-forth exchanges with Claude, adding new images or follow-up questions at any point. This enables powerful workflows for iterative image analysis, comparison, or combining visuals with other knowledge.
+
+Ask Claude to contrast two images, then ask a follow-up question comparing the first images to two new images.
+| Role | Content |
+| --------- | ------------------------------------------------------------------------------------ |
+| User | Image 1: \[Image 1\] Image 2: \[Image 2\] How are these images different? |
+| Assistant | \[Claude's response\] |
+| User | Image 1: \[Image 3\] Image 2: \[Image 4\] Are these images similar to the first two? |
+| Assistant | \[Claude's response\] |
+
+When using the API, simply insert new images into the array of Messages in the `user` role as part of any standard [multiturn conversation](/docs/en/api/messages) structure.
+
+</section>
+
+---
+
+## Limitations
+
+While Claude's image understanding capabilities are cutting-edge, there are some limitations to be aware of:
+
+- **People identification**: Claude [cannot be used](https://www.anthropic.com/legal/aup) to identify (i.e., name) people in images and will refuse to do so.
+- **Accuracy**: Claude may hallucinate or make mistakes when interpreting low-quality, rotated, or very small images under 200 pixels.
+- **Spatial reasoning**: Claude's spatial reasoning abilities are limited. It may struggle with tasks requiring precise localization or layouts, like reading an analog clock face or describing exact positions of chess pieces.
+- **Counting**: Claude can give approximate counts of objects in an image but may not always be precisely accurate, especially with large numbers of small objects.
+- **AI generated images**: Claude does not know if an image is AI-generated and may be incorrect if asked. Do not rely on it to detect fake or synthetic images.
+- **Inappropriate content**: Claude will not process inappropriate or explicit images that violate our [Acceptable Use Policy](https://www.anthropic.com/legal/aup).
+- **Healthcare applications**: While Claude can analyze general medical images, it is not designed to interpret complex diagnostic scans such as CTs or MRIs. Claude's outputs should not be considered a substitute for professional medical advice or diagnosis.
+
+Always carefully review and verify Claude's image interpretations, especially for high-stakes use cases. Do not use Claude for tasks requiring perfect precision or sensitive image analysis without human oversight.
+
+---
+
+## FAQ
+
+  <section title="What image file types does Claude support?">
+
+    Claude currently supports JPEG, PNG, GIF, and WebP image formats, specifically:
+    - `image/jpeg`
+    - `image/png`
+    - `image/gif`
+    - `image/webp`
+
+</section>
+
+{" "}
+
+<section title="Can Claude read image URLs?">
+
+  Yes, Claude can now process images from URLs with our URL image source blocks in the API.
+  Simply use the "url" source type instead of "base64" in your API requests.
+  Example:
+  ```json
+  {
+    "type": "image",
+    "source": {
+      "type": "url",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg"
+    }
+  }
+  ```
+
+</section>
+
+  <section title="Is there a limit to the image file size I can upload?">
+
+    Yes, there are limits:
+    - API: Maximum 5MB per image
+    - claude.ai: Maximum 10MB per image
+
+    Images larger than these limits will be rejected and return an error when using our API.
+
+
+</section>
+
+  <section title="How many images can I include in one request?">
+
+    The image limits are:
+    - Messages API: Up to 100 images per request
+    - claude.ai: Up to 20 images per turn
+
+    Requests exceeding these limits will be rejected and return an error.
+
+
+</section>
+
+{" "}
+
+<section title="Does Claude read image metadata?">
+
+  No, Claude does not parse or receive any metadata from images passed to it.
+
+</section>
+
+{" "}
+
+<section title="Can I delete images I've uploaded?">
+
+  No. Image uploads are ephemeral and not stored beyond the duration of the API
+  request. Uploaded images are automatically deleted after they have been
+  processed.
+
+</section>
+
+{" "}
+
+<section title="Where can I find details on data privacy for image uploads?">
+
+  Please refer to our privacy policy page for information on how we handle
+  uploaded images and other data. We do not use uploaded images to train our
+  models.
+
+</section>
+
+  <section title="What if Claude's image interpretation seems wrong?">
+
+    If Claude's image interpretation seems incorrect:
+    1. Ensure the image is clear, high-quality, and correctly oriented.
+    2. Try prompt engineering techniques to improve results.
+    3. If the issue persists, flag the output in claude.ai (thumbs up/down) or contact our support team.
+
+    Your feedback helps us improve!
+
+
+</section>
+
+  <section title="Can Claude generate or edit images?">
+
+    No, Claude is an image understanding model only. It can interpret and analyze images, but it cannot generate, produce, edit, manipulate, or create images.
+
+</section>
+
+---
+
+## Dive deeper into vision
+
+Ready to start building with images using Claude? Here are a few helpful resources:
+
+- [Multimodal cookbook](https://platform.claude.com/cookbook/multimodal-getting-started-with-vision): This cookbook has tips on [getting started with images](https://platform.claude.com/cookbook/multimodal-getting-started-with-vision) and [best practice techniques](https://platform.claude.com/cookbook/multimodal-best-practices-for-vision) to ensure the highest quality performance with images. See how you can effectively prompt Claude with images to carry out tasks such as [interpreting and analyzing charts](https://platform.claude.com/cookbook/multimodal-reading-charts-graphs-powerpoints) or [extracting content from forms](https://platform.claude.com/cookbook/multimodal-how-to-transcribe-text).
+- [API reference](/docs/en/api/messages): Visit our documentation for the Messages API, including example [API calls involving images](/docs/en/build-with-claude/working-with-messages#vision).
+
+If you have any other questions, feel free to reach out to our [support team](https://support.claude.com/). You can also join our [developer community](https://www.anthropic.com/discord) to connect with other creators and get help from Anthropic experts.
