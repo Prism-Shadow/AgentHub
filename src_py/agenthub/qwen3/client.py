@@ -137,7 +137,7 @@ class Qwen3Client(LLMClient):
                 message["tool_calls"] = tool_calls
 
             if thinking:
-                message["reasoning_content"] = thinking
+                message["reasoning_content"] = thinking  # vLLM & siliconflow compatibility
                 message["reasoning"] = thinking  # openrouter compatibility
 
             # message may be empty for tool results
@@ -174,6 +174,7 @@ class Qwen3Client(LLMClient):
                 event_type = "delta"
                 content_items.append({"type": "text", "text": delta.content})
 
+        # vLLM & siliconflow compatibility
         if getattr(delta, "reasoning_content", None):
             event_type = "delta"
             content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning_content")})
@@ -189,9 +190,9 @@ class Qwen3Client(LLMClient):
                 content_items.append(
                     {
                         "type": "partial_tool_call",
-                        "name": tool_call.function.name,
-                        "arguments": tool_call.function.arguments,
-                        "tool_call_id": tool_call.function.name,
+                        "name": tool_call.function.name or "",
+                        "arguments": tool_call.function.arguments or "",
+                        "tool_call_id": tool_call.function.name or "",
                     }
                 )
 
