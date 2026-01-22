@@ -694,7 +694,7 @@ def create_chat_app() -> Flask:
             try:
                 # Get or create client for this session
                 if session_id not in _session_clients:
-                    model = config.get("model", "gemini-3-flash-preview")
+                    model = config.get("model") or "gemini-3-flash-preview"
                     _session_clients[session_id] = AutoLLMClient(model=model)
 
                 client = _session_clients[session_id]
