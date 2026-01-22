@@ -19,7 +19,7 @@ make test     # Run tests
 import { AutoLLMClient } from 'agenthub';
 
 // Initialize with model name
-const client = new AutoLLMClient('gemini3flash');
+const client = new AutoLLMClient('gemini-3-flash-preview');
 ```
 
 ### Tracer Usage
