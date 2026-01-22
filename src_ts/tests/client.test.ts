@@ -29,7 +29,7 @@ if (process.env.ANTHROPIC_API_KEY) {
 }
 
 if (process.env.OPENAI_API_KEY) {
-  AVAILABLE_VISION_MODELS.push("gpt-5.2-turbo-preview");
+  AVAILABLE_VISION_MODELS.push("gpt-5.2");
 }
 
 const AVAILABLE_MODELS = AVAILABLE_VISION_MODELS;
