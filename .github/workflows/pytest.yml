@@ -16,10 +16,6 @@ on:
       - "**/pyproject.toml"
       - '.github/workflows/pytest.yml'
 
-concurrency:
-  group: ci-task-lock
-  cancel-in-progress: false
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -27,6 +23,10 @@ jobs:
       matrix:
         python-version:
           - "3.11"
+
+    concurrency:
+      group: ci-task-lock
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
     steps:
       - name: Checkout
