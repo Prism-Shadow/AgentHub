@@ -24,6 +24,10 @@ if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
   AVAILABLE_VISION_MODELS.push("gemini-3-flash-preview");
 }
 
+if (process.env.ANTHROPIC_API_KEY) {
+  AVAILABLE_VISION_MODELS.push("claude-sonnet-4-5-20250929");
+}
+
 const AVAILABLE_MODELS = AVAILABLE_VISION_MODELS;
 
 async function createClient(model: string): Promise<AutoLLMClient> {
