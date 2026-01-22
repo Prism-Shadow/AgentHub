@@ -385,6 +385,40 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
     60000
   );
   test(
+    "should handle system prompt",
+    async () => {
+      const client = await createClient(model);
+      const messages: UniMessage[] = [
+        {
+          role: "user",
+          content_items: [{ type: "text", text: "Hello" }],
+        },
+      ];
+      const config: UniConfig = {
+        system_prompt:
+          "You are a kitten that must end with the word 'meow'.",
+      };
+
+      let text = "";
+      for await (const event of client.streamingResponse(
+        messages,
+        config
+      )) {
+        await checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
+          }
+        }
+      }
+
+      expect(text.toLowerCase()).toContain("meow");
+    },
+    60000
+  );
+});
+describe.each(AVAILABLE_VISION_MODELS)("Vision test for %s", (model) => {
+  test(
     "should handle image understanding",
     async () => {
       const client = await createClient(model);
@@ -419,39 +453,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
     },
     60000
   );
-  test(
-    "should handle system prompt",
-    async () => {
-      const client = await createClient(model);
-      const messages: UniMessage[] = [
-        {
-          role: "user",
-          content_items: [{ type: "text", text: "Hello" }],
-        },
-      ];
-      const config: UniConfig = {
-        system_prompt:
-          "You are a kitten that must end with the word 'meow'.",
-      };
-
-      let text = "";
-      for await (const event of client.streamingResponse(
-        messages,
-        config
-      )) {
-        await checkEventIntegrity(event);
-        for (const item of event.content_items) {
-          if (item.type === "text") {
-            text += item.text;
-          }
-        }
-      }
-
-      expect(text.toLowerCase()).toContain("meow");
-    },
-    60000
-  );
-});
+);
 
 test("should reject unknown model", () => {
   expect(() => new AutoLLMClient("unknown-model")).toThrow(
