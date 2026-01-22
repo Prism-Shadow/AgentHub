@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import json
 import os
-import time
 from contextlib import nullcontext
 
 import pytest
@@ -96,7 +96,7 @@ async def _check_event_integrity(event: dict) -> None:
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
 async def test_streaming_response_basic(model):
     """Test basic stateless stream generation."""
-    time.sleep(1)
+    await asyncio.sleep(1)
     client = await _create_client(model)
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is 2+3?"}]}]
     config = {}
@@ -115,7 +115,7 @@ async def test_streaming_response_basic(model):
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
 async def test_streaming_response_with_all_parameters(model):
     """Test stream generation with all optional parameters."""
-    time.sleep(1)
+    await asyncio.sleep(1)
     client = await _create_client(model)
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is 2+3?"}]}]
     config = {"max_tokens": 8192, "temperature": 0.7, "thinking_summary": True, "thinking_level": ThinkingLevel.LOW}
@@ -140,7 +140,7 @@ async def test_streaming_response_with_all_parameters(model):
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
 async def test_streaming_response_stateful(model):
     """Test stateful stream generation."""
-    time.sleep(1)
+    await asyncio.sleep(1)
     client = await _create_client(model)
     config = {}
 
@@ -166,7 +166,7 @@ async def test_streaming_response_stateful(model):
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
 async def test_clear_history(model):
     """Test clearing conversation history."""
-    time.sleep(1)
+    await asyncio.sleep(1)
     client = await _create_client(model)
     message = {"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}
     config = {}
@@ -184,7 +184,7 @@ async def test_clear_history(model):
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
 async def test_concat_uni_events_to_uni_message(model):
     """Test concatenation of events into a single message."""
-    time.sleep(1)
+    await asyncio.sleep(1)
     client = await _create_client(model)
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "Say hello"}]}]
     config = {}
@@ -216,7 +216,7 @@ async def test_unknown_model():
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
 async def test_tool_use(model):
     """Test tool use capability."""
-    time.sleep(1)
+    await asyncio.sleep(1)
     client = await _create_client(model)
 
     # Define a simple weather tool
@@ -285,7 +285,7 @@ async def test_tool_use(model):
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
 async def test_image_understanding(model):
     """Test image understanding with a URL."""
-    time.sleep(1)
+    await asyncio.sleep(1)
     if model not in AVAILABLE_VISION_MODELS:
         pytest.skip(f"Image understanding is not supported by {model}.")
 
@@ -314,7 +314,7 @@ async def test_image_understanding(model):
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
 async def test_system_prompt(model):
     """Test system prompt capability."""
-    time.sleep(1)
+    await asyncio.sleep(1)
     client = await _create_client(model)
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}]
     config = {"system_prompt": "You are a kitten that must end with the word 'meow'."}
