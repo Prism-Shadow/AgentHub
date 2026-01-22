@@ -88,9 +88,9 @@ export function createChatApp(): Express {
                       class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                   <datalist id="modelList">
+                      <option value="gpt-5.2">GPT 5.2</option>
                       <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
                       <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
-                      <option value="gpt-5.2">GPT 5.2</option>
                       <option value="glm-4.7">GLM 4.7</option>
                   </datalist>
               </div>
