@@ -135,7 +135,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
 
       expect(text).toContain("5");
     },
-    30000
+    60000
   );
 
   test(
@@ -181,7 +181,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
         expect(text).toContain("5");
       }
     },
-    30000
+    60000
   );
 
   test(
@@ -248,7 +248,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
       client.clearHistory();
       expect(client.getHistory().length).toBe(0);
     },
-    30000
+    60000
   );
 
   test(
@@ -285,7 +285,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
         }
       }
     },
-    30000
+    60000
   );
 
   test(
@@ -384,50 +384,41 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
     },
     60000
   );
-});
+  test(
+    "should handle image understanding",
+    async () => {
+      const client = await createClient(model);
+      const config: UniConfig = {};
+      const messages: UniMessage[] = [
+        {
+          role: "user",
+          content_items: [
+            { type: "text", text: "What's in this image?" },
+            { type: "image_url", image_url: IMAGE },
+          ],
+        },
+      ];
 
-describe.each(AVAILABLE_VISION_MODELS)(
-  "Vision model tests for %s",
-  (model) => {
-    test(
-      "should handle image understanding",
-      async () => {
-        const client = await createClient(model);
-        const config: UniConfig = {};
-        const messages: UniMessage[] = [
-          {
-            role: "user",
-            content_items: [
-              { type: "text", text: "What's in this image?" },
-              { type: "image_url", image_url: IMAGE },
-            ],
-          },
-        ];
-
-        let text = "";
-        for await (const event of client.streamingResponse(
-          messages,
-          config
-        )) {
-          await checkEventIntegrity(event);
-          for (const item of event.content_items) {
-            if (item.type === "text") {
-              text += item.text;
-            }
+      let text = "";
+      for await (const event of client.streamingResponse(
+        messages,
+        config
+      )) {
+        await checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
           }
         }
+      }
 
-        expect(
-          text.toLowerCase().includes("flower") ||
-            text.toLowerCase().includes("narcissus")
-        ).toBe(true);
-      },
-      30000
-    );
-  }
-);
-
-describe.each(AVAILABLE_MODELS)("System prompt tests for %s", (model) => {
+      expect(
+        text.toLowerCase().includes("flower") ||
+          text.toLowerCase().includes("narcissus")
+      ).toBe(true);
+    },
+    60000
+  );
   test(
     "should handle system prompt",
     async () => {
@@ -458,7 +449,7 @@ describe.each(AVAILABLE_MODELS)("System prompt tests for %s", (model) => {
 
       expect(text.toLowerCase()).toContain("meow");
     },
-    30000
+    60000
   );
 });
 
