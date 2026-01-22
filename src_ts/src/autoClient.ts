@@ -15,6 +15,7 @@
 import { LLMClient } from "./baseClient";
 import { Gemini3Client } from "./gemini3";
 import { Claude4_5Client } from "./claude4_5";
+import { GPT5_2Client } from "./gpt5_2";
 import { UniConfig, UniEvent, UniMessage } from "./types";
 
 /**
@@ -67,10 +68,7 @@ export class AutoLLMClient extends LLMClient {
     } else if (clientType.includes("claude") && clientType.includes("4-5")) {
       return new Claude4_5Client(model, apiKey, baseUrl);
     } else if (clientType.includes("gpt-5.2")) {
-      throw new Error(
-        "GPT-5.2 client is not implemented in TypeScript yet. " +
-          "Please implement it following the Python version."
-      );
+      return new GPT5_2Client(model, apiKey, baseUrl);
     } else if (clientType.includes("glm-4.7")) {
       throw new Error(
         "GLM-4.7 client is not implemented in TypeScript yet. " +
