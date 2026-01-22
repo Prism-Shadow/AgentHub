@@ -25,8 +25,8 @@ jobs:
           - "3.11"
 
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+      group: ci-task-lock
+      cancel-in-progress: false
 
     steps:
       - name: Checkout
