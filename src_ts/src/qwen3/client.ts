@@ -61,7 +61,7 @@ export class Qwen3Client extends LLMClient {
     if (toolChoice === "auto") {
       return "auto";
     } else {
-      throw new Error("Qwen3 only supports 'auto' for tool_choice.");
+      throw new Error("Qwen3 only supports \"auto\" for tool_choice.");
     }
   }
 
