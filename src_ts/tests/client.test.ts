@@ -412,6 +412,3 @@ test("should reject unknown model", () => {
     "not supported"
   );
 });
-function expect(event: UniEvent) {
-  throw new Error("Function not implemented.");
-}
