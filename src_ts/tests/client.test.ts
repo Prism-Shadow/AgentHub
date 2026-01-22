@@ -114,28 +114,36 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
       ];
       const config: UniConfig = {
         max_tokens: 8192,
+        temperature: 0.7,
         thinking_summary: true,
         thinking_level: ThinkingLevel.LOW,
       };
 
-      if (!model.includes("gpt-5.2")) {
-        config.temperature = 0.7;
-      }
-
-      let text = "";
-      for await (const event of client.streamingResponse(
-        messages,
-        config
-      )) {
-        await checkEventIntegrity(event);
-        for (const item of event.content_items) {
-          if (item.type === "text") {
-            text += item.text;
+      if (model.includes("gpt-5.2")) {
+        await expect(async () => {
+          for await (const event of client.streamingResponse(
+            messages,
+            config
+          )) {
+            // This should throw before we get here
+          }
+        }).rejects.toThrow("GPT-5.2 does not support setting temperature.");
+      } else {
+        let text = "";
+        for await (const event of client.streamingResponse(
+          messages,
+          config
+        )) {
+          await checkEventIntegrity(event);
+          for (const item of event.content_items) {
+            if (item.type === "text") {
+              text += item.text;
+            }
           }
         }
-      }
 
-      expect(text).toContain("5");
+        expect(text).toContain("5");
+      }
     },
     30000
   );
