@@ -16,6 +16,10 @@ on:
       - "**/package.json"
       - '.github/workflows/jest.yml'
 
+concurrency:
+  group: ci-task-lock
+  cancel-in-progress: false
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -25,10 +29,6 @@ jobs:
       matrix:
         node-version:
           - "20"
-
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
     steps:
       - name: Checkout
