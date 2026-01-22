@@ -1,6 +1,15 @@
-# AutoLLMClient Usage Guide
+# AgentHub Python Implementation
 
 This document demonstrates how to use `AutoLLMClient` for unified LLM interactions in AgentHub.
+
+## Building
+
+```bash
+make install  # Install dependencies
+make build    # Build Python package
+make lint     # Run ruff linter
+make test     # Run tests
+```
 
 ## AutoLLMClient Overview
 

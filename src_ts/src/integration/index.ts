@@ -12,5 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { AutoLLMClient } from "./autoClient";
-export { PromptCaching, ThinkingLevel } from "./types";
+/**
+ * Integration module for AgentHub.
+ *
+ * This module provides tools for conversation tracing and interactive playground.
+ */
+
+export { Tracer } from "./tracer";
+export {
+  createChatApp,
+  startPlaygroundServer,
+} from "./playground";
