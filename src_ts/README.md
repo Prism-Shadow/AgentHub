@@ -16,10 +16,25 @@ make test     # Run tests
 ### Basic Client Usage
 
 ```typescript
-import { AutoLLMClient } from 'agenthub';
+import { AutoLLMClient } from '@prismshadow/agenthub';
 
-// Initialize with model name
-const client = new AutoLLMClient('gemini-3-flash-preview');
+process.env.OPENAI_API_KEY = 'your-openai-api-key';
+
+async function main() {
+  const client = new AutoLLMClient({ model: 'gpt-5.2' });
+
+  for await (const event of client.streamingResponseStateful({
+    message: {
+      role: 'user',
+      content_items: [{ type: 'text', text: 'Hello!' }]
+    },
+    config: {}
+  })) {
+    console.log(event);
+  }
+}
+
+main().catch(console.error);
 ```
 
 ### Tracer Usage
@@ -27,13 +42,19 @@ const client = new AutoLLMClient('gemini-3-flash-preview');
 Save and browse conversation history with a web interface:
 
 ```typescript
-import { Tracer } from 'agenthub/integration/tracer';
+import { Tracer } from '@prismshadow/agenthub/integration/tracer';
 
 // Create a tracer instance
 const tracer = new Tracer('./cache');
 
 // Save conversation history
-tracer.saveHistory(history, 'session/conv_001', config);
+const model = 'gpt-5.2';
+const history = [
+  { role: 'user', content_items: [{ type: 'text', text: 'Hello!' }] },
+  { role: 'assistant', content_items: [{ type: 'text', text: 'Hi there!' }] }
+];
+const config = {};
+tracer.saveHistory(model, history, 'session/conv_001', config);
 
 // Start web server to view saved conversations
 tracer.startWebServer('127.0.0.1', 5000);
@@ -45,7 +66,7 @@ tracer.startWebServer('127.0.0.1', 5000);
 Interactive web interface for chatting with LLMs:
 
 ```typescript
-import { startPlaygroundServer } from 'agenthub/integration/playground';
+import { startPlaygroundServer } from '@prismshadow/agenthub/integration/playground';
 
 // Start the playground server
 startPlaygroundServer('127.0.0.1', 5001);

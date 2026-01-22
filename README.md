@@ -89,9 +89,11 @@ import asyncio
 import os
 from agenthub import AutoLLMClient
 
+os.environ["OPENAI_API_KEY"] = "your-openai-api-key"
+
 async def main():
-    os.environ["OPENAI_API_KEY"] = "your-openai-api-key"
     client = AutoLLMClient(model="gpt-5.2")
+
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -114,16 +116,18 @@ TypeScript Example:
 ```typescript
 import { AutoLLMClient } from "@prismshadow/agenthub";
 
-process.env.OPENAI_API_KEY = "your-api-key";
+process.env.OPENAI_API_KEY = "your-openai-api-key";
 
 async function main() {
-  const client = new AutoLLMClient("gpt-5.2");
-  const message = {
-    role: "user",
-    content_items: [{ type: "text", text: "Say 'Hello, World!'" }],
-  }
-  const config = {};
-  for await (const event of client.streamingResponseStateful(message, config)) {
+  const client = new AutoLLMClient({ model: "gpt-5.2" });
+
+  for await (const event of client.streamingResponseStateful({
+    message: {
+      role: "user",
+      content_items: [{ type: "text", text: "Say 'Hello, World!'" }]
+    },
+    config: {}
+  })) {
     console.log(event);
   }
 }
@@ -145,9 +149,11 @@ import asyncio
 import os
 from agenthub import AutoLLMClient
 
+os.environ["ANTHROPIC_API_KEY"] = "your-anthropic-api-key"
+
 async def main():
-    os.environ["OPENAI_API_KEY"] = "your-api-key"
     client = AutoLLMClient(model="claude-sonnet-4-5-20250929")
+
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -167,16 +173,18 @@ asyncio.run(main())
 ```typescript
 import { AutoLLMClient } from "@prismshadow/agenthub";
 
-process.env.OPENAI_API_KEY = "your-api-key";
+process.env.ANTHROPIC_API_KEY = "your-anthropic-api-key";
 
 async function main() {
-  const client = new AutoLLMClient("claude-sonnet-4-5-20250929");
-  const message = {
-    role: "user",
-    content_items: [{ type: "text", text: "Say 'Hello, World!'" }],
-  }
-  const config = {};
-  for await (const event of client.streamingResponseStateful(message, config)) {
+  const client = new AutoLLMClient({ model: "claude-sonnet-4-5-20250929" });
+
+  for await (const event of client.streamingResponseStateful({
+    message: {
+      role: "user",
+      content_items: [{"type": "text", "text": "Say 'Hello, World!'"}]
+    },
+    config: {}
+  })) {
     console.log(event);
   }
 }
@@ -195,10 +203,12 @@ import asyncio
 import os
 from agenthub import AutoLLMClient
 
+os.environ["GLM_API_KEY"] = "your-openrouter-api-key"
+os.environ["GLM_BASE_URL"] = "https://openrouter.ai/api/v1"
+
 async def main():
-    os.environ["GLM_API_KEY"] = "your-openrouter-api-key"
-    os.environ["GLM_BASE_URL"] = "https://openrouter.ai/api/v1"
     client = AutoLLMClient(model="glm-4.7")
+
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -221,13 +231,14 @@ process.env.GLM_API_KEY = "your-openrouter-api-key";
 process.env.GLM_BASE_URL = "https://openrouter.ai/api/v1";
 
 async function main() {
-  const client = new AutoLLMClient("glm-4.7");
-  const message = {
-    role: "user",
-    content_items: [{ type: "text", text: "Say 'Hello, World!'" }],
-  }
-  const config = {};
-  for await (const event of client.streamingResponseStateful(message, config)) {
+  const client = new AutoLLMClient({ model: "glm-4.7" });
+  for await (const event of client.streamingResponseStateful({
+    message: {
+      role: "user",
+      content_items: [{"type": "text", "text": "Say 'Hello, World!'"}]
+    },
+    config: {}
+  })) {
     console.log(event);
   }
 }
@@ -245,10 +256,12 @@ import asyncio
 import os
 from agenthub import AutoLLMClient
 
-async def main():
-    os.environ["QWEN3_API_KEY"] = "your-siliconflow-api-key"
-    os.environ["QWEN3_BASE_URL"] = "https://api.siliconflow.cn/v1"
+os.environ["QWEN3_API_KEY"] = "your-siliconflow-api-key"
+os.environ["QWEN3_BASE_URL"] = "https://api.siliconflow.cn/v1"
+
+async def main():  
     client = AutoLLMClient(model="Qwen/Qwen3-8B")
+
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -271,13 +284,14 @@ process.env.QWEN3_API_KEY = "your-siliconflow-api-key";
 process.env.QWEN3_BASE_URL = "https://api.siliconflow.cn/v1";
 
 async function main() {
-  const client = new AutoLLMClient("Qwen/Qwen3-8B");
-  const message = {
-    role: "user",
-    content_items: [{ type: "text", text: "Say 'Hello, World!'" }],
-  }
-  const config = {};
-  for await (const event of client.streamingResponseStateful(message, config)) {
+  const client = new AutoLLMClient({ model: "Qwen/Qwen3-8B" });
+  for await (const event of client.streamingResponseStateful({
+    message: {
+      role: "user",
+      content_items: [{ type: "text", text: "Say 'Hello, World!'" }],
+    },
+    config: {}
+  })) {
     console.log(event);
   }
 }

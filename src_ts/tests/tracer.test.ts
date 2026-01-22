@@ -38,6 +38,7 @@ describe("Tracer", () => {
   test("should save conversation history to files", () => {
     const tracer = new Tracer(tempCacheDir);
 
+    const model = "fake-model";
     const history: UniMessage[] = [
       {
         role: "user",
@@ -50,9 +51,10 @@ describe("Tracer", () => {
     ];
 
     const config = { temperature: 0.7 };
+    const configWithModel = { ...config, model };
     const fileId = "test/conversation";
 
-    tracer.saveHistory(history, fileId, config);
+    tracer.saveHistory(model, history, fileId, config);
 
     const jsonPath = path.join(tempCacheDir, fileId + ".json");
     const txtPath = path.join(tempCacheDir, fileId + ".txt");
@@ -69,13 +71,14 @@ describe("Tracer", () => {
 
     const jsonContent = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
     expect(jsonContent.history).toHaveLength(2);
-    expect(jsonContent.config).toEqual(config);
+    expect(jsonContent.config).toEqual(configWithModel);
     expect(jsonContent.timestamp).toBeDefined();
   });
 
   test("should create necessary directories when saving history", () => {
     const tracer = new Tracer(tempCacheDir);
 
+    const model = "fake-model";
     const history: UniMessage[] = [
       {
         role: "user",
@@ -86,7 +89,7 @@ describe("Tracer", () => {
     const fileId = "agent1/subfolder/conversation";
     const config = {};
 
-    tracer.saveHistory(history, fileId, config);
+    tracer.saveHistory(model, history, fileId, config);
 
     const jsonPath = path.join(tempCacheDir, fileId + ".json");
     expect(fs.existsSync(jsonPath)).toBe(true);
@@ -96,6 +99,7 @@ describe("Tracer", () => {
   test("should overwrite existing files", () => {
     const tracer = new Tracer(tempCacheDir);
 
+    const model = "fake-model";
     const history1: UniMessage[] = [
       {
         role: "user",
@@ -113,8 +117,8 @@ describe("Tracer", () => {
     const fileId = "test/conversation";
     const config = {};
 
-    tracer.saveHistory(history1, fileId, config);
-    tracer.saveHistory(history2, fileId, config);
+    tracer.saveHistory(model, history1, fileId, config);
+    tracer.saveHistory(model, history2, fileId, config);
 
     const jsonPath = path.join(tempCacheDir, fileId + ".json");
     const jsonContent = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
@@ -126,6 +130,7 @@ describe("Tracer", () => {
   test("should handle relative paths", () => {
     const tracer = new Tracer(tempCacheDir);
 
+    const model = "fake-model";
     const history: UniMessage[] = [
       {
         role: "user",
@@ -136,7 +141,7 @@ describe("Tracer", () => {
     const relativePath = "conversations/conv1";
     const config = {};
 
-    tracer.saveHistory(history, relativePath, config);
+    tracer.saveHistory(model, history, relativePath, config);
 
     const jsonPath = path.join(tempCacheDir, relativePath + ".json");
     expect(fs.existsSync(jsonPath)).toBe(true);
@@ -151,6 +156,7 @@ describe("Tracer", () => {
   test("should serialize bytes to base64", () => {
     const tracer = new Tracer(tempCacheDir);
 
+    const model = "fake-model";
     const history: UniMessage[] = [
       {
         role: "user",
@@ -167,7 +173,7 @@ describe("Tracer", () => {
     const config = {};
     const fileId = "test/bytes_test";
 
-    tracer.saveHistory(history, fileId, config);
+    tracer.saveHistory(model, history, fileId, config);
 
     const jsonPath = path.join(tempCacheDir, fileId + ".json");
     const jsonContent = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
@@ -180,6 +186,7 @@ describe("Tracer", () => {
   test("should format history with usage metadata", () => {
     const tracer = new Tracer(tempCacheDir);
 
+    const model = "fake-model";
     const history: UniMessage[] = [
       {
         role: "user",
@@ -201,7 +208,7 @@ describe("Tracer", () => {
     const config = {};
     const fileId = "test/metadata_test";
 
-    tracer.saveHistory(history, fileId, config);
+    tracer.saveHistory(model, history, fileId, config);
 
     const txtPath = path.join(tempCacheDir, fileId + ".txt");
     const txtContent = fs.readFileSync(txtPath, "utf-8");

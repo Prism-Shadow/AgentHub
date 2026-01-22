@@ -45,25 +45,26 @@ import {
  * Gemini 3-specific LLM client implementation.
  */
 export class Gemini3Client extends LLMClient {
-  private _model: string;
+  protected _model: string;
   private _client: GoogleGenAI;
 
   /**
    * Initialize Gemini 3 client with model and API key.
    */
-  constructor(
-    model: string,
-    apiKey?: string | null,
-    baseUrl?: string | null
-  ) {
+  constructor(options: {
+    model: string;
+    apiKey?: string;
+    baseUrl?: string | null;
+    clientType?: string | null;
+  }) {
     super();
-    this._model = model;
+    this._model = options.model;
     const key =
-      apiKey ||
+      options.apiKey ||
       process.env.GEMINI_API_KEY ||
       process.env.GOOGLE_API_KEY ||
       undefined;
-    const url = baseUrl || process.env.GOOGLE_GEMINI_BASE_URL || undefined;
+    const url = options.baseUrl || process.env.GOOGLE_GEMINI_BASE_URL || undefined;
 
     const httpOptions = url ? { baseUrl: url } : undefined;
     this._client = new GoogleGenAI({
@@ -336,12 +337,12 @@ export class Gemini3Client extends LLMClient {
   /**
    * Stream generate using Gemini SDK with unified conversion methods.
    */
-  async *streamingResponse(
-    messages: UniMessage[],
-    config: UniConfig
-  ): AsyncGenerator<UniEvent> {
-    const geminiConfig = this.transformUniConfigToModelConfig(config);
-    const contents = this.transformUniMessageToModelInput(messages);
+  async *streamingResponse(options: {
+    messages: UniMessage[];
+    config: UniConfig;
+  }): AsyncGenerator<UniEvent> {
+    const geminiConfig = this.transformUniConfigToModelConfig(options.config);
+    const contents = this.transformUniMessageToModelInput(options.messages);
 
     const responseStream = await this._client.models.generateContentStream({
       model: this._model,

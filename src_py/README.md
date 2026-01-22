@@ -23,23 +23,13 @@ Create a client by specifying the model name:
 from agenthub import AutoLLMClient
 
 # Initialize with model name
-client = AutoLLMClient(model="gemini-3-flash-preview")
+client = AutoLLMClient(model="gpt-5.2")
 
 # Optionally specify API key (if not using environment variables)
-client = AutoLLMClient(model="gemini-3-flash-preview", api_key="your-api-key")
+client = AutoLLMClient(model="gpt-5.2", api_key="your-openai-api-key")
 ```
 
 The client automatically selects the appropriate client based on the model name.
-
-You can manually switch the client type by setting the `CLIENT_TYPE` environment variable instead of automatic selection.
-
-```python
-import os
-from agenthub import AutoLLMClient
-
-os.environ["CLIENT_TYPE"] = "gpt-5.2"
-client = AutoLLMClient(model="Qwen/Qwen3-4B-Instruct-2507")
-```
 
 ## Core Methods
 
@@ -52,17 +42,15 @@ import asyncio
 from agenthub import AutoLLMClient
 
 async def main():
-    client = AutoLLMClient(model="gemini-3-flash-preview")
-
-    messages = [
-        {
-            "role": "user",
-            "content_items": [{"type": "text", "text": "Hello!"}]
-        }
-    ]
+    client = AutoLLMClient(model="gpt-5.2")
 
     async for event in client.streaming_response(
-        messages=messages,
+        messages=[
+            {
+                "role": "user",
+                "content_items": [{"type": "text", "text": "Hello!"}]
+            }
+        ],
         config={}
     ):
         print(event)
@@ -79,7 +67,7 @@ import asyncio
 from agenthub import AutoLLMClient
 
 async def main():
-    client = AutoLLMClient(model="gemini-3-flash-preview")
+    client = AutoLLMClient(model="gpt-5.2")
 
     # First message
     async for event in client.streaming_response_stateful(
@@ -160,7 +148,7 @@ async def main():
         }
     }
 
-    client = AutoLLMClient(model="gemini-3-flash-preview")
+    client = AutoLLMClient(model="gpt-5.2")
     config = {"tools": [weather_function]}
 
     # User asks about weather
@@ -267,7 +255,7 @@ AgentHub provides a built-in `Tracer` to save and browse conversation history. W
 ```python
 from agenthub import AutoLLMClient
 
-client = AutoLLMClient(model="gemini-3-flash-preview")
+client = AutoLLMClient(model="gpt-5.2")
 
 # Add trace_id to config
 config = {"trace_id": "agent1/conversation_001"}

@@ -30,8 +30,8 @@ async def main():
     print("Stateful Example")
     print("=" * 60)
 
-    # Get model from environment variable, default to gemini-3-flash-preview
-    model = os.getenv("MODEL", "gemini-3-flash-preview")
+    # Get model from environment variable, default to gpt-5.2
+    model = os.getenv("MODEL", "gpt-5.2")
     print(f"Using model: {model}")
 
     client = AutoLLMClient(model=model)

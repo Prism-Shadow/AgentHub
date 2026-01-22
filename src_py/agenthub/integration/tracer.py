@@ -70,11 +70,12 @@ class Tracer:
             return [self._serialize_for_json(item) for item in obj]
         return obj
 
-    def save_history(self, history: list[UniMessage], file_id: str, config: dict[str, Any]) -> None:
+    def save_history(self, model: str, history: list[UniMessage], file_id: str, config: dict[str, Any]) -> None:
         """
         Save conversation history to files.
 
         Args:
+            model: The model name used for this conversation
             history: List of UniMessage objects representing the conversation
             file_id: File identifier without extension (e.g., "agent1/00001")
             config: The UniConfig used for this conversation
@@ -83,11 +84,12 @@ class Tracer:
         file_path_base = self.cache_dir / file_id
         file_path_base.parent.mkdir(parents=True, exist_ok=True)
 
+        config_with_model = {"model": model, **config}
         # Save as JSON
         json_path = file_path_base.with_suffix(".json")
         json_data = {
             "history": self._serialize_for_json(history),
-            "config": self._serialize_for_json(config),
+            "config": self._serialize_for_json(config_with_model),
             "timestamp": datetime.now().isoformat(),
         }
         with open(json_path, "w", encoding="utf-8") as f:
@@ -95,7 +97,7 @@ class Tracer:
 
         # Save as human-readable text
         txt_path = file_path_base.with_suffix(".txt")
-        formatted_content = self._format_history(history, config)
+        formatted_content = self._format_history(history, config_with_model)
         with open(txt_path, "w", encoding="utf-8") as f:
             f.write(formatted_content)
 

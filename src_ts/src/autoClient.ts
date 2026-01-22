@@ -32,19 +32,21 @@ export class AutoLLMClient extends LLMClient {
   /**
    * Initialize AutoLLMClient with a specific model.
    *
-   * @param model - Model identifier (determines which client to use)
-   * @param apiKey - Optional API key
-   * @param baseUrl - Optional base URL for API requests
-   * @param clientType - Optional client type override
+   * @param options - Configuration object with model, apiKey, baseUrl, and clientType
    */
-  constructor(
-    model: string,
-    apiKey?: string,
-    baseUrl?: string,
-    clientType?: string
-  ) {
+  constructor(options: {
+    model: string;
+    apiKey?: string;
+    baseUrl?: string | null;
+    clientType?: string | null;
+  }) {
     super();
-    this._client = this._createClientForModel(model, apiKey, baseUrl, clientType);
+    this._client = this._createClientForModel(
+      options.model,
+      options.apiKey,
+      options.baseUrl,
+      options.clientType
+    );
   }
 
   /**
@@ -60,21 +62,21 @@ export class AutoLLMClient extends LLMClient {
   private _createClientForModel(
     model: string,
     apiKey?: string,
-    baseUrl?: string,
-    clientType?: string
+    baseUrl?: string | null,
+    clientType?: string | null
   ): LLMClient {
     clientType = clientType || process.env.CLIENT_TYPE || model.toLowerCase();
 
     if (clientType.includes("gemini-3")) {
-      return new Gemini3Client(model, apiKey, baseUrl);
+      return new Gemini3Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("claude") && clientType.includes("4-5")) {
-      return new Claude4_5Client(model, apiKey, baseUrl);
+      return new Claude4_5Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("gpt-5.1") || clientType.includes("gpt-5.2")) {
-      return new GPT5_2Client(model, apiKey, baseUrl);
+      return new GPT5_2Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("glm-4.7")) {
-      return new GLM4_7Client(model, apiKey, baseUrl);
+      return new GLM4_7Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("qwen3")) {
-      return new Qwen3Client(model, apiKey, baseUrl);
+      return new Qwen3Client({ model, apiKey, baseUrl });
     } else {
       throw new Error(
         `${clientType} is not supported. ` +
@@ -110,14 +112,14 @@ export class AutoLLMClient extends LLMClient {
   /**
    * Route to underlying client's streamingResponse.
    */
-  async *streamingResponse(
-    messages: UniMessage[],
-    config: UniConfig
-  ): AsyncGenerator<UniEvent> {
-    for await (const event of this._client.streamingResponse(
-      messages,
-      config
-    )) {
+  async *streamingResponse(options: {
+    messages: UniMessage[];
+    config: UniConfig;
+  }): AsyncGenerator<UniEvent> {
+    for await (const event of this._client.streamingResponse({
+      messages: options.messages,
+      config: options.config
+    })) {
       yield event;
     }
   }
@@ -125,14 +127,14 @@ export class AutoLLMClient extends LLMClient {
   /**
    * Route to underlying client's streamingResponseStateful.
    */
-  async *streamingResponseStateful(
-    message: UniMessage,
-    config: UniConfig
-  ): AsyncGenerator<UniEvent> {
-    for await (const event of this._client.streamingResponseStateful(
-      message,
-      config
-    )) {
+  async *streamingResponseStateful(options: {
+    message: UniMessage;
+    config: UniConfig;
+  }): AsyncGenerator<UniEvent> {
+    for await (const event of this._client.streamingResponseStateful({
+      message: options.message,
+      config: options.config,
+    })) {
       yield event;
     }
   }

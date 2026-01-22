@@ -56,7 +56,7 @@ const AVAILABLE_MODELS = [
   ...SILICONFLOW_MODELS,
 ];
 
-async function createClient(model: string): Promise<AutoLLMClient> {
+function createClient(model: string): AutoLLMClient {
   let apiKey: string | undefined;
   let baseUrl: string | undefined;
 
@@ -71,10 +71,10 @@ async function createClient(model: string): Promise<AutoLLMClient> {
     baseUrl = undefined;
   }
 
-  return new AutoLLMClient(model, apiKey, baseUrl);
+  return new AutoLLMClient({ model, apiKey, baseUrl });
 }
 
-async function checkEventIntegrity(event: UniEvent): Promise<void> {
+function checkEventIntegrity(event: UniEvent): void {
   expect(event).toHaveProperty("role");
   expect(event).toHaveProperty("event_type");
   expect(event).toHaveProperty("usage_metadata");
@@ -111,7 +111,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should stream basic response",
     async () => {
-      const client = await createClient(model);
+      const client = createClient(model);
       const messages: UniMessage[] = [
         {
           role: "user",
@@ -121,11 +121,11 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
       const config: UniConfig = {};
 
       let text = "";
-      for await (const event of client.streamingResponse(
+      for await (const event of client.streamingResponse({
         messages,
-        config
-      )) {
-        await checkEventIntegrity(event);
+        config,
+      })) {
+        checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
             text += item.text;
@@ -141,7 +141,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should stream response with all parameters",
     async () => {
-      const client = await createClient(model);
+      const client = createClient(model);
       const messages: UniMessage[] = [
         {
           role: "user",
@@ -157,20 +157,20 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
 
       if (model.includes("gpt-5.2")) {
         await expect(async () => {
-          for await (const event of client.streamingResponse(
+          for await (const _ of client.streamingResponse({
             messages,
-            config
-          )) {
+            config,
+          })) {
             // This should throw before we get here
           }
         }).rejects.toThrow("GPT-5.2 does not support setting temperature.");
       } else {
         let text = "";
-        for await (const event of client.streamingResponse(
+        for await (const event of client.streamingResponse({
           messages,
-          config
-        )) {
-          await checkEventIntegrity(event);
+          config,
+        })) {
+          checkEventIntegrity(event);
           for (const item of event.content_items) {
             if (item.type === "text") {
               text += item.text;
@@ -187,18 +187,18 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should handle stateful streaming",
     async () => {
-      const client = await createClient(model);
+      const client = createClient(model);
       const config: UniConfig = {};
 
       const message1: UniMessage = {
         role: "user",
         content_items: [{ type: "text", text: "My name is Alice" }],
       };
-      for await (const event of client.streamingResponseStateful(
-        message1,
-        config
-      )) {
-        await checkEventIntegrity(event);
+      for await (const event of client.streamingResponseStateful({
+        message: message1,
+        config,
+      })) {
+        checkEventIntegrity(event);
       }
 
       expect(client.getHistory().length).toBe(2);
@@ -208,11 +208,11 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
         content_items: [{ type: "text", text: "What is my name?" }],
       };
       let text = "";
-      for await (const event of client.streamingResponseStateful(
-        message2,
-        config
-      )) {
-        await checkEventIntegrity(event);
+      for await (const event of client.streamingResponseStateful({
+        message: message2,
+        config,
+      })) {
+        checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
             text += item.text;
@@ -229,17 +229,17 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should clear history",
     async () => {
-      const client = await createClient(model);
+      const client = createClient(model);
       const message: UniMessage = {
         role: "user",
         content_items: [{ type: "text", text: "Hello" }],
       };
       const config: UniConfig = {};
 
-      for await (const _ of client.streamingResponseStateful(
+      for await (const _ of client.streamingResponseStateful({
         message,
-        config
-      )) {
+        config,
+      })) {
         // consume the stream
       }
 
@@ -254,7 +254,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should concatenate events to message",
     async () => {
-      const client = await createClient(model);
+      const client = createClient(model);
       const messages: UniMessage[] = [
         {
           role: "user",
@@ -265,10 +265,10 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
 
       const events: UniEvent[] = [];
       let text = "";
-      for await (const event of client.streamingResponse(
+      for await (const event of client.streamingResponse({
         messages,
-        config
-      )) {
+        config,
+      })) {
         events.push(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
@@ -291,7 +291,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should handle tool use",
     async () => {
-      const client = await createClient(model);
+      const client = createClient(model);
 
       const weatherTool = {
         name: "get_weather",
@@ -324,11 +324,11 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
           { type: "text", text: "What is the weather in San Francisco?" },
         ],
       };
-      for await (const event of client.streamingResponseStateful(
-        message1,
-        config
-      )) {
-        await checkEventIntegrity(event);
+      for await (const event of client.streamingResponseStateful({
+        message: message1,
+        config,
+      })) {
+        checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "partial_tool_call") {
             if (!partialToolCallData.name) {
@@ -368,11 +368,11 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
         ],
       };
       let text = "";
-      for await (const event of client.streamingResponseStateful(
-        message2,
-        config
-      )) {
-        await checkEventIntegrity(event);
+      for await (const event of client.streamingResponseStateful({
+        message: message2,
+        config,
+      })) {
+        checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
             text += item.text;
@@ -387,7 +387,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should handle system prompt",
     async () => {
-      const client = await createClient(model);
+      const client = createClient(model);
       const messages: UniMessage[] = [
         {
           role: "user",
@@ -400,11 +400,11 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
       };
 
       let text = "";
-      for await (const event of client.streamingResponse(
+      for await (const event of client.streamingResponse({
         messages,
-        config
-      )) {
-        await checkEventIntegrity(event);
+        config,
+      })) {
+        checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
             text += item.text;
@@ -422,7 +422,7 @@ describe.each(AVAILABLE_VISION_MODELS)("Vision test for %s", (model) => {
   test(
     "should handle image understanding",
     async () => {
-      const client = await createClient(model);
+      const client = createClient(model);
       const config: UniConfig = {};
       const messages: UniMessage[] = [
         {
@@ -435,11 +435,11 @@ describe.each(AVAILABLE_VISION_MODELS)("Vision test for %s", (model) => {
       ];
 
       let text = "";
-      for await (const event of client.streamingResponse(
+      for await (const event of client.streamingResponse({
         messages,
-        config
-      )) {
-        await checkEventIntegrity(event);
+        config,
+      })) {
+        checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
             text += item.text;
@@ -457,7 +457,7 @@ describe.each(AVAILABLE_VISION_MODELS)("Vision test for %s", (model) => {
 });
 
 test("should reject unknown model", () => {
-  expect(() => new AutoLLMClient("unknown-model")).toThrow(
+  expect(() => new AutoLLMClient({ model: "unknown-model" })).toThrow(
     "not supported"
   );
 });

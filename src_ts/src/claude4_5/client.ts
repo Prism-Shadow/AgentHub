@@ -35,21 +35,22 @@ import {
  * Claude 4.5-specific LLM client implementation.
  */
 export class Claude4_5Client extends LLMClient {
-  private _model: string;
+  protected _model: string;
   private _client: Anthropic;
 
   /**
    * Initialize Claude 4.5 client with model and API key.
    */
-  constructor(
-    model: string,
-    apiKey?: string | null,
-    baseUrl?: string | null
-  ) {
+  constructor(options: {
+    model: string;
+    apiKey?: string;
+    baseUrl?: string | null;
+    clientType?: string | null;
+  }) {
     super();
-    this._model = model;
-    const key = apiKey || process.env.ANTHROPIC_API_KEY || undefined;
-    const url = baseUrl || process.env.ANTHROPIC_BASE_URL || undefined;
+    this._model = options.model;
+    const key = options.apiKey || process.env.ANTHROPIC_API_KEY || undefined;
+    const url = options.baseUrl || process.env.ANTHROPIC_BASE_URL || undefined;
 
     this._client = new Anthropic({
       apiKey: key,
@@ -207,8 +208,7 @@ export class Claude4_5Client extends LLMClient {
     const claudeEventType = modelOutput.type;
     if (claudeEventType === "content_block_start") {
       eventType = "start";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const block = (modelOutput as any).content_block;
+      const block = modelOutput.content_block;
       if (block.type === "tool_use") {
         contentItems.push({
           type: "partial_tool_call",
@@ -219,8 +219,7 @@ export class Claude4_5Client extends LLMClient {
       }
     } else if (claudeEventType === "content_block_delta") {
       eventType = "delta";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const delta = (modelOutput as any).delta;
+      const delta = modelOutput.delta;
       if (delta.type === "thinking_delta") {
         contentItems.push({ type: "thinking", thinking: delta.thinking });
       } else if (delta.type === "text_delta") {
@@ -243,8 +242,7 @@ export class Claude4_5Client extends LLMClient {
       eventType = "stop";
     } else if (claudeEventType === "message_start") {
       eventType = "start";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const message = (modelOutput as any).message;
+      const message = modelOutput.message;
       if (message.usage) {
         usageMetadata = {
           prompt_tokens: message.usage.input_tokens,
@@ -255,8 +253,7 @@ export class Claude4_5Client extends LLMClient {
       }
     } else if (claudeEventType === "message_delta") {
       eventType = "stop";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const delta = (modelOutput as any).delta;
+      const delta = modelOutput.delta;
       if (delta.stop_reason) {
         const stopReasonMapping: { [key: string]: FinishReason } = {
           end_turn: "stop",
@@ -267,8 +264,7 @@ export class Claude4_5Client extends LLMClient {
         finishReason = stopReasonMapping[delta.stop_reason] || "unknown";
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const usage = (modelOutput as any).usage;
+      const usage = modelOutput.usage;
       if (usage) {
         usageMetadata = {
           prompt_tokens: null,
@@ -299,15 +295,15 @@ export class Claude4_5Client extends LLMClient {
   /**
    * Stream generate using Claude SDK with unified conversion methods.
    */
-  async *streamingResponse(
-    messages: UniMessage[],
-    config: UniConfig
-  ): AsyncGenerator<UniEvent> {
-    const claudeConfig = this.transformUniConfigToModelConfig(config);
-    const claudeMessages = this.transformUniMessageToModelInput(messages);
+  async *streamingResponse(options: {
+    messages: UniMessage[];
+    config: UniConfig;
+  }): AsyncGenerator<UniEvent> {
+    const claudeConfig = this.transformUniConfigToModelConfig(options.config);
+    const claudeMessages = this.transformUniMessageToModelInput(options.messages);
 
     // Add cache_control to last user message's last item if enabled
-    const promptCaching = config.prompt_caching || PromptCaching.ENABLE;
+    const promptCaching = options.config.prompt_caching || PromptCaching.ENABLE;
     if (promptCaching !== PromptCaching.DISABLE && claudeMessages.length > 0) {
       try {
         const reversedMessages = [...claudeMessages].reverse();

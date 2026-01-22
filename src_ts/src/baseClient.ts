@@ -28,9 +28,11 @@ import {
  * the required abstract methods for complete SDK abstraction.
  */
 export abstract class LLMClient {
-  protected _history: UniMessage[];
+  protected _model: string;
+  private _history: UniMessage[];
 
   constructor() {
+    this._model = "";
     this._history = [];
   }
 
@@ -127,10 +129,10 @@ export abstract class LLMClient {
    * @param config - Universal configuration object
    * @yields Universal events from the streaming response
    */
-  abstract streamingResponse(
-    messages: UniMessage[],
-    config: UniConfig
-  ): AsyncGenerator<UniEvent>;
+  abstract streamingResponse(options: {
+    messages: UniMessage[];
+    config: UniConfig;
+  }): AsyncGenerator<UniEvent>;
 
   /**
    * Generate content in streaming mode (stateful).
@@ -143,14 +145,18 @@ export abstract class LLMClient {
    * @param config - Universal configuration object
    * @yields Universal events from the streaming response
    */
-  async *streamingResponseStateful(
-    message: UniMessage,
-    config: UniConfig
-  ): AsyncGenerator<UniEvent> {
+  async *streamingResponseStateful(options: {
+    message: UniMessage;
+    config: UniConfig;
+  }): AsyncGenerator<UniEvent> {
+    const { message, config } = options;
     this._history.push(message);
 
     const events: UniEvent[] = [];
-    for await (const event of this.streamingResponse(this._history, config)) {
+    for await (const event of this.streamingResponse({
+      messages: this._history,
+      config,
+    })) {
       events.push(event);
       yield event;
     }
@@ -163,7 +169,7 @@ export abstract class LLMClient {
     if (config.trace_id) {
       const { Tracer } = await import("./integration/tracer");
       const tracer = new Tracer();
-      tracer.saveHistory(this._history, config.trace_id, config);
+      tracer.saveHistory(this._model, this._history, config.trace_id, config);
     }
   }
 

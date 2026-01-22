@@ -35,21 +35,22 @@ import {
  * GPT-5.2-specific LLM client implementation.
  */
 export class GPT5_2Client extends LLMClient {
-  private _model: string;
+  protected _model: string;
   private _client: OpenAI;
 
   /**
    * Initialize GPT-5.2 client with model and API key.
    */
-  constructor(
-    model: string,
-    apiKey?: string | null,
-    baseUrl?: string | null
-  ) {
+  constructor(options: {
+    model: string;
+    apiKey?: string;
+    baseUrl?: string | null;
+    clientType?: string | null;
+  }) {
     super();
-    this._model = model;
-    const key = apiKey || process.env.OPENAI_API_KEY || undefined;
-    const url = baseUrl || process.env.OPENAI_BASE_URL || undefined;
+    this._model = options.model;
+    const key = options.apiKey || process.env.OPENAI_API_KEY || undefined;
+    const url = options.baseUrl || process.env.OPENAI_BASE_URL || undefined;
     this._client = new OpenAI({ apiKey: key, baseURL: url });
   }
 
@@ -157,8 +158,8 @@ export class GPT5_2Client extends LLMClient {
             image_url: item.image_url,
           });
         } else if (item.type === "thinking") {
-          const signatureStr = typeof item.signature === 'string' 
-            ? item.signature 
+          const signatureStr = typeof item.signature === 'string'
+            ? item.signature
             : item.signature?.toString() || '{}';
           const signature = JSON.parse(signatureStr);
           inputList.push({
@@ -211,15 +212,12 @@ export class GPT5_2Client extends LLMClient {
     const openaiEventType = modelOutput.type;
     if (openaiEventType === "response.output_text.delta") {
       eventType = "delta";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      contentItems.push({ type: "text", text: (modelOutput as any).delta });
+      contentItems.push({ type: "text", text: modelOutput.delta });
     } else if (openaiEventType === "response.reasoning_summary_text.delta") {
       eventType = "delta";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      contentItems.push({ type: "thinking", thinking: (modelOutput as any).delta });
+      contentItems.push({ type: "thinking", thinking: modelOutput.delta });
     } else if (openaiEventType === "response.output_item.added") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const item = (modelOutput as any).item;
+      const item = modelOutput.item;
       if (item.type === "function_call") {
         eventType = "start";
         contentItems.push({
@@ -242,32 +240,51 @@ export class GPT5_2Client extends LLMClient {
       } else {
         eventType = "unused";
       }
+    } else if (openaiEventType === "response.output_item.done") {
+      // not sure about the signature of openai, need to check
+      const item = modelOutput.item;
+      if (item.type === "reasoning") {
+        eventType = "delta";
+        const signature = {
+          id: item.id,
+          encrypted_content: item.encrypted_content,
+        };
+        contentItems.push({
+          type: "thinking",
+          thinking: "",
+          signature: JSON.stringify(signature),
+        });
+      } else {
+        eventType = "unused";
+      }
     } else if (openaiEventType === "response.function_call_arguments.delta") {
       eventType = "delta";
       contentItems.push({
         type: "partial_tool_call",
         name: "",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        arguments: (modelOutput as any).delta,
+        arguments: modelOutput.delta,
         tool_call_id: "",
       });
     } else if (openaiEventType === "response.function_call_arguments.done") {
       eventType = "stop";
     } else if (openaiEventType === "response.completed") {
       eventType = "stop";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const response = (modelOutput as any).response;
+      const response = modelOutput.response;
       const finishReasonMapping: { [key: string]: FinishReason } = {
         completed: "stop",
         incomplete: "length",
       };
-      finishReason = finishReasonMapping[response.status] || "unknown";
-      usageMetadata = {
-        prompt_tokens: response.usage.input_tokens,
-        thoughts_tokens: response.usage.output_tokens_details.reasoning_tokens,
-        response_tokens: response.usage.output_tokens,
-        cached_tokens: response.usage.input_tokens_details.cached_tokens,
-      };
+      if (response.status) {
+        finishReason = finishReasonMapping[response.status]
+      }
+      if (response.usage) {
+        usageMetadata = {
+          prompt_tokens: response.usage.input_tokens,
+          thoughts_tokens: response.usage.output_tokens_details.reasoning_tokens,
+          response_tokens: response.usage.output_tokens,
+          cached_tokens: response.usage.input_tokens_details.cached_tokens,
+        };
+      }
     } else if (
       [
         "response.created",
@@ -278,7 +295,6 @@ export class GPT5_2Client extends LLMClient {
         "response.reasoning_summary_text.done",
         "response.content_part.added",
         "response.content_part.done",
-        "response.output_item.done",
       ].includes(openaiEventType)
     ) {
       eventType = "unused";
@@ -298,12 +314,12 @@ export class GPT5_2Client extends LLMClient {
   /**
    * Stream generate using OpenAI Responses API with unified conversion methods.
    */
-  async *streamingResponse(
-    messages: UniMessage[],
-    config: UniConfig
-  ): AsyncGenerator<UniEvent> {
-    const openaiConfig = this.transformUniConfigToModelConfig(config);
-    const inputList = this.transformUniMessageToModelInput(messages);
+  async *streamingResponse(options: {
+    messages: UniMessage[];
+    config: UniConfig;
+  }): AsyncGenerator<UniEvent> {
+    const openaiConfig = this.transformUniConfigToModelConfig(options.config);
+    const inputList = this.transformUniMessageToModelInput(options.messages);
 
     const partialToolCall: {
       name?: string;

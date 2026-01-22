@@ -36,22 +36,23 @@ import {
  * GLM-4.7-specific LLM client implementation using OpenAI-compatible API.
  */
 export class GLM4_7Client extends LLMClient {
-  private _model: string;
+  protected _model: string;
   private _client: OpenAI;
 
   /**
    * Initialize GLM-4.7 client with model and API key.
    */
-  constructor(
-    model: string,
-    apiKey?: string | null,
-    baseUrl?: string | null
-  ) {
+  constructor(options: {
+    model: string;
+    apiKey?: string;
+    baseUrl?: string | null;
+    clientType?: string | null;
+  }) {
     super();
-    this._model = model;
-    const key = apiKey || process.env.GLM_API_KEY || undefined;
+    this._model = options.model;
+    const key = options.apiKey || process.env.GLM_API_KEY || undefined;
     const url =
-      baseUrl || process.env.GLM_BASE_URL || "https://api.z.ai/api/paas/v4/";
+      options.baseUrl || process.env.GLM_BASE_URL || "https://api.z.ai/api/paas/v4/";
     this._client = new OpenAI({ apiKey: key, baseURL: url });
   }
 
@@ -281,17 +282,17 @@ export class GLM4_7Client extends LLMClient {
   /**
    * Stream generate using GLM SDK with unified conversion methods.
    */
-  async *streamingResponse(
-    messages: UniMessage[],
-    config: UniConfig
-  ): AsyncGenerator<UniEvent> {
-    const glmConfig = this.transformUniConfigToModelConfig(config);
-    const glmMessages = this.transformUniMessageToModelInput(messages);
+  async *streamingResponse(options: {
+    messages: UniMessage[];
+    config: UniConfig;
+  }): AsyncGenerator<UniEvent> {
+    const glmConfig = this.transformUniConfigToModelConfig(options.config);
+    const glmMessages = this.transformUniMessageToModelInput(options.messages);
 
-    if (config.system_prompt) {
+    if (options.config.system_prompt) {
       glmMessages.unshift({
         role: "system",
-        content: config.system_prompt,
+        content: options.config.system_prompt,
       });
     }
 
