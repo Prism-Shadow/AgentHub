@@ -305,5 +305,5 @@ class GPT5_2Client(LLMClient):
                     }
                     partial_tool_call = {}
 
-                if event["usage_metadata"] is not None:
+                if event["finish_reason"] or event["usage_metadata"]:
                     yield event

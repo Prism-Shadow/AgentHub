@@ -215,6 +215,7 @@ class GLM4_7Client(LLMClient):
             finish_reason = finish_reason_mapping.get(choice.finish_reason, "unknown")
 
         if model_output.usage:
+            event_type = event_type or "delta"  # deal with separate usage data
             if model_output.usage.completion_tokens_details:
                 reasoning_tokens = model_output.usage.completion_tokens_details.reasoning_tokens
             else:
@@ -276,6 +277,7 @@ class GLM4_7Client(LLMClient):
                             # update partial_tool_call
                             partial_tool_call["arguments"] += item["arguments"]
 
+                yield event
             elif event["event_type"] == "stop":
                 if "name" in partial_tool_call and "arguments" in partial_tool_call:
                     # finish partial_tool_call
@@ -295,4 +297,5 @@ class GLM4_7Client(LLMClient):
                     }
                     partial_tool_call = {}
 
-            yield event
+                if event["finish_reason"] or event["usage_metadata"]:
+                    yield event

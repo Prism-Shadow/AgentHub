@@ -36,6 +36,10 @@ async function checkEventIntegrity(event: UniEvent): Promise<void> {
   expect(event).toHaveProperty("usage_metadata");
   expect(event).toHaveProperty("finish_reason");
 
+  expect(event.role).toBe("user" | "assistant");
+  expect(event.event_type).toBe("delta" | "stop");
+  expect(event.finish_reason).toBe("stop" | "length" | "unknown" | null);
+
   for (const item of event.content_items) {
     if (item.type === "text") {
       expect(item).toHaveProperty("text");

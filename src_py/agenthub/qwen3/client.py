@@ -206,6 +206,7 @@ class Qwen3Client(LLMClient):
             finish_reason = finish_reason_mapping.get(choice.finish_reason, "unknown")
 
         if model_output.usage:
+            event_type = event_type or "delta"  # deal with separate usage data
             if model_output.usage.completion_tokens_details:
                 reasoning_tokens = model_output.usage.completion_tokens_details.reasoning_tokens
             else:
@@ -323,3 +324,6 @@ class Qwen3Client(LLMClient):
                         "finish_reason": None,
                     }
                     partial_tool_call = {}
+
+                if event["finish_reason"] or event["usage_metadata"]:
+                    yield event

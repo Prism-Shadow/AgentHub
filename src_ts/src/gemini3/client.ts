@@ -302,17 +302,6 @@ export class Gemini3Client extends LLMClient {
       }
     }
 
-    if (modelOutput.usageMetadata) {
-      usageMetadata = {
-        prompt_tokens: modelOutput.usageMetadata.promptTokenCount || null,
-        thoughts_tokens: modelOutput.usageMetadata.thoughtsTokenCount || null,
-        response_tokens:
-          modelOutput.usageMetadata.candidatesTokenCount || null,
-        cached_tokens:
-          modelOutput.usageMetadata.cachedContentTokenCount || null,
-      };
-    }
-
     if (candidate.finishReason) {
       eventType = "stop";
       const stopReasonMapping: { [key: string]: FinishReason } = {
@@ -321,6 +310,18 @@ export class Gemini3Client extends LLMClient {
       };
       finishReason =
         stopReasonMapping[candidate.finishReason] || "unknown";
+    }
+
+    if (modelOutput.usageMetadata) {
+      eventType = eventType || "delta";  // deal with separate usage data
+      usageMetadata = {
+        prompt_tokens: modelOutput.usageMetadata.promptTokenCount || null,
+        thoughts_tokens: modelOutput.usageMetadata.thoughtsTokenCount || null,
+        response_tokens:
+          modelOutput.usageMetadata.candidatesTokenCount || null,
+        cached_tokens:
+          modelOutput.usageMetadata.cachedContentTokenCount || null,
+      };
     }
 
     return {
