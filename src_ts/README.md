@@ -18,8 +18,8 @@ make test     # Run tests
 ```typescript
 import { AutoLLMClient } from 'agenthub';
 
-# Initialize with model name
-const client = new AutoLLMClient('gemini-3-flash-preview');
+// Initialize with model name
+const client = new AutoLLMClient('gemini3flash');
 ```
 
 ### Tracer Usage
@@ -27,7 +27,7 @@ const client = new AutoLLMClient('gemini-3-flash-preview');
 Save and browse conversation history with a web interface:
 
 ```typescript
-import { Tracer } from './src/integration/tracer';
+import { Tracer } from 'agenthub/integration/tracer';
 
 // Create a tracer instance
 const tracer = new Tracer('./cache');
@@ -45,7 +45,7 @@ tracer.startWebServer('127.0.0.1', 5000);
 Interactive web interface for chatting with LLMs:
 
 ```typescript
-import { startPlaygroundServer } from './src/integration/playground';
+import { startPlaygroundServer } from 'agenthub/integration/playground';
 
 // Start the playground server
 startPlaygroundServer('127.0.0.1', 5001);

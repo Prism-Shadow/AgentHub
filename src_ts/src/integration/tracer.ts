@@ -216,94 +216,33 @@ export class Tracer {
     </html>
     `;
 
-    const JSON_VIEWER_TEMPLATE = `
+    const JSON_VIEWER_TEMPLATE = (
+      filename: string,
+      breadcrumb: string,
+      backUrl: string,
+      configHtml: string,
+      historyHtml: string,
+      numMessages: number
+    ) => `
     <!DOCTYPE html>
     <html>
     <head>
-        <title>{{filename}}</title>
+        <title>${filename}</title>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <script src="https://cdn.tailwindcss.com"></script>
     </head>
     <body class="bg-gray-50 min-h-screen">
         <div class="max-w-5xl mx-auto p-6">
-            <h1 class="text-3xl font-bold text-gray-900 mb-4">{{filename}}</h1>
+            <h1 class="text-3xl font-bold text-gray-900 mb-4">${filename}</h1>
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-                <p class="text-sm text-gray-600"><strong>Path:</strong> {{breadcrumb}}</p>
+                <p class="text-sm text-gray-600"><strong>Path:</strong> ${breadcrumb}</p>
             </div>
-            <a href="{{backUrl}}" class="inline-block mb-6 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md border border-gray-300 text-sm transition-colors">
+            <a href="${backUrl}" class="inline-block mb-6 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md border border-gray-300 text-sm transition-colors">
                 ← Back to Directory
             </a>
-            {{#if config}}
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">Configuration</h2>
-                {{#each configItems}}
-                    <div class="py-2 text-sm">
-                        <strong class="text-gray-900">{{key}}:</strong>
-                        <span class="text-gray-600">{{value}}</span>
-                    </div>
-                {{/each}}
-            </div>
-            {{/if}}
-            {{#each history}}
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 overflow-hidden">
-                <div class="bg-gray-50 border-b border-gray-200 p-4 cursor-pointer hover:bg-gray-100 transition-colors" onclick="toggleMessage({{@index}})">
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <span class="font-semibold text-sm uppercase {{#if (eq role 'user')}}text-blue-600{{else}}text-green-600{{/if}}">{{role}}</span>
-                            <span class="text-xs text-gray-500 ml-2">• {{content_items.length}} item(s)</span>
-                        </div>
-                        <span class="text-gray-400 transform transition-transform" id="icon-{{@index}}">▶</span>
-                    </div>
-                </div>
-                <div class="p-6 hidden" id="content-{{@index}}">
-                    {{#each content_items}}
-                        <div class="mb-4 pb-4 border-b border-gray-100 last:border-b-0 last:mb-0 last:pb-0">
-                            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{{type}}</div>
-                            {{#if (eq type 'text')}}
-                                <div class="bg-gray-50 p-4 rounded-md font-mono text-sm whitespace-pre-wrap text-gray-800">{{text}}</div>
-                            {{else if (eq type 'thinking')}}
-                                <div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 font-mono text-sm whitespace-pre-wrap text-gray-800">{{thinking}}</div>
-                            {{else if (eq type 'tool_call')}}
-                                <div class="bg-yellow-50 p-4 rounded-md border-l-4 border-yellow-500">
-                                    <div class="font-mono text-sm text-gray-800">{{name}}({{arguments}})</div>
-                                </div>
-                            {{else if (eq type 'tool_result')}}
-                                <div class="bg-green-50 p-4 rounded-md border-l-4 border-green-500">
-                                    <strong class="text-sm text-gray-900">Result:</strong> <span class="text-sm text-gray-700">{{result}}</span><br>
-                                    <strong class="text-sm text-gray-900">Call ID:</strong> <span class="text-sm text-gray-700">{{tool_call_id}}</span>
-                                </div>
-                            {{else if (eq type 'image_url')}}
-                                <div class="bg-gray-50 p-4 rounded-md">
-                                    <img src="{{image_url}}" class="max-w-xs max-h-48 rounded-md" alt="Preview">
-                                </div>
-                            {{/if}}
-                        </div>
-                    {{/each}}
-                    {{#if (or usage_metadata finish_reason)}}
-                    <div class="mt-4 pt-4 border-t border-gray-200 text-right text-xs text-gray-500">
-                        {{#if usage_metadata}}
-                            {{#if usage_metadata.prompt_tokens}}
-                                Prompt: {{usage_metadata.prompt_tokens}} tokens
-                            {{/if}}
-                            {{#if usage_metadata.thoughts_tokens}}
-                                • Thoughts: {{usage_metadata.thoughts_tokens}} tokens
-                            {{/if}}
-                            {{#if usage_metadata.response_tokens}}
-                                • Response: {{usage_metadata.response_tokens}} tokens
-                            {{/if}}
-                            {{#if usage_metadata.cached_tokens}}
-                                • Cached: {{usage_metadata.cached_tokens}} tokens
-                            {{/if}}
-                        {{/if}}
-                        {{#if finish_reason}}
-                            {{#if usage_metadata}} • {{/if}}Finish: {{finish_reason}}
-                        {{/if}}
-                    </div>
-                    {{/if}}
-                </div>
-            </div>
-            {{/each}}
+            ${configHtml}
+            ${historyHtml}
         </div>
         <script>
             function toggleMessage(idx) {
@@ -313,7 +252,7 @@ export class Tracer {
                 icon.classList.toggle('rotate-90');
             }
             // Expand all messages by default
-            const numMessages = {{history.length}};
+            const numMessages = ${numMessages};
             for (let i = 0; i < numMessages; i++) {
                 toggleMessage(i);
             }
@@ -322,26 +261,31 @@ export class Tracer {
     </html>
     `;
 
-    const TEXT_VIEWER_TEMPLATE = `
+    const TEXT_VIEWER_TEMPLATE = (
+      filename: string,
+      breadcrumb: string,
+      backUrl: string,
+      content: string
+    ) => `
     <!DOCTYPE html>
     <html>
     <head>
-        <title>{{filename}}</title>
+        <title>${filename}</title>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <script src="https://cdn.tailwindcss.com"></script>
     </head>
     <body class="bg-gray-50 min-h-screen">
         <div class="max-w-5xl mx-auto p-6">
-            <h1 class="text-3xl font-bold text-gray-900 mb-4">{{filename}}</h1>
+            <h1 class="text-3xl font-bold text-gray-900 mb-4">${filename}</h1>
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-                <p class="text-sm text-gray-600"><strong>Path:</strong> {{breadcrumb}}</p>
+                <p class="text-sm text-gray-600"><strong>Path:</strong> ${breadcrumb}</p>
             </div>
-            <a href="{{backUrl}}" class="inline-block mb-6 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md border border-gray-300 text-sm transition-colors">
+            <a href="${backUrl}" class="inline-block mb-6 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md border border-gray-300 text-sm transition-colors">
                 ← Back to Directory
             </a>
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 overflow-x-auto">
-                <pre class="font-mono text-sm whitespace-pre-wrap text-gray-800">{{content}}</pre>
+                <pre class="font-mono text-sm whitespace-pre-wrap text-gray-800">${content}</pre>
             </div>
         </div>
     </body>
@@ -388,27 +332,14 @@ export class Tracer {
                 value: typeof value === "object" ? JSON.stringify(value, null, 2) : String(value),
               }));
 
-            let html = JSON_VIEWER_TEMPLATE
-              .replace(/{{filename}}/g, path.basename(fullPath))
-              .replace(/{{breadcrumb}}/g, breadcrumb)
-              .replace(/{{backUrl}}/g, backUrl);
-
-            if (configItems.length > 0) {
-              const configSection = configItems
-                .map(
-                  (item) =>
+            const configHtml = configItems.length > 0
+              ? `<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                  <h2 class="text-xl font-semibold text-gray-900 mb-4">Configuration</h2>
+                  ${configItems.map((item) =>
                     `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong> <span class="text-gray-600">${item.value}</span></div>`
-                )
-                .join("");
-              html = html.replace(
-                "{{#if config}}",
-                '<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6"><h2 class="text-xl font-semibold text-gray-900 mb-4">Configuration</h2>' +
-                  configSection +
-                  "</div>"
-              );
-            } else {
-              html = html.replace(/{{#if config}}[\s\S]*?{{\/if}}/g, "");
-            }
+                  ).join("")}
+                </div>`
+              : "";
 
             const historyHtml = (data.history || [])
               .map((msg: UniMessage, idx: number) => {
@@ -475,17 +406,24 @@ export class Tracer {
               })
               .join("");
 
-            html = html
-              .replace(/{{#each history}}[\s\S]*?{{\/each}}/g, historyHtml)
-              .replace(/{{history.length}}/g, String(data.history?.length || 0));
+            const html = JSON_VIEWER_TEMPLATE(
+              path.basename(fullPath),
+              breadcrumb,
+              backUrl,
+              configHtml,
+              historyHtml,
+              data.history?.length || 0
+            );
 
             return res.send(html);
           } else {
             const content = fs.readFileSync(fullPath, "utf-8");
-            const html = TEXT_VIEWER_TEMPLATE.replace(/{{filename}}/g, path.basename(fullPath))
-              .replace(/{{breadcrumb}}/g, breadcrumb)
-              .replace(/{{backUrl}}/g, backUrl)
-              .replace(/{{content}}/g, this._escapeHtml(content));
+            const html = TEXT_VIEWER_TEMPLATE(
+              path.basename(fullPath),
+              breadcrumb,
+              backUrl,
+              this._escapeHtml(content)
+            );
 
             return res.send(html);
           }
