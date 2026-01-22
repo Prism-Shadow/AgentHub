@@ -37,7 +37,7 @@ async function checkEventIntegrity(event: UniEvent): Promise<void> {
   expect(event).toHaveProperty("finish_reason");
 
   expect(["user", "assistant"]).toContain(event.role);
-  expect(["delta", "stop"]).toContain(event.event_type);
+  expect(["start", "delta", "stop"]).toContain(event.event_type);
   expect(["stop", "length", "unknown", null]).toContain(event.finish_reason);
 
   for (const item of event.content_items) {
