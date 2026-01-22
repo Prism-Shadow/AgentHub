@@ -1,4 +1,4 @@
-![AgentHub](.github/header.png)
+![AgentHub](.github/images/header.png)
 
 # AgentHub SDK - Unified and Precise LLM SDK
 
@@ -361,6 +361,8 @@ Example UniEvent:
 
 ## Tracing LLM Executions
 
+![Tracer Screenshot](.github/images/tracer.png)
+
 We provide a tracing feature to help you monitor and debug your LLM executions. You can enable tracing by setting the `trace_id` parameter to a unique identifier in the `config` object.
 
 ```python
@@ -384,6 +386,8 @@ tracer.start_web_server(host="127.0.0.1", port=5000, debug=False)
 Then you can view the tracing output in the dashboard at `http://localhost:5000/`.
 
 ## LLM Playground
+
+![Playground Screenshot](.github/images/playground.png)
 
 We provide a LLM playground to help you test your LLM models.
 
