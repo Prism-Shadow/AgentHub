@@ -29,6 +29,7 @@ import {
   UniEvent,
   UniMessage,
   UsageMetadata,
+  ModelClientConfig,
 } from "../types";
 
 /**
@@ -41,15 +42,11 @@ export class GPT5_2Client extends LLMClient {
   /**
    * Initialize GPT-5.2 client with model and API key.
    */
-  constructor(
-    model: string,
-    apiKey?: string | null,
-    baseUrl?: string | null
-  ) {
+  constructor(config: ModelClientConfig) {
     super();
-    this._model = model;
-    const key = apiKey || process.env.OPENAI_API_KEY || undefined;
-    const url = baseUrl || process.env.OPENAI_BASE_URL || undefined;
+    this._model = config.model;
+    const key = config.apiKey || process.env.OPENAI_API_KEY || undefined;
+    const url = config.baseUrl || process.env.OPENAI_BASE_URL || undefined;
     this._client = new OpenAI({ apiKey: key, baseURL: url });
   }
 

@@ -18,7 +18,12 @@ import { Claude4_5Client } from "./claude4_5";
 import { GPT5_2Client } from "./gpt5_2";
 import { GLM4_7Client } from "./glm4_7";
 import { Qwen3Client } from "./qwen3";
-import { UniConfig, UniEvent, UniMessage } from "./types";
+import {
+  UniConfig,
+  UniEvent,
+  UniMessage,
+  AutoLLMClientConfig,
+} from "./types";
 
 /**
  * Auto-routing LLM client that dispatches to appropriate model-specific client.
@@ -32,19 +37,16 @@ export class AutoLLMClient extends LLMClient {
   /**
    * Initialize AutoLLMClient with a specific model.
    *
-   * @param model - Model identifier (determines which client to use)
-   * @param apiKey - Optional API key
-   * @param baseUrl - Optional base URL for API requests
-   * @param clientType - Optional client type override
+   * @param config - Configuration object with model, apiKey, baseUrl, and clientType
    */
-  constructor(
-    model: string,
-    apiKey?: string,
-    baseUrl?: string,
-    clientType?: string
-  ) {
+  constructor(config: AutoLLMClientConfig) {
     super();
-    this._client = this._createClientForModel(model, apiKey, baseUrl, clientType);
+    this._client = this._createClientForModel(
+      config.model,
+      config.apiKey,
+      config.baseUrl,
+      config.clientType
+    );
   }
 
   /**
@@ -66,15 +68,15 @@ export class AutoLLMClient extends LLMClient {
     clientType = clientType || process.env.CLIENT_TYPE || model.toLowerCase();
 
     if (clientType.includes("gemini-3")) {
-      return new Gemini3Client(model, apiKey, baseUrl);
+      return new Gemini3Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("claude") && clientType.includes("4-5")) {
-      return new Claude4_5Client(model, apiKey, baseUrl);
+      return new Claude4_5Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("gpt-5.1") || clientType.includes("gpt-5.2")) {
-      return new GPT5_2Client(model, apiKey, baseUrl);
+      return new GPT5_2Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("glm-4.7")) {
-      return new GLM4_7Client(model, apiKey, baseUrl);
+      return new GLM4_7Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("qwen3")) {
-      return new Qwen3Client(model, apiKey, baseUrl);
+      return new Qwen3Client({ model, apiKey, baseUrl });
     } else {
       throw new Error(
         `${clientType} is not supported. ` +

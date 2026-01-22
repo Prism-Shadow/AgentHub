@@ -13,4 +13,9 @@
 // limitations under the License.
 
 export { AutoLLMClient } from "./autoClient";
-export { PromptCaching, ThinkingLevel } from "./types";
+export {
+  PromptCaching,
+  ThinkingLevel,
+  AutoLLMClientConfig,
+  ModelClientConfig,
+} from "./types";

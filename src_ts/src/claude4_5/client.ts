@@ -29,6 +29,7 @@ import {
   UniEvent,
   UniMessage,
   UsageMetadata,
+  ModelClientConfig,
 } from "../types";
 
 /**
@@ -41,15 +42,11 @@ export class Claude4_5Client extends LLMClient {
   /**
    * Initialize Claude 4.5 client with model and API key.
    */
-  constructor(
-    model: string,
-    apiKey?: string | null,
-    baseUrl?: string | null
-  ) {
+  constructor(config: ModelClientConfig) {
     super();
-    this._model = model;
-    const key = apiKey || process.env.ANTHROPIC_API_KEY || undefined;
-    const url = baseUrl || process.env.ANTHROPIC_BASE_URL || undefined;
+    this._model = config.model;
+    const key = config.apiKey || process.env.ANTHROPIC_API_KEY || undefined;
+    const url = config.baseUrl || process.env.ANTHROPIC_BASE_URL || undefined;
 
     this._client = new Anthropic({
       apiKey: key,

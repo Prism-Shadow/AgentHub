@@ -455,10 +455,10 @@ export function createChatApp(): Express {
     try {
       if (!sessionClients.has(session_id)) {
         const model = config.model || "gemini-3-flash-preview";
-        sessionClients.set(session_id, new AutoLLMClient(model));
+        sessionClients.set(session_id, new AutoLLMClient({ model }));
       }
 
-      const client = sessionClients.get(session_id)!;
+      const client = sessionClients.get(session_id)!;;
 
       for await (const event of client.streamingResponseStateful(
         message,

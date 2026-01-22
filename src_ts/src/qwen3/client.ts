@@ -29,6 +29,7 @@ import {
   UniEvent,
   UniMessage,
   UsageMetadata,
+  ModelClientConfig,
 } from "../types";
 
 /**
@@ -41,16 +42,12 @@ export class Qwen3Client extends LLMClient {
   /**
    * Initialize Qwen3 client with model and API key.
    */
-  constructor(
-    model: string,
-    apiKey?: string | null,
-    baseUrl?: string | null
-  ) {
+  constructor(config: ModelClientConfig) {
     super();
-    this._model = model;
-    const key = apiKey || process.env.QWEN3_API_KEY || undefined;
+    this._model = config.model;
+    const key = config.apiKey || process.env.QWEN3_API_KEY || undefined;
     const url =
-      baseUrl || process.env.QWEN3_BASE_URL || "http://127.0.0.1:8000/v1/";
+      config.baseUrl || process.env.QWEN3_BASE_URL || "http://127.0.0.1:8000/v1/";
     this._client = new OpenAI({ apiKey: key, baseURL: url });
   }
 

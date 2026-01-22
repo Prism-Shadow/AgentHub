@@ -19,7 +19,14 @@ make test     # Run tests
 import { AutoLLMClient } from 'agenthub';
 
 // Initialize with model name
-const client = new AutoLLMClient('gemini-3-flash-preview');
+const client = new AutoLLMClient({ model: 'gemini-3-flash-preview' });
+
+// With API key and base URL
+const client = new AutoLLMClient({
+  model: 'claude-sonnet-4-5-20250929',
+  apiKey: 'your-api-key',
+  baseUrl: 'https://api.anthropic.com'
+});
 ```
 
 ### Tracer Usage
