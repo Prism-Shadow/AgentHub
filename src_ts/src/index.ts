@@ -14,4 +14,3 @@
 
 export { AutoLLMClient } from "./autoClient";
 export { PromptCaching, ThinkingLevel } from "./types";
-export { GPT5_2Client } from "./gpt5_2";

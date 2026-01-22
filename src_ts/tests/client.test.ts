@@ -114,10 +114,13 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
       ];
       const config: UniConfig = {
         max_tokens: 8192,
-        temperature: 0.7,
         thinking_summary: true,
         thinking_level: ThinkingLevel.LOW,
       };
+
+      if (!model.includes("gpt-5.2")) {
+        config.temperature = 0.7;
+      }
 
       let text = "";
       for await (const event of client.streamingResponse(
