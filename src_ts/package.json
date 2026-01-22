@@ -1,13 +1,24 @@
 {
-  "name": "agenthub",
+  "name": "agenthub-typescript",
   "version": "0.1.0",
   "description": "AgentHub package",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": "./dist/index.js",
+    "./integration/tracer": "./dist/integration/tracer.js",
+    "./integration/playground": "./dist/integration/playground.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "eslint src --ext .ts",
     "start": "node dist/index.js",
-    "test": "jest"
+    "test": "jest",
+    "tracer": "tsx examples/tracerExample.ts",
+    "playground": "tsx examples/playgroundExample.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
@@ -25,6 +36,28 @@
     "eslint": "^9.0.0",
     "jest": "^30.2.0",
     "ts-jest": "^29.4.6",
-    "typescript": "^5.7.0"
-  }
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "directories": {
+    "example": "examples",
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Prism-Shadow/AgentHub.git"
+  },
+  "keywords": [
+    "agent",
+    "llm",
+    "gemini",
+    "claude",
+    "gpt"
+  ],
+  "author": "PrismShadow",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/Prism-Shadow/AgentHub/issues"
+  },
+  "homepage": "https://github.com/Prism-Shadow/AgentHub#readme"
 }

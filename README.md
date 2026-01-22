@@ -37,9 +37,18 @@ See [src_py/README.md](src_py/README.md) for comprehensive usage examples and AP
 
 TypeScript sources live in `src_ts/`.
 
+Install from npm:
+
+```bash
+npm install agenthub-typescript
+```
+
+Build from source:
+
 ```bash
 cd src_ts
-make
+make install
+make build
 npm run start
 ```
 
