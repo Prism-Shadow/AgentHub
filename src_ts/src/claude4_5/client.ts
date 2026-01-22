@@ -116,7 +116,7 @@ export class Claude4_5Client extends LLMClient {
     }
 
     if (config.thinking_level !== undefined) {
-      claudeConfig.temperature = 1.0;
+      claudeConfig.temperature = 1.0; // `temperature` may only be set to 1 when thinking is enabled
       claudeConfig.thinking = this._convertThinkingLevelToBudget(
         config.thinking_level
       );
