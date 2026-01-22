@@ -28,7 +28,7 @@ jobs:
 
     concurrency:
       group: ci-task-lock
-      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+      cancel-in-progress: false
 
     steps:
       - name: Checkout
