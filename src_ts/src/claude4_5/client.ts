@@ -60,10 +60,9 @@ export class Claude4_5Client extends LLMClient {
   /**
    * Convert ThinkingLevel enum to Claude's budget_tokens.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private _convertThinkingLevelToBudget(
     thinkingLevel: ThinkingLevel
-  ): any {
+  ): { type: string; budget_tokens?: number } {
     const mapping: { [key: string]: { type: string; budget_tokens?: number } } = {
       [ThinkingLevel.NONE]: { type: "disabled" },
       [ThinkingLevel.LOW]: { type: "enabled", budget_tokens: 1024 },
@@ -208,6 +207,7 @@ export class Claude4_5Client extends LLMClient {
     const claudeEventType = modelOutput.type;
     if (claudeEventType === "content_block_start") {
       eventType = "start";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const block = (modelOutput as any).content_block;
       if (block.type === "tool_use") {
         contentItems.push({
@@ -219,6 +219,7 @@ export class Claude4_5Client extends LLMClient {
       }
     } else if (claudeEventType === "content_block_delta") {
       eventType = "delta";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const delta = (modelOutput as any).delta;
       if (delta.type === "thinking_delta") {
         contentItems.push({ type: "thinking", thinking: delta.thinking });
@@ -242,6 +243,7 @@ export class Claude4_5Client extends LLMClient {
       eventType = "stop";
     } else if (claudeEventType === "message_start") {
       eventType = "start";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const message = (modelOutput as any).message;
       if (message.usage) {
         usageMetadata = {
@@ -253,6 +255,7 @@ export class Claude4_5Client extends LLMClient {
       }
     } else if (claudeEventType === "message_delta") {
       eventType = "stop";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const delta = (modelOutput as any).delta;
       if (delta.stop_reason) {
         const stopReasonMapping: { [key: string]: FinishReason } = {
@@ -264,6 +267,7 @@ export class Claude4_5Client extends LLMClient {
         finishReason = stopReasonMapping[delta.stop_reason] || "unknown";
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const usage = (modelOutput as any).usage;
       if (usage) {
         usageMetadata = {
@@ -313,12 +317,13 @@ export class Claude4_5Client extends LLMClient {
         if (lastUserMessage && Array.isArray(lastUserMessage.content)) {
           const lastContentItem =
             lastUserMessage.content[lastUserMessage.content.length - 1];
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (lastContentItem as any).cache_control = {
             type: "ephemeral",
             ttl: promptCaching === PromptCaching.ENHANCE ? "1h" : "5m",
           };
         }
-      } catch (error) {
+      } catch {
         // Ignore errors in cache_control setup
       }
     }
@@ -330,7 +335,7 @@ export class Claude4_5Client extends LLMClient {
       tool_call_id?: string;
     } = {};
     const partialUsage: {
-      prompt_tokens?: number;
+      prompt_tokens?: number | null;
       cached_tokens?: number | null;
     } = {};
 
@@ -390,6 +395,7 @@ export class Claude4_5Client extends LLMClient {
 
         if (
           partialUsage.prompt_tokens !== undefined &&
+          partialUsage.prompt_tokens !== null &&
           uniEvent.usage_metadata !== null
         ) {
           yield {
