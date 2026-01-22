@@ -19,6 +19,7 @@ const IMAGE =
   "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg";
 
 const AVAILABLE_VISION_MODELS: string[] = [];
+const AVAILABLE_TEXT_MODELS: string[] = [];
 
 if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
   AVAILABLE_VISION_MODELS.push("gemini-3-flash-preview");
@@ -32,7 +33,15 @@ if (process.env.OPENAI_API_KEY) {
   AVAILABLE_VISION_MODELS.push("gpt-5.2");
 }
 
-const AVAILABLE_MODELS = AVAILABLE_VISION_MODELS;
+if (process.env.GLM_API_KEY) {
+  AVAILABLE_TEXT_MODELS.push("glm-4.7");
+}
+
+if (process.env.QWEN3_API_KEY) {
+  AVAILABLE_TEXT_MODELS.push("qwen3");
+}
+
+const AVAILABLE_MODELS = [...AVAILABLE_VISION_MODELS, ...AVAILABLE_TEXT_MODELS];
 
 async function createClient(model: string): Promise<AutoLLMClient> {
   return new AutoLLMClient(model);

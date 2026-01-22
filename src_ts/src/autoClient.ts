@@ -16,6 +16,8 @@ import { LLMClient } from "./baseClient";
 import { Gemini3Client } from "./gemini3";
 import { Claude4_5Client } from "./claude4_5";
 import { GPT5_2Client } from "./gpt5_2";
+import { GLM4_7Client } from "./glm4_7";
+import { Qwen3Client } from "./qwen3";
 import { UniConfig, UniEvent, UniMessage } from "./types";
 
 /**
@@ -70,15 +72,9 @@ export class AutoLLMClient extends LLMClient {
     } else if (clientType.includes("gpt-5.2")) {
       return new GPT5_2Client(model, apiKey, baseUrl);
     } else if (clientType.includes("glm-4.7")) {
-      throw new Error(
-        "GLM-4.7 client is not implemented in TypeScript yet. " +
-          "Please implement it following the Python version."
-      );
+      return new GLM4_7Client(model, apiKey, baseUrl);
     } else if (clientType.includes("qwen3")) {
-      throw new Error(
-        "Qwen3 client is not implemented in TypeScript yet. " +
-          "Please implement it following the Python version."
-      );
+      return new Qwen3Client(model, apiKey, baseUrl);
     } else {
       throw new Error(
         `${clientType} is not supported. ` +
