@@ -1,12 +1,12 @@
 [project]
 name = "agenthub-python"
-version = "0.1.1"
-description = "AgentHub package"
+version = "0.2.0"
+description = "AgentHub is the only SDK you need to connect to state-of-the-art LLMs"
 requires-python = ">=3.11"
-dependencies = ["google-genai>=1.5.0", "httpx[socks]", "anthropic>=0.40.0", "flask>=3.0.0", "openai>=1.0.0"]
+dependencies = ["google-genai>=1.5.0", "anthropic>=0.40.0", "flask>=3.0.0", "openai>=1.0.0"]
 
 [dependency-groups]
-dev = ["pytest>=8.4.2", "pytest-asyncio>=0.23.0", "ruff>=0.14.3"]
+dev = ["httpx[socks]", "pytest>=8.4.2", "pytest-asyncio>=0.23.0", "ruff>=0.14.3"]
 
 [build-system]
 requires = ["uv_build>=0.9.16,<0.10.0"]

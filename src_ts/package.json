@@ -1,7 +1,7 @@
 {
   "name": "@prismshadow/agenthub",
-  "version": "0.1.1",
-  "description": "AgentHub package",
+  "version": "0.2.0",
+  "description": "AgentHub is the only SDK you need to connect to state-of-the-art LLMs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

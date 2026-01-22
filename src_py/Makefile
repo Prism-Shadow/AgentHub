@@ -10,7 +10,7 @@ lint:
 	uvx ruff format --check
 
 build:
-	uvx build
+	uv build
 
 test:
 	uv pip install -e .[dev]

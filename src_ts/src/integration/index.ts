@@ -11,15 +11,3 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-/**
- * Integration module for AgentHub.
- *
- * This module provides tools for conversation tracing and interactive playground.
- */
-
-export { Tracer } from "./tracer";
-export {
-  createChatApp,
-  startPlaygroundServer,
-} from "./playground";
