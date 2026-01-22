@@ -417,6 +417,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
     60000
   );
 });
+
 describe.each(AVAILABLE_VISION_MODELS)("Vision test for %s", (model) => {
   test(
     "should handle image understanding",
@@ -453,7 +454,7 @@ describe.each(AVAILABLE_VISION_MODELS)("Vision test for %s", (model) => {
     },
     60000
   );
-);
+});
 
 test("should reject unknown model", () => {
   expect(() => new AutoLLMClient("unknown-model")).toThrow(
