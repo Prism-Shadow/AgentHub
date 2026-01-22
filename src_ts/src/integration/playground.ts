@@ -482,12 +482,12 @@ export function createChatApp(): Express {
     }
   });
 
-  app.post("/api/clear", (req: Request, res: Response) => {
+  app.post("/api/clear", async (req: Request, res: Response) => {
     const { session_id } = req.body as { session_id: string };
 
     if (sessionClients.has(session_id)) {
       const client = sessionClients.get(session_id)!;
-      client.clearHistory();
+      await client.clearHistory();
       sessionClients.delete(session_id);
     }
 

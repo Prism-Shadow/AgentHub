@@ -228,14 +228,14 @@ class Gemini3Client(LLMClient):
         gemini_config = await self.transform_uni_config_to_model_config(config)
 
         # Use unified message conversion
-        contents = self.transform_uni_message_to_model_input(messages)
+        contents = await self.transform_uni_message_to_model_input(messages)
 
         # Stream generate
         response_stream = await self._client.aio.models.generate_content_stream(
             model=self._model, contents=contents, config=gemini_config
         )
         async for chunk in response_stream:
-            event = self.transform_model_output_to_uni_event(chunk)
+            event = await self.transform_model_output_to_uni_event(chunk)
             for item in event["content_items"]:
                 if item["type"] == "tool_call":
                     # gemini 3 does not support partial tool call, mock a partial tool call event

@@ -170,7 +170,7 @@ export abstract class LLMClient {
   /**
    * Clear the message history.
    */
-  clearHistory(): void {
+  async clearHistory(): Promise<void> {
     this._history = [];
   }
 
@@ -179,7 +179,7 @@ export abstract class LLMClient {
    *
    * @returns Copy of the current message history
    */
-  getHistory(): UniMessage[] {
+  async getHistory(): Promise<UniMessage[]> {
     return [...this._history];
   }
 }

@@ -146,14 +146,14 @@ export class AutoLLMClient extends LLMClient {
   /**
    * Clear history in the underlying client.
    */
-  clearHistory(): void {
-    this._client.clearHistory();
+  async clearHistory(): Promise<void> {
+    await this._client.clearHistory();
   }
 
   /**
    * Get history from the underlying client.
    */
-  getHistory(): UniMessage[] {
-    return this._client.getHistory();
+  async getHistory(): Promise<UniMessage[]> {
+    return await this._client.getHistory();
   }
 }

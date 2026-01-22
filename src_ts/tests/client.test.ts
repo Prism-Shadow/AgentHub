@@ -201,7 +201,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
         await checkEventIntegrity(event);
       }
 
-      expect(client.getHistory().length).toBe(2);
+      expect((await client.getHistory()).length).toBe(2);
 
       const message2: UniMessage = {
         role: "user",
@@ -221,7 +221,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
       }
 
       expect(text.toLowerCase()).toContain("alice");
-      expect(client.getHistory().length).toBe(4);
+      expect((await client.getHistory()).length).toBe(4);
     },
     60000
   );
@@ -243,10 +243,10 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
         // consume the stream
       }
 
-      expect(client.getHistory().length).toBeGreaterThan(0);
+      expect((await client.getHistory()).length).toBeGreaterThan(0);
 
-      client.clearHistory();
-      expect(client.getHistory().length).toBe(0);
+      await client.clearHistory();
+      expect((await client.getHistory()).length).toBe(0);
     },
     60000
   );
