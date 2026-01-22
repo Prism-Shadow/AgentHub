@@ -13,7 +13,7 @@
 
 [![Twitter](https://img.shields.io/twitter/follow/prismshadow_ai)](https://twitter.com/prismshadow_ai)
 
-AgentHub SDK is the only SDK you need to connect to state-of-the-art LLMs (GPT-5/Claude 4.5/Gemini 3).
+AgentHub SDK is the only SDK you need to connect to state-of-the-art LLMs (GPT-5.2/Claude 4.5/Gemini 3).
 
 https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 
