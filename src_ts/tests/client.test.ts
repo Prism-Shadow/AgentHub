@@ -18,7 +18,10 @@ import { ThinkingLevel, UniMessage, UniConfig, UniEvent } from "../src/types";
 const IMAGE =
   "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg";
 
+const AVAILABLE_TEXT_MODELS: string[] = [];
 const AVAILABLE_VISION_MODELS: string[] = [];
+const OPENROUTER_MODELS: string[] = [];
+const SILICONFLOW_MODELS: string[] = [];
 
 if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
   AVAILABLE_VISION_MODELS.push("gemini-3-flash-preview");
@@ -32,10 +35,43 @@ if (process.env.OPENAI_API_KEY) {
   AVAILABLE_VISION_MODELS.push("gpt-5.2");
 }
 
-const AVAILABLE_MODELS = AVAILABLE_VISION_MODELS;
+if (process.env.GLM_API_KEY) {
+  AVAILABLE_TEXT_MODELS.push("glm-4.7");
+}
+
+if (process.env.OPENROUTER_API_KEY) {
+  OPENROUTER_MODELS.push("z-ai/glm-4.7");
+  OPENROUTER_MODELS.push("qwen/qwen3-30b-a3b-thinking-2507");
+}
+
+if (process.env.SILICONFLOW_API_KEY) {
+  SILICONFLOW_MODELS.push("Pro/zai-org/GLM-4.7");
+  SILICONFLOW_MODELS.push("Qwen/Qwen3-8B");
+}
+
+const AVAILABLE_MODELS = [
+  ...AVAILABLE_VISION_MODELS,
+  ...AVAILABLE_TEXT_MODELS,
+  ...OPENROUTER_MODELS,
+  ...SILICONFLOW_MODELS,
+];
 
 async function createClient(model: string): Promise<AutoLLMClient> {
-  return new AutoLLMClient(model);
+  let apiKey: string | undefined;
+  let baseUrl: string | undefined;
+
+  if (OPENROUTER_MODELS.includes(model)) {
+    apiKey = process.env.OPENROUTER_API_KEY;
+    baseUrl = "https://openrouter.ai/api/v1";
+  } else if (SILICONFLOW_MODELS.includes(model)) {
+    apiKey = process.env.SILICONFLOW_API_KEY;
+    baseUrl = "https://api.siliconflow.cn/v1";
+  } else {
+    apiKey = undefined;
+    baseUrl = undefined;
+  }
+
+  return new AutoLLMClient(model, apiKey, baseUrl);
 }
 
 async function checkEventIntegrity(event: UniEvent): Promise<void> {
@@ -99,7 +135,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
 
       expect(text).toContain("5");
     },
-    30000
+    60000
   );
 
   test(
@@ -145,7 +181,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
         expect(text).toContain("5");
       }
     },
-    30000
+    60000
   );
 
   test(
@@ -212,7 +248,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
       client.clearHistory();
       expect(client.getHistory().length).toBe(0);
     },
-    30000
+    60000
   );
 
   test(
@@ -249,7 +285,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
         }
       }
     },
-    30000
+    60000
   );
 
   test(
@@ -348,50 +384,6 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
     },
     60000
   );
-});
-
-describe.each(AVAILABLE_VISION_MODELS)(
-  "Vision model tests for %s",
-  (model) => {
-    test(
-      "should handle image understanding",
-      async () => {
-        const client = await createClient(model);
-        const config: UniConfig = {};
-        const messages: UniMessage[] = [
-          {
-            role: "user",
-            content_items: [
-              { type: "text", text: "What's in this image?" },
-              { type: "image_url", image_url: IMAGE },
-            ],
-          },
-        ];
-
-        let text = "";
-        for await (const event of client.streamingResponse(
-          messages,
-          config
-        )) {
-          await checkEventIntegrity(event);
-          for (const item of event.content_items) {
-            if (item.type === "text") {
-              text += item.text;
-            }
-          }
-        }
-
-        expect(
-          text.toLowerCase().includes("flower") ||
-            text.toLowerCase().includes("narcissus")
-        ).toBe(true);
-      },
-      30000
-    );
-  }
-);
-
-describe.each(AVAILABLE_MODELS)("System prompt tests for %s", (model) => {
   test(
     "should handle system prompt",
     async () => {
@@ -422,7 +414,45 @@ describe.each(AVAILABLE_MODELS)("System prompt tests for %s", (model) => {
 
       expect(text.toLowerCase()).toContain("meow");
     },
-    30000
+    60000
+  );
+});
+
+describe.each(AVAILABLE_VISION_MODELS)("Vision test for %s", (model) => {
+  test(
+    "should handle image understanding",
+    async () => {
+      const client = await createClient(model);
+      const config: UniConfig = {};
+      const messages: UniMessage[] = [
+        {
+          role: "user",
+          content_items: [
+            { type: "text", text: "What's in this image?" },
+            { type: "image_url", image_url: IMAGE },
+          ],
+        },
+      ];
+
+      let text = "";
+      for await (const event of client.streamingResponse(
+        messages,
+        config
+      )) {
+        await checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
+          }
+        }
+      }
+
+      expect(
+        text.toLowerCase().includes("flower") ||
+          text.toLowerCase().includes("narcissus")
+      ).toBe(true);
+    },
+    60000
   );
 });
 
