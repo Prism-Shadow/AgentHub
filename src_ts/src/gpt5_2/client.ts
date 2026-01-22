@@ -274,13 +274,17 @@ export class GPT5_2Client extends LLMClient {
         completed: "stop",
         incomplete: "length",
       };
-      finishReason = typeof response.status === "string" ? finishReasonMapping[response.status] || "unknown" : "unknown";
-      usageMetadata = {
-        prompt_tokens: typeof response.usage?.input_tokens === "number" ? response.usage.input_tokens : null,
-        thoughts_tokens: typeof response.usage?.output_tokens_details?.reasoning_tokens === "number" ? response.usage.output_tokens_details.reasoning_tokens : null,
-        response_tokens: typeof response.usage?.output_tokens === "number" ? response.usage.output_tokens : null,
-        cached_tokens: typeof response.usage?.input_tokens_details?.cached_tokens === "number" ? response.usage.input_tokens_details.cached_tokens : null,
-      };
+      if (response.status) {
+        finishReason = finishReasonMapping[response.status]
+      }
+      if (response.usage) {
+        usageMetadata = {
+          prompt_tokens: response.usage.input_tokens,
+          thoughts_tokens: response.usage.output_tokens_details.reasoning_tokens,
+          response_tokens: response.usage.output_tokens,
+          cached_tokens: response.usage.input_tokens_details.cached_tokens,
+        };
+      }
     } else if (
       [
         "response.created",

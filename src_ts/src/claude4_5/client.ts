@@ -208,8 +208,7 @@ export class Claude4_5Client extends LLMClient {
     const claudeEventType = modelOutput.type;
     if (claudeEventType === "content_block_start") {
       eventType = "start";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const block = (modelOutput as any).content_block;
+      const block = modelOutput.content_block;
       if (block.type === "tool_use") {
         contentItems.push({
           type: "partial_tool_call",
@@ -220,8 +219,7 @@ export class Claude4_5Client extends LLMClient {
       }
     } else if (claudeEventType === "content_block_delta") {
       eventType = "delta";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const delta = (modelOutput as any).delta;
+      const delta = modelOutput.delta;
       if (delta.type === "thinking_delta") {
         contentItems.push({ type: "thinking", thinking: delta.thinking });
       } else if (delta.type === "text_delta") {
@@ -244,8 +242,7 @@ export class Claude4_5Client extends LLMClient {
       eventType = "stop";
     } else if (claudeEventType === "message_start") {
       eventType = "start";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const message = (modelOutput as any).message;
+      const message = modelOutput.message;
       if (message.usage) {
         usageMetadata = {
           prompt_tokens: message.usage.input_tokens,
@@ -256,8 +253,7 @@ export class Claude4_5Client extends LLMClient {
       }
     } else if (claudeEventType === "message_delta") {
       eventType = "stop";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const delta = (modelOutput as any).delta;
+      const delta = modelOutput.delta;
       if (delta.stop_reason) {
         const stopReasonMapping: { [key: string]: FinishReason } = {
           end_turn: "stop",
@@ -268,8 +264,7 @@ export class Claude4_5Client extends LLMClient {
         finishReason = stopReasonMapping[delta.stop_reason] || "unknown";
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const usage = (modelOutput as any).usage;
+      const usage = modelOutput.usage;
       if (usage) {
         usageMetadata = {
           prompt_tokens: null,
