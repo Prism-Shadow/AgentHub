@@ -56,7 +56,7 @@ const AVAILABLE_MODELS = [
   ...SILICONFLOW_MODELS,
 ];
 
-async function createClient(model: string): Promise<AutoLLMClient> {
+function createClient(model: string): AutoLLMClient {
   let apiKey: string | undefined;
   let baseUrl: string | undefined;
 
@@ -74,7 +74,7 @@ async function createClient(model: string): Promise<AutoLLMClient> {
   return new AutoLLMClient({ model, apiKey, baseUrl });
 }
 
-async function checkEventIntegrity(event: UniEvent): Promise<void> {
+function checkEventIntegrity(event: UniEvent): void {
   expect(event).toHaveProperty("role");
   expect(event).toHaveProperty("event_type");
   expect(event).toHaveProperty("usage_metadata");
@@ -111,7 +111,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should stream basic response",
     async () => {
-      const client = await createClient(model);
+      const client = createClient(model);
       const messages: UniMessage[] = [
         {
           role: "user",
@@ -121,11 +121,11 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
       const config: UniConfig = {};
 
       let text = "";
-      for await (const event of client.streamingResponse(
+      for await (const event of client.streamingResponse({
         messages,
-        config
-      )) {
-        await checkEventIntegrity(event);
+        config,
+      })) {
+        checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
             text += item.text;
@@ -141,7 +141,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should stream response with all parameters",
     async () => {
-      const client = await createClient(model);
+      const client = createClient(model);
       const messages: UniMessage[] = [
         {
           role: "user",
@@ -170,7 +170,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
           messages,
           config,
         })) {
-          await checkEventIntegrity(event);
+          checkEventIntegrity(event);
           for (const item of event.content_items) {
             if (item.type === "text") {
               text += item.text;
@@ -187,7 +187,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should handle stateful streaming",
     async () => {
-      const client = await createClient(model);
+      const client = createClient(model);
       const config: UniConfig = {};
 
       const message1: UniMessage = {
@@ -198,7 +198,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
         message: message1,
         config,
       })) {
-        await checkEventIntegrity(event);
+        checkEventIntegrity(event);
       }
 
       expect(client.getHistory().length).toBe(2);
@@ -212,7 +212,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
         message: message2,
         config,
       })) {
-        await checkEventIntegrity(event);
+        checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
             text += item.text;
@@ -229,7 +229,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should clear history",
     async () => {
-      const client = await createClient(model);
+      const client = createClient(model);
       const message: UniMessage = {
         role: "user",
         content_items: [{ type: "text", text: "Hello" }],
@@ -254,7 +254,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should concatenate events to message",
     async () => {
-      const client = await createClient(model);
+      const client = createClient(model);
       const messages: UniMessage[] = [
         {
           role: "user",
@@ -291,7 +291,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should handle tool use",
     async () => {
-      const client = await createClient(model);
+      const client = createClient(model);
 
       const weatherTool = {
         name: "get_weather",
@@ -328,7 +328,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
         message: message1,
         config,
       })) {
-        await checkEventIntegrity(event);
+        checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "partial_tool_call") {
             if (!partialToolCallData.name) {
@@ -372,7 +372,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
         message: message2,
         config,
       })) {
-        await checkEventIntegrity(event);
+        checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
             text += item.text;
@@ -387,7 +387,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
   test(
     "should handle system prompt",
     async () => {
-      const client = await createClient(model);
+      const client = createClient(model);
       const messages: UniMessage[] = [
         {
           role: "user",
@@ -404,7 +404,7 @@ describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
         messages,
         config,
       })) {
-        await checkEventIntegrity(event);
+        checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
             text += item.text;
@@ -422,7 +422,7 @@ describe.each(AVAILABLE_VISION_MODELS)("Vision test for %s", (model) => {
   test(
     "should handle image understanding",
     async () => {
-      const client = await createClient(model);
+      const client = createClient(model);
       const config: UniConfig = {};
       const messages: UniMessage[] = [
         {
@@ -439,7 +439,7 @@ describe.each(AVAILABLE_VISION_MODELS)("Vision test for %s", (model) => {
         messages,
         config,
       })) {
-        await checkEventIntegrity(event);
+        checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "text") {
             text += item.text;

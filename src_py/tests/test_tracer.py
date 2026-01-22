@@ -24,9 +24,6 @@ from agenthub import AutoLLMClient
 from agenthub.integration.tracer import Tracer
 
 
-GEMINI_AVAILABLE = bool(os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
-
-
 @pytest.fixture
 def temp_cache_dir():
     """Create a temporary cache directory for testing."""
@@ -47,6 +44,7 @@ def test_save_history(temp_cache_dir):
     tracer = Tracer(cache_dir=temp_cache_dir)
 
     # Create sample history
+    model = "fake-model"
     history = [
         {"role": "user", "content_items": [{"type": "text", "text": "Hello"}]},
         {"role": "assistant", "content_items": [{"type": "text", "text": "Hi there!"}]},
@@ -55,7 +53,7 @@ def test_save_history(temp_cache_dir):
     # Save history
     file_id = "test/conversation"
     config = {"temperature": 0.7}
-    tracer.save_history(history, file_id, config)
+    tracer.save_history(model, history, file_id, config)
 
     # Verify files exist (both JSON and TXT)
     json_path = Path(temp_cache_dir) / (file_id + ".json")
@@ -85,11 +83,12 @@ def test_save_history_creates_directories(temp_cache_dir):
     """Test that saving history creates necessary directories."""
     tracer = Tracer(cache_dir=temp_cache_dir)
 
+    model = "fake-model"
     history = [{"role": "user", "content_items": [{"type": "text", "text": "Test"}]}]
 
     file_id = "agent1/subfolder/conversation"
     config = {}
-    tracer.save_history(history, file_id, config)
+    tracer.save_history(model, history, file_id, config)
 
     json_path = Path(temp_cache_dir) / (file_id + ".json")
     assert json_path.exists()
@@ -100,6 +99,7 @@ def test_save_history_overwrites_existing(temp_cache_dir):
     """Test that saving history overwrites existing files."""
     tracer = Tracer(cache_dir=temp_cache_dir)
 
+    model = "fake-model"
     history1 = [{"role": "user", "content_items": [{"type": "text", "text": "First message"}]}]
 
     history2 = [
@@ -112,14 +112,14 @@ def test_save_history_overwrites_existing(temp_cache_dir):
     config = {}
 
     # Save first history
-    tracer.save_history(history1, file_id, config)
+    tracer.save_history(model, history1, file_id, config)
     txt_path = Path(temp_cache_dir) / (file_id + ".txt")
     content1 = txt_path.read_text()
     assert "First message" in content1
     assert "Second message" not in content1
 
     # Save second history (should overwrite)
-    tracer.save_history(history2, file_id, config)
+    tracer.save_history(model, history2, file_id, config)
     content2 = txt_path.read_text()
     assert "First message" in content2
     assert "Second message" in content2
@@ -130,6 +130,7 @@ def test_format_history_with_different_content_types(temp_cache_dir):
     """Test formatting history with different content item types."""
     tracer = Tracer(cache_dir=temp_cache_dir)
 
+    model = "fake-model"
     history = [
         {"role": "user", "content_items": [{"type": "text", "text": "What's in this image?"}]},
         {
@@ -147,7 +148,7 @@ def test_format_history_with_different_content_types(temp_cache_dir):
 
     relative_path = "test/multi_content"
     config = {"temperature": 0.8}
-    tracer.save_history(history, relative_path, config)
+    tracer.save_history(model, history, relative_path, config)
 
     file_path = Path(temp_cache_dir) / (relative_path + ".txt")
     content = file_path.read_text()
@@ -184,11 +185,12 @@ def test_web_app_browse_with_files(temp_cache_dir):
     tracer = Tracer(cache_dir=temp_cache_dir)
 
     # Create some test files
+    model = "fake-model"
     history = [{"role": "user", "content_items": [{"type": "text", "text": "Test"}]}]
     config = {}
-    tracer.save_history(history, "agent1/conv1", config)
-    tracer.save_history(history, "agent1/conv2", config)
-    tracer.save_history(history, "agent2/conv1", config)
+    tracer.save_history(model, history, "agent1/conv1", config)
+    tracer.save_history(model, history, "agent1/conv2", config)
+    tracer.save_history(model, history, "agent2/conv1", config)
 
     app = tracer.create_web_app()
 
@@ -234,12 +236,12 @@ def test_web_app_nonexistent_path(temp_cache_dir):
 
 
 @pytest.mark.asyncio
-@pytest.mark.skipif(not GEMINI_AVAILABLE, reason="Gemini API key not available")
+@pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OpenAI API key not available")
 async def test_monitoring_integration(temp_cache_dir):
     """Test monitoring integration with AutoLLMClient."""
 
     os.environ["AGENTHUB_CACHE_DIR"] = temp_cache_dir
-    client = AutoLLMClient(model="gemini-3-flash-preview")
+    client = AutoLLMClient(model="gpt-5.2")
     config = {"trace_id": "integration_test/conversation.txt"}
 
     message = {"role": "user", "content_items": [{"type": "text", "text": "Say hello"}]}
@@ -258,12 +260,12 @@ async def test_monitoring_integration(temp_cache_dir):
 
 
 @pytest.mark.asyncio
-@pytest.mark.skipif(not GEMINI_AVAILABLE, reason="Gemini API key not available")
+@pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OpenAI API key not available")
 async def test_monitoring_updates_on_multiple_messages(temp_cache_dir):
     """Test that monitoring file is updated with each new message."""
 
     os.environ["AGENTHUB_CACHE_DIR"] = temp_cache_dir
-    client = AutoLLMClient(model="gemini-3-flash-preview")
+    client = AutoLLMClient(model="gpt-5.2")
     config = {"trace_id": "multi_message_test/conversation.txt"}
 
     # First message

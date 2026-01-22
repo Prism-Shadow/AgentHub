@@ -35,13 +35,18 @@ import {
  * Qwen3-specific LLM client implementation using OpenAI-compatible API.
  */
 export class Qwen3Client extends LLMClient {
-  private _model: string;
+  protected _model: string;
   private _client: OpenAI;
 
   /**
    * Initialize Qwen3 client with model and API key.
    */
-  constructor(options: { model: string; apiKey?: string; baseUrl?: string }) {
+  constructor(options: {
+    model: string;
+    apiKey?: string;
+    baseUrl?: string | null;
+    clientType?: string | null;
+  }) {
     super();
     this._model = options.model;
     const key = options.apiKey || process.env.QWEN3_API_KEY || undefined;
@@ -256,17 +261,17 @@ export class Qwen3Client extends LLMClient {
   /**
    * Stream generate using Qwen3 SDK with unified conversion methods.
    */
-  async *streamingResponse(
-    messages: UniMessage[],
-    config: UniConfig
-  ): AsyncGenerator<UniEvent> {
-    const qwen3Config = this.transformUniConfigToModelConfig(config);
-    const qwen3Messages = this.transformUniMessageToModelInput(messages);
+  async *streamingResponse(options: {
+    messages: UniMessage[];
+    config: UniConfig;
+  }): AsyncGenerator<UniEvent> {
+    const qwen3Config = this.transformUniConfigToModelConfig(options.config);
+    const qwen3Messages = this.transformUniMessageToModelInput(options.messages);
 
-    if (config.system_prompt) {
+    if (options.config.system_prompt) {
       qwen3Messages.unshift({
         role: "system",
-        content: config.system_prompt,
+        content: options.config.system_prompt,
       });
     }
 

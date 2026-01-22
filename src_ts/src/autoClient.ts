@@ -37,8 +37,8 @@ export class AutoLLMClient extends LLMClient {
   constructor(options: {
     model: string;
     apiKey?: string;
-    baseUrl?: string;
-    clientType?: string;
+    baseUrl?: string | null;
+    clientType?: string | null;
   }) {
     super();
     this._client = this._createClientForModel(
@@ -62,8 +62,8 @@ export class AutoLLMClient extends LLMClient {
   private _createClientForModel(
     model: string,
     apiKey?: string,
-    baseUrl?: string,
-    clientType?: string
+    baseUrl?: string | null,
+    clientType?: string | null
   ): LLMClient {
     clientType = clientType || process.env.CLIENT_TYPE || model.toLowerCase();
 
@@ -116,10 +116,10 @@ export class AutoLLMClient extends LLMClient {
     messages: UniMessage[];
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
-    for await (const event of this._client.streamingResponse(
-      options.messages,
-      options.config
-    )) {
+    for await (const event of this._client.streamingResponse({
+      messages: options.messages,
+      config: options.config
+    })) {
       yield event;
     }
   }
@@ -131,10 +131,10 @@ export class AutoLLMClient extends LLMClient {
     message: UniMessage;
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
-    for await (const event of this._client.streamingResponseStateful(
-      options.message,
-      options.config
-    )) {
+    for await (const event of this._client.streamingResponseStateful({
+      message: options.message,
+      config: options.config,
+    })) {
       yield event;
     }
   }

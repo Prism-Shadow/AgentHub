@@ -35,13 +35,18 @@ import {
  * Claude 4.5-specific LLM client implementation.
  */
 export class Claude4_5Client extends LLMClient {
-  private _model: string;
+  protected _model: string;
   private _client: Anthropic;
 
   /**
    * Initialize Claude 4.5 client with model and API key.
    */
-  constructor(options: { model: string; apiKey?: string; baseUrl?: string }) {
+  constructor(options: {
+    model: string;
+    apiKey?: string;
+    baseUrl?: string | null;
+    clientType?: string | null;
+  }) {
     super();
     this._model = options.model;
     const key = options.apiKey || process.env.ANTHROPIC_API_KEY || undefined;
@@ -295,15 +300,15 @@ export class Claude4_5Client extends LLMClient {
   /**
    * Stream generate using Claude SDK with unified conversion methods.
    */
-  async *streamingResponse(
-    messages: UniMessage[],
-    config: UniConfig
-  ): AsyncGenerator<UniEvent> {
-    const claudeConfig = this.transformUniConfigToModelConfig(config);
-    const claudeMessages = this.transformUniMessageToModelInput(messages);
+  async *streamingResponse(options: {
+    messages: UniMessage[];
+    config: UniConfig;
+  }): AsyncGenerator<UniEvent> {
+    const claudeConfig = this.transformUniConfigToModelConfig(options.config);
+    const claudeMessages = this.transformUniMessageToModelInput(options.messages);
 
     // Add cache_control to last user message's last item if enabled
-    const promptCaching = config.prompt_caching || PromptCaching.ENABLE;
+    const promptCaching = options.config.prompt_caching || PromptCaching.ENABLE;
     if (promptCaching !== PromptCaching.DISABLE && claudeMessages.length > 0) {
       try {
         const reversedMessages = [...claudeMessages].reverse();

@@ -87,6 +87,7 @@ export class Tracer {
    * @param config - The UniConfig used for this conversation
    */
   saveHistory(
+    model: string,
     history: UniMessage[],
     fileId: string,
     config: UniConfig
@@ -95,16 +96,18 @@ export class Tracer {
     const dirPath = path.dirname(filePathBase);
     this._ensureDirectoryExists(dirPath);
 
+    const configWithModel = { ...config, model };
+
     const jsonPath = filePathBase + ".json";
     const jsonData = {
       history: this._serializeForJson(history),
-      config: this._serializeForJson(config),
+      config: this._serializeForJson(configWithModel),
       timestamp: new Date().toISOString(),
     };
     fs.writeFileSync(jsonPath, JSON.stringify(jsonData, null, 2), "utf-8");
 
     const txtPath = filePathBase + ".txt";
-    const formattedContent = this._formatHistory(history, config);
+    const formattedContent = this._formatHistory(history, configWithModel);
     fs.writeFileSync(txtPath, formattedContent, "utf-8");
   }
 
@@ -308,18 +311,18 @@ export class Tracer {
         try {
           const parts = subpath ? subpath.split("/") : [];
           const breadcrumbParts = ['<a href="/" class="text-blue-600 hover:underline">cache</a>'];
-          
+
           for (let i = 0; i < parts.length - 1; i++) {
             const pathToPart = parts.slice(0, i + 1).join("/");
             breadcrumbParts.push(
               `<a href="/${pathToPart}" class="text-blue-600 hover:underline">${parts[i]}</a>`
             );
           }
-          
+
           if (parts.length > 0) {
             breadcrumbParts.push(`<strong>${parts[parts.length - 1]}</strong>`);
           }
-          
+
           const breadcrumb = breadcrumbParts.join(" / ");
           const backUrl = parts.length > 1 ? "/" + parts.slice(0, -1).join("/") : "/";
 
@@ -466,7 +469,7 @@ export class Tracer {
 
         const parts = subpath ? subpath.split("/") : [];
         const breadcrumbParts = ['<a href="/" class="text-blue-600 hover:underline">cache</a>'];
-        
+
         for (let i = 0; i < parts.length; i++) {
           if (parts[i]) {
             const pathToPart = parts.slice(0, i + 1).join("/");
@@ -475,7 +478,7 @@ export class Tracer {
             );
           }
         }
-        
+
         const breadcrumb = breadcrumbParts.join(" / ");
 
         const itemsHtml = items.length

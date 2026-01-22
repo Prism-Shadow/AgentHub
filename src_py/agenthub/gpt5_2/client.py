@@ -204,6 +204,18 @@ class GPT5_2Client(LLMClient):
             else:
                 event_type = "unused"
 
+        elif openai_event_type == "response.output_item.done":
+            # not sure about the signature of openai, need to check
+            if model_output.item.type == "reasoning":
+                event_type = "delta"
+                signature = {
+                    "id": model_output.item.id,
+                    "encrypted_content": model_output.item.encrypted_content,
+                }
+                content_items.append({"type": "thinking", "thinking": "", "signature": json.dumps(signature)})
+            else:
+                event_type = "unused"
+
         elif openai_event_type == "response.function_call_arguments.delta":
             event_type = "delta"
             content_items.append(
@@ -236,7 +248,6 @@ class GPT5_2Client(LLMClient):
             "response.reasoning_summary_text.done",
             "response.content_part.added",
             "response.content_part.done",
-            "response.output_item.done",
         ]:
             event_type = "unused"
 

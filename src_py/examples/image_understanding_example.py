@@ -30,15 +30,15 @@ async def main():
     print("Image Understanding Example")
     print("=" * 60)
 
-    # Get model from environment variable, default to gemini-3-flash-preview
-    model = os.getenv("MODEL", "gemini-3-flash-preview")
+    # Get model from environment variable, default to gpt-5.2
+    model = os.getenv("MODEL", "gpt-5.2")
     print(f"Using model: {model}")
 
     client = AutoLLMClient(model=model)
-    config = {"temperature": 0.7}
+    config = {}
 
     # Image URL from the problem statement
-    image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Narcissus_poeticus_subsp._radiiflorus.1658.jpg/500px-Narcissus_poeticus_subsp._radiiflorus.1658.jpg"
+    image_url = "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg"
 
     query = "What's in this image? Please describe what you see."
     print(f"User: {query}")

@@ -26,6 +26,7 @@ class LLMClient(ABC):
     the required abstract methods for complete SDK abstraction.
     """
 
+    _model: str
     _history: list[UniMessage] = []
 
     @abstractmethod
@@ -177,7 +178,7 @@ class LLMClient(ABC):
             from .integration.tracer import Tracer
 
             tracer = Tracer()
-            tracer.save_history(self._history, config["trace_id"], config)
+            tracer.save_history(self._model, self._history, config["trace_id"], config)
 
     def clear_history(self) -> None:
         """Clear the message history."""

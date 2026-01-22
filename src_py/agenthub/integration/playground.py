@@ -311,9 +311,9 @@ def create_chat_app() -> Flask:
                         placeholder="Select or enter a model name"
                     />
                     <datalist id="modelList">
+                        <option value="gpt-5.2">GPT 5.2</option>
                         <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
                         <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
-                        <option value="gpt-5.2">GPT 5.2</option>
                         <option value="glm-4.7">GLM 4.7</option>
                     </datalist>
                 </div>
@@ -694,7 +694,7 @@ def create_chat_app() -> Flask:
             try:
                 # Get or create client for this session
                 if session_id not in _session_clients:
-                    model = config.get("model") or "gemini-3-flash-preview"
+                    model = config.get("model") or "gpt-5.2"
                     _session_clients[session_id] = AutoLLMClient(model=model)
 
                 client = _session_clients[session_id]

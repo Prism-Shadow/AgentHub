@@ -45,13 +45,18 @@ import {
  * Gemini 3-specific LLM client implementation.
  */
 export class Gemini3Client extends LLMClient {
-  private _model: string;
+  protected _model: string;
   private _client: GoogleGenAI;
 
   /**
    * Initialize Gemini 3 client with model and API key.
    */
-  constructor(options: { model: string; apiKey?: string; baseUrl?: string }) {
+  constructor(options: {
+    model: string;
+    apiKey?: string;
+    baseUrl?: string | null;
+    clientType?: string | null;
+  }) {
     super();
     this._model = options.model;
     const key =
@@ -332,12 +337,12 @@ export class Gemini3Client extends LLMClient {
   /**
    * Stream generate using Gemini SDK with unified conversion methods.
    */
-  async *streamingResponse(
-    messages: UniMessage[],
-    config: UniConfig
-  ): AsyncGenerator<UniEvent> {
-    const geminiConfig = this.transformUniConfigToModelConfig(config);
-    const contents = this.transformUniMessageToModelInput(messages);
+  async *streamingResponse(options: {
+    messages: UniMessage[];
+    config: UniConfig;
+  }): AsyncGenerator<UniEvent> {
+    const geminiConfig = this.transformUniConfigToModelConfig(options.config);
+    const contents = this.transformUniMessageToModelInput(options.messages);
 
     const responseStream = await this._client.models.generateContentStream({
       model: this._model,

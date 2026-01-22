@@ -16,28 +16,25 @@ make test     # Run tests
 ### Basic Client Usage
 
 ```typescript
-import { AutoLLMClient } from 'agenthub';
+import { AutoLLMClient } from '@prismshadow/agenthub';
 
-// Initialize with model name
-const client = new AutoLLMClient({ model: 'gemini-3-flash-preview' });
+process.env.OPENAI_API_KEY = 'your-openai-api-key';
 
-// With API key and base URL
-const client = new AutoLLMClient({
-  model: 'claude-sonnet-4-5-20250929',
-  apiKey: 'your-api-key',
-  baseUrl: 'https://api.anthropic.com'
-});
+async function main() {
+  const client = new AutoLLMClient({ model: 'gpt-5.2' });
 
-// Using streaming methods with options
-const message = {
-  role: 'user',
-  content_items: [{ type: 'text', text: 'Hello!' }]
-};
-const config = { temperature: 0.7 };
-
-for await (const event of client.streamingResponseStateful({ message, config })) {
-  console.log(event);
+  for await (const event of client.streamingResponseStateful({
+    message: {
+      role: 'user',
+      content_items: [{ type: 'text', text: 'Hello!' }]
+    },
+    config: {}
+  })) {
+    console.log(event);
+  }
 }
+
+main().catch(console.error);
 ```
 
 ### Tracer Usage
@@ -45,7 +42,7 @@ for await (const event of client.streamingResponseStateful({ message, config }))
 Save and browse conversation history with a web interface:
 
 ```typescript
-import { Tracer } from 'agenthub/integration/tracer';
+import { Tracer } from '@prismshadow/agenthub/integration/tracer';
 
 // Create a tracer instance
 const tracer = new Tracer('./cache');
@@ -63,7 +60,7 @@ tracer.startWebServer('127.0.0.1', 5000);
 Interactive web interface for chatting with LLMs:
 
 ```typescript
-import { startPlaygroundServer } from 'agenthub/integration/playground';
+import { startPlaygroundServer } from '@prismshadow/agenthub/integration/playground';
 
 // Start the playground server
 startPlaygroundServer('127.0.0.1', 5001);
