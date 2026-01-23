@@ -417,6 +417,11 @@ start_playground_server(host="127.0.0.1", port=5001, debug=False)
 
 You can access the playground at `http://localhost:5001/`.
 
+## Related Work
+
+- [OpenRouter](https://openrouter.ai/)
+- [Open Responses](https://www.openresponses.org/)
+
 ## License
 
 Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
