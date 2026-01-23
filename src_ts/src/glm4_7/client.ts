@@ -106,7 +106,7 @@ export class GLM4_7Client extends LLMClient {
       const thinkingConfig = this._convertThinkingLevelToConfig(
         config.thinking_level
       );
-      glmConfig.extra_body = { ...glmConfig.extra_body, thinking: thinkingConfig };
+      glmConfig.extra_body = { ...(glmConfig.extra_body || {}), thinking: thinkingConfig };
     }
 
     if (config.tools !== undefined) {

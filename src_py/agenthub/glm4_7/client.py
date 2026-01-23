@@ -80,9 +80,11 @@ class GLM4_7Client(LLMClient):
         if config.get("temperature") is not None:
             glm_config["temperature"] = config["temperature"]
 
+        # NOTE: glm-4.7 always provides thinking summary
         if config.get("thinking_level") is not None:
             thinking_config = self._convert_thinking_level_to_config(config["thinking_level"])
-            glm_config["extra_body"] = {"thinking": thinking_config}
+            # thinking is only effective when using the official API endpoint
+            glm_config.setdefault("extra_body", {})["thinking"] = thinking_config
 
         if config.get("tools") is not None:
             glm_config["tools"] = [{"type": "function", "function": tool} for tool in config["tools"]]

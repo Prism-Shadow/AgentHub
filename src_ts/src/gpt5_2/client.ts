@@ -117,7 +117,7 @@ export class GPT5_2Client extends LLMClient {
         effort: this._convertThinkingLevelToEffort(config.thinking_level),
       };
       if (config.thinking_summary) {
-        openaiConfig.reasoning.summary = "auto";
+        openaiConfig.reasoning.summary = "concise";
       }
     }
 
