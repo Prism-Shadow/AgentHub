@@ -10,7 +10,7 @@
 [![PyPI](https://img.shields.io/pypi/v/agenthub-python)](https://pypi.org/project/agenthub-python/)
 [![NPM](https://img.shields.io/npm/v/@prismshadow/agenthub)](https://www.npmjs.com/package/@prismshadow/agenthub)
 
-AgentHub SDK is the only SDK you need to connect to state-of-the-art LLMs (GPT-5.2/Claude 4.5/Gemini 3/GLM-4.7).
+AgentHub SDK is the only SDK you need to connect to state-of-the-art LLMs (GPT-5.2/Claude 4.5/Gemini 3/GLM-4.7/Qwen3).
 
 📢 Follow us on X: [![Twitter](https://img.shields.io/twitter/follow/prismshadow_ai)](https://twitter.com/prismshadow_ai) or join our [Discord Community](https://discord.gg/4TQ2bsSb)
 
