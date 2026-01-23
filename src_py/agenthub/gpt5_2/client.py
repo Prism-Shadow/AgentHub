@@ -91,7 +91,7 @@ class GPT5_2Client(LLMClient):
         if config.get("thinking_level") is not None:
             openai_config["reasoning"] = {"effort": self._convert_thinking_level_to_effort(config["thinking_level"])}
             if config.get("thinking_summary"):
-                openai_config["reasoning"]["summary"] = "auto"
+                openai_config["reasoning"]["summary"] = "concise"
 
         if config.get("tools") is not None:
             openai_config["tools"] = [{"type": "function", **tool} for tool in config["tools"]]

@@ -96,7 +96,9 @@ export class Tracer {
     const dirPath = path.dirname(filePathBase);
     this._ensureDirectoryExists(dirPath);
 
-    const configWithModel = { ...config, model };
+    type ExtConfig<T = object> = UniConfig & T;
+    const configWithModel = config as ExtConfig<{ model: string }>;
+    configWithModel.model = model;
 
     const jsonPath = filePathBase + ".json";
     const jsonData = {

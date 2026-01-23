@@ -84,7 +84,8 @@ class Tracer:
         file_path_base = self.cache_dir / file_id
         file_path_base.parent.mkdir(parents=True, exist_ok=True)
 
-        config_with_model = {"model": model, **config}
+        config_with_model = config.copy()
+        config_with_model["model"] = model
         # Save as JSON
         json_path = file_path_base.with_suffix(".json")
         json_data = {
