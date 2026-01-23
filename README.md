@@ -19,11 +19,11 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 
 ## Why AgentHub?
 
-- 🔗 **Unified**: A consistent and intuitive interface for interacting with multiple LLMs.
+- 🔗 **Unified**: A consistent and intuitive interface for developing **agents** across different LLMs.
 
-- 🎯 **Precise**: Automatically handles interleaved thinking during multi-step tool calls, preventing performance degradation.
+- 🎯 **Precise**: Automatically handles **[interleaved thinking](https://platform.claude.com/docs/en/build-with-claude/extended-thinking#interleaved-thinking)** during multi-step tool calls, preventing performance degradation.
 
-- 🧭 **Traceable**: Provides lightweight logging tool to help developers debug and audit LLM executions.
+- 🧭 **Traceable**: Provides lightweight yet fine-grained **tracing** for debugging and auditing LLM executions.
 
 ## Supported Models
 
@@ -75,10 +75,10 @@ See [src_ts/README.md](src_ts/README.md) for comprehensive usage examples and AP
 
 `AutoLLMClient` is the main class for interacting with the AgentHub SDK. It provides the following methods:
 
-- `(async) streaming_response(messages, config)`: Streams the response of the LLM model in a stateless manner.
-- `(async) streaming_response_stateful(message, config)`: Streams the response of the LLM model in a stateful manner.
-- `clear_history()`: Clears the history of the stateful LLM model.
-- `get_history()`: Returns the history of the stateful LLM model.
+- `(async) streaming_response(messages, config)`: Streams the response of LLMs in a stateless manner.
+- `(async) streaming_response_stateful(message, config)`: Streams the response of LLMs in a stateful manner.
+- `clear_history()`: Clears the history of the stateful LLM client.
+- `get_history()`: Returns the history of the stateful LLM client.
 
 ## Basic Usage
 
@@ -405,7 +405,7 @@ Then you can view the tracing output in the dashboard at `http://localhost:5000/
 
 ![Playground Screenshot](.github/images/playground.png)
 
-We provide a LLM playground to help you test your LLM models.
+We provide a LLM playground to help you test your LLMs.
 
 ```python
 from agenthub.integration.playground import start_playground_server
