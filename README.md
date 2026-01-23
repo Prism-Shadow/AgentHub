@@ -7,13 +7,12 @@
 [![GitHub contributors](https://img.shields.io/github/contributors/Prism-Shadow/AgentHub?color=orange)](https://github.com/Prism-Shadow/AgentHub/graphs/contributors)
 [![Python tests](https://github.com/Prism-Shadow/AgentHub/actions/workflows/pytest.yml/badge.svg)](https://github.com/Prism-Shadow/AgentHub/actions/workflows/pytest.yml)
 [![Javascript tests](https://github.com/Prism-Shadow/AgentHub/actions/workflows/jest.yml/badge.svg)](https://github.com/Prism-Shadow/AgentHub/actions/workflows/jest.yml)
-
 [![PyPI](https://img.shields.io/pypi/v/agenthub-python)](https://pypi.org/project/agenthub-python/)
 [![NPM](https://img.shields.io/npm/v/@prismshadow/agenthub)](https://www.npmjs.com/package/@prismshadow/agenthub)
 
-[![Twitter](https://img.shields.io/twitter/follow/prismshadow_ai)](https://twitter.com/prismshadow_ai)
+AgentHub SDK is the only SDK you need to connect to state-of-the-art LLMs (GPT-5.2/Claude 4.5/Gemini 3/GLM 4.7).
 
-AgentHub SDK is the only SDK you need to connect to state-of-the-art LLMs (GPT-5.2/Claude 4.5/Gemini 3).
+📢 Follow us on X: [![Twitter](https://img.shields.io/twitter/follow/prismshadow_ai)](https://twitter.com/prismshadow_ai) or join our [Discord Community](https://discord.gg/4TQ2bsSb)
 
 https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 
@@ -27,7 +26,7 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 
 ## Supported Models
 
-|   Model Name   | Vendor                          | Reasoning          | Tool Use           | Image Understanding           |
+| Model Name     | Vendor                          | Reasoning          | Tool Use           | Image Understanding           |
 | -------------- | ------------------------------- | ------------------ | ------------------ | ----------------------------- |
 | Gemini 3       | Official                        | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
 | Claude 4.5     | Official                        | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
@@ -81,6 +80,9 @@ See [src_ts/README.md](src_ts/README.md) for comprehensive usage examples and AP
 - `get_history()`: Returns the history of the stateful LLM client.
 
 ## Basic Usage
+
+> [!NOTE]
+> We recommend using the **stateful interface** when calling the AgentHub SDK.
 
 ### OpenAI GPT-5.2
 
