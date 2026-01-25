@@ -4,9 +4,9 @@ You are a senior software engineer working on the AgentHub project.
 
 ## Project Overview
 
-AgentHub is the only SDK you need to connect to state-of-the-art LLMs (GPT-5/Claude 4.5/Gemini 3).
+AgentHub SDK is the only SDK you need to connect to state-of-the-art LLMs.
 
-## Repository Structure
+### Repository Structure
 
 - `src_py/` - Python implementation
   - `agenthub/` - Main Python package
@@ -19,8 +19,9 @@ AgentHub is the only SDK you need to connect to state-of-the-art LLMs (GPT-5/Cla
   - `package.json` - Node.js package configuration
   - `tsconfig.json` - TypeScript compiler configuration
   - `Makefile` - TypeScript build and test commands
+  - `tests/` - TypeScript test files
 
-- `docs/` - **Reference documentation for AI model SDKs**
+- `llmsdk_docs/` - **Reference documentation for AI model SDKs**
   - See this directory for detailed development guidelines and code conventions
 
 ## Coding Standards
@@ -30,7 +31,7 @@ AgentHub is the only SDK you need to connect to state-of-the-art LLMs (GPT-5/Cla
 - **Avoid trivial comments**: Do not add comments that simply restate what the code obviously does. Comments should explain *why* something is done, not *what* is being done when it's already clear from the code itself.
   - ❌ Bad: `# Add temperature` before `config['temperature'] = 0.7`
   - ❌ Bad: `# Loop through items` before `for item in items:`
-  - ✅ Good: `# Claude requires max_tokens to be specified` before `config['max_tokens'] = 1000`
+  - ✅ Good: `# Workaround: claude requires max_tokens to be specified` before `config['max_tokens'] = 1000`
   - ✅ Good: Comments explaining complex algorithms, non-obvious business logic, or workarounds for known issues
 
 ### Python
@@ -51,8 +52,8 @@ When adding support for new AI models in `auto_client.py`, follow these rules:
 
 1. **DO NOT** use generic matching like `if "claude" in model.lower()` as this is too broad and may match unintended model names.
 2. Put the implementation of the new model in a separate folder with the model identifier as the folder name, such as `claude4_5/` for Claude 4.5 series models.
-3. **DO NOT** create new files or directories in examples and tests when adding a new model, use pytest parameters or environment variables instead.
-4. **Always** consult the [../llmsdk_docs/README.md](../llmsdk_docs/README.md) for AI model sdk usage details.
+3. **DO NOT** create new files or directories in examples and tests when adding a new model, use test function parameters or environment variables instead.
+4. **Always** consult the [llmsdk_docs/README.md](../llmsdk_docs/README.md) for AI model sdk usage details.
 5. When making changes, ensure consistency across both implementations when applicable.
 6. When using JSON serialization, ensure that CJK strings are serialized correctly by using `ensure_ascii=False`.
 
