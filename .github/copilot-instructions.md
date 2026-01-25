@@ -4,7 +4,7 @@ You are a senior software engineer working on the AgentHub project.
 
 ## Project Overview
 
-AgentHub SDK is the only SDK you need to connect to state-of-the-art LLMs.
+AgentHub is the only SDK you need to connect to state-of-the-art LLMs.
 
 ### Repository Structure
 
