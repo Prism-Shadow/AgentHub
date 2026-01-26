@@ -80,7 +80,7 @@ class Claude4_5Client(LLMClient):
         Returns:
             Claude configuration dictionary
         """
-        claude_config = {"model": self._model}
+        claude_config = {"model": self._model, "betas": ["interleaved-thinking-2025-05-14"]}
 
         if config.get("system_prompt") is not None:
             claude_config["system"] = config["system_prompt"]
@@ -282,7 +282,7 @@ class Claude4_5Client(LLMClient):
         # Stream generate
         partial_tool_call = {}
         partial_usage = {}
-        async with self._client.messages.stream(**claude_config, messages=claude_messages) as stream:
+        async with self._client.beta.messages.stream(**claude_config, messages=claude_messages) as stream:
             async for event in stream:
                 event = self.transform_model_output_to_uni_event(event)
                 if event["event_type"] == "start":

@@ -14,9 +14,9 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import {
-  MessageParam,
-  MessageStreamEvent,
-} from "@anthropic-ai/sdk/resources/messages";
+  BetaMessageParam,
+  BetaRawMessageStreamEvent,
+} from "@anthropic-ai/sdk/resources/beta/messages";
 import { LLMClient } from "../baseClient";
 import {
   EventType,
@@ -100,6 +100,7 @@ export class Claude4_5Client extends LLMClient {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const claudeConfig: any = {
       model: this._model,
+      betas: ["interleaved-thinking-2025-05-14"],
     };
 
     if (config.system_prompt !== undefined) {
@@ -146,8 +147,8 @@ export class Claude4_5Client extends LLMClient {
   /**
    * Transform universal message format to Claude's MessageParam format.
    */
-  transformUniMessageToModelInput(messages: UniMessage[]): MessageParam[] {
-    const claudeMessages: MessageParam[] = [];
+  transformUniMessageToModelInput(messages: UniMessage[]): BetaMessageParam[] {
+    const claudeMessages: BetaMessageParam[] = [];
 
     for (const msg of messages) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -199,7 +200,7 @@ export class Claude4_5Client extends LLMClient {
   /**
    * Transform Claude model output to universal event format.
    */
-  transformModelOutputToUniEvent(modelOutput: MessageStreamEvent): UniEvent {
+  transformModelOutputToUniEvent(modelOutput: BetaRawMessageStreamEvent): UniEvent {
     let eventType: EventType | null = null;
     const contentItems: PartialContentItem[] = [];
     let usageMetadata: UsageMetadata | null = null;
@@ -335,7 +336,7 @@ export class Claude4_5Client extends LLMClient {
       cached_tokens?: number | null;
     } = {};
 
-    const stream = await this._client.messages.stream({
+    const stream = await this._client.beta.messages.stream({
       ...claudeConfig,
       messages: claudeMessages,
     });
