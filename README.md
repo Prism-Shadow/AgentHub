@@ -1,4 +1,4 @@
-![AgentHub](.github/images/header.png)
+![Header](.github/images/header.png)
 
 # AgentHub SDK - Unified and Precise LLM SDK
 
@@ -14,8 +14,6 @@ AgentHub SDK is the only SDK you need to connect to state-of-the-art LLMs.
 
 📢 Follow us on X: [![Twitter](https://img.shields.io/twitter/follow/prismshadow_ai)](https://twitter.com/prismshadow_ai) or join our [Discord Community](https://discord.gg/4TQ2bsSb)
 
-https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
-
 ## Why AgentHub?
 
 - 🔗 **Unified**: A consistent and intuitive interface for developing **agents** across different LLMs.
@@ -23,6 +21,20 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 - 🎯 **Precise**: Automatically handles **[interleaved thinking](https://platform.claude.com/docs/en/build-with-claude/extended-thinking#interleaved-thinking)** during multi-step tool calls, preventing performance degradation.
 
 - 🧭 **Traceable**: Provides lightweight yet fine-grained **tracing** for debugging and auditing LLM executions.
+
+## Features
+
+### AutoLLMClient
+
+Switch different LLMs with **zero code changes** and **no performance loss**.
+
+![AgentHub](.github/images/agenthub.png)
+
+### Built-in Tracer
+
+Audit LLM executions by adding **a single `trace_id` parameter**, no database required.
+
+https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 
 ## Supported Models
 
