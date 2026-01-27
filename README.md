@@ -24,7 +24,7 @@ AgentHub SDK is the only SDK you need to connect to state-of-the-art LLMs.
 
 ## Features
 
-### AutoLLMClient
+### AutoLLMClient (Python & TypeScript)
 
 Switch different LLMs with **zero code changes** and **no performance loss**.
 
