@@ -142,13 +142,13 @@ export class Qwen3Client extends LLMClient {
           if (!item.tool_call_id) {
             throw new Error("tool_call_id is required for tool result.");
           }
-          
+
           if (item.image_url) {
             throw new Error(
-              "Qwen3 does not support image_url in tool results."
+              "Qwen3 does not support image_url in tool results.",
             );
           }
-          
+
           qwen3Messages.push({
             role: "tool",
             tool_call_id: item.tool_call_id,

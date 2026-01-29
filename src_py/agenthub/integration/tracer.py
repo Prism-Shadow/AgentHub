@@ -495,7 +495,7 @@ class Tracer:
                                 </div>
                             {% elif item.type == 'tool_result' %}
                                 <div class="tool-result">
-                                    <strong>Result:</strong> {{ item.result|e }}<br>
+                                    <strong>Result:</strong> {{ item.text|e }}<br>
                                     <strong>Call ID:</strong> {{ item.tool_call_id|e }}
                                 </div>
                             {% elif item.type == 'image_url' %}

@@ -51,6 +51,12 @@ class Gemini3Client(LLMClient):
         )
         self._history: list[UniMessage] = []
 
+    def _detect_mime_type(self, url: str) -> str:
+        """Detect MIME type from URL extension."""
+
+        mime_type, _ = mimetypes.guess_type(url)
+        return mime_type or "image/jpeg"
+
     def _convert_thinking_level(self, thinking_level: ThinkingLevel | None) -> types.ThinkingLevel | None:
         """Convert ThinkingLevel enum to Gemini's ThinkingLevel."""
         mapping = {
@@ -140,7 +146,7 @@ class Gemini3Client(LLMClient):
                         else:
                             raise ValueError(f"Invalid base64 image: {image_url}")
                     else:
-                        mime_type, _ = mimetypes.guess_type(image_url)
+                        mime_type = self._detect_mime_type(image_url)
                         parts.append(types.Part.from_uri(file_uri=image_url, mime_type=mime_type))
                 elif item["type"] == "thinking":
                     parts.append(
@@ -153,9 +159,7 @@ class Gemini3Client(LLMClient):
                     if "tool_call_id" not in item:
                         raise ValueError("tool_call_id is required for tool result.")
 
-                    result_response = {"result": item["text"]}
-                    multimodal_parts = []
-
+                    tool_result = {"result": item["text"]}
                     if "image_url" in item:
                         image_url = item["image_url"]
                         if image_url.startswith("data:"):
@@ -170,21 +174,22 @@ class Gemini3Client(LLMClient):
                             response = requests.get(image_url)
                             response.raise_for_status()
                             image_bytes = response.content
-                            mime_type, _ = mimetypes.guess_type(image_url)
-                            if not mime_type:
-                                mime_type = "image/jpeg"
-                        multimodal_parts.append(
+                            mime_type = self._detect_mime_type(image_url)
+
+                        multimodal_parts = [
                             types.FunctionResponsePart(
                                 inline_data=types.FunctionResponseBlob(
                                     mime_type=mime_type,
                                     data=image_bytes,
                                 )
                             )
-                        )
+                        ]
+                    else:
+                        multimodal_parts = None
 
                     parts.append(
                         types.Part.from_function_response(
-                            name=item["tool_call_id"], response=result_response, parts=multimodal_parts
+                            name=item["tool_call_id"], response=tool_result, parts=multimodal_parts
                         )
                     )
                 else:

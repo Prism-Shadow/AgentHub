@@ -168,8 +168,7 @@ class Claude4_5Client(LLMClient):
                     if "tool_call_id" not in item:
                         raise ValueError("tool_call_id is required for tool result.")
 
-                    result_content = [{"type": "text", "text": item["text"]}]
-
+                    tool_result = [{"type": "text", "text": item["text"]}]
                     if "image_url" in item:
                         image_url = item["image_url"]
                         if image_url.startswith("data:"):
@@ -177,7 +176,7 @@ class Claude4_5Client(LLMClient):
                             if match:
                                 media_type = match.group(1)
                                 base64_data = match.group(2)
-                                result_content.append(
+                                tool_result.append(
                                     {
                                         "type": "image",
                                         "source": {
@@ -190,10 +189,10 @@ class Claude4_5Client(LLMClient):
                             else:
                                 raise ValueError(f"Invalid base64 image: {image_url}")
                         else:
-                            result_content.append({"type": "image", "source": {"type": "url", "url": image_url}})
+                            tool_result.append({"type": "image", "source": {"type": "url", "url": image_url}})
 
                     content_blocks.append(
-                        {"type": "tool_result", "content": result_content, "tool_use_id": item["tool_call_id"]}
+                        {"type": "tool_result", "content": tool_result, "tool_use_id": item["tool_call_id"]}
                     )
                 else:
                     raise ValueError(f"Unknown item: {item}")

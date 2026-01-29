@@ -199,10 +199,10 @@ export class Claude4_5Client extends LLMClient {
           if (!item.tool_call_id) {
             throw new Error("tool_call_id is required for tool result.");
           }
-          
+
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const resultContent: any[] = [{ type: "text", text: item.text }];
-          
+          const toolResult: any[] = [{ type: "text", text: item.text }];
+
           if (item.image_url) {
             const imageUrl = item.image_url;
             if (imageUrl.startsWith("data:")) {
@@ -210,7 +210,7 @@ export class Claude4_5Client extends LLMClient {
               if (match) {
                 const mediaType = match[1];
                 const base64Data = match[2];
-                resultContent.push({
+                toolResult.push({
                   type: "image",
                   source: {
                     type: "base64",
@@ -222,16 +222,16 @@ export class Claude4_5Client extends LLMClient {
                 throw new Error(`Invalid base64 image: ${imageUrl}`);
               }
             } else {
-              resultContent.push({
+              toolResult.push({
                 type: "image",
                 source: { type: "url", url: imageUrl },
               });
             }
           }
-          
+
           contentBlocks.push({
             type: "tool_result",
-            content: resultContent,
+            content: toolResult,
             tool_use_id: item.tool_call_id,
           });
         } else {

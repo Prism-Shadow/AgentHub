@@ -182,24 +182,24 @@ export class GPT5_2Client extends LLMClient {
           }
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const outputContent: any[] = [
+          const toolResult: any[] = [
             {
-              type: "output_text",
+              type: "input_text",
               text: item.text,
             },
           ];
-          
+
           if (item.image_url) {
-            outputContent.push({
-              type: "output_image",
+            toolResult.push({
+              type: "input_image",
               image_url: item.image_url,
             });
           }
-          
+
           inputList.push({
             type: "function_call_output",
             call_id: item.tool_call_id,
-            output: outputContent,
+            output: toolResult,
           });
         } else {
           throw new Error(`Unknown item: ${JSON.stringify(item)}`);

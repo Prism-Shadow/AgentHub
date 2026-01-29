@@ -383,7 +383,10 @@ if (AVAILABLE_MODELS.length > 0) {
       const message1: UniMessage = {
         role: "user",
         content_items: [
-          { type: "text", text: "Give me a brief introduction to narcissus flowers" },
+          {
+            type: "text",
+            text: "Give me a brief introduction to narcissus flowers",
+          },
         ],
       };
       for await (const event of client.streamingResponseStateful({
