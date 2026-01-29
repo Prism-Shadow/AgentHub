@@ -19,7 +19,7 @@ import os
 import re
 from typing import AsyncIterator
 
-import requests
+import httpx
 from google import genai
 from google.genai import types
 
@@ -116,7 +116,7 @@ class Gemini3Client(LLMClient):
 
         return types.GenerateContentConfig(**config_params) if config_params else None
 
-    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[types.Content]:
+    async def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[types.Content]:
         """
         Transform universal message format to Gemini's Content format.
 
@@ -161,29 +161,30 @@ class Gemini3Client(LLMClient):
                     tool_result = {"result": item["text"]}
                     multimodal_parts = []
                     if "images" in item:
-                        for image_url in item["images"]:
-                            if image_url.startswith("data:"):
-                                match = re.match(r"data:([^;]+);base64,(.+)", image_url)
-                                if match:
-                                    mime_type = match.group(1)
-                                    base64_string = match.group(2)
-                                    image_bytes = base64.b64decode(base64_string)
+                        async with httpx.AsyncClient() as client:
+                            for image_url in item["images"]:
+                                if image_url.startswith("data:"):
+                                    match = re.match(r"data:([^;]+);base64,(.+)", image_url)
+                                    if match:
+                                        mime_type = match.group(1)
+                                        base64_string = match.group(2)
+                                        image_bytes = base64.b64decode(base64_string)
+                                    else:
+                                        raise ValueError(f"Invalid base64 image: {image_url}")
                                 else:
-                                    raise ValueError(f"Invalid base64 image: {image_url}")
-                            else:
-                                response = requests.get(image_url)
-                                response.raise_for_status()
-                                image_bytes = response.content
-                                mime_type = self._detect_image_mime_type(image_url)
+                                    response = await client.get(image_url)
+                                    response.raise_for_status()
+                                    image_bytes = response.content
+                                    mime_type = self._detect_image_mime_type(image_url)
 
-                            multimodal_parts.append(
-                                types.FunctionResponsePart(
-                                    inline_data=types.FunctionResponseBlob(
-                                        mime_type=mime_type,
-                                        data=image_bytes,
+                                multimodal_parts.append(
+                                    types.FunctionResponsePart(
+                                        inline_data=types.FunctionResponseBlob(
+                                            mime_type=mime_type,
+                                            data=image_bytes,
+                                        )
                                     )
                                 )
-                            )
 
                     parts.append(
                         types.Part.from_function_response(
@@ -268,7 +269,7 @@ class Gemini3Client(LLMClient):
         gemini_config = self.transform_uni_config_to_model_config(config)
 
         # Use unified message conversion
-        contents = self.transform_uni_message_to_model_input(messages)
+        contents = await self.transform_uni_message_to_model_input(messages)
 
         # Stream generate
         response_stream = await self._client.aio.models.generate_content_stream(
