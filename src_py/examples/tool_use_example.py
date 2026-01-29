@@ -105,7 +105,7 @@ async def main():
             message={
                 "role": "user",
                 "content_items": [
-                    {"type": "tool_result", "result": result, "tool_call_id": tool_call1["tool_call_id"]}
+                    {"type": "tool_result", "text": result, "tool_call_id": tool_call1["tool_call_id"]}
                 ],
             },
             config=config,
@@ -151,7 +151,7 @@ async def main():
                 message={
                     "role": "user",
                     "content_items": [
-                        {"type": "tool_result", "result": result2, "tool_call_id": tool_call2["tool_call_id"]}
+                        {"type": "tool_result", "text": result2, "tool_call_id": tool_call2["tool_call_id"]}
                     ],
                 },
                 config=config,

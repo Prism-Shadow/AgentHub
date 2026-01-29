@@ -361,7 +361,7 @@ Example UniMessage:
     {"type": "image_url", "image_url": "https://example.com/image.jpg"},
     {"type": "thinking", "thinking": "I am thinking.", "signature": "0x123456"},
     {"type": "tool_call", "name": "math", "arguments": {"expression": "2 + 3"}, "tool_call_id": "123"},
-    {"type": "tool_result", "result": "2 + 3 = 5", "tool_call_id": "123"}
+    {"type": "tool_result", "text": "2 + 3 = 5", "images": [], "tool_call_id": "123"}
   ]
 }
 ```

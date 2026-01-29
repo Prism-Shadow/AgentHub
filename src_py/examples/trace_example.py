@@ -113,7 +113,7 @@ async def run_traced_chat():
             message={
                 "role": "user",
                 "content_items": [
-                    {"type": "tool_result", "result": result, "tool_call_id": tool_call["tool_call_id"]}
+                    {"type": "tool_result", "text": result, "tool_call_id": tool_call["tool_call_id"]}
                 ],
             },
             config=config2,

@@ -425,4 +425,4 @@ async def test_tool_result_with_image(model):
 if __name__ == "__main__":
     import asyncio
 
-    asyncio.run(test_tool_use(os.getenv("MODEL", "gemini-3-flash-preview")))
+    asyncio.run(test_tool_use(os.getenv("MODEL", "gpt-5.2")))
