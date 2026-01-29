@@ -150,6 +150,7 @@ export class Qwen3Client extends LLMClient {
               content: result,
             });
           } else {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const contentParts: any[] = [];
             for (const resultItem of result) {
               if (resultItem.type === "text") {

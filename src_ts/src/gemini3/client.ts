@@ -260,6 +260,7 @@ export class Gemini3Client extends LLMClient {
               },
             } as Part);
           } else {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const resultResponse: Record<string, any> = {};
             const multimodalParts: FunctionResponsePart[] = [];
             for (const resultItem of result) {

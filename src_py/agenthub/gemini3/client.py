@@ -156,9 +156,7 @@ class Gemini3Client(LLMClient):
                     result = item["result"]
                     if isinstance(result, str):
                         parts.append(
-                            types.Part.from_function_response(
-                                name=item["tool_call_id"], response={"result": result}
-                            )
+                            types.Part.from_function_response(name=item["tool_call_id"], response={"result": result})
                         )
                     else:
                         result_response = {}

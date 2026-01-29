@@ -189,6 +189,7 @@ export class GPT5_2Client extends LLMClient {
               output: result,
             });
           } else {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const outputContent: any[] = [];
             for (const resultItem of result) {
               if (resultItem.type === "text") {

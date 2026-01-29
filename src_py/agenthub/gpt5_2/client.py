@@ -159,9 +159,7 @@ class GPT5_2Client(LLMClient):
                             if result_item["type"] == "text":
                                 output_content.append({"type": "output_text", "text": result_item["text"]})
                             elif result_item["type"] == "image_url":
-                                output_content.append(
-                                    {"type": "output_image", "image_url": result_item["image_url"]}
-                                )
+                                output_content.append({"type": "output_image", "image_url": result_item["image_url"]})
                         input_list.append(
                             {
                                 "type": "function_call_output",

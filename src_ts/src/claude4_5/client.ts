@@ -207,6 +207,7 @@ export class Claude4_5Client extends LLMClient {
               tool_use_id: item.tool_call_id,
             });
           } else {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const resultContent: any[] = [];
             for (const resultItem of result) {
               if (resultItem.type === "text") {
