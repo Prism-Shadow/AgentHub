@@ -373,14 +373,14 @@ export class Tracer {
                       if (item.images && item.images.length > 0) {
                         resultHtml += `<div class="mt-2 flex flex-wrap gap-2">`;
                         for (const imageUrl of item.images) {
-                          resultHtml += `<img src="${imageUrl}" class="max-w-xs max-h-48 rounded-md" alt="Tool Result Image">`;
+                          resultHtml += `<img src="${this._escapeHtml(imageUrl)}" class="max-w-xs max-h-48 rounded-md" alt="Tool Result Image">`;
                         }
                         resultHtml += `</div>`;
                       }
                       resultHtml += `</div>`;
                       itemHtml += resultHtml;
                     } else if (item.type === "image_url") {
-                      itemHtml += `<div class="bg-gray-50 p-4 rounded-md"><img src="${item.image_url}" class="max-w-xs max-h-48 rounded-md" alt="Preview"></div>`;
+                      itemHtml += `<div class="bg-gray-50 p-4 rounded-md"><img src="${this._escapeHtml(item.image_url)}" class="max-w-xs max-h-48 rounded-md" alt="Preview"></div>`;
                     }
                     itemHtml += "</div>";
                     return itemHtml;
