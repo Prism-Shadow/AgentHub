@@ -135,14 +135,29 @@ class GLM4_7Client(LLMClient):
                     if "tool_call_id" not in item:
                         raise ValueError("tool_call_id is required for tool result.")
 
-                    # Tool results are sent as separate messages
-                    openai_messages.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": item["tool_call_id"],
-                            "content": item["result"],
-                        }
-                    )
+                    result = item["result"]
+                    if isinstance(result, str):
+                        openai_messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": item["tool_call_id"],
+                                "content": result,
+                            }
+                        )
+                    else:
+                        content_parts = []
+                        for result_item in result:
+                            if result_item["type"] == "text":
+                                content_parts.append({"type": "text", "text": result_item["text"]})
+                            elif result_item["type"] == "image_url":
+                                raise ValueError("GLM does not support image_url in tool results.")
+                        openai_messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": item["tool_call_id"],
+                                "content": content_parts,
+                            }
+                        )
                 else:
                     raise ValueError(f"Unknown item type: {item['type']}")
 

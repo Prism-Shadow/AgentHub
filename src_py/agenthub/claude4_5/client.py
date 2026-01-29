@@ -168,9 +168,42 @@ class Claude4_5Client(LLMClient):
                     if "tool_call_id" not in item:
                         raise ValueError("tool_call_id is required for tool result.")
 
-                    content_blocks.append(
-                        {"type": "tool_result", "content": item["result"], "tool_use_id": item["tool_call_id"]}
-                    )
+                    result = item["result"]
+                    if isinstance(result, str):
+                        content_blocks.append(
+                            {"type": "tool_result", "content": result, "tool_use_id": item["tool_call_id"]}
+                        )
+                    else:
+                        result_content = []
+                        for result_item in result:
+                            if result_item["type"] == "text":
+                                result_content.append({"type": "text", "text": result_item["text"]})
+                            elif result_item["type"] == "image_url":
+                                image_url = result_item["image_url"]
+                                if image_url.startswith("data:"):
+                                    match = re.match(r"data:([^;]+);base64,(.+)", image_url)
+                                    if match:
+                                        media_type = match.group(1)
+                                        base64_data = match.group(2)
+                                        result_content.append(
+                                            {
+                                                "type": "image",
+                                                "source": {
+                                                    "type": "base64",
+                                                    "media_type": media_type,
+                                                    "data": base64_data,
+                                                },
+                                            }
+                                        )
+                                    else:
+                                        raise ValueError(f"Invalid base64 image: {image_url}")
+                                else:
+                                    result_content.append(
+                                        {"type": "image", "source": {"type": "url", "url": image_url}}
+                                    )
+                        content_blocks.append(
+                            {"type": "tool_result", "content": result_content, "tool_use_id": item["tool_call_id"]}
+                        )
                 else:
                     raise ValueError(f"Unknown item: {item}")
 

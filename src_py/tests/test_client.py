@@ -279,6 +279,71 @@ async def test_tool_use(model):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
+async def test_tool_result_with_image(model):
+    """Test tool result with image_url."""
+    if model not in AVAILABLE_VISION_MODELS:
+        pytest.skip(f"Image in tool result is not supported by {model}.")
+
+    client = await _create_client(model)
+
+    # Define a tool that returns an image
+    image_tool = {
+        "name": "get_image",
+        "description": "Get an image URL",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The image to retrieve",
+                },
+            },
+            "required": ["query"],
+        },
+    }
+
+    config = {"tools": [image_tool]}
+    tool_call_id = None
+
+    message1 = {
+        "role": "user",
+        "content_items": [{"type": "text", "text": "Get me a narcissus flower image"}],
+    }
+    async for event in client.streaming_response_stateful(message=message1, config=config):
+        await _check_event_integrity(event)
+        for item in event["content_items"]:
+            if item["type"] == "tool_call":
+                tool_name = item["name"]
+                tool_call_id = item["tool_call_id"]
+
+    assert tool_name == image_tool["name"]
+    assert tool_call_id is not None
+
+    message2 = {
+        "role": "user",
+        "content_items": [
+            {
+                "type": "tool_result",
+                "result": [
+                    {"type": "text", "text": "Here is a narcissus flower image:"},
+                    {"type": "image_url", "image_url": IMAGE},
+                ],
+                "tool_call_id": tool_call_id,
+            }
+        ],
+    }
+    text = ""
+    async for event in client.streaming_response_stateful(message=message2, config=config):
+        await _check_event_integrity(event)
+        for item in event["content_items"]:
+            if item["type"] == "text":
+                text += item["text"]
+
+    assert ("flower" in text.lower()) or ("narcissus" in text.lower())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", AVAILABLE_MODELS)
 async def test_image_understanding(model):
     """Test image understanding with a URL."""
     if model not in AVAILABLE_VISION_MODELS:

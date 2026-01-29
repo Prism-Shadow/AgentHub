@@ -19,6 +19,7 @@ import os
 import re
 from typing import AsyncIterator
 
+import requests
 from google import genai
 from google.genai import types
 
@@ -152,11 +153,49 @@ class Gemini3Client(LLMClient):
                     if "tool_call_id" not in item:
                         raise ValueError("tool_call_id is required for tool result.")
 
-                    parts.append(
-                        types.Part.from_function_response(
-                            name=item["tool_call_id"], response={"result": item["result"]}
+                    result = item["result"]
+                    if isinstance(result, str):
+                        parts.append(
+                            types.Part.from_function_response(
+                                name=item["tool_call_id"], response={"result": result}
+                            )
                         )
-                    )
+                    else:
+                        result_response = {}
+                        multimodal_parts = []
+                        for result_item in result:
+                            if result_item["type"] == "text":
+                                result_response["result"] = result_item["text"]
+                            elif result_item["type"] == "image_url":
+                                image_url = result_item["image_url"]
+                                if image_url.startswith("data:"):
+                                    match = re.match(r"data:([^;]+);base64,(.+)", image_url)
+                                    if match:
+                                        mime_type = match.group(1)
+                                        base64_string = match.group(2)
+                                        image_bytes = base64.b64decode(base64_string)
+                                    else:
+                                        raise ValueError(f"Invalid base64 image: {image_url}")
+                                else:
+                                    response = requests.get(image_url)
+                                    response.raise_for_status()
+                                    image_bytes = response.content
+                                    mime_type, _ = mimetypes.guess_type(image_url)
+                                    if not mime_type:
+                                        mime_type = "image/jpeg"
+                                multimodal_parts.append(
+                                    types.FunctionResponsePart(
+                                        inline_data=types.FunctionResponseBlob(
+                                            mime_type=mime_type,
+                                            data=image_bytes,
+                                        )
+                                    )
+                                )
+                        parts.append(
+                            types.Part.from_function_response(
+                                name=item["tool_call_id"], response=result_response, parts=multimodal_parts
+                            )
+                        )
                 else:
                     raise ValueError(f"Unknown item: {item}")
 

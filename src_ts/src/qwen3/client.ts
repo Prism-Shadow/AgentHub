@@ -142,11 +142,30 @@ export class Qwen3Client extends LLMClient {
           if (!item.tool_call_id) {
             throw new Error("tool_call_id is required for tool result.");
           }
-          qwen3Messages.push({
-            role: "tool",
-            tool_call_id: item.tool_call_id,
-            content: item.result,
-          });
+          const result = item.result;
+          if (typeof result === "string") {
+            qwen3Messages.push({
+              role: "tool",
+              tool_call_id: item.tool_call_id,
+              content: result,
+            });
+          } else {
+            const contentParts: any[] = [];
+            for (const resultItem of result) {
+              if (resultItem.type === "text") {
+                contentParts.push({ type: "text", text: resultItem.text });
+              } else if (resultItem.type === "image_url") {
+                throw new Error(
+                  "Qwen3 does not support image_url in tool results."
+                );
+              }
+            }
+            qwen3Messages.push({
+              role: "tool",
+              tool_call_id: item.tool_call_id,
+              content: contentParts,
+            });
+          }
         } else {
           throw new Error(
             `Unknown item type: ${(item as { type: string }).type}`,

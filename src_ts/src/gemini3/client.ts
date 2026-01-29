@@ -25,6 +25,8 @@ import {
   ToolConfig,
   GenerateContentResponse,
   FinishReason as GeminiFinishReason,
+  FunctionResponsePart,
+  FunctionResponseBlob,
 } from "@google/genai";
 import * as path from "path";
 import { LLMClient } from "../baseClient";
@@ -188,7 +190,9 @@ export class Gemini3Client extends LLMClient {
   /**
    * Transform universal message format to Gemini's Content format.
    */
-  transformUniMessageToModelInput(messages: UniMessage[]): Content[] {
+  async transformUniMessageToModelInput(
+    messages: UniMessage[]
+  ): Promise<Content[]> {
     const mapping: { [key: string]: string } = {
       user: "user",
       assistant: "model",
@@ -247,12 +251,63 @@ export class Gemini3Client extends LLMClient {
           if (!item.tool_call_id) {
             throw new Error("tool_call_id is required for tool result.");
           }
-          parts.push({
-            functionResponse: {
-              name: item.tool_call_id,
-              response: { result: item.result },
-            },
-          } as Part);
+          const result = item.result;
+          if (typeof result === "string") {
+            parts.push({
+              functionResponse: {
+                name: item.tool_call_id,
+                response: { result: result },
+              },
+            } as Part);
+          } else {
+            const resultResponse: Record<string, any> = {};
+            const multimodalParts: FunctionResponsePart[] = [];
+            for (const resultItem of result) {
+              if (resultItem.type === "text") {
+                resultResponse.result = resultItem.text;
+              } else if (resultItem.type === "image_url") {
+                const imageUrl = resultItem.image_url;
+                let imageBytes: Uint8Array;
+                let mimeType: string;
+                if (imageUrl.startsWith("data:")) {
+                  const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+                  if (match) {
+                    mimeType = match[1];
+                    const base64Data = match[2];
+                    imageBytes = Uint8Array.from(
+                      Buffer.from(base64Data, "base64")
+                    );
+                  } else {
+                    throw new Error(`Invalid base64 image: ${imageUrl}`);
+                  }
+                } else {
+                  const response = await fetch(imageUrl);
+                  if (!response.ok) {
+                    throw new Error(`Failed to fetch image: ${imageUrl}`);
+                  }
+                  const arrayBuffer = await response.arrayBuffer();
+                  imageBytes = new Uint8Array(arrayBuffer);
+                  mimeType = this._detectMimeType(imageUrl);
+                  if (!mimeType) {
+                    mimeType = "image/jpeg";
+                  }
+                }
+                multimodalParts.push({
+                  inlineData: {
+                    mimeType: mimeType,
+                    data: imageBytes,
+                  } as FunctionResponseBlob,
+                } as FunctionResponsePart);
+              }
+            }
+            parts.push({
+              functionResponse: {
+                name: item.tool_call_id,
+                response: resultResponse,
+                parts: multimodalParts,
+              },
+            } as Part);
+          }
         } else {
           throw new Error(`Unknown item: ${JSON.stringify(item)}`);
         }
@@ -346,7 +401,9 @@ export class Gemini3Client extends LLMClient {
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
     const geminiConfig = this.transformUniConfigToModelConfig(options.config);
-    const contents = this.transformUniMessageToModelInput(options.messages);
+    const contents = await this.transformUniMessageToModelInput(
+      options.messages
+    );
 
     const responseStream = await this._client.models.generateContentStream({
       model: this._model,
