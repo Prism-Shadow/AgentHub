@@ -37,6 +37,79 @@ async function main() {
 main().catch(console.error);
 ```
 
+### Image Understanding
+
+AgentHub supports both URL and base64 encoded images:
+
+**Using URL:**
+```typescript
+import { AutoLLMClient } from '@prismshadow/agenthub';
+
+async function main() {
+  const client = new AutoLLMClient({ model: 'gpt-5.2' });
+
+  for await (const event of client.streamingResponse({
+    messages: [{
+      role: 'user',
+      content_items: [
+        { type: 'text', text: "What's in this image?" },
+        { type: 'image_url', image_url: 'https://example.com/image.jpg' }
+      ]
+    }],
+    config: {}
+  })) {
+    for (const item of event.content_items) {
+      if (item.type === 'text') {
+        process.stdout.write(item.text);
+      }
+    }
+  }
+}
+
+main().catch(console.error);
+```
+
+**Using Base64 Encoding:**
+```typescript
+import * as fs from 'fs';
+import { AutoLLMClient } from '@prismshadow/agenthub';
+
+async function main() {
+  const client = new AutoLLMClient({ model: 'gpt-5.2' });
+
+  // Read and encode image
+  const imageBuffer = fs.readFileSync('image.png');
+  const base64Image = imageBuffer.toString('base64');
+  
+  // Create data URI
+  const dataUri = `data:image/png;base64,${base64Image}`;
+
+  for await (const event of client.streamingResponse({
+    messages: [{
+      role: 'user',
+      content_items: [
+        { type: 'text', text: "What's in this image?" },
+        { type: 'image_url', image_url: dataUri }
+      ]
+    }],
+    config: {}
+  })) {
+    for (const item of event.content_items) {
+      if (item.type === 'text') {
+        process.stdout.write(item.text);
+      }
+    }
+  }
+}
+
+main().catch(console.error);
+```
+
+Supported models with image understanding:
+- GPT-5.2 (`gpt-5.2`)
+- Claude 4.5 (`claude-sonnet-4-5-20250929`)
+- Gemini 3 (`gemini-3-flash-preview`)
+
 ### Tracer Usage
 
 Save and browse conversation history with a web interface:
