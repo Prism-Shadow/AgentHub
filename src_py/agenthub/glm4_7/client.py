@@ -138,6 +138,7 @@ class GLM4_7Client(LLMClient):
                     if "images" in item and item["images"]:
                         raise ValueError("GLM does not support images in tool results.")
 
+                    # Tool results are sent as separate messages
                     openai_messages.append(
                         {
                             "role": "tool",

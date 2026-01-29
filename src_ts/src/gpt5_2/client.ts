@@ -181,10 +181,11 @@ export class GPT5_2Client extends LLMClient {
             throw new Error("tool_call_id is required for tool result.");
           }
 
+          // Tool results are input items
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const toolResult: any[] = [
             {
-              type: "output_text",
+              type: "input_text",
               text: item.text,
             },
           ];
@@ -192,7 +193,7 @@ export class GPT5_2Client extends LLMClient {
           if (item.images) {
             for (const imageUrl of item.images) {
               toolResult.push({
-                type: "output_image",
+                type: "input_image",
                 image_url: imageUrl,
               });
             }

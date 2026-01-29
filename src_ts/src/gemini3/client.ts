@@ -267,7 +267,7 @@ export class Gemini3Client extends LLMClient {
                   mimeType = match[1];
                   const base64Data = match[2];
                   imageBytes = Uint8Array.from(
-                    Buffer.from(base64Data, "base64")
+                    Buffer.from(base64Data, "base64"),
                   );
                 } else {
                   throw new Error(`Invalid base64 image: ${imageUrl}`);

@@ -148,17 +148,14 @@ class GPT5_2Client(LLMClient):
                     if "tool_call_id" not in item:
                         raise ValueError("tool_call_id is required for tool result.")
 
-                    tool_result = [{"type": "output_text", "text": item["text"]}]
+                    # NOTE: tool results are input items
+                    tool_result = [{"type": "input_text", "text": item["text"]}]
                     if "images" in item:
                         for image_url in item["images"]:
-                            tool_result.append({"type": "output_image", "image_url": image_url})
+                            tool_result.append({"type": "input_image", "image_url": image_url})
 
                     input_list.append(
-                        {
-                            "type": "function_call_output",
-                            "call_id": item["tool_call_id"],
-                            "output": tool_result,
-                        }
+                        {"type": "function_call_output", "call_id": item["tool_call_id"], "output": tool_result}
                     )
                 else:
                     raise ValueError(f"Unknown item: {item}")

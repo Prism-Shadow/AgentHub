@@ -161,7 +161,6 @@ class Gemini3Client(LLMClient):
 
                     tool_result = {"result": item["text"]}
                     multimodal_parts = []
-
                     if "images" in item:
                         for image_url in item["images"]:
                             if image_url.startswith("data:"):
