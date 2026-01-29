@@ -7,6 +7,7 @@ install:
 
 lint:
 	npm run lint
+	npx prettier --write .
 
 build:
 	npm run build

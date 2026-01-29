@@ -52,16 +52,18 @@ export class GLM4_7Client extends LLMClient {
     this._model = options.model;
     const key = options.apiKey || process.env.GLM_API_KEY || undefined;
     const url =
-      options.baseUrl || process.env.GLM_BASE_URL || "https://api.z.ai/api/paas/v4/";
+      options.baseUrl ||
+      process.env.GLM_BASE_URL ||
+      "https://api.z.ai/api/paas/v4/";
     this._client = new OpenAI({ apiKey: key, baseURL: url });
   }
 
   /**
    * Convert ThinkingLevel enum to GLM's thinking configuration.
    */
-  private _convertThinkingLevelToConfig(
-    thinkingLevel: ThinkingLevel
-  ): { type: string } {
+  private _convertThinkingLevelToConfig(thinkingLevel: ThinkingLevel): {
+    type: string;
+  } {
     const mapping: { [key: string]: { type: string } } = {
       [ThinkingLevel.NONE]: { type: "disabled" },
       [ThinkingLevel.LOW]: { type: "enabled" },
@@ -78,7 +80,7 @@ export class GLM4_7Client extends LLMClient {
     if (toolChoice === "auto") {
       return "auto";
     } else {
-      throw new Error("GLM only supports \"auto\" for tool_choice.");
+      throw new Error('GLM only supports "auto" for tool_choice.');
     }
   }
 
@@ -104,9 +106,12 @@ export class GLM4_7Client extends LLMClient {
 
     if (config.thinking_level !== undefined) {
       const thinkingConfig = this._convertThinkingLevelToConfig(
-        config.thinking_level
+        config.thinking_level,
       );
-      glmConfig.extra_body = { ...(glmConfig.extra_body || {}), thinking: thinkingConfig };
+      glmConfig.extra_body = {
+        ...(glmConfig.extra_body || {}),
+        thinking: thinkingConfig,
+      };
     }
 
     if (config.tools !== undefined) {
@@ -134,12 +139,16 @@ export class GLM4_7Client extends LLMClient {
    * Transform universal message format to OpenAI's message format.
    */
   transformUniMessageToModelInput(
-    messages: UniMessage[]
+    messages: UniMessage[],
   ): ChatCompletionMessageParam[] {
     const openaiMessages: ChatCompletionMessageParam[] = [];
 
     for (const msg of messages) {
-      const contentParts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
+      const contentParts: Array<{
+        type: string;
+        text?: string;
+        image_url?: { url: string };
+      }> = [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const toolCalls: any[] = [];
       let thinking = "";
@@ -173,7 +182,9 @@ export class GLM4_7Client extends LLMClient {
             content: item.result,
           });
         } else {
-          throw new Error(`Unknown item type: ${(item as { type: string }).type}`);
+          throw new Error(
+            `Unknown item type: ${(item as { type: string }).type}`,
+          );
         }
       }
 
@@ -221,15 +232,21 @@ export class GLM4_7Client extends LLMClient {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((delta as any)?.reasoning_content) {
       eventType = "delta";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      contentItems.push({ type: "thinking", thinking: (delta as any).reasoning_content });
+      contentItems.push({
+        type: "thinking",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        thinking: (delta as any).reasoning_content,
+      });
     }
     // openrouter compatibility
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     else if ((delta as any)?.reasoning) {
       eventType = "delta";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      contentItems.push({ type: "thinking", thinking: (delta as any).reasoning });
+      contentItems.push({
+        type: "thinking",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        thinking: (delta as any).reasoning,
+      });
     }
 
     if (delta?.tool_calls) {
@@ -257,10 +274,13 @@ export class GLM4_7Client extends LLMClient {
 
     if (modelOutput.usage) {
       eventType = eventType || "delta";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const reasoningTokens = (modelOutput.usage as any).completion_tokens_details?.reasoning_tokens || null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const cachedTokens = (modelOutput.usage as any).prompt_tokens_details?.cached_tokens || null;
+      const reasoningTokens =
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (modelOutput.usage as any).completion_tokens_details
+          ?.reasoning_tokens || null;
+      const cachedTokens =
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (modelOutput.usage as any).prompt_tokens_details?.cached_tokens || null;
 
       usageMetadata = {
         prompt_tokens: modelOutput.usage.prompt_tokens || null,

@@ -64,7 +64,8 @@ export class Gemini3Client extends LLMClient {
       process.env.GEMINI_API_KEY ||
       process.env.GOOGLE_API_KEY ||
       undefined;
-    const url = options.baseUrl || process.env.GOOGLE_GEMINI_BASE_URL || undefined;
+    const url =
+      options.baseUrl || process.env.GOOGLE_GEMINI_BASE_URL || undefined;
 
     const httpOptions = url ? { baseUrl: url } : undefined;
     this._client = new GoogleGenAI({
@@ -79,23 +80,14 @@ export class Gemini3Client extends LLMClient {
   private _detectMimeType(url: string): string | undefined {
     const ext = path.extname(url).toLowerCase();
     const mimeTypes: { [key: string]: string } = {
+      ".bmp": "image/bmp",
+      ".gif": "image/gif",
       ".jpg": "image/jpeg",
       ".jpeg": "image/jpeg",
       ".png": "image/png",
-      ".gif": "image/gif",
-      ".webp": "image/webp",
-      ".bmp": "image/bmp",
       ".svg": "image/svg+xml",
-      ".mp4": "video/mp4",
-      ".avi": "video/x-msvideo",
-      ".mov": "video/quicktime",
-      ".wmv": "video/x-ms-wmv",
-      ".flv": "video/x-flv",
-      ".webm": "video/webm",
-      ".mp3": "audio/mpeg",
-      ".wav": "audio/wav",
-      ".ogg": "audio/ogg",
-      ".pdf": "application/pdf",
+      ".tiff": "image/tiff",
+      ".webp": "image/webp",
     };
     return mimeTypes[ext];
   }
@@ -104,7 +96,7 @@ export class Gemini3Client extends LLMClient {
    * Convert ThinkingLevel enum to Gemini's ThinkingLevel.
    */
   private _convertThinkingLevel(
-    thinkingLevel: ThinkingLevel | undefined
+    thinkingLevel: ThinkingLevel | undefined,
   ): GeminiThinkingLevel | undefined {
     if (!thinkingLevel) return undefined;
 
@@ -121,7 +113,7 @@ export class Gemini3Client extends LLMClient {
    * Convert ToolChoice to Gemini's tool config.
    */
   private _convertToolChoice(
-    toolChoice: ToolChoice
+    toolChoice: ToolChoice,
   ): FunctionCallingConfig | undefined {
     if (Array.isArray(toolChoice)) {
       return {
@@ -142,7 +134,7 @@ export class Gemini3Client extends LLMClient {
    * Transform universal configuration to Gemini-specific configuration.
    */
   transformUniConfigToModelConfig(
-    config: UniConfig
+    config: UniConfig,
   ): GenerateContentConfig | undefined {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const configParams: any = {};
@@ -169,9 +161,7 @@ export class Gemini3Client extends LLMClient {
     }
 
     if (config.tools !== undefined) {
-      configParams.tools = [
-        { functionDeclarations: config.tools } as Tool,
-      ];
+      configParams.tools = [{ functionDeclarations: config.tools } as Tool];
       const toolChoice = config.tool_choice;
       if (toolChoice !== undefined) {
         const toolConfig = this._convertToolChoice(toolChoice);
@@ -215,13 +205,29 @@ export class Gemini3Client extends LLMClient {
           } as Part);
         } else if (item.type === "image_url") {
           const urlValue = item.image_url;
-          const mimeType = this._detectMimeType(urlValue);
-          parts.push({
-            fileData: {
-              fileUri: urlValue,
-              mimeType: mimeType,
-            },
-          } as Part);
+          if (urlValue.startsWith("data:")) {
+            const match = urlValue.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) {
+              const mimeType = match[1];
+              const base64Data = match[2];
+              parts.push({
+                inlineData: {
+                  mimeType: mimeType,
+                  data: base64Data,
+                },
+              } as Part);
+            } else {
+              throw new Error(`Invalid base64 image: ${urlValue}`);
+            }
+          } else {
+            const mimeType = this._detectMimeType(urlValue);
+            parts.push({
+              fileData: {
+                fileUri: urlValue,
+                mimeType: mimeType,
+              },
+            } as Part);
+          }
         } else if (item.type === "thinking") {
           parts.push({
             text: item.thinking,
@@ -265,7 +271,7 @@ export class Gemini3Client extends LLMClient {
    * Transform Gemini model output to universal event format.
    */
   transformModelOutputToUniEvent(
-    modelOutput: GenerateContentResponse
+    modelOutput: GenerateContentResponse,
   ): UniEvent {
     let eventType: EventType = "delta";
     const contentItems: PartialContentItem[] = [];
@@ -309,17 +315,15 @@ export class Gemini3Client extends LLMClient {
         [GeminiFinishReason.STOP]: "stop",
         [GeminiFinishReason.MAX_TOKENS]: "length",
       };
-      finishReason =
-        stopReasonMapping[candidate.finishReason] || "unknown";
+      finishReason = stopReasonMapping[candidate.finishReason] || "unknown";
     }
 
     if (modelOutput.usageMetadata) {
-      eventType = eventType || "delta";  // deal with separate usage data
+      eventType = eventType || "delta"; // deal with separate usage data
       usageMetadata = {
         prompt_tokens: modelOutput.usageMetadata.promptTokenCount || null,
         thoughts_tokens: modelOutput.usageMetadata.thoughtsTokenCount || null,
-        response_tokens:
-          modelOutput.usageMetadata.candidatesTokenCount || null,
+        response_tokens: modelOutput.usageMetadata.candidatesTokenCount || null,
         cached_tokens:
           modelOutput.usageMetadata.cachedContentTokenCount || null,
       };

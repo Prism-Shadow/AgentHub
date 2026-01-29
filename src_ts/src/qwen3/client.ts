@@ -51,7 +51,9 @@ export class Qwen3Client extends LLMClient {
     this._model = options.model;
     const key = options.apiKey || process.env.QWEN3_API_KEY || undefined;
     const url =
-      options.baseUrl || process.env.QWEN3_BASE_URL || "http://127.0.0.1:8000/v1/";
+      options.baseUrl ||
+      process.env.QWEN3_BASE_URL ||
+      "http://127.0.0.1:8000/v1/";
     this._client = new OpenAI({ apiKey: key, baseURL: url });
   }
 
@@ -62,7 +64,7 @@ export class Qwen3Client extends LLMClient {
     if (toolChoice === "auto") {
       return "auto";
     } else {
-      throw new Error("Qwen3 only supports \"auto\" for tool_choice.");
+      throw new Error('Qwen3 only supports "auto" for tool_choice.');
     }
   }
 
@@ -110,7 +112,7 @@ export class Qwen3Client extends LLMClient {
    * Transform universal message format to Qwen3-specific message format.
    */
   transformUniMessageToModelInput(
-    messages: UniMessage[]
+    messages: UniMessage[],
   ): ChatCompletionMessageParam[] {
     const qwen3Messages: ChatCompletionMessageParam[] = [];
 
@@ -146,7 +148,9 @@ export class Qwen3Client extends LLMClient {
             content: item.result,
           });
         } else {
-          throw new Error(`Unknown item type: ${(item as { type: string }).type}`);
+          throw new Error(
+            `Unknown item type: ${(item as { type: string }).type}`,
+          );
         }
       }
 
@@ -200,15 +204,21 @@ export class Qwen3Client extends LLMClient {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((delta as any)?.reasoning_content) {
       eventType = "delta";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      contentItems.push({ type: "thinking", thinking: (delta as any).reasoning_content });
+      contentItems.push({
+        type: "thinking",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        thinking: (delta as any).reasoning_content,
+      });
     }
     // openrouter compatibility
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     else if ((delta as any)?.reasoning) {
       eventType = "delta";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      contentItems.push({ type: "thinking", thinking: (delta as any).reasoning });
+      contentItems.push({
+        type: "thinking",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        thinking: (delta as any).reasoning,
+      });
     }
 
     if (delta?.tool_calls) {
@@ -236,10 +246,13 @@ export class Qwen3Client extends LLMClient {
 
     if (modelOutput.usage) {
       eventType = eventType || "delta";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const reasoningTokens = (modelOutput.usage as any).completion_tokens_details?.reasoning_tokens || null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const cachedTokens = (modelOutput.usage as any).prompt_tokens_details?.cached_tokens || null;
+      const reasoningTokens =
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (modelOutput.usage as any).completion_tokens_details
+          ?.reasoning_tokens || null;
+      const cachedTokens =
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (modelOutput.usage as any).prompt_tokens_details?.cached_tokens || null;
 
       usageMetadata = {
         prompt_tokens: modelOutput.usage.prompt_tokens || null,
@@ -266,7 +279,9 @@ export class Qwen3Client extends LLMClient {
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
     const qwen3Config = this.transformUniConfigToModelConfig(options.config);
-    const qwen3Messages = this.transformUniMessageToModelInput(options.messages);
+    const qwen3Messages = this.transformUniMessageToModelInput(
+      options.messages,
+    );
 
     if (options.config.system_prompt) {
       qwen3Messages.unshift({
@@ -293,23 +308,28 @@ export class Qwen3Client extends LLMClient {
     for await (const chunk of stream) {
       const event = this.transformModelOutputToUniEvent(chunk);
       if (event.event_type === "start") {
+        // initialize partial_tool_call for <tool_call>
         partialToolCall.data = "";
       } else if (event.event_type === "delta") {
         if (partialToolCall.data !== undefined) {
-          partialToolCall.data += event.content_items[0]?.type === "text"
-            ? (event.content_items[0] as { text: string }).text
-            : "";
+          // update partial_tool_call for <tool_call>
+          partialToolCall.data +=
+            event.content_items[0]?.type === "text"
+              ? (event.content_items[0] as { text: string }).text
+              : "";
           continue;
         }
 
         for (const item of event.content_items) {
           if (item.type === "partial_tool_call") {
             if (!partialToolCall.name) {
+              // initialize partial_tool_call for tool call object
               partialToolCall.name = item.name;
-              partialToolCall.arguments = "";
+              partialToolCall.arguments = item.arguments;
             } else {
+              // update partial_tool_call for tool call object
               partialToolCall.arguments =
-                (partialToolCall.arguments || "") + item.arguments;
+                partialToolCall.arguments + item.arguments;
             }
           }
         }
@@ -317,6 +337,7 @@ export class Qwen3Client extends LLMClient {
         yield event;
       } else if (event.event_type === "stop") {
         if (partialToolCall.data !== undefined) {
+          // finish partial_tool_call for <tool_call>
           const toolCall = JSON.parse(partialToolCall.data.trim());
           yield {
             role: "assistant",
@@ -350,6 +371,7 @@ export class Qwen3Client extends LLMClient {
         }
 
         if (partialToolCall.name && partialToolCall.arguments) {
+          // finish partial_tool_call for tool call object
           yield {
             role: "assistant",
             event_type: "delta",

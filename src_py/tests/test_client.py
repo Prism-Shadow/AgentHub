@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import json
+import mimetypes
 import os
 from contextlib import nullcontext
 
 import pytest
+import requests
 
 from agenthub import AutoLLMClient, ThinkingLevel
 
@@ -287,8 +290,44 @@ async def test_image_understanding(model):
         {
             "role": "user",
             "content_items": [
-                {"type": "text", "text": "What's in this image?"},
+                {"type": "text", "text": "What's in this image? Describe it briefly."},
                 {"type": "image_url", "image_url": IMAGE},
+            ],
+        }
+    ]
+    text = ""
+    async for event in client.streaming_response(messages=messages, config=config):
+        await _check_event_integrity(event)
+        for item in event["content_items"]:
+            if item["type"] == "text":
+                text += item["text"]
+
+    assert ("flower" in text.lower()) or ("narcissus" in text.lower())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", AVAILABLE_MODELS)
+async def test_image_understanding_base64(model):
+    """Test image understanding with base64 encoded image."""
+    if model not in AVAILABLE_VISION_MODELS:
+        pytest.skip(f"Image understanding is not supported by {model}.")
+
+    client = await _create_client(model)
+    config = {}
+
+    # Read test image and encode to base64
+    image_bytes = requests.get(IMAGE).content
+    base64_image = base64.b64encode(image_bytes).decode("utf-8")
+    mime_type, _ = mimetypes.guess_type(IMAGE)
+
+    # Create data URI
+    data_uri = f"data:{mime_type};base64,{base64_image}"
+    messages = [
+        {
+            "role": "user",
+            "content_items": [
+                {"type": "text", "text": "What's in this image? Describe it briefly."},
+                {"type": "image_url", "image_url": data_uri},
             ],
         }
     ]

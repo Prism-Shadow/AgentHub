@@ -14,6 +14,7 @@
 
 import json
 import os
+import re
 from typing import Any, AsyncIterator
 
 from anthropic import AsyncAnthropic
@@ -134,8 +135,22 @@ class Claude4_5Client(LLMClient):
                 if item["type"] == "text":
                     content_blocks.append({"type": "text", "text": item["text"]})
                 elif item["type"] == "image_url":
-                    # TODO: support base64 encoded images
-                    content_blocks.append({"type": "image", "source": {"type": "url", "url": item["image_url"]}})
+                    image_url = item["image_url"]
+                    if image_url.startswith("data:"):
+                        match = re.match(r"data:([^;]+);base64,(.+)", image_url)
+                        if match:
+                            media_type = match.group(1)
+                            base64_data = match.group(2)
+                            content_blocks.append(
+                                {
+                                    "type": "image",
+                                    "source": {"type": "base64", "media_type": media_type, "data": base64_data},
+                                }
+                            )
+                        else:
+                            raise ValueError(f"Invalid base64 image: {image_url}")
+                    else:
+                        content_blocks.append({"type": "image", "source": {"type": "url", "url": image_url}})
                 elif item["type"] == "thinking":
                     content_blocks.append(
                         {"type": "thinking", "thinking": item["thinking"], "signature": item["signature"]}

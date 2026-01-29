@@ -205,7 +205,7 @@ asyncio.run(main())
     "role": "user" | "assistant",
     "content_items": [
         {"type": "text", "text": "Hello"},
-        {"type": "image_url", "image_url": "https://..."}
+        {"type": "image_url", "image_url": "https://..."},
         {"type": "tool_call", "name": "get_weather", "argument": {"location": "London"}, "tool_call_id": "call_abc123"}
     ]
 }

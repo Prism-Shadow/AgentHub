@@ -39,7 +39,7 @@ export class Tracer {
    */
   constructor(cacheDir?: string) {
     this.cacheDir = path.resolve(
-      cacheDir || process.env.AGENTHUB_CACHE_DIR || "cache"
+      cacheDir || process.env.AGENTHUB_CACHE_DIR || "cache",
     );
     this._ensureDirectoryExists(this.cacheDir);
   }
@@ -90,7 +90,7 @@ export class Tracer {
     model: string,
     history: UniMessage[],
     fileId: string,
-    config: UniConfig
+    config: UniConfig,
   ): void {
     const filePathBase = path.join(this.cacheDir, fileId);
     const dirPath = path.dirname(filePathBase);
@@ -124,9 +124,7 @@ export class Tracer {
   private _formatHistory(history: UniMessage[], config: UniConfig): string {
     const lines: string[] = [];
     lines.push("=".repeat(80));
-    lines.push(
-      `Conversation History - ${new Date().toLocaleString()}`
-    );
+    lines.push(`Conversation History - ${new Date().toLocaleString()}`);
     lines.push("=".repeat(80));
     lines.push("");
 
@@ -153,14 +151,10 @@ export class Tracer {
           lines.push(`Image URL: ${item.image_url}`);
         } else if (item.type === "tool_call") {
           lines.push(`Tool Call: ${item.name}`);
-          lines.push(
-            `  Arguments: ${JSON.stringify(item.arguments, null, 2)}`
-          );
+          lines.push(`  Arguments: ${JSON.stringify(item.arguments, null, 2)}`);
           lines.push(`  Tool Call ID: ${item.tool_call_id}`);
         } else if (item.type === "tool_result") {
-          lines.push(
-            `Tool Result (ID: ${item.tool_call_id}): ${item.result}`
-          );
+          lines.push(`Tool Result (ID: ${item.tool_call_id}): ${item.result}`);
         }
       }
 
@@ -228,7 +222,7 @@ export class Tracer {
       backUrl: string,
       configHtml: string,
       historyHtml: string,
-      numMessages: number
+      numMessages: number,
     ) => `
     <!DOCTYPE html>
     <html>
@@ -271,7 +265,7 @@ export class Tracer {
       filename: string,
       breadcrumb: string,
       backUrl: string,
-      content: string
+      content: string,
     ) => `
     <!DOCTYPE html>
     <html>
@@ -313,12 +307,14 @@ export class Tracer {
       if (fs.statSync(fullPath).isFile()) {
         try {
           const parts = subpath ? subpath.split("/") : [];
-          const breadcrumbParts = ['<a href="/" class="text-blue-600 hover:underline">cache</a>'];
+          const breadcrumbParts = [
+            '<a href="/" class="text-blue-600 hover:underline">cache</a>',
+          ];
 
           for (let i = 0; i < parts.length - 1; i++) {
             const pathToPart = parts.slice(0, i + 1).join("/");
             breadcrumbParts.push(
-              `<a href="/${pathToPart}" class="text-blue-600 hover:underline">${parts[i]}</a>`
+              `<a href="/${pathToPart}" class="text-blue-600 hover:underline">${parts[i]}</a>`,
             );
           }
 
@@ -327,7 +323,8 @@ export class Tracer {
           }
 
           const breadcrumb = breadcrumbParts.join(" / ");
-          const backUrl = parts.length > 1 ? "/" + parts.slice(0, -1).join("/") : "/";
+          const backUrl =
+            parts.length > 1 ? "/" + parts.slice(0, -1).join("/") : "/";
 
           if (fullPath.endsWith(".json")) {
             const data = JSON.parse(fs.readFileSync(fullPath, "utf-8"));
@@ -335,17 +332,24 @@ export class Tracer {
               .filter(([key]) => key !== "trace_id")
               .map(([key, value]) => ({
                 key,
-                value: typeof value === "object" ? JSON.stringify(value, null, 2) : String(value),
+                value:
+                  typeof value === "object"
+                    ? JSON.stringify(value, null, 2)
+                    : String(value),
               }));
 
-            const configHtml = configItems.length > 0
-              ? `<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            const configHtml =
+              configItems.length > 0
+                ? `<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                   <h2 class="text-xl font-semibold text-gray-900 mb-4">Configuration</h2>
-                  ${configItems.map((item) =>
-                    `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong> <span class="text-gray-600">${item.value}</span></div>`
-                  ).join("")}
+                  ${configItems
+                    .map(
+                      (item) =>
+                        `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong> <span class="text-gray-600">${item.value}</span></div>`,
+                    )
+                    .join("")}
                 </div>`
-              : "";
+                : "";
 
             const historyHtml = (data.history || [])
               .map((msg: UniMessage, idx: number) => {
@@ -371,17 +375,26 @@ export class Tracer {
 
                 let metadataHtml = "";
                 if (msg.usage_metadata || msg.finish_reason) {
-                  metadataHtml += '<div class="mt-4 pt-4 border-t border-gray-200 text-right text-xs text-gray-500">';
+                  metadataHtml +=
+                    '<div class="mt-4 pt-4 border-t border-gray-200 text-right text-xs text-gray-500">';
                   if (msg.usage_metadata) {
                     const parts = [];
                     if (msg.usage_metadata.prompt_tokens !== null)
-                      parts.push(`Prompt: ${msg.usage_metadata.prompt_tokens} tokens`);
+                      parts.push(
+                        `Prompt: ${msg.usage_metadata.prompt_tokens} tokens`,
+                      );
                     if (msg.usage_metadata.thoughts_tokens !== null)
-                      parts.push(`Thoughts: ${msg.usage_metadata.thoughts_tokens} tokens`);
+                      parts.push(
+                        `Thoughts: ${msg.usage_metadata.thoughts_tokens} tokens`,
+                      );
                     if (msg.usage_metadata.response_tokens !== null)
-                      parts.push(`Response: ${msg.usage_metadata.response_tokens} tokens`);
+                      parts.push(
+                        `Response: ${msg.usage_metadata.response_tokens} tokens`,
+                      );
                     if (msg.usage_metadata.cached_tokens !== null)
-                      parts.push(`Cached: ${msg.usage_metadata.cached_tokens} tokens`);
+                      parts.push(
+                        `Cached: ${msg.usage_metadata.cached_tokens} tokens`,
+                      );
                     metadataHtml += parts.join(" • ");
                   }
                   if (msg.finish_reason) {
@@ -391,7 +404,8 @@ export class Tracer {
                   metadataHtml += "</div>";
                 }
 
-                const roleClass = msg.role === "user" ? "text-blue-600" : "text-green-600";
+                const roleClass =
+                  msg.role === "user" ? "text-blue-600" : "text-green-600";
                 return `
                   <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 overflow-hidden">
                     <div class="bg-gray-50 border-b border-gray-200 p-4 cursor-pointer hover:bg-gray-100 transition-colors" onclick="toggleMessage(${idx})">
@@ -418,7 +432,7 @@ export class Tracer {
               backUrl,
               configHtml,
               historyHtml,
-              data.history?.length || 0
+              data.history?.length || 0,
             );
 
             return res.send(html);
@@ -428,7 +442,7 @@ export class Tracer {
               path.basename(fullPath),
               breadcrumb,
               backUrl,
-              this._escapeHtml(content)
+              this._escapeHtml(content),
             );
 
             return res.send(html);
@@ -471,13 +485,15 @@ export class Tracer {
           });
 
         const parts = subpath ? subpath.split("/") : [];
-        const breadcrumbParts = ['<a href="/" class="text-blue-600 hover:underline">cache</a>'];
+        const breadcrumbParts = [
+          '<a href="/" class="text-blue-600 hover:underline">cache</a>',
+        ];
 
         for (let i = 0; i < parts.length; i++) {
           if (parts[i]) {
             const pathToPart = parts.slice(0, i + 1).join("/");
             breadcrumbParts.push(
-              `<a href="/${pathToPart}" class="text-blue-600 hover:underline">${parts[i]}</a>`
+              `<a href="/${pathToPart}" class="text-blue-600 hover:underline">${parts[i]}</a>`,
             );
           }
         }
@@ -486,10 +502,18 @@ export class Tracer {
 
         const itemsHtml = items.length
           ? items
-              .map((item: { is_dir: boolean; url: string; name: string; size: string }) => {
-                const icon = item.is_dir ? "📁" : "📄";
-                const sizeHtml = item.size ? `<span class="text-xs text-gray-500">${item.size}</span>` : "";
-                return `
+              .map(
+                (item: {
+                  is_dir: boolean;
+                  url: string;
+                  name: string;
+                  size: string;
+                }) => {
+                  const icon = item.is_dir ? "📁" : "📄";
+                  const sizeHtml = item.size
+                    ? `<span class="text-xs text-gray-500">${item.size}</span>`
+                    : "";
+                  return `
                   <div class="border-b border-gray-200 last:border-b-0 hover:bg-gray-50 transition-colors">
                     <a href="${item.url}" class="flex items-center justify-between p-4 text-blue-600 hover:text-blue-800">
                       <span class="flex items-center">
@@ -500,7 +524,8 @@ export class Tracer {
                     </a>
                   </div>
                 `;
-              })
+                },
+              )
               .join("")
           : '<div class="p-8 text-center text-gray-500 italic">No files or directories found.</div>';
 
