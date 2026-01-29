@@ -132,10 +132,20 @@ class Gemini3Client(LLMClient):
                 if item["type"] == "text":
                     parts.append(types.Part(text=item["text"], thought_signature=item.get("signature")))
                 elif item["type"] == "image_url":
-                    # TODO: support base64 encoded images
                     url_value = item["image_url"]
-                    mime_type = self._detect_mime_type(url_value)
-                    parts.append(types.Part.from_uri(file_uri=url_value, mime_type=mime_type))
+                    if url_value.startswith("data:"):
+                        import re
+
+                        match = re.match(r"data:([^;]+);base64,(.+)", url_value)
+                        if match:
+                            mime_type = match.group(1)
+                            base64_data = match.group(2)
+                            parts.append(types.Part(inline_data=types.Blob(mime_type=mime_type, data=base64_data)))
+                        else:
+                            raise ValueError(f"Invalid data URI format: {url_value}")
+                    else:
+                        mime_type = self._detect_mime_type(url_value)
+                        parts.append(types.Part.from_uri(file_uri=url_value, mime_type=mime_type))
                 elif item["type"] == "thinking":
                     parts.append(
                         types.Part(text=item["thinking"], thought=True, thought_signature=item.get("signature"))

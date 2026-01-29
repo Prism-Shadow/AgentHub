@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as fs from "fs";
+import * as path from "path";
 import { AutoLLMClient } from "../src/autoClient";
 import { ThinkingLevel, UniMessage, UniConfig, UniEvent } from "../src/types";
 
@@ -454,6 +456,51 @@ if (AVAILABLE_VISION_MODELS.length > 0) {
           text.toLowerCase().includes("flower") ||
             text.toLowerCase().includes("narcissus")
         ).toBe(true);
+      },
+      60000
+    );
+
+    test(
+      "should handle base64 encoded image understanding",
+      async () => {
+        const client = createClient(model);
+        const config: UniConfig = {};
+
+        // Read a small test image and encode to base64
+        const imagePath = path.join(
+          __dirname,
+          "../../.github/images/agenthub.png"
+        );
+        const imageBuffer = fs.readFileSync(imagePath);
+        const base64Image = imageBuffer.toString("base64");
+
+        // Create data URI
+        const dataUri = `data:image/png;base64,${base64Image}`;
+
+        const messages: UniMessage[] = [
+          {
+            role: "user",
+            content_items: [
+              { type: "text", text: "What's in this image? Describe it briefly." },
+              { type: "image_url", image_url: dataUri },
+            ],
+          },
+        ];
+
+        let text = "";
+        for await (const event of client.streamingResponse({
+          messages,
+          config,
+        })) {
+          checkEventIntegrity(event);
+          for (const item of event.content_items) {
+            if (item.type === "text") {
+              text += item.text;
+            }
+          }
+        }
+
+        expect(text.length).toBeGreaterThan(0);
       },
       60000
     );

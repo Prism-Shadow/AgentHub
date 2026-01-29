@@ -157,10 +157,25 @@ export class Claude4_5Client extends LLMClient {
         if (item.type === "text") {
           contentBlocks.push({ type: "text", text: item.text });
         } else if (item.type === "image_url") {
-          contentBlocks.push({
-            type: "image",
-            source: { type: "url", url: item.image_url },
-          });
+          const imageUrl = item.image_url;
+          if (imageUrl.startsWith("data:")) {
+            const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) {
+              const mediaType = match[1];
+              const base64Data = match[2];
+              contentBlocks.push({
+                type: "image",
+                source: { type: "base64", media_type: mediaType, data: base64Data },
+              });
+            } else {
+              throw new Error(`Invalid data URI format: ${imageUrl}`);
+            }
+          } else {
+            contentBlocks.push({
+              type: "image",
+              source: { type: "url", url: imageUrl },
+            });
+          }
         } else if (item.type === "thinking") {
           contentBlocks.push({
             type: "thinking",

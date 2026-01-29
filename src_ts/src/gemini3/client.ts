@@ -215,13 +215,29 @@ export class Gemini3Client extends LLMClient {
           } as Part);
         } else if (item.type === "image_url") {
           const urlValue = item.image_url;
-          const mimeType = this._detectMimeType(urlValue);
-          parts.push({
-            fileData: {
-              fileUri: urlValue,
-              mimeType: mimeType,
-            },
-          } as Part);
+          if (urlValue.startsWith("data:")) {
+            const match = urlValue.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) {
+              const mimeType = match[1];
+              const base64Data = match[2];
+              parts.push({
+                inlineData: {
+                  mimeType: mimeType,
+                  data: base64Data,
+                },
+              } as Part);
+            } else {
+              throw new Error(`Invalid data URI format: ${urlValue}`);
+            }
+          } else {
+            const mimeType = this._detectMimeType(urlValue);
+            parts.push({
+              fileData: {
+                fileUri: urlValue,
+                mimeType: mimeType,
+              },
+            } as Part);
+          }
         } else if (item.type === "thinking") {
           parts.push({
             text: item.thinking,
