@@ -289,6 +289,59 @@ def create_chat_app() -> Flask:
                 border-radius: 50%;
                 animation: spin 1s linear infinite;
             }
+            .image-button {
+                background-color: #0969da;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 600;
+                white-space: nowrap;
+            }
+            .image-button:hover {
+                background-color: #0860ca;
+            }
+            .image-preview-container {
+                margin-bottom: 12px;
+                display: none;
+            }
+            .image-preview-container.visible {
+                display: block;
+            }
+            .image-preview-item {
+                display: inline-block;
+                position: relative;
+                margin-right: 8px;
+                margin-bottom: 8px;
+            }
+            .image-preview-item img {
+                height: 80px;
+                width: 80px;
+                object-fit: cover;
+                border-radius: 6px;
+                border: 1px solid #d0d7de;
+            }
+            .image-preview-item button {
+                position: absolute;
+                top: -8px;
+                right: -8px;
+                background-color: #cf222e;
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 24px;
+                height: 24px;
+                cursor: pointer;
+                font-size: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .image-preview-item button:hover {
+                background-color: #a40e26;
+            }
             @keyframes spin {
                 0% { transform: rotate(0deg); }
                 100% { transform: rotate(360deg); }
@@ -377,7 +430,10 @@ def create_chat_app() -> Flask:
         </div>
 
         <div class="input-container">
+            <div class="image-preview-container" id="imagePreviewContainer"></div>
             <div class="input-wrapper">
+                <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="handleImageSelect(event)">
+                <button class="image-button" onclick="document.getElementById('imageInput').click()">📎 Image</button>
                 <textarea id="messageInput" class="input-box" placeholder="Type your message here..." rows="1"></textarea>
                 <button class="send-button" id="sendButton" onclick="sendMessage()">Send</button>
                 <button class="clear-button" onclick="clearChat()">Clear</button>
@@ -387,6 +443,43 @@ def create_chat_app() -> Flask:
         <script>
             let isStreaming = false;
             let sessionId = Math.random().toString(36).substring(7);
+            let selectedImages = [];
+
+            function handleImageSelect(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64Data = e.target.result;
+                    selectedImages.push(base64Data);
+                    updateImagePreview();
+                };
+                reader.readAsDataURL(file);
+                event.target.value = '';
+            }
+
+            function updateImagePreview() {
+                const container = document.getElementById('imagePreviewContainer');
+                if (selectedImages.length === 0) {
+                    container.classList.remove('visible');
+                    container.innerHTML = '';
+                    return;
+                }
+                
+                container.classList.add('visible');
+                container.innerHTML = selectedImages.map((img, idx) => `
+                    <div class="image-preview-item">
+                        <img src="${img}">
+                        <button onclick="removeImage(${idx})">×</button>
+                    </div>
+                `).join('');
+            }
+
+            function removeImage(idx) {
+                selectedImages.splice(idx, 1);
+                updateImagePreview();
+            }
 
             function toggleConfig() {
                 const panel = document.getElementById('configPanel');
@@ -438,10 +531,9 @@ def create_chat_app() -> Flask:
                 return config;
             }
 
-            function addMessageCard(role, content, metadata = null) {
+            function addMessageCard(role, content, metadata = null, images = []) {
                 const container = document.getElementById('messagesContainer');
 
-                // Remove welcome message if it exists
                 if (container.children.length === 1 && container.children[0].style.textAlign === 'center') {
                     container.innerHTML = '';
                 }
@@ -453,8 +545,17 @@ def create_chat_app() -> Flask:
                     <div class="message-header">
                         <span class="message-role role-${role}">${role}</span>
                     </div>
-                    <div class="message-content">${content || ''}</div>
                 `;
+                
+                if (images && images.length > 0) {
+                    html += '<div style="margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px;">';
+                    images.forEach(img => {
+                        html += `<img src="${img}" style="max-width: 300px; border-radius: 6px; border: 1px solid #d0d7de;">`;
+                    });
+                    html += '</div>';
+                }
+                
+                html += `<div class="message-content">${content || ''}</div>`;
 
                 if (metadata) {
                     html += '<div class="message-metadata">';
@@ -479,21 +580,33 @@ def create_chat_app() -> Flask:
                 const sendButton = document.getElementById('sendButton');
                 const message = input.value.trim();
 
-                if (!message || isStreaming) return;
+                if ((!message && selectedImages.length === 0) || isStreaming) return;
 
                 isStreaming = true;
                 sendButton.disabled = true;
                 input.value = '';
 
-                // Add user message to UI
-                addMessageCard('user', message);
+                const currentImages = [...selectedImages];
+                selectedImages = [];
+                updateImagePreview();
 
-                // Create assistant card for streaming
+                addMessageCard('user', message, null, currentImages);
+
                 const assistantCard = addMessageCard('assistant', '');
                 const contentDiv = assistantCard.querySelector('.message-content');
 
                 try {
                     const config = getConfig();
+                    const content_items = [];
+                    
+                    if (message) {
+                        content_items.push({ type: 'text', text: message });
+                    }
+                    
+                    currentImages.forEach(img => {
+                        content_items.push({ type: 'image_url', image_url: img });
+                    });
+                    
                     const response = await fetch('/api/chat', {
                         method: 'POST',
                         headers: {
@@ -502,7 +615,7 @@ def create_chat_app() -> Flask:
                         body: JSON.stringify({
                             message: {
                                 role: 'user',
-                                content_items: [{ type: 'text', text: message }]
+                                content_items: content_items
                             },
                             config: config,
                             session_id: sessionId
