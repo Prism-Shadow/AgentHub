@@ -14,10 +14,12 @@
 
 import base64
 import json
+import mimetypes
 import os
 from contextlib import nullcontext
 
 import pytest
+import requests
 
 from agenthub import AutoLLMClient, ThinkingLevel
 
@@ -313,14 +315,13 @@ async def test_image_understanding_base64(model):
     client = await _create_client(model)
     config = {}
 
-    # Read a small test image and encode to base64
-    image_path = os.path.join(os.path.dirname(__file__), "../../.github/images/agenthub.png")
-    with open(image_path, "rb") as image_file:
-        base64_image = base64.b64encode(image_file.read()).decode("utf-8")
+    # Read test image and encode to base64
+    image_bytes = requests.get(IMAGE).content
+    base64_image = base64.b64encode(image_bytes).decode("utf-8")
+    mime_type, _ = mimetypes.guess_type(IMAGE)
 
     # Create data URI
-    data_uri = f"data:image/png;base64,{base64_image}"
-
+    data_uri = f"data:{mime_type};base64,{base64_image}"
     messages = [
         {
             "role": "user",
@@ -337,7 +338,7 @@ async def test_image_understanding_base64(model):
             if item["type"] == "text":
                 text += item["text"]
 
-    assert len(text) > 0
+    assert ("flower" in text.lower()) or ("narcissus" in text.lower())
 
 
 @pytest.mark.asyncio

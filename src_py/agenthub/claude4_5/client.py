@@ -14,6 +14,7 @@
 
 import json
 import os
+import re
 from typing import Any, AsyncIterator
 
 from anthropic import AsyncAnthropic
@@ -136,8 +137,6 @@ class Claude4_5Client(LLMClient):
                 elif item["type"] == "image_url":
                     image_url = item["image_url"]
                     if image_url.startswith("data:"):
-                        import re
-
                         match = re.match(r"data:([^;]+);base64,(.+)", image_url)
                         if match:
                             media_type = match.group(1)
@@ -149,7 +148,7 @@ class Claude4_5Client(LLMClient):
                                 }
                             )
                         else:
-                            raise ValueError(f"Invalid data URI format: {image_url}")
+                            raise ValueError(f"Invalid base64 image: {image_url}")
                     else:
                         content_blocks.append({"type": "image", "source": {"type": "url", "url": image_url}})
                 elif item["type"] == "thinking":

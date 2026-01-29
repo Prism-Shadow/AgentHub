@@ -466,22 +466,21 @@ if (AVAILABLE_VISION_MODELS.length > 0) {
         const client = createClient(model);
         const config: UniConfig = {};
 
-        // Read a small test image and encode to base64
-        const imagePath = path.join(
-          __dirname,
-          "../../.github/images/agenthub.png"
-        );
-        const imageBuffer = fs.readFileSync(imagePath);
-        const base64Image = imageBuffer.toString("base64");
+        // Read test image and encode to base64
+        const imagePath = IMAGE;
+        const mimeType = "image/jpeg";
+        const response = await fetch(imagePath);
+        const imageBuffer = await response.arrayBuffer();
+        const base64Image = Buffer.from(imageBuffer).toString("base64");
 
         // Create data URI
-        const dataUri = `data:image/png;base64,${base64Image}`;
+        const dataUri = `data:${mimeType};base64,${base64Image}`;
 
         const messages: UniMessage[] = [
           {
             role: "user",
             content_items: [
-              { type: "text", text: "What's in this image? Describe it briefly." },
+              { type: "text", text: "What's in this image?" },
               { type: "image_url", image_url: dataUri },
             ],
           },
@@ -500,7 +499,10 @@ if (AVAILABLE_VISION_MODELS.length > 0) {
           }
         }
 
-        expect(text.length).toBeGreaterThan(0);
+        expect(
+          text.toLowerCase().includes("flower") ||
+            text.toLowerCase().includes("narcissus")
+        ).toBe(true);
       },
       60000
     );

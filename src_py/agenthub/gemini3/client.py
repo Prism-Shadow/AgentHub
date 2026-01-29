@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import json
+import mimetypes
 import os
+import re
 from typing import AsyncIterator
 
 from google import genai
@@ -46,13 +49,6 @@ class Gemini3Client(LLMClient):
             genai.Client(api_key=api_key, http_options={"base_url": base_url}) if api_key else genai.Client()
         )
         self._history: list[UniMessage] = []
-
-    def _detect_mime_type(self, url: str) -> str | None:
-        """Detect MIME type from URL extension."""
-        import mimetypes
-
-        mime_type, _ = mimetypes.guess_type(url)
-        return mime_type
 
     def _convert_thinking_level(self, thinking_level: ThinkingLevel | None) -> types.ThinkingLevel | None:
         """Convert ThinkingLevel enum to Gemini's ThinkingLevel."""
@@ -132,22 +128,19 @@ class Gemini3Client(LLMClient):
                 if item["type"] == "text":
                     parts.append(types.Part(text=item["text"], thought_signature=item.get("signature")))
                 elif item["type"] == "image_url":
-                    url_value = item["image_url"]
-                    if url_value.startswith("data:"):
-                        import base64
-                        import re
-
-                        match = re.match(r"data:([^;]+);base64,(.+)", url_value)
+                    image_url = item["image_url"]
+                    if image_url.startswith("data:"):
+                        match = re.match(r"data:([^;]+);base64,(.+)", image_url)
                         if match:
                             mime_type = match.group(1)
                             base64_string = match.group(2)
                             base64_bytes = base64.b64decode(base64_string)
-                            parts.append(types.Part(inline_data=types.Blob(mime_type=mime_type, data=base64_bytes)))
+                            parts.append(types.Part.from_bytes(data=base64_bytes, mime_type=mime_type))
                         else:
-                            raise ValueError(f"Invalid data URI format: {url_value}")
+                            raise ValueError(f"Invalid base64 image: {image_url}")
                     else:
-                        mime_type = self._detect_mime_type(url_value)
-                        parts.append(types.Part.from_uri(file_uri=url_value, mime_type=mime_type))
+                        mime_type, _ = mimetypes.guess_type(image_url)
+                        parts.append(types.Part.from_uri(file_uri=image_url, mime_type=mime_type))
                 elif item["type"] == "thinking":
                     parts.append(
                         types.Part(text=item["thinking"], thought=True, thought_signature=item.get("signature"))

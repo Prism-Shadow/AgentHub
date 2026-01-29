@@ -227,7 +227,7 @@ export class Gemini3Client extends LLMClient {
                 },
               } as Part);
             } else {
-              throw new Error(`Invalid data URI format: ${urlValue}`);
+              throw new Error(`Invalid base64 image: ${urlValue}`);
             }
           } else {
             const mimeType = this._detectMimeType(urlValue);

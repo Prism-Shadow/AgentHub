@@ -168,7 +168,7 @@ export class Claude4_5Client extends LLMClient {
                 source: { type: "base64", media_type: mediaType, data: base64Data },
               });
             } else {
-              throw new Error(`Invalid data URI format: ${imageUrl}`);
+              throw new Error(`Invalid base64 image: ${imageUrl}`);
             }
           } else {
             contentBlocks.push({
