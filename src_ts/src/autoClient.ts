@@ -45,7 +45,7 @@ export class AutoLLMClient extends LLMClient {
       options.model,
       options.apiKey,
       options.baseUrl,
-      options.clientType
+      options.clientType,
     );
   }
 
@@ -63,7 +63,7 @@ export class AutoLLMClient extends LLMClient {
     model: string,
     apiKey?: string,
     baseUrl?: string | null,
-    clientType?: string | null
+    clientType?: string | null,
   ): LLMClient {
     clientType = clientType || process.env.CLIENT_TYPE || model.toLowerCase();
 
@@ -71,7 +71,10 @@ export class AutoLLMClient extends LLMClient {
       return new Gemini3Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("claude") && clientType.includes("4-5")) {
       return new Claude4_5Client({ model, apiKey, baseUrl });
-    } else if (clientType.includes("gpt-5.1") || clientType.includes("gpt-5.2")) {
+    } else if (
+      clientType.includes("gpt-5.1") ||
+      clientType.includes("gpt-5.2")
+    ) {
       return new GPT5_2Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("glm-4.7")) {
       return new GLM4_7Client({ model, apiKey, baseUrl });
@@ -80,7 +83,7 @@ export class AutoLLMClient extends LLMClient {
     } else {
       throw new Error(
         `${clientType} is not supported. ` +
-          "Supported client types: gemini-3, claude-4-5, gpt-5.2, glm-4.7, qwen3."
+          "Supported client types: gemini-3, claude-4-5, gpt-5.2, glm-4.7, qwen3.",
       );
     }
   }
@@ -118,7 +121,7 @@ export class AutoLLMClient extends LLMClient {
   }): AsyncGenerator<UniEvent> {
     for await (const event of this._client.streamingResponse({
       messages: options.messages,
-      config: options.config
+      config: options.config,
     })) {
       yield event;
     }

@@ -61,15 +61,17 @@ export class Claude4_5Client extends LLMClient {
   /**
    * Convert ThinkingLevel enum to Claude's budget_tokens.
    */
-  private _convertThinkingLevelToBudget(
-    thinkingLevel: ThinkingLevel
-  ): { type: string; budget_tokens?: number } {
-    const mapping: { [key: string]: { type: string; budget_tokens?: number } } = {
-      [ThinkingLevel.NONE]: { type: "disabled" },
-      [ThinkingLevel.LOW]: { type: "enabled", budget_tokens: 1024 },
-      [ThinkingLevel.MEDIUM]: { type: "enabled", budget_tokens: 4096 },
-      [ThinkingLevel.HIGH]: { type: "enabled", budget_tokens: 16384 },
-    };
+  private _convertThinkingLevelToBudget(thinkingLevel: ThinkingLevel): {
+    type: string;
+    budget_tokens?: number;
+  } {
+    const mapping: { [key: string]: { type: string; budget_tokens?: number } } =
+      {
+        [ThinkingLevel.NONE]: { type: "disabled" },
+        [ThinkingLevel.LOW]: { type: "enabled", budget_tokens: 1024 },
+        [ThinkingLevel.MEDIUM]: { type: "enabled", budget_tokens: 4096 },
+        [ThinkingLevel.HIGH]: { type: "enabled", budget_tokens: 16384 },
+      };
     return mapping[thinkingLevel];
   }
 
@@ -120,7 +122,7 @@ export class Claude4_5Client extends LLMClient {
     if (config.thinking_level !== undefined) {
       claudeConfig.temperature = 1.0; // `temperature` may only be set to 1 when thinking is enabled
       claudeConfig.thinking = this._convertThinkingLevelToBudget(
-        config.thinking_level
+        config.thinking_level,
       );
     }
 
@@ -165,7 +167,11 @@ export class Claude4_5Client extends LLMClient {
               const base64Data = match[2];
               contentBlocks.push({
                 type: "image",
-                source: { type: "base64", media_type: mediaType, data: base64Data },
+                source: {
+                  type: "base64",
+                  media_type: mediaType,
+                  data: base64Data,
+                },
               });
             } else {
               throw new Error(`Invalid base64 image: ${imageUrl}`);
@@ -215,7 +221,9 @@ export class Claude4_5Client extends LLMClient {
   /**
    * Transform Claude model output to universal event format.
    */
-  transformModelOutputToUniEvent(modelOutput: BetaRawMessageStreamEvent): UniEvent {
+  transformModelOutputToUniEvent(
+    modelOutput: BetaRawMessageStreamEvent,
+  ): UniEvent {
     let eventType: EventType | null = null;
     const contentItems: PartialContentItem[] = [];
     let usageMetadata: UsageMetadata | null = null;
@@ -316,16 +324,16 @@ export class Claude4_5Client extends LLMClient {
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
     const claudeConfig = this.transformUniConfigToModelConfig(options.config);
-    const claudeMessages = this.transformUniMessageToModelInput(options.messages);
+    const claudeMessages = this.transformUniMessageToModelInput(
+      options.messages,
+    );
 
     // Add cache_control to last user message's last item if enabled
     const promptCaching = options.config.prompt_caching || PromptCaching.ENABLE;
     if (promptCaching !== PromptCaching.DISABLE && claudeMessages.length > 0) {
       try {
         const reversedMessages = [...claudeMessages].reverse();
-        const lastUserMessage = reversedMessages.find(
-          (x) => x.role === "user"
-        );
+        const lastUserMessage = reversedMessages.find((x) => x.role === "user");
         if (lastUserMessage && Array.isArray(lastUserMessage.content)) {
           const lastContentItem =
             lastUserMessage.content[lastUserMessage.content.length - 1];
@@ -382,10 +390,7 @@ export class Claude4_5Client extends LLMClient {
 
         yield uniEvent;
       } else if (uniEvent.event_type === "stop") {
-        if (
-          partialToolCall.name &&
-          partialToolCall.arguments !== undefined
-        ) {
+        if (partialToolCall.name && partialToolCall.arguments !== undefined) {
           yield {
             role: "assistant",
             event_type: "delta",

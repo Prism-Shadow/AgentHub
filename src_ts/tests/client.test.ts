@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as fs from "fs";
-import * as path from "path";
 import { AutoLLMClient } from "../src/autoClient";
 import { ThinkingLevel, UniMessage, UniConfig, UniEvent } from "../src/types";
 
@@ -91,10 +89,7 @@ function checkEventIntegrity(event: UniEvent): void {
       expect(item).toHaveProperty("text");
     } else if (item.type === "thinking") {
       expect(item).toHaveProperty("thinking");
-    } else if (
-      item.type === "tool_call" ||
-      item.type === "partial_tool_call"
-    ) {
+    } else if (item.type === "tool_call" || item.type === "partial_tool_call") {
       expect(item).toHaveProperty("name");
       expect(item).toHaveProperty("arguments");
       expect(item).toHaveProperty("tool_call_id");
@@ -111,18 +106,57 @@ function checkEventIntegrity(event: UniEvent): void {
 
 if (AVAILABLE_MODELS.length > 0) {
   describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
-    test(
-      "should stream basic response",
-      async () => {
-        const client = createClient(model);
-        const messages: UniMessage[] = [
-          {
-            role: "user",
-            content_items: [{ type: "text", text: "What is 2+3?" }],
-          },
-        ];
-        const config: UniConfig = {};
+    test("should stream basic response", async () => {
+      const client = createClient(model);
+      const messages: UniMessage[] = [
+        {
+          role: "user",
+          content_items: [{ type: "text", text: "What is 2+3?" }],
+        },
+      ];
+      const config: UniConfig = {};
 
+      let text = "";
+      for await (const event of client.streamingResponse({
+        messages,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
+          }
+        }
+      }
+
+      expect(text).toContain("5");
+    }, 60000);
+
+    test("should stream response with all parameters", async () => {
+      const client = createClient(model);
+      const messages: UniMessage[] = [
+        {
+          role: "user",
+          content_items: [{ type: "text", text: "What is 2+3?" }],
+        },
+      ];
+      const config: UniConfig = {
+        max_tokens: 8192,
+        temperature: 0.7,
+        thinking_summary: true,
+        thinking_level: ThinkingLevel.LOW,
+      };
+
+      if (model.includes("gpt-5.2")) {
+        await expect(async () => {
+          for await (const _ of client.streamingResponse({
+            messages,
+            config,
+          })) {
+            // This should throw before we get here
+          }
+        }).rejects.toThrow("GPT-5.2 does not support setting temperature.");
+      } else {
         let text = "";
         for await (const event of client.streamingResponse({
           messages,
@@ -137,380 +171,310 @@ if (AVAILABLE_MODELS.length > 0) {
         }
 
         expect(text).toContain("5");
-      },
-      60000
-    );
+      }
+    }, 60000);
 
-    test(
-      "should stream response with all parameters",
-      async () => {
-        const client = createClient(model);
-        const messages: UniMessage[] = [
-          {
-            role: "user",
-            content_items: [{ type: "text", text: "What is 2+3?" }],
+    test("should handle stateful streaming", async () => {
+      const client = createClient(model);
+      const config: UniConfig = {};
+
+      const message1: UniMessage = {
+        role: "user",
+        content_items: [{ type: "text", text: "My name is Alice" }],
+      };
+      for await (const event of client.streamingResponseStateful({
+        message: message1,
+        config,
+      })) {
+        checkEventIntegrity(event);
+      }
+
+      expect(client.getHistory().length).toBe(2);
+
+      const message2: UniMessage = {
+        role: "user",
+        content_items: [{ type: "text", text: "What is my name?" }],
+      };
+      let text = "";
+      for await (const event of client.streamingResponseStateful({
+        message: message2,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
+          }
+        }
+      }
+
+      expect(text.toLowerCase()).toContain("alice");
+      expect(client.getHistory().length).toBe(4);
+    }, 60000);
+
+    test("should clear history", async () => {
+      const client = createClient(model);
+      const message: UniMessage = {
+        role: "user",
+        content_items: [{ type: "text", text: "Hello" }],
+      };
+      const config: UniConfig = {};
+
+      for await (const _ of client.streamingResponseStateful({
+        message,
+        config,
+      })) {
+        // consume the stream
+      }
+
+      expect(client.getHistory().length).toBeGreaterThan(0);
+
+      client.clearHistory();
+      expect(client.getHistory().length).toBe(0);
+    }, 60000);
+
+    test("should concatenate events to message", async () => {
+      const client = createClient(model);
+      const messages: UniMessage[] = [
+        {
+          role: "user",
+          content_items: [{ type: "text", text: "Say hello" }],
+        },
+      ];
+      const config: UniConfig = {};
+
+      const events: UniEvent[] = [];
+      let text = "";
+      for await (const event of client.streamingResponse({
+        messages,
+        config,
+      })) {
+        events.push(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
+          }
+        }
+      }
+
+      const message = client.concatUniEventsToUniMessage(events);
+      expect(message.role).toBe("assistant");
+      for (const item of message.content_items) {
+        if (item.type === "text") {
+          expect(item.text).toBe(text);
+        }
+      }
+    }, 60000);
+
+    test("should handle tool use", async () => {
+      const client = createClient(model);
+
+      const weatherTool = {
+        name: "get_weather",
+        description: "Get the current weather in a given location",
+        parameters: {
+          type: "object",
+          properties: {
+            location: {
+              type: "string",
+              description: "The city name, e.g. San Francisco",
+            },
           },
-        ];
-        const config: UniConfig = {
-          max_tokens: 8192,
-          temperature: 0.7,
-          thinking_summary: true,
-          thinking_level: ThinkingLevel.LOW,
-        };
+          required: ["location"],
+        },
+      };
 
-        if (model.includes("gpt-5.2")) {
-          await expect(async () => {
-            for await (const _ of client.streamingResponse({
-              messages,
-              config,
-            })) {
-              // This should throw before we get here
+      const config: UniConfig = { tools: [weatherTool] };
+      let toolCallId: string | undefined;
+      const partialToolCallData: {
+        name?: string;
+        arguments?: string;
+        tool_call_id?: string;
+      } = {};
+      let toolName: string | undefined;
+      let toolArguments: Record<string, unknown> | undefined;
+
+      const message1: UniMessage = {
+        role: "user",
+        content_items: [
+          { type: "text", text: "What is the weather in San Francisco?" },
+        ],
+      };
+      for await (const event of client.streamingResponseStateful({
+        message: message1,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "partial_tool_call") {
+            if (!partialToolCallData.name) {
+              partialToolCallData.name = item.name;
+              partialToolCallData.arguments = item.arguments;
+              partialToolCallData.tool_call_id = item.tool_call_id;
+            } else {
+              partialToolCallData.arguments += item.arguments;
             }
-          }).rejects.toThrow("GPT-5.2 does not support setting temperature.");
-        } else {
-          let text = "";
-          for await (const event of client.streamingResponse({
-            messages,
-            config,
-          })) {
-            checkEventIntegrity(event);
-            for (const item of event.content_items) {
-              if (item.type === "text") {
-                text += item.text;
-              }
-            }
-          }
-
-          expect(text).toContain("5");
-        }
-      },
-      60000
-    );
-
-    test(
-      "should handle stateful streaming",
-      async () => {
-        const client = createClient(model);
-        const config: UniConfig = {};
-
-        const message1: UniMessage = {
-          role: "user",
-          content_items: [{ type: "text", text: "My name is Alice" }],
-        };
-        for await (const event of client.streamingResponseStateful({
-          message: message1,
-          config,
-        })) {
-          checkEventIntegrity(event);
-        }
-
-        expect(client.getHistory().length).toBe(2);
-
-        const message2: UniMessage = {
-          role: "user",
-          content_items: [{ type: "text", text: "What is my name?" }],
-        };
-        let text = "";
-        for await (const event of client.streamingResponseStateful({
-          message: message2,
-          config,
-        })) {
-          checkEventIntegrity(event);
-          for (const item of event.content_items) {
-            if (item.type === "text") {
-              text += item.text;
-            }
+          } else if (item.type === "tool_call") {
+            toolName = item.name;
+            toolArguments = item.arguments;
+            toolCallId = item.tool_call_id;
           }
         }
+      }
 
-        expect(text.toLowerCase()).toContain("alice");
-        expect(client.getHistory().length).toBe(4);
-      },
-      60000
-    );
+      expect(toolName).toBe(weatherTool.name);
+      expect(toolArguments).toHaveProperty("location");
+      expect(toolCallId).toBeDefined();
+      expect(partialToolCallData.name).toBe(toolName);
+      expect(partialToolCallData.tool_call_id).toBe(toolCallId);
+      if (partialToolCallData.arguments && toolArguments) {
+        expect(JSON.parse(partialToolCallData.arguments)).toEqual(
+          toolArguments,
+        );
+      }
 
-    test(
-      "should clear history",
-      async () => {
-        const client = createClient(model);
-        const message: UniMessage = {
+      const message2: UniMessage = {
+        role: "user",
+        content_items: [
+          {
+            type: "tool_result",
+            result: "It's 20 degrees in San Francisco.",
+            tool_call_id: toolCallId || "",
+          },
+        ],
+      };
+      let text = "";
+      for await (const event of client.streamingResponseStateful({
+        message: message2,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
+          }
+        }
+      }
+
+      expect(text).toContain("20");
+    }, 60000);
+    test("should handle system prompt", async () => {
+      const client = createClient(model);
+      const messages: UniMessage[] = [
+        {
           role: "user",
           content_items: [{ type: "text", text: "Hello" }],
-        };
-        const config: UniConfig = {};
+        },
+      ];
+      const config: UniConfig = {
+        system_prompt: "You are a kitten that must end with the word 'meow'.",
+      };
 
-        for await (const _ of client.streamingResponseStateful({
-          message,
-          config,
-        })) {
-          // consume the stream
-        }
-
-        expect(client.getHistory().length).toBeGreaterThan(0);
-
-        client.clearHistory();
-        expect(client.getHistory().length).toBe(0);
-      },
-      60000
-    );
-
-    test(
-      "should concatenate events to message",
-      async () => {
-        const client = createClient(model);
-        const messages: UniMessage[] = [
-          {
-            role: "user",
-            content_items: [{ type: "text", text: "Say hello" }],
-          },
-        ];
-        const config: UniConfig = {};
-
-        const events: UniEvent[] = [];
-        let text = "";
-        for await (const event of client.streamingResponse({
-          messages,
-          config,
-        })) {
-          events.push(event);
-          for (const item of event.content_items) {
-            if (item.type === "text") {
-              text += item.text;
-            }
-          }
-        }
-
-        const message = client.concatUniEventsToUniMessage(events);
-        expect(message.role).toBe("assistant");
-        for (const item of message.content_items) {
+      let text = "";
+      for await (const event of client.streamingResponse({
+        messages,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
           if (item.type === "text") {
-            expect(item.text).toBe(text);
+            text += item.text;
           }
         }
-      },
-      60000
-    );
+      }
 
-    test(
-      "should handle tool use",
-      async () => {
-        const client = createClient(model);
-
-        const weatherTool = {
-          name: "get_weather",
-          description: "Get the current weather in a given location",
-          parameters: {
-            type: "object",
-            properties: {
-              location: {
-                type: "string",
-                description: "The city name, e.g. San Francisco",
-              },
-            },
-            required: ["location"],
-          },
-        };
-
-        const config: UniConfig = { tools: [weatherTool] };
-        let toolCallId: string | undefined;
-        const partialToolCallData: {
-          name?: string;
-          arguments?: string;
-          tool_call_id?: string;
-        } = {};
-        let toolName: string | undefined;
-        let toolArguments: Record<string, unknown> | undefined;
-
-        const message1: UniMessage = {
-          role: "user",
-          content_items: [
-            { type: "text", text: "What is the weather in San Francisco?" },
-          ],
-        };
-        for await (const event of client.streamingResponseStateful({
-          message: message1,
-          config,
-        })) {
-          checkEventIntegrity(event);
-          for (const item of event.content_items) {
-            if (item.type === "partial_tool_call") {
-              if (!partialToolCallData.name) {
-                partialToolCallData.name = item.name;
-                partialToolCallData.arguments = item.arguments;
-                partialToolCallData.tool_call_id = item.tool_call_id;
-              } else {
-                partialToolCallData.arguments += item.arguments;
-              }
-            } else if (item.type === "tool_call") {
-              toolName = item.name;
-              toolArguments = item.arguments;
-              toolCallId = item.tool_call_id;
-            }
-          }
-        }
-
-        expect(toolName).toBe(weatherTool.name);
-        expect(toolArguments).toHaveProperty("location");
-        expect(toolCallId).toBeDefined();
-        expect(partialToolCallData.name).toBe(toolName);
-        expect(partialToolCallData.tool_call_id).toBe(toolCallId);
-        if (partialToolCallData.arguments && toolArguments) {
-          expect(JSON.parse(partialToolCallData.arguments)).toEqual(
-            toolArguments
-          );
-        }
-
-        const message2: UniMessage = {
-          role: "user",
-          content_items: [
-            {
-              type: "tool_result",
-              result: "It's 20 degrees in San Francisco.",
-              tool_call_id: toolCallId || "",
-            },
-          ],
-        };
-        let text = "";
-        for await (const event of client.streamingResponseStateful({
-          message: message2,
-          config,
-        })) {
-          checkEventIntegrity(event);
-          for (const item of event.content_items) {
-            if (item.type === "text") {
-              text += item.text;
-            }
-          }
-        }
-
-        expect(text).toContain("20");
-      },
-      60000
-    );
-    test(
-      "should handle system prompt",
-      async () => {
-        const client = createClient(model);
-        const messages: UniMessage[] = [
-          {
-            role: "user",
-            content_items: [{ type: "text", text: "Hello" }],
-          },
-        ];
-        const config: UniConfig = {
-          system_prompt:
-            "You are a kitten that must end with the word 'meow'.",
-        };
-
-        let text = "";
-        for await (const event of client.streamingResponse({
-          messages,
-          config,
-        })) {
-          checkEventIntegrity(event);
-          for (const item of event.content_items) {
-            if (item.type === "text") {
-              text += item.text;
-            }
-          }
-        }
-
-        expect(text.toLowerCase()).toContain("meow");
-      },
-      60000
-    );
+      expect(text.toLowerCase()).toContain("meow");
+    }, 60000);
   });
 }
 
 if (AVAILABLE_VISION_MODELS.length > 0) {
   describe.each(AVAILABLE_VISION_MODELS)("Vision test for %s", (model) => {
-    test(
-      "should handle image understanding",
-      async () => {
-        const client = createClient(model);
-        const config: UniConfig = {};
-        const messages: UniMessage[] = [
-          {
-            role: "user",
-            content_items: [
-              { type: "text", text: "What's in this image?" },
-              { type: "image_url", image_url: IMAGE },
-            ],
-          },
-        ];
+    test("should handle image understanding", async () => {
+      const client = createClient(model);
+      const config: UniConfig = {};
+      const messages: UniMessage[] = [
+        {
+          role: "user",
+          content_items: [
+            {
+              type: "text",
+              text: "What's in this image? Describe it briefly.",
+            },
+            { type: "image_url", image_url: IMAGE },
+          ],
+        },
+      ];
 
-        let text = "";
-        for await (const event of client.streamingResponse({
-          messages,
-          config,
-        })) {
-          checkEventIntegrity(event);
-          for (const item of event.content_items) {
-            if (item.type === "text") {
-              text += item.text;
-            }
+      let text = "";
+      for await (const event of client.streamingResponse({
+        messages,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
           }
         }
+      }
 
-        expect(
-          text.toLowerCase().includes("flower") ||
-            text.toLowerCase().includes("narcissus")
-        ).toBe(true);
-      },
-      60000
-    );
+      expect(
+        text.toLowerCase().includes("flower") ||
+          text.toLowerCase().includes("narcissus"),
+      ).toBe(true);
+    }, 60000);
 
-    test(
-      "should handle base64 encoded image understanding",
-      async () => {
-        const client = createClient(model);
-        const config: UniConfig = {};
+    test("should handle base64 encoded image understanding", async () => {
+      const client = createClient(model);
+      const config: UniConfig = {};
 
-        // Read test image and encode to base64
-        const imagePath = IMAGE;
-        const mimeType = "image/jpeg";
-        const response = await fetch(imagePath);
-        const imageBuffer = await response.arrayBuffer();
-        const base64Image = Buffer.from(imageBuffer).toString("base64");
+      // Read test image and encode to base64
+      const imagePath = IMAGE;
+      const mimeType = "image/jpeg";
+      const response = await fetch(imagePath);
+      const imageBuffer = await response.arrayBuffer();
+      const base64Image = Buffer.from(imageBuffer).toString("base64");
 
-        // Create data URI
-        const dataUri = `data:${mimeType};base64,${base64Image}`;
+      // Create data URI
+      const dataUri = `data:${mimeType};base64,${base64Image}`;
 
-        const messages: UniMessage[] = [
-          {
-            role: "user",
-            content_items: [
-              { type: "text", text: "What's in this image?" },
-              { type: "image_url", image_url: dataUri },
-            ],
-          },
-        ];
+      const messages: UniMessage[] = [
+        {
+          role: "user",
+          content_items: [
+            {
+              type: "text",
+              text: "What's in this image? Describe it briefly.",
+            },
+            { type: "image_url", image_url: dataUri },
+          ],
+        },
+      ];
 
-        let text = "";
-        for await (const event of client.streamingResponse({
-          messages,
-          config,
-        })) {
-          checkEventIntegrity(event);
-          for (const item of event.content_items) {
-            if (item.type === "text") {
-              text += item.text;
-            }
+      let text = "";
+      for await (const event of client.streamingResponse({
+        messages,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
           }
         }
+      }
 
-        expect(
-          text.toLowerCase().includes("flower") ||
-            text.toLowerCase().includes("narcissus")
-        ).toBe(true);
-      },
-      60000
-    );
+      expect(
+        text.toLowerCase().includes("flower") ||
+          text.toLowerCase().includes("narcissus"),
+      ).toBe(true);
+    }, 60000);
   });
 }
 
 test("should reject unknown model", () => {
   expect(() => new AutoLLMClient({ model: "unknown-model" })).toThrow(
-    "not supported"
+    "not supported",
   );
 });

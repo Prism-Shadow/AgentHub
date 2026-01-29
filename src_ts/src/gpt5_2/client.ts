@@ -57,9 +57,7 @@ export class GPT5_2Client extends LLMClient {
   /**
    * Convert ThinkingLevel enum to OpenAI's reasoning effort.
    */
-  private _convertThinkingLevelToEffort(
-    thinkingLevel: ThinkingLevel
-  ): string {
+  private _convertThinkingLevelToEffort(thinkingLevel: ThinkingLevel): string {
     const mapping: { [key: string]: string } = {
       [ThinkingLevel.NONE]: "none",
       [ThinkingLevel.LOW]: "low",
@@ -158,9 +156,10 @@ export class GPT5_2Client extends LLMClient {
             image_url: item.image_url,
           });
         } else if (item.type === "thinking") {
-          const signatureStr = typeof item.signature === 'string'
-            ? item.signature
-            : item.signature?.toString() || '{}';
+          const signatureStr =
+            typeof item.signature === "string"
+              ? item.signature
+              : item.signature?.toString() || "{}";
           const signature = JSON.parse(signatureStr);
           inputList.push({
             type: "reasoning",
@@ -275,12 +274,13 @@ export class GPT5_2Client extends LLMClient {
         incomplete: "length",
       };
       if (response.status) {
-        finishReason = finishReasonMapping[response.status]
+        finishReason = finishReasonMapping[response.status];
       }
       if (response.usage) {
         usageMetadata = {
           prompt_tokens: response.usage.input_tokens,
-          thoughts_tokens: response.usage.output_tokens_details.reasoning_tokens,
+          thoughts_tokens:
+            response.usage.output_tokens_details.reasoning_tokens,
           response_tokens: response.usage.output_tokens,
           cached_tokens: response.usage.input_tokens_details.cached_tokens,
         };
@@ -356,10 +356,7 @@ export class GPT5_2Client extends LLMClient {
 
         yield uniEvent;
       } else if (uniEvent.event_type === "stop") {
-        if (
-          partialToolCall.name &&
-          partialToolCall.arguments !== undefined
-        ) {
+        if (partialToolCall.name && partialToolCall.arguments !== undefined) {
           yield {
             role: "assistant",
             event_type: "delta",

@@ -290,7 +290,7 @@ async def test_image_understanding(model):
         {
             "role": "user",
             "content_items": [
-                {"type": "text", "text": "What's in this image?"},
+                {"type": "text", "text": "What's in this image? Describe it briefly."},
                 {"type": "image_url", "image_url": IMAGE},
             ],
         }
