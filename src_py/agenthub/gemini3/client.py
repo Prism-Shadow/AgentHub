@@ -51,9 +51,8 @@ class Gemini3Client(LLMClient):
         )
         self._history: list[UniMessage] = []
 
-    def _detect_mime_type(self, url: str) -> str:
-        """Detect MIME type from URL extension."""
-
+    def _detect_image_mime_type(self, url: str) -> str:
+        """Detect MIME type from URL extension for image."""
         mime_type, _ = mimetypes.guess_type(url)
         return mime_type or "image/jpeg"
 
@@ -146,7 +145,7 @@ class Gemini3Client(LLMClient):
                         else:
                             raise ValueError(f"Invalid base64 image: {image_url}")
                     else:
-                        mime_type = self._detect_mime_type(image_url)
+                        mime_type = self._detect_image_mime_type(image_url)
                         parts.append(types.Part.from_uri(file_uri=image_url, mime_type=mime_type))
                 elif item["type"] == "thinking":
                     parts.append(
@@ -175,7 +174,7 @@ class Gemini3Client(LLMClient):
                                 response = requests.get(image_url)
                                 response.raise_for_status()
                                 image_bytes = response.content
-                                mime_type = self._detect_mime_type(image_url)
+                                mime_type = self._detect_image_mime_type(image_url)
 
                             multimodal_parts.append(
                                 types.FunctionResponsePart(

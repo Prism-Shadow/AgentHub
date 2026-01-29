@@ -78,9 +78,9 @@ export class Gemini3Client extends LLMClient {
   }
 
   /**
-   * Detect MIME type from URL extension.
+   * Detect MIME type from URL extension for image.
    */
-  private _detectMimeType(url: string): string {
+  private _detectImageMimeType(url: string): string {
     const ext = path.extname(url).toLowerCase();
     const mimeTypes: { [key: string]: string } = {
       ".bmp": "image/bmp",
@@ -225,7 +225,7 @@ export class Gemini3Client extends LLMClient {
               throw new Error(`Invalid base64 image: ${urlValue}`);
             }
           } else {
-            const mimeType = this._detectMimeType(urlValue);
+            const mimeType = this._detectImageMimeType(urlValue);
             parts.push({
               fileData: {
                 fileUri: urlValue,
@@ -279,7 +279,7 @@ export class Gemini3Client extends LLMClient {
                 }
                 const arrayBuffer = await response.arrayBuffer();
                 imageBytes = new Uint8Array(arrayBuffer);
-                mimeType = this._detectMimeType(imageUrl);
+                mimeType = this._detectImageMimeType(imageUrl);
               }
               const base64Data = Buffer.from(imageBytes).toString("base64");
               multimodalParts.push({
