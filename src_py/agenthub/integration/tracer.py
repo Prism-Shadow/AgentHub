@@ -146,7 +146,7 @@ class Tracer:
                     # Skip partial_tool_call - tracer only shows complete tool calls
                     pass
                 elif item["type"] == "tool_result":
-                    lines.append(f"Tool Result (ID: {item['tool_call_id']}): {item['result']}")
+                    lines.append(f"Tool Result (ID: {item['tool_call_id']}): {item['text']}")
 
             # Add usage metadata if available
             if "usage_metadata" in message and message["usage_metadata"]:

@@ -338,7 +338,7 @@ if (AVAILABLE_MODELS.length > 0) {
         content_items: [
           {
             type: "tool_result",
-            result: "It's 20 degrees in San Francisco.",
+            text: "It's 20 degrees in San Francisco.",
             tool_call_id: toolCallId || "",
           },
         ],
@@ -357,82 +357,6 @@ if (AVAILABLE_MODELS.length > 0) {
       }
 
       expect(text).toContain("20");
-    }, 60000);
-    test("should handle tool result with image", async () => {
-      const client = createClient(model);
-
-      const imageTool = {
-        name: "get_image",
-        description: "Get an image URL",
-        parameters: {
-          type: "object",
-          properties: {
-            query: {
-              type: "string",
-              description: "The image to retrieve",
-            },
-          },
-          required: ["query"],
-        },
-      };
-
-      const config: UniConfig = { tools: [imageTool] };
-      let toolCallId: string | undefined;
-      let toolName: string | undefined;
-
-      const message1: UniMessage = {
-        role: "user",
-        content_items: [
-          {
-            type: "text",
-            text: "Give me a brief introduction to narcissus flowers",
-          },
-        ],
-      };
-      for await (const event of client.streamingResponseStateful({
-        message: message1,
-        config,
-      })) {
-        checkEventIntegrity(event);
-        for (const item of event.content_items) {
-          if (item.type === "tool_call") {
-            toolName = item.name;
-            toolCallId = item.tool_call_id;
-          }
-        }
-      }
-
-      expect(toolName).toBe(imageTool.name);
-      expect(toolCallId).toBeDefined();
-
-      const message2: UniMessage = {
-        role: "user",
-        content_items: [
-          {
-            type: "tool_result",
-            text: "Here is a narcissus flower image:",
-            image_url: IMAGE,
-            tool_call_id: toolCallId || "",
-          },
-        ],
-      };
-      let text = "";
-      for await (const event of client.streamingResponseStateful({
-        message: message2,
-        config,
-      })) {
-        checkEventIntegrity(event);
-        for (const item of event.content_items) {
-          if (item.type === "text") {
-            text += item.text;
-          }
-        }
-      }
-
-      expect(
-        text.toLowerCase().includes("flower") ||
-          text.toLowerCase().includes("narcissus"),
-      ).toBe(true);
     }, 60000);
     test("should handle system prompt", async () => {
       const client = createClient(model);
@@ -531,6 +455,83 @@ if (AVAILABLE_VISION_MODELS.length > 0) {
       let text = "";
       for await (const event of client.streamingResponse({
         messages,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
+          }
+        }
+      }
+
+      expect(
+        text.toLowerCase().includes("flower") ||
+          text.toLowerCase().includes("narcissus"),
+      ).toBe(true);
+    }, 60000);
+
+    test("should handle tool result with image", async () => {
+      const client = createClient(model);
+
+      const imageTool = {
+        name: "get_image",
+        description: "Get an image URL",
+        parameters: {
+          type: "object",
+          properties: {
+            query: {
+              type: "string",
+              description: "The image to retrieve",
+            },
+          },
+          required: ["query"],
+        },
+      };
+
+      const config: UniConfig = { tools: [imageTool] };
+      let toolCallId: string | undefined;
+      let toolName: string | undefined;
+
+      const message1: UniMessage = {
+        role: "user",
+        content_items: [
+          {
+            type: "text",
+            text: "Get me a narcissus flower image and describe it briefly.",
+          },
+        ],
+      };
+      for await (const event of client.streamingResponseStateful({
+        message: message1,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "tool_call") {
+            toolName = item.name;
+            toolCallId = item.tool_call_id;
+          }
+        }
+      }
+
+      expect(toolName).toBe(imageTool.name);
+      expect(toolCallId).toBeDefined();
+
+      const message2: UniMessage = {
+        role: "user",
+        content_items: [
+          {
+            type: "tool_result",
+            text: "Here is a narcissus flower image:",
+            image_url: IMAGE,
+            tool_call_id: toolCallId || "",
+          },
+        ],
+      };
+      let text = "";
+      for await (const event of client.streamingResponseStateful({
+        message: message2,
         config,
       })) {
         checkEventIntegrity(event);
