@@ -232,9 +232,9 @@ export class GLM4_7Client extends LLMClient {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((delta as any)?.reasoning_content) {
       eventType = "delta";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       contentItems.push({
         type: "thinking",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         thinking: (delta as any).reasoning_content,
       });
     }
@@ -242,9 +242,9 @@ export class GLM4_7Client extends LLMClient {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     else if ((delta as any)?.reasoning) {
       eventType = "delta";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       contentItems.push({
         type: "thinking",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         thinking: (delta as any).reasoning,
       });
     }
@@ -274,12 +274,12 @@ export class GLM4_7Client extends LLMClient {
 
     if (modelOutput.usage) {
       eventType = eventType || "delta";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const reasoningTokens =
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (modelOutput.usage as any).completion_tokens_details
           ?.reasoning_tokens || null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cachedTokens =
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (modelOutput.usage as any).prompt_tokens_details?.cached_tokens || null;
 
       usageMetadata = {
