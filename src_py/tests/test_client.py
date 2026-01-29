@@ -317,10 +317,10 @@ async def test_image_understanding_base64(model):
     image_path = os.path.join(os.path.dirname(__file__), "../../.github/images/agenthub.png")
     with open(image_path, "rb") as image_file:
         base64_image = base64.b64encode(image_file.read()).decode("utf-8")
-    
+
     # Create data URI
     data_uri = f"data:image/png;base64,{base64_image}"
-    
+
     messages = [
         {
             "role": "user",

@@ -143,7 +143,10 @@ class Claude4_5Client(LLMClient):
                             media_type = match.group(1)
                             base64_data = match.group(2)
                             content_blocks.append(
-                                {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": base64_data}}
+                                {
+                                    "type": "image",
+                                    "source": {"type": "base64", "media_type": media_type, "data": base64_data},
+                                }
                             )
                         else:
                             raise ValueError(f"Invalid data URI format: {image_url}")
