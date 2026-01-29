@@ -448,7 +448,7 @@ def create_chat_app() -> Flask:
             function handleImageSelect(event) {
                 const file = event.target.files[0];
                 if (!file) return;
-                
+
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const base64Data = e.target.result;
@@ -466,7 +466,7 @@ def create_chat_app() -> Flask:
                     container.innerHTML = '';
                     return;
                 }
-                
+
                 container.classList.add('visible');
                 container.innerHTML = selectedImages.map((img, idx) => `
                     <div class="image-preview-item">
@@ -546,7 +546,7 @@ def create_chat_app() -> Flask:
                         <span class="message-role role-${role}">${role}</span>
                     </div>
                 `;
-                
+
                 if (images && images.length > 0) {
                     html += '<div style="margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px;">';
                     images.forEach(img => {
@@ -554,7 +554,7 @@ def create_chat_app() -> Flask:
                     });
                     html += '</div>';
                 }
-                
+
                 html += `<div class="message-content">${content || ''}</div>`;
 
                 if (metadata) {
@@ -598,15 +598,15 @@ def create_chat_app() -> Flask:
                 try {
                     const config = getConfig();
                     const content_items = [];
-                    
+
                     if (message) {
                         content_items.push({ type: 'text', text: message });
                     }
-                    
+
                     currentImages.forEach(img => {
                         content_items.push({ type: 'image_url', image_url: img });
                     });
-                    
+
                     const response = await fetch('/api/chat', {
                         method: 'POST',
                         headers: {
