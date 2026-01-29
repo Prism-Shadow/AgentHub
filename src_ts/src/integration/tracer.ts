@@ -154,7 +154,7 @@ export class Tracer {
           lines.push(`  Arguments: ${JSON.stringify(item.arguments, null, 2)}`);
           lines.push(`  Tool Call ID: ${item.tool_call_id}`);
         } else if (item.type === "tool_result") {
-          lines.push(`Tool Result (ID: ${item.tool_call_id}): ${item.result}`);
+          lines.push(`Tool Result (ID: ${item.tool_call_id}): ${item.text}`);
         }
       }
 
@@ -364,11 +364,7 @@ export class Tracer {
                       const args = JSON.stringify(item.arguments);
                       itemHtml += `<div class="bg-yellow-50 p-4 rounded-md border-l-4 border-yellow-500"><div class="font-mono text-sm text-gray-800">${item.name}(${args})</div></div>`;
                     } else if (item.type === "tool_result") {
-                      const resultText =
-                        typeof item.result === "string"
-                          ? item.result
-                          : JSON.stringify(item.result);
-                      itemHtml += `<div class="bg-green-50 p-4 rounded-md border-l-4 border-green-500"><strong class="text-sm text-gray-900">Result:</strong> <span class="text-sm text-gray-700">${this._escapeHtml(resultText)}</span><br><strong class="text-sm text-gray-900">Call ID:</strong> <span class="text-sm text-gray-700">${item.tool_call_id}</span></div>`;
+                      itemHtml += `<div class="bg-green-50 p-4 rounded-md border-l-4 border-green-500"><strong class="text-sm text-gray-900">Result:</strong> <span class="text-sm text-gray-700">${this._escapeHtml(item.text)}</span><br><strong class="text-sm text-gray-900">Call ID:</strong> <span class="text-sm text-gray-700">${item.tool_call_id}</span></div>`;
                     } else if (item.type === "image_url") {
                       itemHtml += `<div class="bg-gray-50 p-4 rounded-md"><img src="${item.image_url}" class="max-w-xs max-h-48 rounded-md" alt="Preview"></div>`;
                     }

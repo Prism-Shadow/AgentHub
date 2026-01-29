@@ -199,51 +199,41 @@ export class Claude4_5Client extends LLMClient {
           if (!item.tool_call_id) {
             throw new Error("tool_call_id is required for tool result.");
           }
-          const result = item.result;
-          if (typeof result === "string") {
-            contentBlocks.push({
-              type: "tool_result",
-              content: result,
-              tool_use_id: item.tool_call_id,
-            });
-          } else {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const resultContent: any[] = [];
-            for (const resultItem of result) {
-              if (resultItem.type === "text") {
-                resultContent.push({ type: "text", text: resultItem.text });
-              } else if (resultItem.type === "image_url") {
-                const imageUrl = resultItem.image_url;
-                if (imageUrl.startsWith("data:")) {
-                  const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
-                  if (match) {
-                    const mediaType = match[1];
-                    const base64Data = match[2];
-                    resultContent.push({
-                      type: "image",
-                      source: {
-                        type: "base64",
-                        media_type: mediaType,
-                        data: base64Data,
-                      },
-                    });
-                  } else {
-                    throw new Error(`Invalid base64 image: ${imageUrl}`);
-                  }
-                } else {
-                  resultContent.push({
-                    type: "image",
-                    source: { type: "url", url: imageUrl },
-                  });
-                }
+          
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const resultContent: any[] = [{ type: "text", text: item.text }];
+          
+          if (item.image_url) {
+            const imageUrl = item.image_url;
+            if (imageUrl.startsWith("data:")) {
+              const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+              if (match) {
+                const mediaType = match[1];
+                const base64Data = match[2];
+                resultContent.push({
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: mediaType,
+                    data: base64Data,
+                  },
+                });
+              } else {
+                throw new Error(`Invalid base64 image: ${imageUrl}`);
               }
+            } else {
+              resultContent.push({
+                type: "image",
+                source: { type: "url", url: imageUrl },
+              });
             }
-            contentBlocks.push({
-              type: "tool_result",
-              content: resultContent,
-              tool_use_id: item.tool_call_id,
-            });
           }
+          
+          contentBlocks.push({
+            type: "tool_result",
+            content: resultContent,
+            tool_use_id: item.tool_call_id,
+          });
         } else {
           throw new Error(`Unknown item: ${JSON.stringify(item)}`);
         }

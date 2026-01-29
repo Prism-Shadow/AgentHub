@@ -307,7 +307,7 @@ async def test_tool_result_with_image(model):
 
     message1 = {
         "role": "user",
-        "content_items": [{"type": "text", "text": "Get me a narcissus flower image"}],
+        "content_items": [{"type": "text", "text": "Give me a brief introduction to narcissus flowers"}],
     }
     async for event in client.streaming_response_stateful(message=message1, config=config):
         await _check_event_integrity(event)
@@ -324,10 +324,8 @@ async def test_tool_result_with_image(model):
         "content_items": [
             {
                 "type": "tool_result",
-                "result": [
-                    {"type": "text", "text": "Here is a narcissus flower image:"},
-                    {"type": "image_url", "image_url": IMAGE},
-                ],
+                "text": "Here is a narcissus flower image:",
+                "image_url": IMAGE,
                 "tool_call_id": tool_call_id,
             }
         ],

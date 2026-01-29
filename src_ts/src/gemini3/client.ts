@@ -251,63 +251,52 @@ export class Gemini3Client extends LLMClient {
           if (!item.tool_call_id) {
             throw new Error("tool_call_id is required for tool result.");
           }
-          const result = item.result;
-          if (typeof result === "string") {
-            parts.push({
-              functionResponse: {
-                name: item.tool_call_id,
-                response: { result: result },
-              },
-            } as Part);
-          } else {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const resultResponse: Record<string, any> = {};
-            const multimodalParts: FunctionResponsePart[] = [];
-            for (const resultItem of result) {
-              if (resultItem.type === "text") {
-                resultResponse.result = resultItem.text;
-              } else if (resultItem.type === "image_url") {
-                const imageUrl = resultItem.image_url;
-                let imageBytes: Uint8Array;
-                let mimeType: string;
-                if (imageUrl.startsWith("data:")) {
-                  const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
-                  if (match) {
-                    mimeType = match[1];
-                    const base64Data = match[2];
-                    imageBytes = Uint8Array.from(
-                      Buffer.from(base64Data, "base64")
-                    );
-                  } else {
-                    throw new Error(`Invalid base64 image: ${imageUrl}`);
-                  }
-                } else {
-                  const response = await fetch(imageUrl);
-                  if (!response.ok) {
-                    throw new Error(`Failed to fetch image: ${imageUrl}`);
-                  }
-                  const arrayBuffer = await response.arrayBuffer();
-                  imageBytes = new Uint8Array(arrayBuffer);
-                  const detectedMimeType = this._detectMimeType(imageUrl);
-                  mimeType = detectedMimeType || "image/jpeg";
-                }
-                const base64Data = Buffer.from(imageBytes).toString("base64");
-                multimodalParts.push({
-                  inlineData: {
-                    mimeType: mimeType,
-                    data: base64Data,
-                  } as FunctionResponseBlob,
-                } as FunctionResponsePart);
+          
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const resultResponse: Record<string, any> = { result: item.text };
+          const multimodalParts: FunctionResponsePart[] = [];
+          
+          if (item.image_url) {
+            const imageUrl = item.image_url;
+            let imageBytes: Uint8Array;
+            let mimeType: string;
+            if (imageUrl.startsWith("data:")) {
+              const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+              if (match) {
+                mimeType = match[1];
+                const base64Data = match[2];
+                imageBytes = Uint8Array.from(
+                  Buffer.from(base64Data, "base64")
+                );
+              } else {
+                throw new Error(`Invalid base64 image: ${imageUrl}`);
               }
+            } else {
+              const response = await fetch(imageUrl);
+              if (!response.ok) {
+                throw new Error(`Failed to fetch image: ${imageUrl}`);
+              }
+              const arrayBuffer = await response.arrayBuffer();
+              imageBytes = new Uint8Array(arrayBuffer);
+              const detectedMimeType = this._detectMimeType(imageUrl);
+              mimeType = detectedMimeType || "image/jpeg";
             }
-            parts.push({
-              functionResponse: {
-                name: item.tool_call_id,
-                response: resultResponse,
-                parts: multimodalParts,
-              },
-            } as Part);
+            const base64Data = Buffer.from(imageBytes).toString("base64");
+            multimodalParts.push({
+              inlineData: {
+                mimeType: mimeType,
+                data: base64Data,
+              } as FunctionResponseBlob,
+            } as FunctionResponsePart);
           }
+          
+          parts.push({
+            functionResponse: {
+              name: item.tool_call_id,
+              response: resultResponse,
+              parts: multimodalParts,
+            },
+          } as Part);
         } else {
           throw new Error(`Unknown item: ${JSON.stringify(item)}`);
         }

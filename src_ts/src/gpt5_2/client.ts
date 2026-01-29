@@ -181,35 +181,26 @@ export class GPT5_2Client extends LLMClient {
             throw new Error("tool_call_id is required for tool result.");
           }
 
-          const result = item.result;
-          if (typeof result === "string") {
-            inputList.push({
-              type: "function_call_output",
-              call_id: item.tool_call_id,
-              output: result,
-            });
-          } else {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const outputContent: any[] = [];
-            for (const resultItem of result) {
-              if (resultItem.type === "text") {
-                outputContent.push({
-                  type: "output_text",
-                  text: resultItem.text,
-                });
-              } else if (resultItem.type === "image_url") {
-                outputContent.push({
-                  type: "output_image",
-                  image_url: resultItem.image_url,
-                });
-              }
-            }
-            inputList.push({
-              type: "function_call_output",
-              call_id: item.tool_call_id,
-              output: outputContent,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const outputContent: any[] = [
+            {
+              type: "output_text",
+              text: item.text,
+            },
+          ];
+          
+          if (item.image_url) {
+            outputContent.push({
+              type: "output_image",
+              image_url: item.image_url,
             });
           }
+          
+          inputList.push({
+            type: "function_call_output",
+            call_id: item.tool_call_id,
+            output: outputContent,
+          });
         } else {
           throw new Error(`Unknown item: ${JSON.stringify(item)}`);
         }
