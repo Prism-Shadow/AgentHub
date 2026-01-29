@@ -184,16 +184,18 @@ export class GPT5_2Client extends LLMClient {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const toolResult: any[] = [
             {
-              type: "input_text",
+              type: "output_text",
               text: item.text,
             },
           ];
 
-          if (item.image_url) {
-            toolResult.push({
-              type: "input_image",
-              image_url: item.image_url,
-            });
+          if (item.images) {
+            for (const imageUrl of item.images) {
+              toolResult.push({
+                type: "output_image",
+                image_url: imageUrl,
+              });
+            }
           }
 
           inputList.push({

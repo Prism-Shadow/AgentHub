@@ -203,29 +203,30 @@ export class Claude4_5Client extends LLMClient {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const toolResult: any[] = [{ type: "text", text: item.text }];
 
-          if (item.image_url) {
-            const imageUrl = item.image_url;
-            if (imageUrl.startsWith("data:")) {
-              const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
-              if (match) {
-                const mediaType = match[1];
-                const base64Data = match[2];
+          if (item.images) {
+            for (const imageUrl of item.images) {
+              if (imageUrl.startsWith("data:")) {
+                const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+                if (match) {
+                  const mediaType = match[1];
+                  const base64Data = match[2];
+                  toolResult.push({
+                    type: "image",
+                    source: {
+                      type: "base64",
+                      media_type: mediaType,
+                      data: base64Data,
+                    },
+                  });
+                } else {
+                  throw new Error(`Invalid base64 image: ${imageUrl}`);
+                }
+              } else {
                 toolResult.push({
                   type: "image",
-                  source: {
-                    type: "base64",
-                    media_type: mediaType,
-                    data: base64Data,
-                  },
+                  source: { type: "url", url: imageUrl },
                 });
-              } else {
-                throw new Error(`Invalid base64 image: ${imageUrl}`);
               }
-            } else {
-              toolResult.push({
-                type: "image",
-                source: { type: "url", url: imageUrl },
-              });
             }
           }
 

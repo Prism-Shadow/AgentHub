@@ -147,6 +147,9 @@ class Tracer:
                     pass
                 elif item["type"] == "tool_result":
                     lines.append(f"Tool Result (ID: {item['tool_call_id']}): {item['text']}")
+                    if "images" in item and item["images"]:
+                        for i, image_url in enumerate(item["images"], 1):
+                            lines.append(f"  Image {i}: {image_url}")
 
             # Add usage metadata if available
             if "usage_metadata" in message and message["usage_metadata"]:
@@ -497,6 +500,13 @@ class Tracer:
                                 <div class="tool-result">
                                     <strong>Result:</strong> {{ item.text|e }}<br>
                                     <strong>Call ID:</strong> {{ item.tool_call_id|e }}
+                                    {% if item.images %}
+                                        <div style="margin-top: 8px;">
+                                            {% for image_url in item.images %}
+                                                <img src="{{ image_url|e }}" style="max-width: 200px; max-height: 200px; border-radius: 4px; margin-right: 8px;" alt="Tool Result Image">
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
                                 </div>
                             {% elif item.type == 'image_url' %}
                                 <div class="content-text">

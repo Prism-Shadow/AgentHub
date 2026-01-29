@@ -135,8 +135,8 @@ class GLM4_7Client(LLMClient):
                     if "tool_call_id" not in item:
                         raise ValueError("tool_call_id is required for tool result.")
 
-                    if "image_url" in item:
-                        raise ValueError("GLM does not support image_url in tool results.")
+                    if "images" in item and item["images"]:
+                        raise ValueError("GLM does not support images in tool results.")
 
                     openai_messages.append(
                         {

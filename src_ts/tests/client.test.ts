@@ -524,7 +524,7 @@ if (AVAILABLE_VISION_MODELS.length > 0) {
           {
             type: "tool_result",
             text: "Here is a narcissus flower image:",
-            image_url: IMAGE,
+            images: [IMAGE],
             tool_call_id: toolCallId || "",
           },
         ],

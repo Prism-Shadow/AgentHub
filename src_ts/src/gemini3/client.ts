@@ -257,42 +257,45 @@ export class Gemini3Client extends LLMClient {
           const toolResult: Record<string, any> = { result: item.text };
           const multimodalParts: FunctionResponsePart[] = [];
 
-          if (item.image_url) {
-            const imageUrl = item.image_url;
-            let imageBytes: Uint8Array;
-            let mimeType: string;
-            if (imageUrl.startsWith("data:")) {
-              const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
-              if (match) {
-                mimeType = match[1];
-                const base64Data = match[2];
-                imageBytes = Uint8Array.from(Buffer.from(base64Data, "base64"));
+          if (item.images) {
+            for (const imageUrl of item.images) {
+              let imageBytes: Uint8Array;
+              let mimeType: string;
+              if (imageUrl.startsWith("data:")) {
+                const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+                if (match) {
+                  mimeType = match[1];
+                  const base64Data = match[2];
+                  imageBytes = Uint8Array.from(
+                    Buffer.from(base64Data, "base64")
+                  );
+                } else {
+                  throw new Error(`Invalid base64 image: ${imageUrl}`);
+                }
               } else {
-                throw new Error(`Invalid base64 image: ${imageUrl}`);
+                const response = await fetch(imageUrl);
+                if (!response.ok) {
+                  throw new Error(`Failed to fetch image: ${imageUrl}`);
+                }
+                const arrayBuffer = await response.arrayBuffer();
+                imageBytes = new Uint8Array(arrayBuffer);
+                mimeType = this._detectMimeType(imageUrl);
               }
-            } else {
-              const response = await fetch(imageUrl);
-              if (!response.ok) {
-                throw new Error(`Failed to fetch image: ${imageUrl}`);
-              }
-              const arrayBuffer = await response.arrayBuffer();
-              imageBytes = new Uint8Array(arrayBuffer);
-              mimeType = this._detectMimeType(imageUrl);
+              const base64Data = Buffer.from(imageBytes).toString("base64");
+              multimodalParts.push({
+                inlineData: {
+                  mimeType: mimeType,
+                  data: base64Data,
+                } as FunctionResponseBlob,
+              } as FunctionResponsePart);
             }
-            const base64Data = Buffer.from(imageBytes).toString("base64");
-            multimodalParts.push({
-              inlineData: {
-                mimeType: mimeType,
-                data: base64Data,
-              } as FunctionResponseBlob,
-            } as FunctionResponsePart);
           }
 
           parts.push({
             functionResponse: {
               name: item.tool_call_id,
               response: toolResult,
-              parts: multimodalParts,
+              parts: multimodalParts.length > 0 ? multimodalParts : undefined,
             } as FunctionResponse,
           } as Part);
         } else {

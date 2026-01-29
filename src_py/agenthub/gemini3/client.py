@@ -160,36 +160,38 @@ class Gemini3Client(LLMClient):
                         raise ValueError("tool_call_id is required for tool result.")
 
                     tool_result = {"result": item["text"]}
-                    if "image_url" in item:
-                        image_url = item["image_url"]
-                        if image_url.startswith("data:"):
-                            match = re.match(r"data:([^;]+);base64,(.+)", image_url)
-                            if match:
-                                mime_type = match.group(1)
-                                base64_string = match.group(2)
-                                image_bytes = base64.b64decode(base64_string)
-                            else:
-                                raise ValueError(f"Invalid base64 image: {image_url}")
-                        else:
-                            response = requests.get(image_url)
-                            response.raise_for_status()
-                            image_bytes = response.content
-                            mime_type = self._detect_mime_type(image_url)
+                    multimodal_parts = []
 
-                        multimodal_parts = [
-                            types.FunctionResponsePart(
-                                inline_data=types.FunctionResponseBlob(
-                                    mime_type=mime_type,
-                                    data=image_bytes,
+                    if "images" in item:
+                        for image_url in item["images"]:
+                            if image_url.startswith("data:"):
+                                match = re.match(r"data:([^;]+);base64,(.+)", image_url)
+                                if match:
+                                    mime_type = match.group(1)
+                                    base64_string = match.group(2)
+                                    image_bytes = base64.b64decode(base64_string)
+                                else:
+                                    raise ValueError(f"Invalid base64 image: {image_url}")
+                            else:
+                                response = requests.get(image_url)
+                                response.raise_for_status()
+                                image_bytes = response.content
+                                mime_type = self._detect_mime_type(image_url)
+
+                            multimodal_parts.append(
+                                types.FunctionResponsePart(
+                                    inline_data=types.FunctionResponseBlob(
+                                        mime_type=mime_type,
+                                        data=image_bytes,
+                                    )
                                 )
                             )
-                        ]
-                    else:
-                        multimodal_parts = None
 
                     parts.append(
                         types.Part.from_function_response(
-                            name=item["tool_call_id"], response=tool_result, parts=multimodal_parts
+                            name=item["tool_call_id"],
+                            response=tool_result,
+                            parts=multimodal_parts if multimodal_parts else None,
                         )
                     )
                 else:

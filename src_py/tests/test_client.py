@@ -407,7 +407,7 @@ async def test_tool_result_with_image(model):
             {
                 "type": "tool_result",
                 "text": "Here is a narcissus flower image:",
-                "image_url": IMAGE,
+                "images": [IMAGE],
                 "tool_call_id": tool_call_id,
             }
         ],
