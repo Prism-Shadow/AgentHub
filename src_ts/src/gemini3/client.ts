@@ -288,15 +288,14 @@ export class Gemini3Client extends LLMClient {
                   }
                   const arrayBuffer = await response.arrayBuffer();
                   imageBytes = new Uint8Array(arrayBuffer);
-                  mimeType = this._detectMimeType(imageUrl);
-                  if (!mimeType) {
-                    mimeType = "image/jpeg";
-                  }
+                  const detectedMimeType = this._detectMimeType(imageUrl);
+                  mimeType = detectedMimeType || "image/jpeg";
                 }
+                const base64Data = Buffer.from(imageBytes).toString("base64");
                 multimodalParts.push({
                   inlineData: {
                     mimeType: mimeType,
-                    data: imageBytes,
+                    data: base64Data,
                   } as FunctionResponseBlob,
                 } as FunctionResponsePart);
               }
