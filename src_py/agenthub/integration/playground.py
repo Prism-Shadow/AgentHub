@@ -432,7 +432,7 @@ def create_chat_app() -> Flask:
         <div class="input-container">
             <div class="image-preview-container" id="imagePreviewContainer"></div>
             <div class="input-wrapper">
-                <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="handleImageSelect(event)">
+                <input type="file" id="imageInput" accept="image/*" multiple style="display: none;" onchange="handleImageSelect(event)">
                 <button class="image-button" onclick="document.getElementById('imageInput').click()">📎 Image</button>
                 <textarea id="messageInput" class="input-box" placeholder="Type your message here..." rows="1"></textarea>
                 <button class="send-button" id="sendButton" onclick="sendMessage()">Send</button>
@@ -446,16 +446,34 @@ def create_chat_app() -> Flask:
             let selectedImages = [];
 
             function handleImageSelect(event) {
-                const file = event.target.files[0];
-                if (!file) return;
+                const files = event.target.files;
+                if (!files || files.length === 0) return;
 
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const base64Data = e.target.result;
-                    selectedImages.push(base64Data);
-                    updateImagePreview();
-                };
-                reader.readAsDataURL(file);
+                const maxFileSize = 10 * 1024 * 1024;
+                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+
+                Array.from(files).forEach(file => {
+                    if (!allowedTypes.includes(file.type)) {
+                        alert(`File "${file.name}" is not a valid image type. Please upload JPEG, PNG, GIF, or WebP images.`);
+                        return;
+                    }
+
+                    if (file.size > maxFileSize) {
+                        alert(`File "${file.name}" is too large. Maximum file size is 10MB.`);
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const base64Data = e.target.result;
+                        if (typeof base64Data === 'string' && base64Data.startsWith('data:image/')) {
+                            selectedImages.push(base64Data);
+                            updateImagePreview();
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                });
+
                 event.target.value = '';
             }
 

@@ -156,7 +156,7 @@ export function createChatApp(): Express {
       <div class="bg-white border-t border-gray-200 px-6 py-4">
           <div id="imagePreviewContainer" class="mb-3 max-w-5xl mx-auto hidden"></div>
           <div class="flex gap-3 max-w-5xl mx-auto">
-              <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="handleImageSelect(event)">
+              <input type="file" id="imageInput" accept="image/*" multiple class="hidden" onchange="handleImageSelect(event)">
               <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-md text-sm font-semibold whitespace-nowrap transition-colors" onclick="document.getElementById('imageInput').click()">📎 Image</button>
               <textarea id="messageInput" class="flex-1 px-4 py-3 border border-gray-300 rounded-md text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Type your message here..." rows="1"></textarea>
               <button class="bg-green-600 hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-md text-sm font-semibold whitespace-nowrap transition-colors" id="sendButton" onclick="sendMessage()">Send</button>
@@ -170,16 +170,34 @@ export function createChatApp(): Express {
           let selectedImages = [];
 
           function handleImageSelect(event) {
-              const file = event.target.files[0];
-              if (!file) return;
+              const files = event.target.files;
+              if (!files || files.length === 0) return;
               
-              const reader = new FileReader();
-              reader.onload = function(e) {
-                  const base64Data = e.target.result;
-                  selectedImages.push(base64Data);
-                  updateImagePreview();
-              };
-              reader.readAsDataURL(file);
+              const maxFileSize = 10 * 1024 * 1024;
+              const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+              
+              Array.from(files).forEach(file => {
+                  if (!allowedTypes.includes(file.type)) {
+                      alert(\`File "\${file.name}" is not a valid image type. Please upload JPEG, PNG, GIF, or WebP images.\`);
+                      return;
+                  }
+                  
+                  if (file.size > maxFileSize) {
+                      alert(\`File "\${file.name}" is too large. Maximum file size is 10MB.\`);
+                      return;
+                  }
+                  
+                  const reader = new FileReader();
+                  reader.onload = function(e) {
+                      const base64Data = e.target.result;
+                      if (typeof base64Data === 'string' && base64Data.startsWith('data:image/')) {
+                          selectedImages.push(base64Data);
+                          updateImagePreview();
+                      }
+                  };
+                  reader.readAsDataURL(file);
+              });
+              
               event.target.value = '';
           }
 
