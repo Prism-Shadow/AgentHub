@@ -72,7 +72,8 @@ export interface PartialToolCallContentItem {
 
 export interface ToolResultContentItem {
   type: "tool_result";
-  result: string;
+  text: string;
+  images?: string[];
   tool_call_id: string;
 }
 

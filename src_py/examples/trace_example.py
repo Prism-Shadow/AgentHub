@@ -112,9 +112,7 @@ async def run_traced_chat():
         async for _ in client2.streaming_response_stateful(
             message={
                 "role": "user",
-                "content_items": [
-                    {"type": "tool_result", "result": result, "tool_call_id": tool_call["tool_call_id"]}
-                ],
+                "content_items": [{"type": "tool_result", "text": result, "tool_call_id": tool_call["tool_call_id"]}],
             },
             config=config2,
         ):

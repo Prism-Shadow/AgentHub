@@ -75,7 +75,8 @@ class PartialToolCallContentItem(TypedDict):
 
 class ToolResultContentItem(TypedDict):
     type: Literal["tool_result"]
-    result: str
+    text: str
+    images: NotRequired[list[str]]
     tool_call_id: str
 
 

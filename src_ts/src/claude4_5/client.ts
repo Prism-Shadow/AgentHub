@@ -199,9 +199,40 @@ export class Claude4_5Client extends LLMClient {
           if (!item.tool_call_id) {
             throw new Error("tool_call_id is required for tool result.");
           }
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const toolResult: any[] = [{ type: "text", text: item.text }];
+
+          if (item.images) {
+            for (const imageUrl of item.images) {
+              if (imageUrl.startsWith("data:")) {
+                const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+                if (match) {
+                  const mediaType = match[1];
+                  const base64Data = match[2];
+                  toolResult.push({
+                    type: "image",
+                    source: {
+                      type: "base64",
+                      media_type: mediaType,
+                      data: base64Data,
+                    },
+                  });
+                } else {
+                  throw new Error(`Invalid base64 image: ${imageUrl}`);
+                }
+              } else {
+                toolResult.push({
+                  type: "image",
+                  source: { type: "url", url: imageUrl },
+                });
+              }
+            }
+          }
+
           contentBlocks.push({
             type: "tool_result",
-            content: item.result,
+            content: toolResult,
             tool_use_id: item.tool_call_id,
           });
         } else {

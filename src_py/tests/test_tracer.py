@@ -142,7 +142,7 @@ def test_format_history_with_different_content_types(temp_cache_dir):
         },
         {
             "role": "user",
-            "content_items": [{"type": "tool_result", "result": "Temperature is 20C", "tool_call_id": "call_123"}],
+            "content_items": [{"type": "tool_result", "text": "Temperature is 20C", "tool_call_id": "call_123"}],
         },
     ]
 

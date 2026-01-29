@@ -181,10 +181,28 @@ export class GPT5_2Client extends LLMClient {
             throw new Error("tool_call_id is required for tool result.");
           }
 
+          // Tool results are input items
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const toolResult: any[] = [
+            {
+              type: "input_text",
+              text: item.text,
+            },
+          ];
+
+          if (item.images) {
+            for (const imageUrl of item.images) {
+              toolResult.push({
+                type: "input_image",
+                image_url: imageUrl,
+              });
+            }
+          }
+
           inputList.push({
             type: "function_call_output",
             call_id: item.tool_call_id,
-            output: item.result,
+            output: toolResult,
           });
         } else {
           throw new Error(`Unknown item: ${JSON.stringify(item)}`);

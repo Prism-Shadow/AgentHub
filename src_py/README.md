@@ -184,7 +184,7 @@ async def main():
                 "content_items": [
                     {
                         "type": "tool_result",
-                        "result": result,
+                        "text": result,
                         "tool_call_id": tool_call["tool_call_id"]  # Required for tool responses
                     }
                 ]
@@ -221,7 +221,7 @@ When responding to a tool call, include the `tool_call_id` in the result content
     "content_items": [
         {
             "type": "tool_result",
-            "result": "London is 22°C today.",
+            "text": "London is 22°C today.",
             "tool_call_id": "call_abc123"  # From tool_call event
         }
     ]

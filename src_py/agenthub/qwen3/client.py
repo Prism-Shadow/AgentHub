@@ -118,12 +118,15 @@ class Qwen3Client(LLMClient):
                     if "tool_call_id" not in item:
                         raise ValueError("tool_call_id is required for tool result.")
 
+                    if "images" in item and item["images"]:
+                        raise ValueError("Qwen3 does not support images in tool results.")
+
                     # Tool results are sent as separate messages
                     qwen3_messages.append(
                         {
                             "role": "tool",
                             "tool_call_id": item["tool_call_id"],
-                            "content": item["result"],
+                            "content": item["text"],
                         }
                     )
                 else:

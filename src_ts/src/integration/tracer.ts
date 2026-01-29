@@ -154,7 +154,12 @@ export class Tracer {
           lines.push(`  Arguments: ${JSON.stringify(item.arguments, null, 2)}`);
           lines.push(`  Tool Call ID: ${item.tool_call_id}`);
         } else if (item.type === "tool_result") {
-          lines.push(`Tool Result (ID: ${item.tool_call_id}): ${item.result}`);
+          lines.push(`Tool Result (ID: ${item.tool_call_id}): ${item.text}`);
+          if (item.images && item.images.length > 0) {
+            item.images.forEach((imageUrl, i) => {
+              lines.push(`  Image ${i + 1}: ${imageUrl}`);
+            });
+          }
         }
       }
 
@@ -364,9 +369,18 @@ export class Tracer {
                       const args = JSON.stringify(item.arguments);
                       itemHtml += `<div class="bg-yellow-50 p-4 rounded-md border-l-4 border-yellow-500"><div class="font-mono text-sm text-gray-800">${item.name}(${args})</div></div>`;
                     } else if (item.type === "tool_result") {
-                      itemHtml += `<div class="bg-green-50 p-4 rounded-md border-l-4 border-green-500"><strong class="text-sm text-gray-900">Result:</strong> <span class="text-sm text-gray-700">${this._escapeHtml(item.result)}</span><br><strong class="text-sm text-gray-900">Call ID:</strong> <span class="text-sm text-gray-700">${item.tool_call_id}</span></div>`;
+                      let resultHtml = `<div class="bg-green-50 p-4 rounded-md border-l-4 border-green-500"><strong class="text-sm text-gray-900">Result:</strong> <span class="text-sm text-gray-700">${this._escapeHtml(item.text)}</span><br><strong class="text-sm text-gray-900">Call ID:</strong> <span class="text-sm text-gray-700">${item.tool_call_id}</span>`;
+                      if (item.images && item.images.length > 0) {
+                        resultHtml += `<div class="mt-2 flex flex-wrap gap-2">`;
+                        for (const imageUrl of item.images) {
+                          resultHtml += `<img src="${this._escapeHtml(imageUrl)}" class="max-w-xs max-h-48 rounded-md" alt="Tool Result Image">`;
+                        }
+                        resultHtml += `</div>`;
+                      }
+                      resultHtml += `</div>`;
+                      itemHtml += resultHtml;
                     } else if (item.type === "image_url") {
-                      itemHtml += `<div class="bg-gray-50 p-4 rounded-md"><img src="${item.image_url}" class="max-w-xs max-h-48 rounded-md" alt="Preview"></div>`;
+                      itemHtml += `<div class="bg-gray-50 p-4 rounded-md"><img src="${this._escapeHtml(item.image_url)}" class="max-w-xs max-h-48 rounded-md" alt="Preview"></div>`;
                     }
                     itemHtml += "</div>";
                     return itemHtml;

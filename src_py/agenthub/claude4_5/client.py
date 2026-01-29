@@ -168,8 +168,31 @@ class Claude4_5Client(LLMClient):
                     if "tool_call_id" not in item:
                         raise ValueError("tool_call_id is required for tool result.")
 
+                    tool_result = [{"type": "text", "text": item["text"]}]
+                    if "images" in item:
+                        for image_url in item["images"]:
+                            if image_url.startswith("data:"):
+                                match = re.match(r"data:([^;]+);base64,(.+)", image_url)
+                                if match:
+                                    media_type = match.group(1)
+                                    base64_data = match.group(2)
+                                    tool_result.append(
+                                        {
+                                            "type": "image",
+                                            "source": {
+                                                "type": "base64",
+                                                "media_type": media_type,
+                                                "data": base64_data,
+                                            },
+                                        }
+                                    )
+                                else:
+                                    raise ValueError(f"Invalid base64 image: {image_url}")
+                            else:
+                                tool_result.append({"type": "image", "source": {"type": "url", "url": image_url}})
+
                     content_blocks.append(
-                        {"type": "tool_result", "content": item["result"], "tool_use_id": item["tool_call_id"]}
+                        {"type": "tool_result", "content": tool_result, "tool_use_id": item["tool_call_id"]}
                     )
                 else:
                     raise ValueError(f"Unknown item: {item}")

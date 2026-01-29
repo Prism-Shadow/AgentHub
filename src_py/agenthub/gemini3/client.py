@@ -19,6 +19,7 @@ import os
 import re
 from typing import AsyncIterator
 
+import httpx
 from google import genai
 from google.genai import types
 
@@ -49,6 +50,11 @@ class Gemini3Client(LLMClient):
             genai.Client(api_key=api_key, http_options={"base_url": base_url}) if api_key else genai.Client()
         )
         self._history: list[UniMessage] = []
+
+    def _detect_image_mime_type(self, url: str) -> str:
+        """Detect MIME type from URL extension for image."""
+        mime_type, _ = mimetypes.guess_type(url)
+        return mime_type or "image/jpeg"
 
     def _convert_thinking_level(self, thinking_level: ThinkingLevel | None) -> types.ThinkingLevel | None:
         """Convert ThinkingLevel enum to Gemini's ThinkingLevel."""
@@ -110,7 +116,7 @@ class Gemini3Client(LLMClient):
 
         return types.GenerateContentConfig(**config_params) if config_params else None
 
-    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[types.Content]:
+    async def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[types.Content]:
         """
         Transform universal message format to Gemini's Content format.
 
@@ -139,7 +145,7 @@ class Gemini3Client(LLMClient):
                         else:
                             raise ValueError(f"Invalid base64 image: {image_url}")
                     else:
-                        mime_type, _ = mimetypes.guess_type(image_url)
+                        mime_type = self._detect_image_mime_type(image_url)
                         parts.append(types.Part.from_uri(file_uri=image_url, mime_type=mime_type))
                 elif item["type"] == "thinking":
                     parts.append(
@@ -152,9 +158,39 @@ class Gemini3Client(LLMClient):
                     if "tool_call_id" not in item:
                         raise ValueError("tool_call_id is required for tool result.")
 
+                    tool_result = {"result": item["text"]}
+                    multimodal_parts = []
+                    if "images" in item:
+                        async with httpx.AsyncClient() as client:
+                            for image_url in item["images"]:
+                                if image_url.startswith("data:"):
+                                    match = re.match(r"data:([^;]+);base64,(.+)", image_url)
+                                    if match:
+                                        mime_type = match.group(1)
+                                        base64_string = match.group(2)
+                                        image_bytes = base64.b64decode(base64_string)
+                                    else:
+                                        raise ValueError(f"Invalid base64 image: {image_url}")
+                                else:
+                                    response = await client.get(image_url)
+                                    response.raise_for_status()
+                                    image_bytes = response.content
+                                    mime_type = self._detect_image_mime_type(image_url)
+
+                                multimodal_parts.append(
+                                    types.FunctionResponsePart(
+                                        inline_data=types.FunctionResponseBlob(
+                                            mime_type=mime_type,
+                                            data=image_bytes,
+                                        )
+                                    )
+                                )
+
                     parts.append(
                         types.Part.from_function_response(
-                            name=item["tool_call_id"], response={"result": item["result"]}
+                            name=item["tool_call_id"],
+                            response=tool_result,
+                            parts=multimodal_parts if multimodal_parts else None,
                         )
                     )
                 else:
@@ -233,7 +269,7 @@ class Gemini3Client(LLMClient):
         gemini_config = self.transform_uni_config_to_model_config(config)
 
         # Use unified message conversion
-        contents = self.transform_uni_message_to_model_input(messages)
+        contents = await self.transform_uni_message_to_model_input(messages)
 
         # Stream generate
         response_stream = await self._client.aio.models.generate_content_stream(

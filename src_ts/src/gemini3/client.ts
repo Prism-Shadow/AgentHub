@@ -25,6 +25,9 @@ import {
   ToolConfig,
   GenerateContentResponse,
   FinishReason as GeminiFinishReason,
+  FunctionResponsePart,
+  FunctionResponseBlob,
+  FunctionResponse,
 } from "@google/genai";
 import * as path from "path";
 import { LLMClient } from "../baseClient";
@@ -75,9 +78,9 @@ export class Gemini3Client extends LLMClient {
   }
 
   /**
-   * Detect MIME type from URL extension.
+   * Detect MIME type from URL extension for image.
    */
-  private _detectMimeType(url: string): string | undefined {
+  private _detectImageMimeType(url: string): string {
     const ext = path.extname(url).toLowerCase();
     const mimeTypes: { [key: string]: string } = {
       ".bmp": "image/bmp",
@@ -89,7 +92,7 @@ export class Gemini3Client extends LLMClient {
       ".tiff": "image/tiff",
       ".webp": "image/webp",
     };
-    return mimeTypes[ext];
+    return mimeTypes[ext] || "image/jpeg";
   }
 
   /**
@@ -188,7 +191,9 @@ export class Gemini3Client extends LLMClient {
   /**
    * Transform universal message format to Gemini's Content format.
    */
-  transformUniMessageToModelInput(messages: UniMessage[]): Content[] {
+  async transformUniMessageToModelInput(
+    messages: UniMessage[],
+  ): Promise<Content[]> {
     const mapping: { [key: string]: string } = {
       user: "user",
       assistant: "model",
@@ -220,7 +225,7 @@ export class Gemini3Client extends LLMClient {
               throw new Error(`Invalid base64 image: ${urlValue}`);
             }
           } else {
-            const mimeType = this._detectMimeType(urlValue);
+            const mimeType = this._detectImageMimeType(urlValue);
             parts.push({
               fileData: {
                 fileUri: urlValue,
@@ -247,11 +252,51 @@ export class Gemini3Client extends LLMClient {
           if (!item.tool_call_id) {
             throw new Error("tool_call_id is required for tool result.");
           }
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const toolResult: Record<string, any> = { result: item.text };
+          const multimodalParts: FunctionResponsePart[] = [];
+
+          if (item.images) {
+            for (const imageUrl of item.images) {
+              let imageBytes: Uint8Array;
+              let mimeType: string;
+              if (imageUrl.startsWith("data:")) {
+                const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+                if (match) {
+                  mimeType = match[1];
+                  const base64Data = match[2];
+                  imageBytes = Uint8Array.from(
+                    Buffer.from(base64Data, "base64"),
+                  );
+                } else {
+                  throw new Error(`Invalid base64 image: ${imageUrl}`);
+                }
+              } else {
+                const response = await fetch(imageUrl);
+                if (!response.ok) {
+                  throw new Error(`Failed to fetch image: ${imageUrl}`);
+                }
+                const arrayBuffer = await response.arrayBuffer();
+                imageBytes = new Uint8Array(arrayBuffer);
+                mimeType = this._detectImageMimeType(imageUrl);
+              }
+              const base64Data = Buffer.from(imageBytes).toString("base64");
+              multimodalParts.push({
+                inlineData: {
+                  mimeType: mimeType,
+                  data: base64Data,
+                } as FunctionResponseBlob,
+              } as FunctionResponsePart);
+            }
+          }
+
           parts.push({
             functionResponse: {
               name: item.tool_call_id,
-              response: { result: item.result },
-            },
+              response: toolResult,
+              parts: multimodalParts.length > 0 ? multimodalParts : undefined,
+            } as FunctionResponse,
           } as Part);
         } else {
           throw new Error(`Unknown item: ${JSON.stringify(item)}`);
@@ -346,7 +391,9 @@ export class Gemini3Client extends LLMClient {
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
     const geminiConfig = this.transformUniConfigToModelConfig(options.config);
-    const contents = this.transformUniMessageToModelInput(options.messages);
+    const contents = await this.transformUniMessageToModelInput(
+      options.messages,
+    );
 
     const responseStream = await this._client.models.generateContentStream({
       model: this._model,

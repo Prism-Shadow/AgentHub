@@ -176,10 +176,15 @@ export class GLM4_7Client extends LLMClient {
           if (!item.tool_call_id) {
             throw new Error("tool_call_id is required for tool result.");
           }
+
+          if (item.images && item.images.length > 0) {
+            throw new Error("GLM does not support images in tool results.");
+          }
+
           openaiMessages.push({
             role: "tool",
             tool_call_id: item.tool_call_id,
-            content: item.result,
+            content: item.text,
           });
         } else {
           throw new Error(
