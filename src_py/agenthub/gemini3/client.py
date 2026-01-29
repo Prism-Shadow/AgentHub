@@ -134,13 +134,15 @@ class Gemini3Client(LLMClient):
                 elif item["type"] == "image_url":
                     url_value = item["image_url"]
                     if url_value.startswith("data:"):
+                        import base64
                         import re
 
                         match = re.match(r"data:([^;]+);base64,(.+)", url_value)
                         if match:
                             mime_type = match.group(1)
-                            base64_data = match.group(2)
-                            parts.append(types.Part(inline_data=types.Blob(mime_type=mime_type, data=base64_data)))
+                            base64_string = match.group(2)
+                            base64_bytes = base64.b64decode(base64_string)
+                            parts.append(types.Part(inline_data=types.Blob(mime_type=mime_type, data=base64_bytes)))
                         else:
                             raise ValueError(f"Invalid data URI format: {url_value}")
                     else:
