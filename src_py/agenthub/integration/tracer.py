@@ -193,94 +193,34 @@ class Tracer:
         <head>
             <title>Tracer</title>
             <meta charset="utf-8">
-            <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body {
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                    max-width: 1000px;
-                    margin: 0 auto;
-                    padding: 24px;
-                    background-color: #fafafa;
-                    color: #24292f;
-                }
-                h1 {
-                    font-size: 24px;
-                    font-weight: 600;
-                    margin-bottom: 16px;
-                    color: #1f2937;
-                }
-                .breadcrumb {
-                    margin-bottom: 20px;
-                    padding: 12px;
-                    background-color: #fff;
-                    border-radius: 6px;
-                    border: 1px solid #d0d7de;
-                    font-size: 14px;
-                }
-                .breadcrumb a {
-                    color: #0969da;
-                    text-decoration: none;
-                }
-                .breadcrumb a:hover { text-decoration: underline; }
-                .file-list {
-                    background-color: #fff;
-                    border-radius: 6px;
-                    border: 1px solid #d0d7de;
-                    overflow: hidden;
-                }
-                .file-item, .dir-item {
-                    padding: 12px 16px;
-                    border-bottom: 1px solid #d0d7de;
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    transition: background-color 0.1s;
-                }
-                .file-item:last-child, .dir-item:last-child { border-bottom: none; }
-                .file-item:hover, .dir-item:hover { background-color: #f6f8fa; }
-                .file-item a, .dir-item a {
-                    color: #0969da;
-                    text-decoration: none;
-                    flex-grow: 1;
-                    font-size: 14px;
-                }
-                .dir-item a::before { content: "📁 "; margin-right: 8px; }
-                .file-item a::before { content: "📄 "; margin-right: 8px; }
-                .file-size {
-                    color: #656d76;
-                    font-size: 12px;
-                    margin-left: 12px;
-                }
-                .empty {
-                    color: #656d76;
-                    font-style: italic;
-                    padding: 32px;
-                    text-align: center;
-                }
-            </style>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <script src="https://cdn.tailwindcss.com"></script>
         </head>
-        <body>
-            <h1>Tracer</h1>
-            <div class="breadcrumb">
-                <strong>Path:</strong> {{ breadcrumb|safe }}
-            </div>
-            <div class="file-list">
-                {% if items %}
-                    {% for item in items %}
-                        {% if item.is_dir %}
-                            <div class="dir-item">
-                                <a href="{{ item.url }}">{{ item.name }}</a>
+        <body class="bg-gray-50 min-h-screen">
+            <div class="max-w-5xl mx-auto p-6">
+                <h1 class="text-3xl font-bold text-gray-900 mb-6">Tracer</h1>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+                    <p class="text-sm text-gray-600"><strong>Path:</strong> {{ breadcrumb|safe }}</p>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    {% if items %}
+                        {% for item in items %}
+                            <div class="border-b border-gray-200 last:border-b-0 hover:bg-gray-50 transition-colors">
+                                <a href="{{ item.url }}" class="flex items-center justify-between p-4 text-blue-600 hover:text-blue-800">
+                                    <span class="flex items-center">
+                                        <span class="mr-2">{% if item.is_dir %}📁{% else %}📄{% endif %}</span>
+                                        <span class="text-sm">{{ item.name }}</span>
+                                    </span>
+                                    {% if item.size %}
+                                    <span class="text-xs text-gray-500">{{ item.size }}</span>
+                                    {% endif %}
+                                </a>
                             </div>
-                        {% else %}
-                            <div class="file-item">
-                                <a href="{{ item.url }}">{{ item.name }}</a>
-                                <span class="file-size">{{ item.size }}</span>
-                            </div>
-                        {% endif %}
-                    {% endfor %}
-                {% else %}
-                    <div class="empty">No files or directories found.</div>
-                {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="p-8 text-center text-gray-500 italic">No files or directories found.</div>
+                    {% endif %}
+                </div>
             </div>
         </body>
         </html>
@@ -293,271 +233,107 @@ class Tracer:
         <head>
             <title>{{ filename }}</title>
             <meta charset="utf-8">
-            <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body {
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                    max-width: 1000px;
-                    margin: 0 auto;
-                    padding: 24px;
-                    background-color: #fafafa;
-                    color: #24292f;
-                }
-                h1 {
-                    font-size: 24px;
-                    font-weight: 600;
-                    margin-bottom: 8px;
-                    color: #1f2937;
-                }
-                .breadcrumb {
-                    margin-bottom: 20px;
-                    padding: 12px;
-                    background-color: #fff;
-                    border-radius: 6px;
-                    border: 1px solid #d0d7de;
-                    font-size: 14px;
-                }
-                .breadcrumb a {
-                    color: #0969da;
-                    text-decoration: none;
-                }
-                .breadcrumb a:hover { text-decoration: underline; }
-                .back-button {
-                    display: inline-block;
-                    margin-bottom: 20px;
-                    padding: 8px 16px;
-                    background-color: #f6f8fa;
-                    color: #24292f;
-                    text-decoration: none;
-                    border-radius: 6px;
-                    border: 1px solid #d0d7de;
-                    font-size: 14px;
-                }
-                .back-button:hover {
-                    background-color: #e7ebef;
-                }
-                .config-box {
-                    background-color: #fff;
-                    border-radius: 6px;
-                    border: 1px solid #d0d7de;
-                    padding: 16px;
-                    margin-bottom: 20px;
-                    font-size: 14px;
-                }
-                .config-box h2 {
-                    font-size: 16px;
-                    font-weight: 600;
-                    margin-bottom: 12px;
-                    color: #1f2937;
-                }
-                .config-item {
-                    padding: 6px 0;
-                    color: #656d76;
-                }
-                .config-item strong {
-                    color: #24292f;
-                }
-                .message-card {
-                    background-color: #fff;
-                    border-radius: 6px;
-                    border: 1px solid #d0d7de;
-                    margin-bottom: 16px;
-                    overflow: hidden;
-                }
-                .message-header {
-                    padding: 12px 16px;
-                    background-color: #f6f8fa;
-                    border-bottom: 1px solid #d0d7de;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    cursor: pointer;
-                    user-select: none;
-                }
-                .message-header:hover {
-                    background-color: #e7ebef;
-                }
-                .message-role {
-                    font-weight: 600;
-                    font-size: 14px;
-                    text-transform: uppercase;
-                }
-                .role-user { color: #0969da; }
-                .role-assistant { color: #1a7f37; }
-                .message-metadata {
-                    font-size: 12px;
-                    color: #656d76;
-                }
-                .message-content {
-                    padding: 16px;
-                    display: none;
-                }
-                .message-content.expanded {
-                    display: block;
-                }
-                .content-item {
-                    margin-bottom: 12px;
-                    padding-bottom: 12px;
-                    border-bottom: 1px solid #f6f8fa;
-                }
-                .content-item:last-child {
-                    border-bottom: none;
-                    margin-bottom: 0;
-                    padding-bottom: 0;
-                }
-                .content-type {
-                    font-size: 11px;
-                    font-weight: 600;
-                    color: #656d76;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    margin-bottom: 6px;
-                }
-                .content-text {
-                    font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-                    font-size: 13px;
-                    line-height: 1.6;
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
-                    background-color: #f6f8fa;
-                    padding: 12px;
-                    border-radius: 4px;
-                    color: #24292f;
-                }
-                .tool-call, .tool-result {
-                    background-color: #fff8c5;
-                    padding: 12px;
-                    border-radius: 4px;
-                    border-left: 3px solid #d4a72c;
-                }
-                .thinking {
-                    background-color: #ddf4ff;
-                    padding: 12px;
-                    border-radius: 4px;
-                    border-left: 3px solid #0969da;
-                }
-                .usage-box {
-                    margin-top: 12px;
-                    padding: 12px;
-                    background-color: #f6f8fa;
-                    border-radius: 4px;
-                    font-size: 12px;
-                    color: #656d76;
-                    text-align: right;
-                }
-                .toggle-icon {
-                    transition: transform 0.2s;
-                    display: inline-block;
-                }
-                .toggle-icon.expanded {
-                    transform: rotate(90deg);
-                }
-            </style>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <script src="https://cdn.tailwindcss.com"></script>
         </head>
-        <body>
-            <h1>{{ filename }}</h1>
-            <div class="breadcrumb">
-                <strong>Path:</strong> {{ breadcrumb|safe }}
-            </div>
-            <a href="{{ back_url }}" class="back-button">← Back to Directory</a>
-
-            {% if config %}
-            <div class="config-box">
-                <h2>Configuration</h2>
-                {% for key, value in config.items() %}
-                    {% if key != 'trace_id' %}
-                    <div class="config-item">
-                        <strong>{{ key|e }}:</strong>
-                        {% if key == 'system_prompt' and value is not none %}
-                            <pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto; white-space: pre-wrap;">{{ value|e }}</pre>
-                        {% elif key == 'tools' and value is iterable and value is not string %}
-                            <pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto;">{{ value|tojson(indent=2)|e }}</pre>
-                        {% else %}
-                            {{ value|e }}
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                {% endfor %}
-            </div>
-            {% endif %}
-
-            {% for msg_idx, message in enumerate(history) %}
-            <div class="message-card">
-                <div class="message-header" onclick="toggleMessage({{ msg_idx }})">
-                    <div>
-                        <span class="message-role role-{{ message.role }}">{{ message.role }}</span>
-                        <span class="message-metadata"> • {{ message.content_items|length }} item(s)</span>
-                    </div>
-                    <span class="toggle-icon" id="icon-{{ msg_idx }}">▶</span>
+        <body class="bg-gray-50 min-h-screen">
+            <div class="max-w-5xl mx-auto p-6">
+                <h1 class="text-3xl font-bold text-gray-900 mb-4">{{ filename }}</h1>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+                    <p class="text-sm text-gray-600"><strong>Path:</strong> {{ breadcrumb|safe }}</p>
                 </div>
-                <div class="message-content" id="content-{{ msg_idx }}">
-                    {% for item in message.content_items %}
-                        <div class="content-item">
-                            <div class="content-type">{{ item.type|e }}</div>
-                            {% if item.type == 'text' %}
-                                <div class="content-text">{{ item.text|e }}</div>
-                            {% elif item.type == 'thinking' %}
-                                <div class="content-text thinking">{{ item.thinking|e }}</div>
-                            {% elif item.type == 'tool_call' %}
-                                <div class="content-text tool-call">{{ item.name|e }}({% for key, value in item.arguments.items() %}{{ key|e }}="{{ value|e }}"{% if not loop.last %}, {% endif %}{% endfor %})</div>
-                            {% elif item.type == 'tool_result' %}
-                                <div class="tool-result">
-                                    <strong>Result:</strong> {{ item.text|e }}<br>
-                                    <strong>Call ID:</strong> {{ item.tool_call_id|e }}
-                                    {% if item.images %}
-                                        <div style="margin-top: 8px;">
-                                            {% for image_url in item.images %}
-                                                <img src="{{ image_url|e }}" style="max-width: 200px; max-height: 200px; border-radius: 4px; margin-right: 8px;" alt="Tool Result Image">
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
-                                </div>
-                            {% elif item.type == 'image_url' %}
-                                <div class="content-text">
-                                    <img src="{{ item.image_url|e }}" style="max-width: 200px; max-height: 200px; border-radius: 4px;" alt="Preview">
-                                </div>
+                <a href="{{ back_url }}" class="inline-block mb-6 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md border border-gray-300 text-sm transition-colors">
+                    ← Back to Directory
+                </a>
+                {% if config %}
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-4">Configuration</h2>
+                    {% for key, value in config.items() %}
+                        {% if key != 'trace_id' %}
+                        <div class="py-2 text-sm">
+                            <strong class="text-gray-900">{{ key|e }}:</strong>
+                            {% if key == 'system_prompt' and value is not none %}
+                                <pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto; white-space: pre-wrap;">{{ value|e }}</pre>
+                            {% elif key == 'tools' and value is iterable and value is not string %}
+                                <pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto;">{{ value|tojson(indent=2)|e }}</pre>
+                            {% else %}
+                                <span class="text-gray-600">{{ value|e }}</span>
                             {% endif %}
                         </div>
-                    {% endfor %}
-
-                    {% if message.usage_metadata or message.finish_reason %}
-                    <div class="usage-box">
-                        {% if message.usage_metadata %}
-                            {% if message.usage_metadata.prompt_tokens %}
-                            Prompt: {{ message.usage_metadata.prompt_tokens }} tokens
-                            {% endif %}
-                            {% if message.usage_metadata.thoughts_tokens %}
-                            • Thoughts: {{ message.usage_metadata.thoughts_tokens }} tokens
-                            {% endif %}
-                            {% if message.usage_metadata.response_tokens %}
-                            • Response: {{ message.usage_metadata.response_tokens }} tokens
-                            {% endif %}
-                            {% if message.usage_metadata.cached_tokens %}
-                            • Cached: {{ message.usage_metadata.cached_tokens }} tokens
-                            {% endif %}
                         {% endif %}
-                        {% if message.finish_reason %}
-                            {% if message.usage_metadata %} • {% endif %}Finish: {{ message.finish_reason|e }}
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% for msg_idx, message in enumerate(history) %}
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 overflow-hidden">
+                    <div class="bg-gray-50 border-b border-gray-200 p-4 cursor-pointer hover:bg-gray-100 transition-colors" onclick="toggleMessage({{ msg_idx }})">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <span class="font-semibold text-sm uppercase {% if message.role == 'user' %}text-blue-600{% else %}text-green-600{% endif %}">{{ message.role }}</span>
+                                <span class="text-xs text-gray-500 ml-2">• {{ message.content_items|length }} item(s)</span>
+                            </div>
+                            <span class="text-gray-400 transform transition-transform" id="icon-{{ msg_idx }}">▶</span>
+                        </div>
+                    </div>
+                    <div class="p-6 hidden" id="content-{{ msg_idx }}">
+                        {% for item in message.content_items %}
+                            <div class="mb-4 pb-4 border-b border-gray-100 last:border-b-0 last:mb-0 last:pb-0">
+                                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{{ item.type|e }}</div>
+                                {% if item.type == 'text' %}
+                                    <div class="bg-gray-50 p-4 rounded-md font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.text|e }}</div>
+                                {% elif item.type == 'thinking' %}
+                                    <div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.thinking|e }}</div>
+                                {% elif item.type == 'tool_call' %}
+                                    <div class="bg-yellow-50 p-4 rounded-md border-l-4 border-yellow-500">
+                                        <div class="font-mono text-sm text-gray-800">{{ item.name|e }}({% for key, value in item.arguments.items() %}{{ key|e }}="{{ value|e }}"{% if not loop.last %}, {% endif %}{% endfor %})</div>
+                                    </div>
+                                {% elif item.type == 'tool_result' %}
+                                    <div class="bg-green-50 p-4 rounded-md border-l-4 border-green-500">
+                                        <strong class="text-sm text-gray-900">Result:</strong> <span class="text-sm text-gray-700">{{ item.text|e }}</span><br>
+                                        <strong class="text-sm text-gray-900">Call ID:</strong> <span class="text-sm text-gray-700">{{ item.tool_call_id|e }}</span>
+                                        {% if item.images %}
+                                            <div class="mt-2 flex flex-wrap gap-2">
+                                                {% for image_url in item.images %}
+                                                    <img src="{{ image_url|e }}" class="max-w-xs max-h-48 rounded-md" alt="Tool Result Image">
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% elif item.type == 'image_url' %}
+                                    <div class="bg-gray-50 p-4 rounded-md">
+                                        <img src="{{ item.image_url|e }}" class="max-w-xs max-h-48 rounded-md" alt="Preview">
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+
+                        {% if message.usage_metadata or message.finish_reason %}
+                        <div class="mt-4 pt-4 border-t border-gray-200 text-right text-xs text-gray-500">
+                            {% if message.usage_metadata %}
+                                {% if message.usage_metadata.prompt_tokens %}Prompt: {{ message.usage_metadata.prompt_tokens }} tokens{% endif %}
+                                {% if message.usage_metadata.thoughts_tokens %} • Thoughts: {{ message.usage_metadata.thoughts_tokens }} tokens{% endif %}
+                                {% if message.usage_metadata.response_tokens %} • Response: {{ message.usage_metadata.response_tokens }} tokens{% endif %}
+                                {% if message.usage_metadata.cached_tokens %} • Cached: {{ message.usage_metadata.cached_tokens }} tokens{% endif %}
+                            {% endif %}
+                            {% if message.finish_reason %}{% if message.usage_metadata %} • {% endif %}Finish: {{ message.finish_reason|e }}{% endif %}
+                        </div>
                         {% endif %}
                     </div>
-                    {% endif %}
                 </div>
+                {% endfor %}
             </div>
-            {% endfor %}
-
             <script>
                 function toggleMessage(idx) {
                     const content = document.getElementById('content-' + idx);
                     const icon = document.getElementById('icon-' + idx);
-                    content.classList.toggle('expanded');
-                    icon.classList.toggle('expanded');
+                    content.classList.toggle('hidden');
+                    icon.classList.toggle('rotate-90');
                 }
                 // Expand all messages by default
                 const numMessages = {{ history|length }};
                 for (let i = 0; i < numMessages; i++) {
-                    if (document.getElementById('content-' + i)) {
-                        toggleMessage(i);
-                    }
+                    toggleMessage(i);
                 }
             </script>
         </body>
@@ -571,67 +347,22 @@ class Tracer:
         <head>
             <title>{{ filename }}</title>
             <meta charset="utf-8">
-            <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body {
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                    max-width: 1000px;
-                    margin: 0 auto;
-                    padding: 24px;
-                    background-color: #fafafa;
-                    color: #24292f;
-                }
-                h1 {
-                    font-size: 24px;
-                    font-weight: 600;
-                    margin-bottom: 8px;
-                    color: #1f2937;
-                }
-                .breadcrumb {
-                    margin-bottom: 20px;
-                    padding: 12px;
-                    background-color: #fff;
-                    border-radius: 6px;
-                    border: 1px solid #d0d7de;
-                    font-size: 14px;
-                }
-                .breadcrumb a {
-                    color: #0969da;
-                    text-decoration: none;
-                }
-                .breadcrumb a:hover { text-decoration: underline; }
-                .back-button {
-                    display: inline-block;
-                    margin-bottom: 20px;
-                    padding: 8px 16px;
-                    background-color: #f6f8fa;
-                    color: #24292f;
-                    text-decoration: none;
-                    border-radius: 6px;
-                    border: 1px solid #d0d7de;
-                    font-size: 14px;
-                }
-                .back-button:hover { background-color: #e7ebef; }
-                .file-content {
-                    background-color: #fff;
-                    border-radius: 6px;
-                    border: 1px solid #d0d7de;
-                    padding: 20px;
-                    white-space: pre-wrap;
-                    font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-                    font-size: 13px;
-                    line-height: 1.6;
-                    overflow-x: auto;
-                }
-            </style>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <script src="https://cdn.tailwindcss.com"></script>
         </head>
-        <body>
-            <h1>{{ filename }}</h1>
-            <div class="breadcrumb">
-                <strong>Path:</strong> {{ breadcrumb|safe }}
+        <body class="bg-gray-50 min-h-screen">
+            <div class="max-w-5xl mx-auto p-6">
+                <h1 class="text-3xl font-bold text-gray-900 mb-4">{{ filename }}</h1>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+                    <p class="text-sm text-gray-600"><strong>Path:</strong> {{ breadcrumb|safe }}</p>
+                </div>
+                <a href="{{ back_url|e }}" class="inline-block mb-6 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md border border-gray-300 text-sm transition-colors">
+                    ← Back to Directory
+                </a>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 overflow-x-auto">
+                    <pre class="font-mono text-sm whitespace-pre-wrap text-gray-800">{{ content|e }}</pre>
+                </div>
             </div>
-            <a href="{{ back_url|e }}" class="back-button">← Back to Directory</a>
-            <div class="file-content">{{ content|e }}</div>
         </body>
         </html>
         """
