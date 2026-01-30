@@ -374,7 +374,7 @@ export class GLM4_7Client extends LLMClient {
         }
         yield event;
       } else if (event.event_type === "stop") {
-        if (partialToolCall.name && partialToolCall.arguments) {
+        if (partialToolCall.name) {
           // finish the partial tool call
           yield {
             role: "assistant",
@@ -383,7 +383,7 @@ export class GLM4_7Client extends LLMClient {
               {
                 type: "tool_call",
                 name: partialToolCall.name,
-                arguments: JSON.parse(partialToolCall.arguments),
+                arguments: JSON.parse(partialToolCall.arguments || "{}"),
                 tool_call_id: partialToolCall.tool_call_id || "",
               },
             ],
