@@ -70,6 +70,33 @@ class Tracer:
             return [self._serialize_for_json(item) for item in obj]
         return obj
 
+    def _prepare_history_for_display(self, history: list[dict]) -> list[dict]:
+        """
+        Prepare history data for template rendering by pre-processing JSON fields.
+
+        Args:
+            history: List of message dictionaries
+
+        Returns:
+            Processed history with arguments converted to JSON strings
+        """
+        processed_history = []
+        for message in history:
+            processed_message = message.copy()
+            if "content_items" in processed_message:
+                processed_items = []
+                for item in processed_message["content_items"]:
+                    processed_item = item.copy()
+                    if item.get("type") == "tool_call" and "arguments" in item:
+                        # Pre-process arguments to JSON string with ensure_ascii=False
+                        processed_item["arguments_json"] = json.dumps(
+                            item["arguments"], ensure_ascii=False
+                        )
+                    processed_items.append(processed_item)
+                processed_message["content_items"] = processed_items
+            processed_history.append(processed_message)
+        return processed_history
+
     def save_history(self, model: str, history: list[UniMessage], file_id: str, config: dict[str, Any]) -> None:
         """
         Save conversation history to files.
@@ -500,7 +527,7 @@ class Tracer:
                                 <div class="content-text thinking">{{ item.thinking|e }}</div>
                             {% elif item.type == 'tool_call' %}
                                 <div class="tool-call">
-                                    <div class="content-text">{{ item.name|e }}({% for key, value in item.arguments.items() %}{{ key|e }}={{ value|tojson(indent=2)|e }}{% if not loop.last %}, {% endif %}{% endfor %})</div>
+                                    <div class="content-text">{{ item.name|e }}({{ item.arguments_json|e }})</div>
                                 </div>
                             {% elif item.type == 'tool_result' %}
                                 <div class="tool-result">
@@ -673,12 +700,15 @@ class Tracer:
                         with open(full_path, "r", encoding="utf-8") as f:
                             data = json.load(f)
 
+                        # Pre-process history for display
+                        processed_history = self._prepare_history_for_display(data.get("history", []))
+
                         return render_template_string(
                             JSON_VIEWER_TEMPLATE,
                             filename=full_path.name,
                             breadcrumb=breadcrumb,
                             back_url=back_url,
-                            history=data.get("history", []),
+                            history=processed_history,
                             config=data.get("config", {}),
                             enumerate=enumerate,
                         )
