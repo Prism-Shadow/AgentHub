@@ -363,8 +363,6 @@ export class Tracer {
                       typeof value === "object"
                         ? JSON.stringify(value, null, 2)
                         : String(value),
-                    isSystem: false,
-                    isTools: false,
                   };
                 }
               });
@@ -379,7 +377,7 @@ export class Tracer {
                         if (item.isSystem) {
                           return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto; white-space: pre-wrap;">${this._escapeHtml(String(item.value))}</pre></div>`;
                         } else if (item.isTools) {
-                          return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto;">${this._escapeHtml(item.value)}</pre></div>`;
+                          return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto;">${this._escapeHtml(String(item.value))}</pre></div>`;
                         } else {
                           return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong> <span class="text-gray-600">${this._escapeHtml(String(item.value))}</span></div>`;
                         }

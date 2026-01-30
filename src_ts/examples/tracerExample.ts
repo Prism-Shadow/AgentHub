@@ -59,7 +59,7 @@ const history: UniMessage[] = [
 ];
 
 const config = {
-  model: "gpt5.2",
+  model: "gpt-5.2",
   temperature: 0.7,
   max_tokens: 1000,
 };
