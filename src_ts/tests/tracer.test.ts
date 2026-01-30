@@ -219,4 +219,48 @@ describe("Tracer", () => {
     expect(txtContent).toContain("Cached Tokens: 2");
     expect(txtContent).toContain("Finish Reason: stop");
   });
+
+  test("should pre-render system and tools in config", () => {
+    const tracer = new Tracer(tempCacheDir);
+
+    const model = "fake-model";
+    const history: UniMessage[] = [
+      {
+        role: "user",
+        content_items: [{ type: "text", text: "Hello" }],
+      },
+    ];
+
+    const config = {
+      system_prompt: "You are a helpful assistant.",
+      tools: [
+        {
+          name: "get_weather",
+          description: "Get the weather for a location",
+          parameters: {
+            type: "object",
+            properties: {
+              location: { type: "string", description: "City name" },
+            },
+          },
+        },
+      ],
+      temperature: 0.7,
+    };
+    const fileId = "test/config_render_test";
+
+    tracer.saveHistory(model, history, fileId, config);
+
+    const txtPath = path.join(tempCacheDir, fileId + ".txt");
+    const txtContent = fs.readFileSync(txtPath, "utf-8");
+
+    // Check that system_prompt is rendered with proper formatting
+    expect(txtContent).toContain("system_prompt:");
+    expect(txtContent).toContain("You are a helpful assistant");
+
+    // Check that tools are rendered as JSON
+    expect(txtContent).toContain("tools:");
+    expect(txtContent).toContain("get_weather");
+    expect(txtContent).toContain("parameters");
+  });
 });

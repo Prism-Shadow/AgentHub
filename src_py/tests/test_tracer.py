@@ -285,3 +285,41 @@ async def test_monitoring_updates_on_multiple_messages(temp_cache_dir):
     content2 = file_path.read_text()
     assert "First question" in content2
     assert "Second question" in content2
+
+
+def test_format_config_with_system_and_tools(temp_cache_dir):
+    """Test formatting config with system prompt and tools."""
+    tracer = Tracer(cache_dir=temp_cache_dir)
+
+    model = "fake-model"
+    history = [{"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}]
+
+    config = {
+        "system_prompt": "You are a helpful assistant.",
+        "tools": [
+            {
+                "name": "get_weather",
+                "description": "Get the weather for a location",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"location": {"type": "string", "description": "City name"}},
+                },
+            }
+        ],
+        "temperature": 0.7,
+    }
+    file_id = "test/config_render"
+    tracer.save_history(model, history, file_id, config)
+
+    # Check TXT file
+    txt_path = Path(temp_cache_dir) / (file_id + ".txt")
+    txt_content = txt_path.read_text()
+
+    # Check that system_prompt is rendered properly
+    assert "system_prompt:" in txt_content
+    assert "You are a helpful assistant" in txt_content
+
+    # Check that tools are rendered as JSON
+    assert "tools:" in txt_content
+    assert "get_weather" in txt_content
+    assert "parameters" in txt_content
