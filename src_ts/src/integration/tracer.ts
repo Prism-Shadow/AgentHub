@@ -131,7 +131,15 @@ export class Tracer {
     lines.push("Configuration:");
     for (const [key, value] of Object.entries(config)) {
       if (key !== "trace_id") {
-        lines.push(`  ${key}: ${JSON.stringify(value)}`);
+        if (key === "system" && value != null) {
+          lines.push(`  ${key}:`);
+          lines.push(`    ${value}`);
+        } else if (key === "tools" && Array.isArray(value)) {
+          lines.push(`  ${key}:`);
+          lines.push(`    ${JSON.stringify(value, null, 2)}`);
+        } else {
+          lines.push(`  ${key}: ${JSON.stringify(value)}`);
+        }
       }
     }
     lines.push("");
@@ -335,13 +343,31 @@ export class Tracer {
             const data = JSON.parse(fs.readFileSync(fullPath, "utf-8"));
             const configItems = Object.entries(data.config || {})
               .filter(([key]) => key !== "trace_id")
-              .map(([key, value]) => ({
-                key,
-                value:
-                  typeof value === "object"
-                    ? JSON.stringify(value, null, 2)
-                    : String(value),
-              }));
+              .map(([key, value]) => {
+                if (key === "system" && value != null) {
+                  return {
+                    key,
+                    value: value,
+                    isSystem: true,
+                  };
+                } else if (key === "tools" && Array.isArray(value)) {
+                  return {
+                    key,
+                    value: JSON.stringify(value, null, 2),
+                    isTools: true,
+                  };
+                } else {
+                  return {
+                    key,
+                    value:
+                      typeof value === "object"
+                        ? JSON.stringify(value, null, 2)
+                        : String(value),
+                    isSystem: false,
+                    isTools: false,
+                  };
+                }
+              });
 
             const configHtml =
               configItems.length > 0
@@ -349,8 +375,15 @@ export class Tracer {
                   <h2 class="text-xl font-semibold text-gray-900 mb-4">Configuration</h2>
                   ${configItems
                     .map(
-                      (item) =>
-                        `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong> <span class="text-gray-600">${item.value}</span></div>`,
+                      (item) => {
+                        if (item.isSystem) {
+                          return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto; white-space: pre-wrap;">${this._escapeHtml(String(item.value))}</pre></div>`;
+                        } else if (item.isTools) {
+                          return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto;">${this._escapeHtml(item.value)}</pre></div>`;
+                        } else {
+                          return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong> <span class="text-gray-600">${this._escapeHtml(String(item.value))}</span></div>`;
+                        }
+                      },
                     )
                     .join("")}
                 </div>`

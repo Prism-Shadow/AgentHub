@@ -59,13 +59,13 @@ const history: UniMessage[] = [
 ];
 
 const config = {
-  model: "gemini-3-flash-preview",
+  model: "gpt5.2",
   temperature: 0.7,
   max_tokens: 1000,
 };
 
 console.log("\nSaving example conversation...");
-tracer.saveHistory(history, "example/conversation_001", config);
+tracer.saveHistory(config.model, history, "example/conversation_001", config);
 
 console.log("\nConversation saved successfully!");
 console.log("\nStarting web server...");
