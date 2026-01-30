@@ -394,7 +394,15 @@ export class Tracer {
                     } else if (item.type === "thinking") {
                       itemHtml += `<div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 font-mono text-sm whitespace-pre-wrap text-gray-800">${this._escapeHtml(item.thinking)}</div>`;
                     } else if (item.type === "tool_call") {
-                      const args = JSON.stringify(item.arguments);
+                      const entries = Object.entries(item.arguments);
+                      let args = "";
+                      for (let i = 0; i < entries.length; i++) {
+                        const [key, value] = entries[i];
+                        args += `${key}="${this._escapeHtml(String(value))}"`;
+                        if (i !== entries.length - 1) {
+                          args += ", ";
+                        }
+                      }
                       itemHtml += `<div class="bg-yellow-50 p-4 rounded-md border-l-4 border-yellow-500"><div class="font-mono text-sm text-gray-800">${item.name}(${args})</div></div>`;
                     } else if (item.type === "tool_result") {
                       let resultHtml = `<div class="bg-green-50 p-4 rounded-md border-l-4 border-green-500"><strong class="text-sm text-gray-900">Result:</strong> <span class="text-sm text-gray-700">${this._escapeHtml(item.text)}</span><br><strong class="text-sm text-gray-900">Call ID:</strong> <span class="text-sm text-gray-700">${item.tool_call_id}</span>`;
