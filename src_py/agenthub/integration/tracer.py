@@ -74,6 +74,11 @@ class Tracer:
         """
         Prepare history data for template rendering by pre-processing JSON fields.
 
+        This method converts tool call arguments to JSON strings with ensure_ascii=False,
+        which preserves non-ASCII characters (Chinese, Japanese, Korean, etc.) without
+        Unicode escaping. This is necessary instead of using Jinja's tojson filter to
+        maintain control over the ensure_ascii parameter.
+
         Args:
             history: List of message dictionaries
 
@@ -89,9 +94,13 @@ class Tracer:
                     processed_item = item.copy()
                     if item.get("type") == "tool_call" and "arguments" in item:
                         # Pre-process arguments to JSON string with ensure_ascii=False
-                        processed_item["arguments_json"] = json.dumps(
-                            item["arguments"], ensure_ascii=False
-                        )
+                        try:
+                            processed_item["arguments_json"] = json.dumps(
+                                item["arguments"], ensure_ascii=False
+                            )
+                        except (TypeError, ValueError):
+                            # Fallback to string representation if JSON serialization fails
+                            processed_item["arguments_json"] = str(item["arguments"])
                     processed_items.append(processed_item)
                 processed_message["content_items"] = processed_items
             processed_history.append(processed_message)
