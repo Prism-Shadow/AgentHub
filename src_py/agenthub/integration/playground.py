@@ -86,282 +86,25 @@ def create_chat_app() -> Flask:
         <title>LLM Playground</title>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body {
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                background-color: #f5f5f5;
-                color: #24292f;
-                display: flex;
-                flex-direction: column;
-                height: 100vh;
-            }
-            .header {
-                background-color: #24292f;
-                color: white;
-                padding: 16px 24px;
-                border-bottom: 1px solid #d0d7de;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            .header h1 {
-                font-size: 20px;
-                font-weight: 600;
-            }
-            .config-toggle {
-                background-color: #238636;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 14px;
-            }
-            .config-toggle:hover {
-                background-color: #2ea043;
-            }
-            .config-panel {
-                background-color: #fff;
-                border-bottom: 1px solid #d0d7de;
-                padding: 16px 24px;
-                display: none;
-            }
-            .config-panel.visible {
-                display: block;
-            }
-            .config-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 16px;
-                margin-bottom: 12px;
-            }
-            .config-field {
-                display: flex;
-                flex-direction: column;
-            }
-            .config-field label {
-                font-size: 14px;
-                font-weight: 600;
-                margin-bottom: 4px;
-                color: #24292f;
-            }
-            .config-field input,
-            .config-field select {
-                padding: 8px;
-                border: 1px solid #d0d7de;
-                border-radius: 6px;
-                font-size: 14px;
-            }
-            .messages-container {
-                flex: 1;
-                overflow-y: auto;
-                padding: 24px;
-                display: flex;
-                flex-direction: column;
-                gap: 16px;
-            }
-            .message-card {
-                background-color: #fff;
-                border-radius: 8px;
-                border: 1px solid #d0d7de;
-                padding: 16px;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                max-width: 800px;
-                animation: slideIn 0.3s ease-out;
-            }
-            @keyframes slideIn {
-                from {
-                    opacity: 0;
-                    transform: translateY(10px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-            .message-card.user {
-                align-self: flex-end;
-                background-color: #ddf4ff;
-                border-color: #54aeff;
-            }
-            .message-card.assistant {
-                align-self: flex-start;
-                background-color: #fff;
-            }
-            .message-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 12px;
-            }
-            .message-role {
-                font-weight: 600;
-                font-size: 14px;
-                text-transform: uppercase;
-            }
-            .role-user {
-                color: #0969da;
-            }
-            .role-assistant {
-                color: #1a7f37;
-            }
-            .message-content {
-                font-size: 14px;
-                line-height: 1.6;
-                white-space: pre-wrap;
-                word-wrap: break-word;
-                margin-bottom: 8px;
-            }
-            .message-metadata {
-                display: flex;
-                justify-content: flex-end;
-                gap: 12px;
-                font-size: 12px;
-                color: #656d76;
-                padding-top: 8px;
-                border-top: 1px solid #f6f8fa;
-            }
-            .metadata-item {
-                display: flex;
-                align-items: center;
-                gap: 4px;
-            }
-            .input-container {
-                background-color: #fff;
-                border-top: 1px solid #d0d7de;
-                padding: 16px 24px;
-            }
-            .input-wrapper {
-                display: flex;
-                gap: 12px;
-                max-width: 1200px;
-                margin: 0 auto;
-            }
-            .input-box {
-                flex: 1;
-                padding: 12px;
-                border: 1px solid #d0d7de;
-                border-radius: 6px;
-                font-size: 14px;
-                font-family: inherit;
-                resize: vertical;
-                min-height: 44px;
-                max-height: 200px;
-            }
-            .send-button {
-                background-color: #238636;
-                color: white;
-                border: none;
-                padding: 12px 24px;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 14px;
-                font-weight: 600;
-                white-space: nowrap;
-            }
-            .send-button:hover:not(:disabled) {
-                background-color: #2ea043;
-            }
-            .send-button:disabled {
-                background-color: #94d3a2;
-                cursor: not-allowed;
-            }
-            .clear-button {
-                background-color: #cf222e;
-                color: white;
-                border: none;
-                padding: 12px 24px;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 14px;
-                font-weight: 600;
-            }
-            .clear-button:hover {
-                background-color: #a40e26;
-            }
-            .loading {
-                display: inline-block;
-                width: 12px;
-                height: 12px;
-                border: 2px solid #f3f3f3;
-                border-top: 2px solid #1a7f37;
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-            }
-            .image-button {
-                background-color: #0969da;
-                color: white;
-                border: none;
-                padding: 12px 24px;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 14px;
-                font-weight: 600;
-                white-space: nowrap;
-            }
-            .image-button:hover {
-                background-color: #0860ca;
-            }
-            .image-preview-container {
-                margin-bottom: 12px;
-                display: none;
-            }
-            .image-preview-container.visible {
-                display: block;
-            }
-            .image-preview-item {
-                display: inline-block;
-                position: relative;
-                margin-right: 8px;
-                margin-bottom: 8px;
-            }
-            .image-preview-item img {
-                height: 80px;
-                width: 80px;
-                object-fit: cover;
-                border-radius: 6px;
-                border: 1px solid #d0d7de;
-            }
-            .image-preview-item button {
-                position: absolute;
-                top: -8px;
-                right: -8px;
-                background-color: #cf222e;
-                color: white;
-                border: none;
-                border-radius: 50%;
-                width: 24px;
-                height: 24px;
-                cursor: pointer;
-                font-size: 12px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            .image-preview-item button:hover {
-                background-color: #a40e26;
-            }
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-        </style>
+        <script src="https://cdn.tailwindcss.com"></script>
     </head>
-    <body>
-        <div class="header">
-            <h1>🤖 LLM Playground</h1>
-            <button class="config-toggle" onclick="toggleConfig()">⚙️ Config</button>
+    <body class="bg-gray-50 flex flex-col h-screen">
+        <div class="bg-gray-900 text-white px-6 py-4 border-b border-gray-700 flex justify-between items-center">
+            <h1 class="text-xl font-semibold">🤖 LLM Playground</h1>
+            <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm transition-colors" onclick="toggleConfig()">
+                ⚙️ Config
+            </button>
         </div>
 
-        <div class="config-panel" id="configPanel">
-            <div class="config-grid">
-                <div class="config-field">
-                    <label for="modelSelect">Model</label>
+        <div class="bg-white border-b border-gray-200 px-6 py-4 hidden" id="configPanel">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div class="flex flex-col">
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="modelSelect">Model</label>
                     <input
                         id="modelSelect"
                         list="modelList"
                         placeholder="Select or enter a model name"
+                        class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                     <datalist id="modelList">
                         <option value="gpt-5.2">GPT 5.2</option>
@@ -370,17 +113,17 @@ def create_chat_app() -> Flask:
                         <option value="glm-4.7">GLM 4.7</option>
                     </datalist>
                 </div>
-                <div class="config-field">
-                    <label for="temperatureInput">Temperature</label>
-                    <input type="number" id="temperatureInput" min="0" max="2" step="0.1" value="1.0">
+                <div class="flex flex-col">
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="temperatureInput">Temperature</label>
+                    <input type="number" id="temperatureInput" min="0" max="2" step="0.1" value="1.0" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
-                <div class="config-field">
-                    <label for="maxTokensInput">Max Tokens</label>
-                    <input type="number" id="maxTokensInput" min="1" max="100000" step="1" value="4096">
+                <div class="flex flex-col">
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="maxTokensInput">Max Tokens</label>
+                    <input type="number" id="maxTokensInput" min="1" max="100000" step="1" value="4096" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
-                <div class="config-field">
-                    <label for="thinkingLevelSelect">Thinking Level</label>
-                    <select id="thinkingLevelSelect">
+                <div class="flex flex-col">
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="thinkingLevelSelect">Thinking Level</label>
+                    <select id="thinkingLevelSelect" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">Unspecified</option>
                         <option value="none">None</option>
                         <option value="low">Low</option>
@@ -388,17 +131,17 @@ def create_chat_app() -> Flask:
                         <option value="high">High</option>
                     </select>
                 </div>
-                <div class="config-field">
-                    <label for="thinkingSummaryCheckbox">Thinking Summary</label>
-                    <select id="thinkingSummaryCheckbox">
+                <div class="flex flex-col">
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="thinkingSummaryCheckbox">Thinking Summary</label>
+                    <select id="thinkingSummaryCheckbox" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">Unspecified</option>
                         <option value="true">True</option>
                         <option value="false">False</option>
                     </select>
                 </div>
-                <div class="config-field">
-                    <label for="toolChoiceSelect">Tool Choice</label>
-                    <select id="toolChoiceSelect">
+                <div class="flex flex-col">
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="toolChoiceSelect">Tool Choice</label>
+                    <select id="toolChoiceSelect" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">Unspecified</option>
                         <option value="auto">Auto</option>
                         <option value="required">Required</option>
@@ -406,37 +149,37 @@ def create_chat_app() -> Flask:
                     </select>
                 </div>
             </div>
-            <div class="config-grid">
-                <div class="config-field">
-                    <label for="systemPromptInput">System Prompt</label>
-                    <textarea id="systemPromptInput" rows="2" style="width: 100%; padding: 8px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 14px;"></textarea>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="flex flex-col">
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="systemPromptInput">System Prompt</label>
+                    <textarea id="systemPromptInput" rows="2" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"></textarea>
                 </div>
-                <div class="config-field">
-                    <label for="toolsInput">Tools (JSON Array)</label>
-                    <textarea id="toolsInput" rows="3" placeholder='[{"name": "function_name", "description": "...", "parameters": {...}}]' style="width: 100%; padding: 8px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 14px; font-family: monospace;"></textarea>
+                <div class="flex flex-col">
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="toolsInput">Tools (JSON Array)</label>
+                    <textarea id="toolsInput" rows="3" placeholder='[{"name": "function_name", "description": "...", "parameters": {...}}]' class="px-3 py-2 border border-gray-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"></textarea>
                 </div>
-                <div class="config-field">
-                    <label for="traceIdInput">Trace ID</label>
-                    <input type="text" id="traceIdInput" placeholder="e.g., session_001" style="width: 100%; padding: 8px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 14px;">
+                <div class="flex flex-col">
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="traceIdInput">Trace ID</label>
+                    <input type="text" id="traceIdInput" placeholder="e.g., session_001" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
             </div>
         </div>
 
-        <div class="messages-container" id="messagesContainer">
-            <div style="text-align: center; color: #656d76; padding: 40px;">
-                <h2>Start a conversation</h2>
-                <p>Type your message below to begin chatting with the AI.</p>
+        <div class="flex-1 overflow-y-auto px-6 py-6" id="messagesContainer">
+            <div class="text-center text-gray-500 py-10">
+                <h2 class="text-2xl font-semibold mb-2">Start a conversation</h2>
+                <p class="text-sm">Type your message below to begin chatting with the AI.</p>
             </div>
         </div>
 
-        <div class="input-container">
-            <div class="image-preview-container" id="imagePreviewContainer"></div>
-            <div class="input-wrapper">
-                <input type="file" id="imageInput" accept="image/*" multiple style="display: none;" onchange="handleImageSelect(event)">
-                <button class="image-button" onclick="document.getElementById('imageInput').click()">📎 Image</button>
-                <textarea id="messageInput" class="input-box" placeholder="Type your message here..." rows="1"></textarea>
-                <button class="send-button" id="sendButton" onclick="sendMessage()">Send</button>
-                <button class="clear-button" onclick="clearChat()">Clear</button>
+        <div class="bg-white border-t border-gray-200 px-6 py-4">
+            <div id="imagePreviewContainer" class="mb-3 max-w-5xl mx-auto hidden"></div>
+            <div class="flex gap-3 max-w-5xl mx-auto">
+                <input type="file" id="imageInput" accept="image/*" multiple class="hidden" onchange="handleImageSelect(event)">
+                <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-md text-sm font-semibold whitespace-nowrap transition-colors" onclick="document.getElementById('imageInput').click()">📎 Image</button>
+                <textarea id="messageInput" class="flex-1 px-4 py-3 border border-gray-300 rounded-md text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Type your message here..." rows="1"></textarea>
+                <button class="bg-green-600 hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-md text-sm font-semibold whitespace-nowrap transition-colors" id="sendButton" onclick="sendMessage()">Send</button>
+                <button class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-md text-sm font-semibold transition-colors" onclick="clearChat()">Clear</button>
             </div>
         </div>
 
@@ -444,6 +187,12 @@ def create_chat_app() -> Flask:
             let isStreaming = false;
             let sessionId = Math.random().toString(36).substring(7);
             let selectedImages = [];
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
 
             function handleImageSelect(event) {
                 const files = event.target.files;
@@ -480,16 +229,16 @@ def create_chat_app() -> Flask:
             function updateImagePreview() {
                 const container = document.getElementById('imagePreviewContainer');
                 if (selectedImages.length === 0) {
-                    container.classList.remove('visible');
+                    container.classList.add('hidden');
                     container.innerHTML = '';
                     return;
                 }
 
-                container.classList.add('visible');
+                container.classList.remove('hidden');
                 container.innerHTML = selectedImages.map((img, idx) => `
-                    <div class="image-preview-item">
-                        <img src="${img}">
-                        <button onclick="removeImage(${idx})">×</button>
+                    <div class="inline-block relative mr-2 mb-2">
+                        <img src="${img}" class="h-20 w-20 object-cover rounded border border-gray-300">
+                        <button onclick="removeImage(${idx})" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-700">×</button>
                     </div>
                 `).join('');
             }
@@ -501,7 +250,7 @@ def create_chat_app() -> Flask:
 
             function toggleConfig() {
                 const panel = document.getElementById('configPanel');
-                panel.classList.toggle('visible');
+                panel.classList.toggle('hidden');
             }
 
             function getConfig() {
@@ -552,36 +301,37 @@ def create_chat_app() -> Flask:
             function addMessageCard(role, content, metadata = null, images = []) {
                 const container = document.getElementById('messagesContainer');
 
-                if (container.children.length === 1 && container.children[0].style.textAlign === 'center') {
+                if (container.children.length === 1 && container.children[0].className.includes('text-center')) {
                     container.innerHTML = '';
                 }
 
                 const card = document.createElement('div');
-                card.className = `message-card ${role}`;
+                const isUser = role === 'user';
+                card.className = `max-w-3xl rounded-lg shadow-sm border p-4 mb-4 ${isUser ? 'ml-auto bg-blue-50 border-blue-200' : 'mr-auto bg-white border-gray-200'}`;
 
                 let html = `
-                    <div class="message-header">
-                        <span class="message-role role-${role}">${role}</span>
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="font-semibold text-sm uppercase ${isUser ? 'text-blue-600' : 'text-green-600'}">${role}</span>
                     </div>
                 `;
 
                 if (images && images.length > 0) {
-                    html += '<div style="margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px;">';
+                    html += '<div class="mb-3 flex flex-wrap gap-2">';
                     images.forEach(img => {
-                        html += `<img src="${img}" style="max-width: 300px; border-radius: 6px; border: 1px solid #d0d7de;">`;
+                        html += `<img src="${img}" class="max-w-xs rounded border border-gray-300">`;
                     });
                     html += '</div>';
                 }
 
-                html += `<div class="message-content">${content || ''}</div>`;
+                html += `<div class="message-content text-sm leading-relaxed whitespace-pre-wrap">${escapeHtml(content || '')}</div>`;
 
                 if (metadata) {
-                    html += '<div class="message-metadata">';
+                    html += '<div class="flex justify-end gap-3 mt-3 pt-3 border-t border-gray-200 text-xs text-gray-500">';
                     if (metadata.tokens) {
-                        html += `<div class="metadata-item">📊 ${metadata.tokens} tokens</div>`;
+                        html += `<div class="flex items-center gap-1">📊 ${metadata.tokens} tokens</div>`;
                     }
                     if (metadata.finish_reason) {
-                        html += `<div class="metadata-item">🏁 ${metadata.finish_reason}</div>`;
+                        html += `<div class="flex items-center gap-1">🏁 ${metadata.finish_reason}</div>`;
                     }
                     html += '</div>';
                 }
@@ -663,11 +413,9 @@ def create_chat_app() -> Flask:
                                 try {
                                     const event = JSON.parse(data);
 
-                                    // Handle all content types
                                     for (const item of event.content_items || []) {
                                         if (item.type === 'text') {
                                             fullResponse += item.text;
-                                            // Find or create text container
                                             let textContainer = contentDiv.querySelector('.text-content');
                                             if (!textContainer) {
                                                 textContainer = document.createElement('div');
@@ -677,39 +425,31 @@ def create_chat_app() -> Flask:
                                             textContainer.textContent = fullResponse;
                                         } else if (item.type === 'thinking') {
                                             fullThinking += item.thinking;
-                                            // Find or create thinking container
                                             let thinkingContainer = contentDiv.querySelector('.thinking-content');
                                             if (!thinkingContainer) {
                                                 thinkingContainer = document.createElement('div');
-                                                thinkingContainer.className = 'thinking-content';
-                                                thinkingContainer.style.cssText = 'background-color: #ddf4ff; padding: 12px; border-radius: 4px; border-left: 3px solid #0969da; margin-bottom: 8px; font-style: italic;';
+                                                thinkingContainer.className = 'thinking-content bg-blue-50 p-3 rounded-md border-l-4 border-blue-500 mb-2 italic';
                                                 contentDiv.appendChild(thinkingContainer);
                                             }
                                             thinkingContainer.textContent = `💭 ${fullThinking}`;
                                         } else if (item.type === 'partial_tool_call') {
                                             fullToolName += item.name || '';
                                             fullToolArgs += item.arguments || '';
-                                            // Find or create toolcall container
                                             let toolcallContainer = contentDiv.querySelector('.toolcall-content');
                                             if (!toolcallContainer) {
                                                 toolcallContainer = document.createElement('div');
-                                                toolcallContainer.className = 'toolcall-content';
-                                                toolcallContainer.style.cssText = 'background-color: #fff8c5; padding: 12px; border-radius: 4px; border-left: 3px solid #d4a72c; margin-bottom: 8px;';
+                                                toolcallContainer.className = 'toolcall-content bg-yellow-50 p-3 rounded-md border-l-4 border-yellow-500 mb-2';
                                                 contentDiv.appendChild(toolcallContainer);
                                             }
-                                            toolcallContainer.innerHTML = `<strong>🛠️ Tool Call:</strong> ${fullToolName || '...'}<br><pre style="margin: 4px 0 0 0; font-size: 12px;">${fullToolArgs || ''}</pre>`;
-                                        } else if (item.type === 'tool_call') {
-                                            // Skip complete tool_call - playground only shows streaming (partial) tool calls
-                                            continue;
+                                            toolcallContainer.innerHTML = `<strong class="text-sm">🛠️ Tool Call:</strong> ${escapeHtml(fullToolName || '...')}<br><pre class="mt-1 text-xs">${escapeHtml(fullToolArgs || '')}</pre>`;
                                         } else if (item.type === 'tool_result') {
                                             const toolResultDiv = document.createElement('div');
-                                            toolResultDiv.style.cssText = 'background-color: #d1f0e8; padding: 12px; border-radius: 4px; border-left: 3px solid #1a7f37; margin-bottom: 8px;';
-                                            toolResultDiv.innerHTML = `<strong>✅ Tool Result:</strong><br><pre style="margin: 4px 0 0 0; font-size: 12px;">${item.result}</pre>`;
+                                            toolResultDiv.className = 'bg-green-50 p-3 rounded-md border-l-4 border-green-500 mb-2';
+                                            toolResultDiv.innerHTML = `<strong class="text-sm">✅ Tool Result:</strong><br><pre class="mt-1 text-xs">${escapeHtml(item.text)}</pre>`;
                                             contentDiv.appendChild(toolResultDiv);
                                         }
                                     }
 
-                                    // Store detailed metadata
                                     if (event.usage_metadata) {
                                         const usage = event.usage_metadata;
                                         metadata = {
@@ -730,24 +470,22 @@ def create_chat_app() -> Flask:
                         }
                     }
 
-                    // Update card with metadata
                     if (metadata) {
-                        let metadataHtml = '<div class="message-metadata">';
+                        let metadataHtml = '<div class="flex justify-end gap-3 mt-3 pt-3 border-t border-gray-200 text-xs text-gray-500">';
                         if (metadata.prompt_tokens || metadata.thoughts_tokens || metadata.response_tokens) {
                             const parts = [];
                             if (metadata.prompt_tokens) parts.push(`Prompt: ${metadata.prompt_tokens}`);
                             if (metadata.thoughts_tokens) parts.push(`Thoughts: ${metadata.thoughts_tokens}`);
                             if (metadata.response_tokens) parts.push(`Response: ${metadata.response_tokens}`);
                             if (metadata.total_tokens) parts.push(`Total: ${metadata.total_tokens}`);
-                            metadataHtml += `<div class="metadata-item">📊 ${parts.join(' | ')}</div>`;
+                            metadataHtml += `<div class="flex items-center gap-1">📊 ${parts.join(' | ')}</div>`;
                         }
                         if (metadata.finish_reason) {
-                            metadataHtml += `<div class="metadata-item">🏁 ${metadata.finish_reason}</div>`;
+                            metadataHtml += `<div class="flex items-center gap-1">🏁 ${metadata.finish_reason}</div>`;
                         }
                         metadataHtml += '</div>';
                         assistantCard.innerHTML += metadataHtml;
                     }
-
 
                 } catch (error) {
                     contentDiv.textContent = `Error: ${error.message}`;
@@ -760,7 +498,6 @@ def create_chat_app() -> Flask:
 
             function clearChat() {
                 if (confirm('Are you sure you want to clear the conversation?')) {
-                    // Call API to clear server-side history
                     fetch('/api/clear', {
                         method: 'POST',
                         headers: {
@@ -770,13 +507,12 @@ def create_chat_app() -> Flask:
                             session_id: sessionId
                         })
                     }).then(() => {
-                        // Generate new session ID to start fresh
                         sessionId = Math.random().toString(36).substring(7);
                         const container = document.getElementById('messagesContainer');
                         container.innerHTML = `
-                            <div style="text-align: center; color: #656d76; padding: 40px;">
-                                <h2>Start a conversation</h2>
-                                <p>Type your message below to begin chatting with the AI.</p>
+                            <div class="text-center text-gray-500 py-10">
+                                <h2 class="text-2xl font-semibold mb-2">Start a conversation</h2>
+                                <p class="text-sm">Type your message below to begin chatting with the AI.</p>
                             </div>
                         `;
                     }).catch(error => {
@@ -785,7 +521,6 @@ def create_chat_app() -> Flask:
                 }
             }
 
-            // Handle Enter key to send message (Shift+Enter for new line)
             document.getElementById('messageInput').addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -793,7 +528,6 @@ def create_chat_app() -> Flask:
                 }
             });
 
-            // Auto-resize textarea
             const textarea = document.getElementById('messageInput');
             textarea.addEventListener('input', function() {
                 this.style.height = 'auto';

@@ -169,24 +169,30 @@ export function createChatApp(): Express {
           let sessionId = Math.random().toString(36).substring(7);
           let selectedImages = [];
 
+          function escapeHtml(text) {
+              const div = document.createElement('div');
+              div.textContent = text;
+              return div.innerHTML;
+          }
+
           function handleImageSelect(event) {
               const files = event.target.files;
               if (!files || files.length === 0) return;
-              
+
               const maxFileSize = 10 * 1024 * 1024;
               const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-              
+
               Array.from(files).forEach(file => {
                   if (!allowedTypes.includes(file.type)) {
                       alert(\`File "\${file.name}" is not a valid image type. Please upload JPEG, PNG, GIF, or WebP images.\`);
                       return;
                   }
-                  
+
                   if (file.size > maxFileSize) {
                       alert(\`File "\${file.name}" is too large. Maximum file size is 10MB.\`);
                       return;
                   }
-                  
+
                   const reader = new FileReader();
                   reader.onload = function(e) {
                       const base64Data = e.target.result;
@@ -197,7 +203,7 @@ export function createChatApp(): Express {
                   };
                   reader.readAsDataURL(file);
               });
-              
+
               event.target.value = '';
           }
 
@@ -208,7 +214,7 @@ export function createChatApp(): Express {
                   container.innerHTML = '';
                   return;
               }
-              
+
               container.classList.remove('hidden');
               container.innerHTML = selectedImages.map((img, idx) => \`
                   <div class="inline-block relative mr-2 mb-2">
@@ -289,7 +295,7 @@ export function createChatApp(): Express {
                       <span class="font-semibold text-sm uppercase \${isUser ? 'text-blue-600' : 'text-green-600'}">\${role}</span>
                   </div>
               \`;
-              
+
               if (images && images.length > 0) {
                   html += '<div class="mb-3 flex flex-wrap gap-2">';
                   images.forEach(img => {
@@ -297,8 +303,8 @@ export function createChatApp(): Express {
                   });
                   html += '</div>';
               }
-              
-              html += \`<div class="text-sm leading-relaxed whitespace-pre-wrap">\${content || ''}</div>\`;
+
+              html += \`<div class="message-content text-sm leading-relaxed whitespace-pre-wrap">\${escapeHtml(content || '')}</div>\`;
 
               if (metadata) {
                   html += '<div class="flex justify-end gap-3 mt-3 pt-3 border-t border-gray-200 text-xs text-gray-500">';
@@ -336,20 +342,20 @@ export function createChatApp(): Express {
               addMessageCard('user', message, null, currentImages);
 
               const assistantCard = addMessageCard('assistant', '');
-              const contentDiv = assistantCard.querySelector('.text-sm');
+              const contentDiv = assistantCard.querySelector('.message-content');
 
               try {
                   const config = getConfig();
                   const content_items = [];
-                  
+
                   if (message) {
                       content_items.push({ type: 'text', text: message });
                   }
-                  
+
                   currentImages.forEach(img => {
                       content_items.push({ type: 'image_url', image_url: img });
                   });
-                  
+
                   const response = await fetch('/api/chat', {
                       method: 'POST',
                       headers: {
@@ -416,11 +422,11 @@ export function createChatApp(): Express {
                                               toolcallContainer.className = 'toolcall-content bg-yellow-50 p-3 rounded-md border-l-4 border-yellow-500 mb-2';
                                               contentDiv.appendChild(toolcallContainer);
                                           }
-                                          toolcallContainer.innerHTML = \`<strong class="text-sm">🛠️ Tool Call:</strong> \${fullToolName || '...'}<br><pre class="mt-1 text-xs">\${fullToolArgs || ''}</pre>\`;
+                                          toolcallContainer.innerHTML = \`<strong class="text-sm">🛠️ Tool Call:</strong> \${escapeHtml(fullToolName || '...')}<br><pre class="mt-1 text-xs">\${escapeHtml(fullToolArgs || '')}</pre>\`;
                                       } else if (item.type === 'tool_result') {
                                           const toolResultDiv = document.createElement('div');
                                           toolResultDiv.className = 'bg-green-50 p-3 rounded-md border-l-4 border-green-500 mb-2';
-                                          toolResultDiv.innerHTML = \`<strong class="text-sm">✅ Tool Result:</strong><br><pre class="mt-1 text-xs">\${item.result}</pre>\`;
+                                          toolResultDiv.innerHTML = \`<strong class="text-sm">✅ Tool Result:</strong><br><pre class="mt-1 text-xs">\${escapeHtml(item.text)}</pre>\`;
                                           contentDiv.appendChild(toolResultDiv);
                                       }
                                   }

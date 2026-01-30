@@ -369,17 +369,15 @@ export class Tracer {
                 ? `<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                   <h2 class="text-xl font-semibold text-gray-900 mb-4">Configuration</h2>
                   ${configItems
-                    .map(
-                      (item) => {
-                        if (item.isSystemPrompt) {
-                          return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto; white-space: pre-wrap;">${this._escapeHtml(String(item.value))}</pre></div>`;
-                        } else if (item.isTools) {
-                          return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto;">${this._escapeHtml(String(item.value))}</pre></div>`;
-                        } else {
-                          return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><span class="text-gray-600">${this._escapeHtml(String(item.value))}</span></div>`;
-                        }
-                      },
-                    )
+                    .map((item) => {
+                      if (item.isSystemPrompt) {
+                        return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto; white-space: pre-wrap;">${this._escapeHtml(String(item.value))}</pre></div>`;
+                      } else if (item.isTools) {
+                        return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto;">${this._escapeHtml(String(item.value))}</pre></div>`;
+                      } else {
+                        return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><span class="text-gray-600">${this._escapeHtml(String(item.value))}</span></div>`;
+                      }
+                    })
                     .join("")}
                 </div>`
                 : "";
@@ -403,7 +401,7 @@ export class Tracer {
                           args += ", ";
                         }
                       }
-                      itemHtml += `<div class="bg-yellow-50 p-4 rounded-md border-l-4 border-yellow-500"><div class="font-mono text-sm text-gray-800">${item.name}(${args})</div></div>`;
+                      itemHtml += `<div class="bg-yellow-50 p-4 rounded-md border-l-4 border-yellow-500"><div class="font-mono text-sm text-gray-800">${this._escapeHtml(item.name)}(${args})</div></div>`;
                     } else if (item.type === "tool_result") {
                       let resultHtml = `<div class="bg-green-50 p-4 rounded-md border-l-4 border-green-500"><strong class="text-sm text-gray-900">Result:</strong> <span class="text-sm text-gray-700">${this._escapeHtml(item.text)}</span><br><strong class="text-sm text-gray-900">Call ID:</strong> <span class="text-sm text-gray-700">${item.tool_call_id}</span>`;
                       if (item.images && item.images.length > 0) {
