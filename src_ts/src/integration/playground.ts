@@ -292,7 +292,7 @@ export function createChatApp(): Express {
 
               let html = \`
                   <div class="flex justify-between items-center mb-3">
-                      <span class="font-semibold text-sm uppercase \${isUser ? 'text-blue-600' : 'text-green-600'}">\${role}</span>
+                      <span class="font-semibold text-sm uppercase \${isUser ? 'text-blue-600' : 'text-green-600'}">\${escapeHtml(role)}</span>
                   </div>
               \`;
               
