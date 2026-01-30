@@ -304,7 +304,7 @@ export function createChatApp(): Express {
                   html += '</div>';
               }
               
-              html += \`<div class="text-sm leading-relaxed whitespace-pre-wrap">\${content || ''}</div>\`;
+              html += \`<div class="text-sm leading-relaxed whitespace-pre-wrap">\${escapeHtml(content || '')}</div>\`;
 
               if (metadata) {
                   html += '<div class="flex justify-end gap-3 mt-3 pt-3 border-t border-gray-200 text-xs text-gray-500">';
