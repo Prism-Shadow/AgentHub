@@ -341,10 +341,32 @@ export class GLM4_7Client extends LLMClient {
         for (const item of event.content_items) {
           if (item.type === "partial_tool_call") {
             if (!partialToolCall.name) {
+              // start a new partial tool call
+              partialToolCall.name = item.name;
+              partialToolCall.arguments = item.arguments;
+              partialToolCall.tool_call_id = item.tool_call_id;
+            } else if (item.name) {
+              // finish the previous partial tool call
+              yield {
+                role: "assistant",
+                event_type: "delta",
+                content_items: [
+                  {
+                    type: "tool_call",
+                    name: partialToolCall.name,
+                    arguments: JSON.parse(partialToolCall.arguments || "{}"),
+                    tool_call_id: partialToolCall.tool_call_id || "",
+                  },
+                ],
+                usage_metadata: null,
+                finish_reason: null,
+              };
+              // start a new partial tool call
               partialToolCall.name = item.name;
               partialToolCall.arguments = item.arguments;
               partialToolCall.tool_call_id = item.tool_call_id;
             } else {
+              // update partial tool call
               partialToolCall.arguments =
                 (partialToolCall.arguments || "") + item.arguments;
             }
@@ -352,7 +374,8 @@ export class GLM4_7Client extends LLMClient {
         }
         yield event;
       } else if (event.event_type === "stop") {
-        if (partialToolCall.name && partialToolCall.arguments) {
+        if (partialToolCall.name) {
+          // finish the partial tool call
           yield {
             role: "assistant",
             event_type: "delta",
@@ -360,7 +383,7 @@ export class GLM4_7Client extends LLMClient {
               {
                 type: "tool_call",
                 name: partialToolCall.name,
-                arguments: JSON.parse(partialToolCall.arguments),
+                arguments: JSON.parse(partialToolCall.arguments || "{}"),
                 tool_call_id: partialToolCall.tool_call_id || "",
               },
             ],

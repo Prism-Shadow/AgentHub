@@ -259,27 +259,45 @@ class Qwen3Client(LLMClient):
         async for chunk in stream:
             event = self.transform_model_output_to_uni_event(chunk)
             if event["event_type"] == "start":
-                # initialize partial_tool_call for <tool_call>
+                # start new partial tool call for <tool_call>
                 partial_tool_call = {"data": ""}
             elif event["event_type"] == "delta":
                 if "data" in partial_tool_call:
-                    # update partial_tool_call for <tool_call>
+                    # update partial tool call for <tool_call>
                     partial_tool_call["data"] += event["content_items"][0]["text"]
                     continue
 
                 for item in event["content_items"]:
                     if item["type"] == "partial_tool_call":
                         if not partial_tool_call:
-                            # initialize partial_tool_call for tool call object
+                            # start new partial tool call for tool call object
+                            partial_tool_call = {"name": item["name"], "arguments": item["arguments"]}
+                        elif item["name"]:
+                            # finish previous partial tool call for tool call object
+                            yield {
+                                "role": "assistant",
+                                "event_type": "delta",
+                                "content_items": [
+                                    {
+                                        "type": "tool_call",
+                                        "name": partial_tool_call["name"],
+                                        "arguments": json.loads(partial_tool_call["arguments"] or "{}"),
+                                        "tool_call_id": partial_tool_call["name"],
+                                    }
+                                ],
+                                "usage_metadata": None,
+                                "finish_reason": None,
+                            }
+                            # start new partial tool call for tool call object
                             partial_tool_call = {"name": item["name"], "arguments": item["arguments"]}
                         else:
-                            # update partial_tool_call for tool call object
+                            # update partial tool call for tool call object
                             partial_tool_call["arguments"] += item["arguments"]
 
                 yield event
             elif event["event_type"] == "stop":
                 if "data" in partial_tool_call:
-                    # finish partial_tool_call for <tool_call>
+                    # finish partial tool call for <tool_call>
                     tool_call = json.loads(partial_tool_call["data"].strip())
                     yield {
                         "role": "assistant",
@@ -311,8 +329,8 @@ class Qwen3Client(LLMClient):
                     }
                     partial_tool_call = {}
 
-                if "name" in partial_tool_call and "arguments" in partial_tool_call:
-                    # finish partial_tool_call for tool call object
+                if partial_tool_call:
+                    # finish partial tool call for tool call object
                     yield {
                         "role": "assistant",
                         "event_type": "delta",
@@ -320,7 +338,7 @@ class Qwen3Client(LLMClient):
                             {
                                 "type": "tool_call",
                                 "name": partial_tool_call["name"],
-                                "arguments": json.loads(partial_tool_call["arguments"]),
+                                "arguments": json.loads(partial_tool_call["arguments"] or "{}"),
                                 "tool_call_id": partial_tool_call["name"],
                             }
                         ],

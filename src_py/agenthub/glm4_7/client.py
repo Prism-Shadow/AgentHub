@@ -273,20 +273,42 @@ class GLM4_7Client(LLMClient):
                 for item in event["content_items"]:
                     if item["type"] == "partial_tool_call":
                         if not partial_tool_call:
-                            # initialize partial_tool_call
+                            # start new partial tool call
+                            partial_tool_call = {
+                                "name": item["name"],
+                                "arguments": item["arguments"],
+                                "tool_call_id": item["tool_call_id"],
+                            }
+                        elif item["name"]:
+                            # finish previous partial tool call
+                            yield {
+                                "role": "assistant",
+                                "event_type": "delta",
+                                "content_items": [
+                                    {
+                                        "type": "tool_call",
+                                        "name": partial_tool_call["name"],
+                                        "arguments": json.loads(partial_tool_call["arguments"] or "{}"),
+                                        "tool_call_id": partial_tool_call["tool_call_id"],
+                                    }
+                                ],
+                                "usage_metadata": None,
+                                "finish_reason": None,
+                            }
+                            # start new partial tool call
                             partial_tool_call = {
                                 "name": item["name"],
                                 "arguments": item["arguments"],
                                 "tool_call_id": item["tool_call_id"],
                             }
                         else:
-                            # update partial_tool_call
+                            # update partial tool call
                             partial_tool_call["arguments"] += item["arguments"]
 
                 yield event
             elif event["event_type"] == "stop":
-                if "name" in partial_tool_call and "arguments" in partial_tool_call:
-                    # finish partial_tool_call
+                if partial_tool_call:
+                    # finish partial tool call
                     yield {
                         "role": "assistant",
                         "event_type": "delta",
@@ -294,7 +316,7 @@ class GLM4_7Client(LLMClient):
                             {
                                 "type": "tool_call",
                                 "name": partial_tool_call["name"],
-                                "arguments": json.loads(partial_tool_call["arguments"]),
+                                "arguments": json.loads(partial_tool_call["arguments"] or "{}"),
                                 "tool_call_id": partial_tool_call["tool_call_id"],
                             }
                         ],
