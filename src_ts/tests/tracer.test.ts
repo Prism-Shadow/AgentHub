@@ -232,7 +232,7 @@ describe("Tracer", () => {
     ];
 
     const config = {
-      system: "You are a helpful assistant.",
+      system_prompt: "You are a helpful assistant.",
       tools: [
         {
           name: "get_weather",
@@ -254,8 +254,8 @@ describe("Tracer", () => {
     const txtPath = path.join(tempCacheDir, fileId + ".txt");
     const txtContent = fs.readFileSync(txtPath, "utf-8");
 
-    // Check that system is rendered with proper formatting
-    expect(txtContent).toContain("system:");
+    // Check that system_prompt is rendered with proper formatting
+    expect(txtContent).toContain("system_prompt:");
     expect(txtContent).toContain("You are a helpful assistant");
 
     // Check that tools are rendered as JSON

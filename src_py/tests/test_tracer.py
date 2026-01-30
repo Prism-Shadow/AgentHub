@@ -295,7 +295,7 @@ def test_format_config_with_system_and_tools(temp_cache_dir):
     history = [{"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}]
 
     config = {
-        "system": "You are a helpful assistant.",
+        "system_prompt": "You are a helpful assistant.",
         "tools": [
             {
                 "name": "get_weather",
@@ -315,8 +315,8 @@ def test_format_config_with_system_and_tools(temp_cache_dir):
     txt_path = Path(temp_cache_dir) / (file_id + ".txt")
     txt_content = txt_path.read_text()
 
-    # Check that system is rendered properly
-    assert "system:" in txt_content
+    # Check that system_prompt is rendered properly
+    assert "system_prompt:" in txt_content
     assert "You are a helpful assistant" in txt_content
 
     # Check that tools are rendered as JSON

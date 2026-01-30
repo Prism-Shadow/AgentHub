@@ -123,10 +123,7 @@ class Tracer:
         lines.append("Configuration:")
         for key, value in config.items():
             if key != "trace_id":  # Don't include trace_id itself
-                if key == "system" and value is not None:
-                    lines.append(f"  {key}:")
-                    lines.append(f"    {value}")
-                elif key == "tools" and isinstance(value, list):
+                if key == "tools" and isinstance(value, list):
                     lines.append(f"  {key}:")
                     lines.append(f"    {json.dumps(value, indent=2, ensure_ascii=False)}")
                 else:
@@ -471,10 +468,10 @@ class Tracer:
                     {% if key != 'trace_id' %}
                     <div class="config-item">
                         <strong>{{ key|e }}:</strong>
-                        {% if key == 'system' and value is not none %}
+                        {% if key == 'system_prompt' and value is not none %}
                             <pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto; white-space: pre-wrap;">{{ value|e }}</pre>
                         {% elif key == 'tools' and value is iterable and value is not string %}
-                            <pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto;">{{ value|tojson(indent=2, ensure_ascii=False)|e }}</pre>
+                            <pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto;">{{ value|tojson(indent=2)|e }}</pre>
                         {% else %}
                             {{ value|e }}
                         {% endif %}
@@ -503,7 +500,7 @@ class Tracer:
                                 <div class="content-text thinking">{{ item.thinking|e }}</div>
                             {% elif item.type == 'tool_call' %}
                                 <div class="tool-call">
-                                    <div class="content-text">{{ item.name|e }}({% for key, value in item.arguments.items() %}{{ key|e }}={{ value|e|tojson }}{% if not loop.last %}, {% endif %}{% endfor %})</div>
+                                    <div class="content-text">{{ item.name|e }}({% for key, value in item.arguments.items() %}{{ key|e }}={{ value|tojson(indent=2)|e }}{% if not loop.last %}, {% endif %}{% endfor %})</div>
                                 </div>
                             {% elif item.type == 'tool_result' %}
                                 <div class="tool-result">

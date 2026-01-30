@@ -131,14 +131,11 @@ export class Tracer {
     lines.push("Configuration:");
     for (const [key, value] of Object.entries(config)) {
       if (key !== "trace_id") {
-        if (key === "system" && value != null) {
-          lines.push(`  ${key}:`);
-          lines.push(`    ${value}`);
-        } else if (key === "tools" && Array.isArray(value)) {
+        if (key === "tools" && Array.isArray(value)) {
           lines.push(`  ${key}:`);
           lines.push(`    ${JSON.stringify(value, null, 2)}`);
         } else {
-          lines.push(`  ${key}: ${JSON.stringify(value)}`);
+          lines.push(`  ${key}: ${value}`);
         }
       }
     }
@@ -344,11 +341,11 @@ export class Tracer {
             const configItems = Object.entries(data.config || {})
               .filter(([key]) => key !== "trace_id")
               .map(([key, value]) => {
-                if (key === "system" && value != null) {
+                if (key === "system_prompt" && value != null) {
                   return {
                     key,
                     value: value,
-                    isSystem: true,
+                    isSystemPrompt: true,
                   };
                 } else if (key === "tools" && Array.isArray(value)) {
                   return {
@@ -374,12 +371,12 @@ export class Tracer {
                   ${configItems
                     .map(
                       (item) => {
-                        if (item.isSystem) {
+                        if (item.isSystemPrompt) {
                           return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto; white-space: pre-wrap;">${this._escapeHtml(String(item.value))}</pre></div>`;
                         } else if (item.isTools) {
                           return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto;">${this._escapeHtml(String(item.value))}</pre></div>`;
                         } else {
-                          return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong> <span class="text-gray-600">${this._escapeHtml(String(item.value))}</span></div>`;
+                          return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><span class="text-gray-600">${this._escapeHtml(String(item.value))}</span></div>`;
                         }
                       },
                     )
