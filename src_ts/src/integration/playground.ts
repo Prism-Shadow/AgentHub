@@ -292,7 +292,7 @@ export function createChatApp(): Express {
 
               let html = \`
                   <div class="flex justify-between items-center mb-3">
-                      <span class="font-semibold text-sm uppercase \${isUser ? 'text-blue-600' : 'text-green-600'}">\${escapeHtml(role)}</span>
+                      <span class="font-semibold text-sm uppercase \${isUser ? 'text-blue-600' : 'text-green-600'}">\${role}</span>
                   </div>
               \`;
               
@@ -304,7 +304,7 @@ export function createChatApp(): Express {
                   html += '</div>';
               }
               
-              html += \`<div class="text-sm leading-relaxed whitespace-pre-wrap">\${escapeHtml(content || '')}</div>\`;
+              html += \`<div class="message-content text-sm leading-relaxed whitespace-pre-wrap">\${escapeHtml(content || '')}</div>\`;
 
               if (metadata) {
                   html += '<div class="flex justify-end gap-3 mt-3 pt-3 border-t border-gray-200 text-xs text-gray-500">';
@@ -342,7 +342,7 @@ export function createChatApp(): Express {
               addMessageCard('user', message, null, currentImages);
 
               const assistantCard = addMessageCard('assistant', '');
-              const contentDiv = assistantCard.querySelector('.text-sm');
+              const contentDiv = assistantCard.querySelector('.message-content');
 
               try {
                   const config = getConfig();
