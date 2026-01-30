@@ -445,7 +445,7 @@ def create_chat_app() -> Flask:
                                         } else if (item.type === 'tool_result') {
                                             const toolResultDiv = document.createElement('div');
                                             toolResultDiv.className = 'bg-green-50 p-3 rounded-md border-l-4 border-green-500 mb-2';
-                                            toolResultDiv.innerHTML = `<strong class="text-sm">✅ Tool Result:</strong><br><pre class="mt-1 text-xs">${escapeHtml(item.result)}</pre>`;
+                                            toolResultDiv.innerHTML = `<strong class="text-sm">✅ Tool Result:</strong><br><pre class="mt-1 text-xs">${escapeHtml(item.text)}</pre>`;
                                             contentDiv.appendChild(toolResultDiv);
                                         }
                                     }
