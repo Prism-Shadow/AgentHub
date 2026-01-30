@@ -54,8 +54,12 @@ When adding support for new AI models in `auto_client.py`, follow these rules:
 2. Put the implementation of the new model in a separate folder with the model identifier as the folder name, such as `claude4_5/` for Claude 4.5 series models.
 3. **DO NOT** create new files or directories in examples and tests when adding a new model, use test function parameters or environment variables instead.
 4. **Always** consult the [llmsdk_docs/README.md](../llmsdk_docs/README.md) for AI model SDK usage details.
-5. When making changes, ensure consistency across both implementations when applicable.
+5. When making changes, by default synchronize updates to both Python and TypeScript implementations unless the user explicitly specifies otherwise.
 6. When using JSON serialization, ensure that CJK strings are serialized correctly by using `ensure_ascii=False`.
+
+When adding new functionality, follow these rules:
+
+1. **DO NOT** create new example files unless the user explicitly requests them.
 
 When writing documentation, follow these rules:
 
