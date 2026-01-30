@@ -169,6 +169,12 @@ export function createChatApp(): Express {
           let sessionId = Math.random().toString(36).substring(7);
           let selectedImages = [];
 
+          function escapeHtml(text) {
+              const div = document.createElement('div');
+              div.textContent = text;
+              return div.innerHTML;
+          }
+
           function handleImageSelect(event) {
               const files = event.target.files;
               if (!files || files.length === 0) return;
@@ -416,11 +422,11 @@ export function createChatApp(): Express {
                                               toolcallContainer.className = 'toolcall-content bg-yellow-50 p-3 rounded-md border-l-4 border-yellow-500 mb-2';
                                               contentDiv.appendChild(toolcallContainer);
                                           }
-                                          toolcallContainer.innerHTML = \`<strong class="text-sm">🛠️ Tool Call:</strong> \${fullToolName || '...'}<br><pre class="mt-1 text-xs">\${fullToolArgs || ''}</pre>\`;
+                                          toolcallContainer.innerHTML = \`<strong class="text-sm">🛠️ Tool Call:</strong> \${escapeHtml(fullToolName || '...')}<br><pre class="mt-1 text-xs">\${escapeHtml(fullToolArgs || '')}</pre>\`;
                                       } else if (item.type === 'tool_result') {
                                           const toolResultDiv = document.createElement('div');
                                           toolResultDiv.className = 'bg-green-50 p-3 rounded-md border-l-4 border-green-500 mb-2';
-                                          toolResultDiv.innerHTML = \`<strong class="text-sm">✅ Tool Result:</strong><br><pre class="mt-1 text-xs">\${item.result}</pre>\`;
+                                          toolResultDiv.innerHTML = \`<strong class="text-sm">✅ Tool Result:</strong><br><pre class="mt-1 text-xs">\${escapeHtml(item.result)}</pre>\`;
                                           contentDiv.appendChild(toolResultDiv);
                                       }
                                   }
