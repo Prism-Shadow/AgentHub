@@ -154,7 +154,10 @@ export function createChatApp(): Express {
       </div>
 
       <div class="bg-white border-t border-gray-200 px-6 py-4">
+          <div id="imagePreviewContainer" class="mb-3 max-w-5xl mx-auto hidden"></div>
           <div class="flex gap-3 max-w-5xl mx-auto">
+              <input type="file" id="imageInput" accept="image/*" multiple class="hidden" onchange="handleImageSelect(event)">
+              <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-md text-sm font-semibold whitespace-nowrap transition-colors" onclick="document.getElementById('imageInput').click()">📎 Image</button>
               <textarea id="messageInput" class="flex-1 px-4 py-3 border border-gray-300 rounded-md text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Type your message here..." rows="1"></textarea>
               <button class="bg-green-600 hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-md text-sm font-semibold whitespace-nowrap transition-colors" id="sendButton" onclick="sendMessage()">Send</button>
               <button class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-md text-sm font-semibold transition-colors" onclick="clearChat()">Clear</button>
@@ -164,6 +167,61 @@ export function createChatApp(): Express {
       <script>
           let isStreaming = false;
           let sessionId = Math.random().toString(36).substring(7);
+          let selectedImages = [];
+
+          function handleImageSelect(event) {
+              const files = event.target.files;
+              if (!files || files.length === 0) return;
+              
+              const maxFileSize = 10 * 1024 * 1024;
+              const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+              
+              Array.from(files).forEach(file => {
+                  if (!allowedTypes.includes(file.type)) {
+                      alert(\`File "\${file.name}" is not a valid image type. Please upload JPEG, PNG, GIF, or WebP images.\`);
+                      return;
+                  }
+                  
+                  if (file.size > maxFileSize) {
+                      alert(\`File "\${file.name}" is too large. Maximum file size is 10MB.\`);
+                      return;
+                  }
+                  
+                  const reader = new FileReader();
+                  reader.onload = function(e) {
+                      const base64Data = e.target.result;
+                      if (typeof base64Data === 'string' && base64Data.startsWith('data:image/')) {
+                          selectedImages.push(base64Data);
+                          updateImagePreview();
+                      }
+                  };
+                  reader.readAsDataURL(file);
+              });
+              
+              event.target.value = '';
+          }
+
+          function updateImagePreview() {
+              const container = document.getElementById('imagePreviewContainer');
+              if (selectedImages.length === 0) {
+                  container.classList.add('hidden');
+                  container.innerHTML = '';
+                  return;
+              }
+              
+              container.classList.remove('hidden');
+              container.innerHTML = selectedImages.map((img, idx) => \`
+                  <div class="inline-block relative mr-2 mb-2">
+                      <img src="\${img}" class="h-20 w-20 object-cover rounded border border-gray-300">
+                      <button onclick="removeImage(\${idx})" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-700">×</button>
+                  </div>
+              \`).join('');
+          }
+
+          function removeImage(idx) {
+              selectedImages.splice(idx, 1);
+              updateImagePreview();
+          }
 
           function toggleConfig() {
               const panel = document.getElementById('configPanel');
@@ -215,7 +273,7 @@ export function createChatApp(): Express {
               return config;
           }
 
-          function addMessageCard(role, content, metadata = null) {
+          function addMessageCard(role, content, metadata = null, images = []) {
               const container = document.getElementById('messagesContainer');
 
               if (container.children.length === 1 && container.children[0].className.includes('text-center')) {
@@ -230,8 +288,17 @@ export function createChatApp(): Express {
                   <div class="flex justify-between items-center mb-3">
                       <span class="font-semibold text-sm uppercase \${isUser ? 'text-blue-600' : 'text-green-600'}">\${role}</span>
                   </div>
-                  <div class="text-sm leading-relaxed whitespace-pre-wrap">\${content || ''}</div>
               \`;
+              
+              if (images && images.length > 0) {
+                  html += '<div class="mb-3 flex flex-wrap gap-2">';
+                  images.forEach(img => {
+                      html += \`<img src="\${img}" class="max-w-xs rounded border border-gray-300">\`;
+                  });
+                  html += '</div>';
+              }
+              
+              html += \`<div class="text-sm leading-relaxed whitespace-pre-wrap">\${content || ''}</div>\`;
 
               if (metadata) {
                   html += '<div class="flex justify-end gap-3 mt-3 pt-3 border-t border-gray-200 text-xs text-gray-500">';
@@ -256,19 +323,33 @@ export function createChatApp(): Express {
               const sendButton = document.getElementById('sendButton');
               const message = input.value.trim();
 
-              if (!message || isStreaming) return;
+              if ((!message && selectedImages.length === 0) || isStreaming) return;
 
               isStreaming = true;
               sendButton.disabled = true;
               input.value = '';
 
-              addMessageCard('user', message);
+              const currentImages = [...selectedImages];
+              selectedImages = [];
+              updateImagePreview();
+
+              addMessageCard('user', message, null, currentImages);
 
               const assistantCard = addMessageCard('assistant', '');
               const contentDiv = assistantCard.querySelector('.text-sm');
 
               try {
                   const config = getConfig();
+                  const content_items = [];
+                  
+                  if (message) {
+                      content_items.push({ type: 'text', text: message });
+                  }
+                  
+                  currentImages.forEach(img => {
+                      content_items.push({ type: 'image_url', image_url: img });
+                  });
+                  
                   const response = await fetch('/api/chat', {
                       method: 'POST',
                       headers: {
@@ -277,7 +358,7 @@ export function createChatApp(): Express {
                       body: JSON.stringify({
                           message: {
                               role: 'user',
-                              content_items: [{ type: 'text', text: message }]
+                              content_items: content_items
                           },
                           config: config,
                           session_id: sessionId
