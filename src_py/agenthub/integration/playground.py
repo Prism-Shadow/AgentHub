@@ -197,21 +197,21 @@ def create_chat_app() -> Flask:
             function handleImageSelect(event) {
                 const files = event.target.files;
                 if (!files || files.length === 0) return;
-                
+
                 const maxFileSize = 10 * 1024 * 1024;
                 const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-                
+
                 Array.from(files).forEach(file => {
                     if (!allowedTypes.includes(file.type)) {
                         alert(`File "${file.name}" is not a valid image type. Please upload JPEG, PNG, GIF, or WebP images.`);
                         return;
                     }
-                    
+
                     if (file.size > maxFileSize) {
                         alert(`File "${file.name}" is too large. Maximum file size is 10MB.`);
                         return;
                     }
-                    
+
                     const reader = new FileReader();
                     reader.onload = function(e) {
                         const base64Data = e.target.result;
@@ -222,7 +222,7 @@ def create_chat_app() -> Flask:
                     };
                     reader.readAsDataURL(file);
                 });
-                
+
                 event.target.value = '';
             }
 
@@ -233,7 +233,7 @@ def create_chat_app() -> Flask:
                     container.innerHTML = '';
                     return;
                 }
-                
+
                 container.classList.remove('hidden');
                 container.innerHTML = selectedImages.map((img, idx) => `
                     <div class="inline-block relative mr-2 mb-2">
@@ -314,7 +314,7 @@ def create_chat_app() -> Flask:
                         <span class="font-semibold text-sm uppercase ${isUser ? 'text-blue-600' : 'text-green-600'}">${role}</span>
                     </div>
                 `;
-                
+
                 if (images && images.length > 0) {
                     html += '<div class="mb-3 flex flex-wrap gap-2">';
                     images.forEach(img => {
@@ -322,7 +322,7 @@ def create_chat_app() -> Flask:
                     });
                     html += '</div>';
                 }
-                
+
                 html += `<div class="message-content text-sm leading-relaxed whitespace-pre-wrap">${escapeHtml(content || '')}</div>`;
 
                 if (metadata) {
@@ -366,15 +366,15 @@ def create_chat_app() -> Flask:
                 try {
                     const config = getConfig();
                     const content_items = [];
-                    
+
                     if (message) {
                         content_items.push({ type: 'text', text: message });
                     }
-                    
+
                     currentImages.forEach(img => {
                         content_items.push({ type: 'image_url', image_url: img });
                     });
-                    
+
                     const response = await fetch('/api/chat', {
                         method: 'POST',
                         headers: {
