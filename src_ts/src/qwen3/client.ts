@@ -338,7 +338,7 @@ export class Qwen3Client extends LLMClient {
                 event_type: "delta",
                 content_items: [
                   {
-                    type: "partial_tool_call",
+                    type: "tool_call",
                     name: partialToolCall.name,
                     arguments: JSON.parse(partialToolCall.arguments || "{}"),
                     tool_call_id: partialToolCall.name,

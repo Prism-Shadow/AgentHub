@@ -279,7 +279,7 @@ class Qwen3Client(LLMClient):
                                 "event_type": "delta",
                                 "content_items": [
                                     {
-                                        "type": "partial_tool_call",
+                                        "type": "tool_call",
                                         "name": partial_tool_call["name"],
                                         "arguments": json.loads(partial_tool_call["arguments"] or "{}"),
                                         "tool_call_id": partial_tool_call["name"],
