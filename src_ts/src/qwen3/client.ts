@@ -313,11 +313,11 @@ export class Qwen3Client extends LLMClient {
     for await (const chunk of stream) {
       const event = this.transformModelOutputToUniEvent(chunk);
       if (event.event_type === "start") {
-        // initialize partial_tool_call for <tool_call>
+        // start new partial tool call for <tool_call>
         partialToolCall.data = "";
       } else if (event.event_type === "delta") {
         if (partialToolCall.data !== undefined) {
-          // update partial_tool_call for <tool_call>
+          // update partial tool call for <tool_call>
           partialToolCall.data +=
             event.content_items[0]?.type === "text"
               ? (event.content_items[0] as { text: string }).text
@@ -328,11 +328,30 @@ export class Qwen3Client extends LLMClient {
         for (const item of event.content_items) {
           if (item.type === "partial_tool_call") {
             if (!partialToolCall.name) {
-              // initialize partial_tool_call for tool call object
+              // start new partial tool call for tool call object
+              partialToolCall.name = item.name;
+              partialToolCall.arguments = item.arguments;
+            } else if (item.name) {
+              // finish previous partial tool call for tool call object
+              yield {
+                role: "assistant",
+                event_type: "delta",
+                content_items: [
+                  {
+                    type: "partial_tool_call",
+                    name: partialToolCall.name,
+                    arguments: JSON.parse(partialToolCall.arguments || "{}"),
+                    tool_call_id: partialToolCall.name,
+                  },
+                ],
+                usage_metadata: null,
+                finish_reason: null,
+              };
+              // start new partial tool call for tool call object
               partialToolCall.name = item.name;
               partialToolCall.arguments = item.arguments;
             } else {
-              // update partial_tool_call for tool call object
+              // update partial tool call for tool call object
               partialToolCall.arguments =
                 partialToolCall.arguments + item.arguments;
             }
@@ -342,7 +361,7 @@ export class Qwen3Client extends LLMClient {
         yield event;
       } else if (event.event_type === "stop") {
         if (partialToolCall.data !== undefined) {
-          // finish partial_tool_call for <tool_call>
+          // finish partial tool call for <tool_call>
           const toolCall = JSON.parse(partialToolCall.data.trim());
           yield {
             role: "assistant",
@@ -375,8 +394,8 @@ export class Qwen3Client extends LLMClient {
           partialToolCall.data = undefined;
         }
 
-        if (partialToolCall.name && partialToolCall.arguments) {
-          // finish partial_tool_call for tool call object
+        if (partialToolCall.name) {
+          // finish partial tool call for tool call object
           yield {
             role: "assistant",
             event_type: "delta",
@@ -384,7 +403,7 @@ export class Qwen3Client extends LLMClient {
               {
                 type: "tool_call",
                 name: partialToolCall.name,
-                arguments: JSON.parse(partialToolCall.arguments),
+                arguments: JSON.parse(partialToolCall.arguments || "{}"),
                 tool_call_id: partialToolCall.name,
               },
             ],
