@@ -18,8 +18,8 @@ import mimetypes
 import os
 from contextlib import nullcontext
 
+import httpx
 import pytest
-import requests
 
 from agenthub import AutoLLMClient, ThinkingLevel
 
@@ -333,8 +333,9 @@ async def test_image_understanding_base64(model):
     client = await _create_client(model)
     config = {}
 
-    # Read test image and encode to base64
-    image_bytes = requests.get(IMAGE).content
+    async with httpx.AsyncClient() as http_client:
+        response = await http_client.get(IMAGE)
+        image_bytes = response.content
     base64_image = base64.b64encode(image_bytes).decode("utf-8")
     mime_type, _ = mimetypes.guess_type(IMAGE)
 

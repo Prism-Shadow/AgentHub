@@ -60,6 +60,7 @@ When adding new functionality, follow these rules:
 1. **DO NOT** create new example files unless the user explicitly requests them.
 2. When making changes, by default synchronize updates to both Python and TypeScript implementations unless the user explicitly specifies otherwise.
 3. When using JSON serialization, ensure that CJK strings are serialized correctly by using `ensure_ascii=False`.
+4. **DO NOT** use the `requests` library in Python code. Always use `httpx` with async methods (`httpx.AsyncClient()`) to avoid blocking the global event loop. The `httpx` library is already included as a dependency.
 
 When writing documentation, follow these rules:
 
