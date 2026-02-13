@@ -16,7 +16,7 @@ Streaming messages use an incremental generation mechanism, transmitting content
 ### Core Parameter Description
 
 * **`stream=True`**: Enable streaming output, must be set to `True`
-* **`model`**: Models that support streaming output, such as `glm-4.7`, `glm-4.6`, `glm-4.5`, etc.
+* **`model`**: Models that support streaming output, such as `glm-5`, `glm-4.6`, `glm-4.5`, etc.
 
 ### Response Format Description
 
@@ -36,7 +36,7 @@ Streaming responses use Server-Sent Events (SSE) format, with each event contain
     --header 'Authorization: Bearer YOUR_API_KEY' \
     --header 'Content-Type: application/json' \
     --data '{
-        "model": "glm-4.7",
+        "model": "glm-5",
         "messages": [
             {
                 "role": "user",
@@ -76,7 +76,7 @@ Streaming responses use Server-Sent Events (SSE) format, with each event contain
 
     # Create streaming message request
     response = client.chat.completions.create(
-        model="glm-4.7",
+        model="glm-5",
         messages=[
             {"role": "user", "content": "Write a poem about spring"}
         ],
@@ -112,15 +112,15 @@ Streaming responses use Server-Sent Events (SSE) format, with each event contain
 The streaming response format is as follows:
 
 ```
-data: {"id":"1","created":1677652288,"model":"glm-4.7","choices":[{"index":0,"delta":{"content":"Spring"},"finish_reason":null}]}
+data: {"id":"1","created":1677652288,"model":"glm-5","choices":[{"index":0,"delta":{"content":"Spring"},"finish_reason":null}]}
 
-data: {"id":"1","created":1677652288,"model":"glm-4.7","choices":[{"index":0,"delta":{"content":" comes"},"finish_reason":null}]}
+data: {"id":"1","created":1677652288,"model":"glm-5","choices":[{"index":0,"delta":{"content":" comes"},"finish_reason":null}]}
 
-data: {"id":"1","created":1677652288,"model":"glm-4.7","choices":[{"index":0,"delta":{"content":" with"},"finish_reason":null}]}
+data: {"id":"1","created":1677652288,"model":"glm-5","choices":[{"index":0,"delta":{"content":" with"},"finish_reason":null}]}
 
 ...
 
-data: {"id":"1","created":1677652288,"model":"glm-4.7","choices":[{"index":0,"finish_reason":"stop","delta":{"role":"assistant","content":""}}],"usage":{"prompt_tokens":8,"completion_tokens":262,"total_tokens":270,"prompt_tokens_details":{"cached_tokens":0}}}
+data: {"id":"1","created":1677652288,"model":"glm-5","choices":[{"index":0,"finish_reason":"stop","delta":{"role":"assistant","content":""}}],"usage":{"prompt_tokens":8,"completion_tokens":262,"total_tokens":270,"prompt_tokens_details":{"cached_tokens":0}}}
 
 data: [DONE]
 ```

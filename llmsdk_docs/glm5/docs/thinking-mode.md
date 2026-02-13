@@ -1,10 +1,10 @@
 # Thinking Mode
 
-> GLM-4.7 offers multiple thinking modes for different scenarios. The sections below explain how to enable each mode, key considerations, and example usage.
+> GLM-5 offers multiple thinking modes for different scenarios. The sections below explain how to enable each mode, key considerations, and example usage.
 
 ## **Default Thinking Behaviour**
 
-Thinking is activated by default in GLM-4.7, different from the default hybrid thinking in GLM-4.6.
+Thinking is activated by default in GLM-5, different from the default hybrid thinking in GLM-4.6.
 
 > If you want to disable thinking, use:
 
@@ -28,7 +28,7 @@ The detailed interleaved thinking process is as follows.
 
 ## **Preserved thinking**
 
-**GLM-4.7 introduces a new capability** in coding scenarios: the model can retain **reasoning content from previous assistant turns** in the context. This helps preserve reasoning continuity and conversation integrity, improves model performance, and increases cache hit rates—saving tokens in real tasks.
+**GLM-5 introduces a new capability** in coding scenarios: the model can retain **reasoning content from previous assistant turns** in the context. This helps preserve reasoning continuity and conversation integrity, improves model performance, and increases cache hit rates—saving tokens in real tasks.
 
 <Check>
   This capability is **enabled by default** on the **Coding Plan endpoint** and **disabled by default** on the **standard API endpoint**. If you want to enable **Preserved Thinking** in your product (primarily recommended for coding/agent scenarios), you can turn it on for the API endpoint by setting **"clear\_thinking": false**, and **you must return the complete**, unmodified reasoning\_content back to the API.
@@ -42,7 +42,7 @@ The detailed Preserved thinking process is as follows.
 
 ## Turn-level Thinking
 
-“Turn-level Thinking” is a capability that **lets you control reasoning computation on a per-turn basis**: within the same session, each request can independently choose to enable or disable thinking. This is a new capability introduced in GLM-4.7, with the following advantages:
+“Turn-level Thinking” is a capability that **lets you control reasoning computation on a per-turn basis**: within the same session, each request can independently choose to enable or disable thinking. This is a new capability introduced in GLM-5, with the following advantages:
 
 * **More flexible cost/latency control:** For lightweight turns like “asking a fact” or “tweaking wording,” you can disable thinking to get faster responses; for heavier tasks like “complex planning,” “multi-constraint reasoning,” or “code debugging,” you can enable thinking to improve accuracy and stability.
 * **Smoother multi-turn experience:** The thinking switch can be toggled at any point within a session. The model stays coherent across turns and keeps a consistent output style, making it feel “smarter when things are hard, faster when things are simple.”
@@ -75,7 +75,7 @@ messages = [
 ]
 
 # Round 1: the model reasons and then calls a tool
-response = client.chat.completions.create(model="glm-4.7", messages=messages, tools=tools, stream=True, extra_body={
+response = client.chat.completions.create(model="glm-5", messages=messages, tools=tools, stream=True, extra_body={
         "thinking":{
         "type":"enabled",
         "clear_thinking": False  # False for Preserved Thinking
@@ -105,7 +105,7 @@ messages.append({"role": "tool", "tool_call_id": tool_calls[0]["id"],
                  "content": json.dumps({"weather": "Sunny", "temp": "25°C"})})
 
 # Round 2: the model continues reasoning based on the tool result and responds
-response = client.chat.completions.create(model="glm-4.7", messages=messages, tools=tools, stream=True, extra_body={
+response = client.chat.completions.create(model="glm-5", messages=messages, tools=tools, stream=True, extra_body={
         "thinking":{
         "type":"enabled",
         "clear_thinking": False # False for Preserved Thinking

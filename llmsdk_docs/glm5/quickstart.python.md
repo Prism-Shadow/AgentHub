@@ -141,7 +141,7 @@ client = OpenAI(
 )
 
 completion = client.chat.completions.create(
-    model="glm-4.7",
+    model="glm-5",
     messages=[
         {"role": "system", "content": "You are a smart and creative novelist"},
         {"role": "user", "content": "Please write a short fairy tale story as a fairy tale master"}
@@ -162,7 +162,7 @@ client = OpenAI(
 )
 
 stream = client.chat.completions.create(
-    model="glm-4.7",
+    model="glm-5",
     messages=[
         {"role": "user", "content": "Write a poem about artificial intelligence"}
     ],
@@ -198,7 +198,7 @@ class ChatBot:
 
         # Call API
         response = self.client.chat.completions.create(
-            model="glm-4.7",
+            model="glm-5",
             messages=self.conversation,
             temperature=1.0
         )
@@ -236,7 +236,7 @@ from openai import OpenAI
 
 client = OpenAI(api_key='your-api-key', base_url='https://api.z.ai/api/paas/v4/')
 response = client.chat.completions.create(
-        model='glm-4.7',
+        model='glm-5',
         messages=[
             {"role": "system", "content": "you are a helpful assistant"},
             {"role": "user", "content": "what is the revolution of llm?"}
@@ -294,7 +294,7 @@ tools = [
 
 # Call conversation with functions
 response = client.chat.completions.create(
-    model="glm-4.7",
+    model="glm-5",
     messages=[
         {"role": "user", "content": "How's the weather in Beijing today?"}
     ],
@@ -385,7 +385,7 @@ client = OpenAI(
 
 # Other code remains unchanged
 response = client.chat.completions.create(
-    model="glm-4.7",  # Use Z.AI model
+    model="glm-5",  # Use Z.AI model
     messages=[{"role": "user", "content": "Hello!"}]
 )
 ```

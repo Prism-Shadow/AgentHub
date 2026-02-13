@@ -32,7 +32,7 @@ This mechanism is particularly suitable for the following scenarios:
     --header 'Authorization: Bearer YOUR_API_KEY' \
     --header 'Content-Type: application/json' \
     --data '{
-        "model": "glm-4.7",
+        "model": "glm-5",
         "messages": [
             {
                 "role": "system",
@@ -54,7 +54,7 @@ This mechanism is particularly suitable for the following scenarios:
     --header 'Authorization: Bearer YOUR_API_KEY' \
     --header 'Content-Type: application/json' \
     --data '{
-        "model": "glm-4.7",
+        "model": "glm-5",
         "messages": [
             {
                 "role": "system",
@@ -97,7 +97,7 @@ This mechanism is particularly suitable for the following scenarios:
 
     # First request - establish cache
     response1 = client.chat.completions.create(
-        model="glm-4.7",
+        model="glm-5",
         messages=[
             {
                 "role": "system",
@@ -117,7 +117,7 @@ This mechanism is particularly suitable for the following scenarios:
 
     # Second request - reuse system prompt cache
     response2 = client.chat.completions.create(
-        model="glm-4.7",
+        model="glm-5",
         messages=[
             {
                 "role": "system",
@@ -153,7 +153,7 @@ This mechanism is particularly suitable for the following scenarios:
 
     # First analysis - establish document cache
     response1 = client.chat.completions.create(
-        model="glm-4.7",
+        model="glm-5",
         messages=[
             {
                 "role": "system",
@@ -172,7 +172,7 @@ This mechanism is particularly suitable for the following scenarios:
 
     # Second analysis - reuse document cache
     response2 = client.chat.completions.create(
-        model="glm-4.7",
+        model="glm-5",
         messages=[
             {
                 "role": "system",
@@ -210,7 +210,7 @@ This mechanism is particularly suitable for the following scenarios:
 
     # Continue conversation - reuse conversation history cache
     response = client.chat.completions.create(
-        model="glm-4.7",
+        model="glm-5",
         messages=conversation_history + [
             {"role": "user", "content": "How to handle POST requests?"}
         ]
@@ -261,7 +261,7 @@ This mechanism is particularly suitable for the following scenarios:
         start_time = time.time()
 
         response = client.chat.completions.create(
-            model="glm-4.7",
+            model="glm-5",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Please review the following code:\n```python\n{code}\n```"}
@@ -335,7 +335,7 @@ Response contains context cache token usage information:
     # Recommended: Use long documents as system messages
     def create_document_based_chat(document_content, user_question):
         return client.chat.completions.create(
-            model="glm-4.7",
+            model="glm-5",
             messages=[
                 {
                     "role": "system",
@@ -375,7 +375,7 @@ Response contains context cache token usage information:
 
             # Get reply (conversation history will be cached)
             response = self.client.chat.completions.create(
-                model="glm-4.7",
+                model="glm-5",
                 messages=self.history
             )
 
