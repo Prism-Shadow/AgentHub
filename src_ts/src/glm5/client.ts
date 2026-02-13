@@ -33,14 +33,14 @@ import {
 } from "../types";
 
 /**
- * GLM-4.7-specific LLM client implementation using OpenAI-compatible API.
+ * GLM-5-specific LLM client implementation using OpenAI-compatible API.
  */
-export class GLM4_7Client extends LLMClient {
+export class GLM5Client extends LLMClient {
   protected _model: string;
   private _client: OpenAI;
 
   /**
-   * Initialize GLM-4.7 client with model and API key.
+   * Initialize GLM-5 client with model and API key.
    */
   constructor(options: {
     model: string;
@@ -129,7 +129,7 @@ export class GLM4_7Client extends LLMClient {
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE
     ) {
-      throw new Error("prompt_caching must be ENABLE for GLM-4.7.");
+      throw new Error("prompt_caching must be ENABLE for GLM-5.");
     }
 
     return glmConfig;

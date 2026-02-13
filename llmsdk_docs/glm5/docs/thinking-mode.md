@@ -1,10 +1,14 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.z.ai/llms.txt
+> Use this file to discover all available pages before exploring further.
+
 # Thinking Mode
 
-> GLM-4.7 offers multiple thinking modes for different scenarios. The sections below explain how to enable each mode, key considerations, and example usage.
+> GLM offers multiple thinking modes for different scenarios. The sections below explain how to enable each mode, key considerations, and example usage.
 
 ## **Default Thinking Behaviour**
 
-Thinking is activated by default in GLM-4.7, different from the default hybrid thinking in GLM-4.6.
+Thinking is activated by default in GLM-5 GLM-4.7, different from the default hybrid thinking in GLM-4.6.
 
 > If you want to disable thinking, use:
 
@@ -28,7 +32,7 @@ The detailed interleaved thinking process is as follows.
 
 ## **Preserved thinking**
 
-**GLM-4.7 introduces a new capability** in coding scenarios: the model can retain **reasoning content from previous assistant turns** in the context. This helps preserve reasoning continuity and conversation integrity, improves model performance, and increases cache hit rates—saving tokens in real tasks.
+**GLM-5 and GLM-4.7 introduces a new capability** in coding scenarios: the model can retain **reasoning content from previous assistant turns** in the context. This helps preserve reasoning continuity and conversation integrity, improves model performance, and increases cache hit rates—saving tokens in real tasks.
 
 <Check>
   This capability is **enabled by default** on the **Coding Plan endpoint** and **disabled by default** on the **standard API endpoint**. If you want to enable **Preserved Thinking** in your product (primarily recommended for coding/agent scenarios), you can turn it on for the API endpoint by setting **"clear\_thinking": false**, and **you must return the complete**, unmodified reasoning\_content back to the API.
@@ -120,8 +124,3 @@ for chunk in response:
 
 print(f"Reasoning: {reasoning}\nReply: {content}")
 ```
-
-
----
-
-> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://docs.z.ai/llms.txt

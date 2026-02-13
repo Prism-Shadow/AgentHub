@@ -43,7 +43,7 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 | Gemini 3       | Official                        | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
 | Claude 4.5     | Official                        | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
 | GPT-5.2        | Official                        | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
-| GLM-4.7        | Official/OpenRouter/SiliconFlow | :white_check_mark: | :white_check_mark: | :negative_squared_cross_mark: |
+| GLM-5          | Official/OpenRouter/SiliconFlow | :white_check_mark: | :white_check_mark: | :negative_squared_cross_mark: |
 | Qwen3          | OpenRouter/SiliconFlow/vLLM     | :white_check_mark: | :white_check_mark: | :negative_squared_cross_mark: |
 
 ## Installation
@@ -206,7 +206,7 @@ main().catch(console.error);
 
 </details>
 
-### OpenRouter GLM-4.7
+### OpenRouter GLM-5
 
 <details><summary><strong>Python Example</strong></summary>
 
@@ -219,7 +219,7 @@ os.environ["GLM_API_KEY"] = "your-openrouter-api-key"
 os.environ["GLM_BASE_URL"] = "https://openrouter.ai/api/v1"
 
 async def main():
-    client = AutoLLMClient(model="glm-4.7")
+    client = AutoLLMClient(model="glm-5")
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -242,7 +242,7 @@ process.env.GLM_API_KEY = "your-openrouter-api-key";
 process.env.GLM_BASE_URL = "https://openrouter.ai/api/v1";
 
 async function main() {
-  const client = new AutoLLMClient({ model: "glm-4.7" });
+  const client = new AutoLLMClient({ model: "glm-5" });
   for await (const event of client.streamingResponseStateful({
     message: {
       role: "user",

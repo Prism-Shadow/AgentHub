@@ -110,7 +110,7 @@ def create_chat_app() -> Flask:
                         <option value="gpt-5.2">GPT 5.2</option>
                         <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
                         <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
-                        <option value="glm-4.7">GLM 4.7</option>
+                        <option value="glm-5">GLM 5</option>
                     </datalist>
                 </div>
                 <div class="flex flex-col">
@@ -456,6 +456,7 @@ def create_chat_app() -> Flask:
                                             prompt_tokens: usage.prompt_tokens || 0,
                                             thoughts_tokens: usage.thoughts_tokens || 0,
                                             response_tokens: usage.response_tokens || 0,
+                                            cached_tokens: usage.cached_tokens || 0,
                                             total_tokens: (usage.prompt_tokens || 0) + (usage.thoughts_tokens || 0) + (usage.response_tokens || 0)
                                         };
                                     }
@@ -477,6 +478,7 @@ def create_chat_app() -> Flask:
                             if (metadata.prompt_tokens) parts.push(`Prompt: ${metadata.prompt_tokens}`);
                             if (metadata.thoughts_tokens) parts.push(`Thoughts: ${metadata.thoughts_tokens}`);
                             if (metadata.response_tokens) parts.push(`Response: ${metadata.response_tokens}`);
+                            if (metadata.cached_tokens) parts.push(`Cached: ${metadata.cached_tokens}`);
                             if (metadata.total_tokens) parts.push(`Total: ${metadata.total_tokens}`);
                             metadataHtml += `<div class="flex items-center gap-1">📊 ${parts.join(' | ')}</div>`;
                         }

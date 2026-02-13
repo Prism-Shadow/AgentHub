@@ -1,3 +1,7 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.z.ai/llms.txt
+> Use this file to discover all available pages before exploring further.
+
 # OpenAI Python SDK
 
 Z.AI provides interfaces compatible with OpenAI API, which means you can use existing OpenAI SDK code and seamlessly switch to Z.AI's model services by simply modifying the API key and base URL. This compatibility allows you to:
@@ -141,7 +145,7 @@ client = OpenAI(
 )
 
 completion = client.chat.completions.create(
-    model="glm-4.7",
+    model="glm-5",
     messages=[
         {"role": "system", "content": "You are a smart and creative novelist"},
         {"role": "user", "content": "Please write a short fairy tale story as a fairy tale master"}
@@ -162,7 +166,7 @@ client = OpenAI(
 )
 
 stream = client.chat.completions.create(
-    model="glm-4.7",
+    model="glm-5",
     messages=[
         {"role": "user", "content": "Write a poem about artificial intelligence"}
     ],
@@ -198,7 +202,7 @@ class ChatBot:
 
         # Call API
         response = self.client.chat.completions.create(
-            model="glm-4.7",
+            model="glm-5",
             messages=self.conversation,
             temperature=1.0
         )
@@ -294,7 +298,7 @@ tools = [
 
 # Call conversation with functions
 response = client.chat.completions.create(
-    model="glm-4.7",
+    model="glm-5",
     messages=[
         {"role": "user", "content": "How's the weather in Beijing today?"}
     ],
@@ -385,7 +389,7 @@ client = OpenAI(
 
 # Other code remains unchanged
 response = client.chat.completions.create(
-    model="glm-4.7",  # Use Z.AI model
+    model="glm-5",  # Use Z.AI model
     messages=[{"role": "user", "content": "Hello!"}]
 )
 ```
@@ -405,8 +409,3 @@ response = client.chat.completions.create(
 <Note>
   Z.AI is committed to maintaining compatibility with OpenAI API. If you encounter any issues during migration, please contact our technical support team.
 </Note>
-
-
----
-
-> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://docs.z.ai/llms.txt

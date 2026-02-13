@@ -34,11 +34,11 @@ from ..types import (
 )
 
 
-class GLM4_7Client(LLMClient):
-    """GLM-4.7-specific LLM client implementation using OpenAI-compatible API."""
+class GLM5Client(LLMClient):
+    """GLM-5-specific LLM client implementation using OpenAI-compatible API."""
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
-        """Initialize GLM-4.7 client with model and API key."""
+        """Initialize GLM-5 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("GLM_API_KEY")
         base_url = base_url or os.getenv("GLM_BASE_URL", "https://api.z.ai/api/paas/v4/")
@@ -80,7 +80,7 @@ class GLM4_7Client(LLMClient):
         if config.get("temperature") is not None:
             glm_config["temperature"] = config["temperature"]
 
-        # NOTE: glm-4.7 always provides thinking summary
+        # NOTE: glm-5 always provides thinking summary
         if config.get("thinking_level") is not None:
             thinking_config = self._convert_thinking_level_to_config(config["thinking_level"])
             # thinking is only effective when using the official API endpoint
@@ -93,7 +93,7 @@ class GLM4_7Client(LLMClient):
             glm_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
 
         if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
-            raise ValueError("prompt_caching must be ENABLE for GLM-4.7.")
+            raise ValueError("prompt_caching must be ENABLE for GLM-5.")
 
         return glm_config
 
@@ -234,9 +234,9 @@ class GLM4_7Client(LLMClient):
 
             usage_metadata = {
                 "prompt_tokens": model_output.usage.prompt_tokens,
-                "thoughts_tokens": reasoning_tokens,
                 "response_tokens": model_output.usage.completion_tokens,
                 "cached_tokens": cached_tokens,
+                "thoughts_tokens": reasoning_tokens,
             }
 
         return {
