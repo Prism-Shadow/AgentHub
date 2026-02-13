@@ -1,3 +1,7 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.z.ai/llms.txt
+> Use this file to discover all available pages before exploring further.
+
 # OpenAI Python SDK
 
 Z.AI provides interfaces compatible with OpenAI API, which means you can use existing OpenAI SDK code and seamlessly switch to Z.AI's model services by simply modifying the API key and base URL. This compatibility allows you to:
@@ -236,7 +240,7 @@ from openai import OpenAI
 
 client = OpenAI(api_key='your-api-key', base_url='https://api.z.ai/api/paas/v4/')
 response = client.chat.completions.create(
-        model='glm-5',
+        model='glm-4.7',
         messages=[
             {"role": "system", "content": "you are a helpful assistant"},
             {"role": "user", "content": "what is the revolution of llm?"}
@@ -405,8 +409,3 @@ response = client.chat.completions.create(
 <Note>
   Z.AI is committed to maintaining compatibility with OpenAI API. If you encounter any issues during migration, please contact our technical support team.
 </Note>
-
-
----
-
-> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://docs.z.ai/llms.txt

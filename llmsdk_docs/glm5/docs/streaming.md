@@ -1,3 +1,7 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.z.ai/llms.txt
+> Use this file to discover all available pages before exploring further.
+
 # Streaming Messages
 
 <Tip>
@@ -16,7 +20,7 @@ Streaming messages use an incremental generation mechanism, transmitting content
 ### Core Parameter Description
 
 * **`stream=True`**: Enable streaming output, must be set to `True`
-* **`model`**: Models that support streaming output, such as `glm-5`, `glm-4.6`, `glm-4.5`, etc.
+* **`model`**: Models that support streaming output, such as `glm-5`,  `glm-4.7`, `glm-4.6`, `glm-4.5`, etc.
 
 ### Response Format Description
 
@@ -152,8 +156,3 @@ data: [DONE]
     * User support systems
   </Card>
 </CardGroup>
-
-
----
-
-> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://docs.z.ai/llms.txt

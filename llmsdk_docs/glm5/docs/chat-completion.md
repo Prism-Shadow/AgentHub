@@ -1,3 +1,7 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.z.ai/llms.txt
+> Use this file to discover all available pages before exploring further.
+
 # Chat Completion
 
 > Create a chat completion model that generates AI replies for given conversation messages. It supports multimodal inputs (text, images, audio, video, file), offers configurable parameters (like temperature, max tokens, tool use), and supports both streaming and non-streaming output modes.
@@ -196,6 +200,9 @@ components:
           default: glm-5
           enum:
             - glm-5
+            - glm-4.7
+            - glm-4.7-flash
+            - glm-4.7-flashx
             - glm-4.6
             - glm-4.5
             - glm-4.5-air
@@ -355,7 +362,7 @@ components:
           type: number
           description: >-
             Sampling temperature, controls the randomness of the output, must be
-            a positive number within the range: `[0.0, 1.0]`. The GLM-5
+            a positive number within the range: `[0.0, 1.0]`. The GLM-5 GLM-4.7
             GLM-4.6 series default value is `1.0`, GLM-4.5 series default value
             is `0.6`, GLM-4-32B-0414-128K default value is `0.75`.
           format: float
@@ -367,8 +374,8 @@ components:
           type: number
           description: >-
             Another method of temperature sampling, value range is: `[0.01,
-            1.0]`. The GLM-5, GLM-4.6, GLM-4.5 series default value is `0.95`,
-            GLM-4-32B-0414-128K default value is `0.9`.
+            1.0]`. The GLM-5, GLM-4.7, GLM-4.6, GLM-4.5 series default value is
+            `0.95`, GLM-4-32B-0414-128K default value is `0.9`.
           format: float
           example: 0.95
           default: 0.95
@@ -377,11 +384,11 @@ components:
         max_tokens:
           type: integer
           description: >-
-            The maximum number of tokens for model output, the GLM-5 GLM-4.6
-            series supports 128K maximum output, the GLM-4.5 series supports 96K
-            maximum output, the GLM-4.6v series supports 32K maximum output, the
-            GLM-4.5v series supports 16K maximum output, GLM-4-32B-0414-128K
-            supports 16K maximum output.
+            The maximum number of tokens for model output, the GLM-5 GLM-4.7
+            GLM-4.6 series supports 128K maximum output, the GLM-4.5 series
+            supports 96K maximum output, the GLM-4.6v series supports 32K
+            maximum output, the GLM-4.5v series supports 16K maximum output,
+            GLM-4-32B-0414-128K supports 16K maximum output.
           example: 1024
           minimum: 1
           maximum: 131072
@@ -718,7 +725,7 @@ components:
         type:
           type: string
           description: >-
-            Whether to enable the chain of thought(When enabled, GLM-5
+            Whether to enable the chain of thought(When enabled, GLM-5 GLM-4.7
             GLM-4.5V will think compulsorily, while GLM-4.6, GLM-4.6V, GLM-4.5
             and others will automatically determine whether to think), default:
             enabled
@@ -1114,7 +1121,3 @@ components:
         key>](https://z.ai/manage-apikey/apikey-list)
 
 ````
-
----
-
-> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://docs.z.ai/llms.txt

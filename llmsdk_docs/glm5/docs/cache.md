@@ -1,3 +1,7 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.z.ai/llms.txt
+> Use this file to discover all available pages before exploring further.
+
 # Context Caching
 
 <Tip>
@@ -10,7 +14,7 @@
 * **Significant Cost Reduction**: Cached tokens are billed at lower prices, dramatically saving costs
 * **Improved Response Speed**: Reduces processing time for repeated content, accelerating model responses
 * **Transparent Billing**: Detailed display of cached token counts in response field `usage.prompt_tokens_details.cached_tokens`
-* **Wide Compatibility**: Supports all mainstream models, including GLM-4.6, GLM-4.5 series, etc.
+* **Wide Compatibility**: Supports all mainstream models, including GLM-5, GLM-4.7, GLM-4.6, GLM-4.5 series, etc.
 
 > Context caching works by computing input message content and identifying content that is identical or highly similar to previous requests. When repeated content is detected, the system reuses previous computation results, avoiding redundant token processing.
 
@@ -484,8 +488,3 @@ Billing calculation:
 
 Compared to no cache (2500 × 0.01/1000 = 0.025), saves 24%
 ```
-
-
----
-
-> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://docs.z.ai/llms.txt

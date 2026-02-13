@@ -45,7 +45,7 @@ if (process.env.OPENROUTER_API_KEY) {
 }
 
 if (process.env.SILICONFLOW_API_KEY) {
-  SILICONFLOW_MODELS.push("Pro/zai-org/GLM-4.7");
+  SILICONFLOW_MODELS.push("Pro/zai-org/GLM-5");
   SILICONFLOW_MODELS.push("Qwen/Qwen3-8B");
 }
 

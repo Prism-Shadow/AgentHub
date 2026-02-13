@@ -234,9 +234,9 @@ class GLM5Client(LLMClient):
 
             usage_metadata = {
                 "prompt_tokens": model_output.usage.prompt_tokens,
-                "thoughts_tokens": reasoning_tokens,
                 "response_tokens": model_output.usage.completion_tokens,
                 "cached_tokens": cached_tokens,
+                "thoughts_tokens": reasoning_tokens,
             }
 
         return {

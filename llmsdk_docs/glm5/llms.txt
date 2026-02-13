@@ -18,6 +18,7 @@
 - [Introduction](https://docs.z.ai/api-reference/introduction.md)
 - [Chat Completion](https://docs.z.ai/api-reference/llm/chat-completion.md): Create a chat completion model that generates AI replies for given conversation messages. It supports multimodal inputs (text, images, audio, video, file), offers configurable parameters (like temperature, max tokens, tool use), and supports both streaming and non-streaming output modes.
 - [Rate Limits](https://docs.z.ai/api-reference/rate-limit.md)
+- [Layout Parsing](https://docs.z.ai/api-reference/tools/layout-parsing.md): Use the [GLM-OCR](/guides/vlm/glm-ocr) model to parse the layout of documents and images and extract text content. Support OCR recognition of images and PDF documents, returning detailed layout information and visualization results.
 - [Tokenizer](https://docs.z.ai/api-reference/tools/tokenizer.md): `Tokenizer` is used to split text into `tokens` recognizable by the model and calculate the count. It receives user input text, processes it through the model for tokenization, and finally returns the corresponding `token` count. It is suitable for text length evaluation, model input estimation, dialogue context truncation, cost calculation, etc.
 - [Web Reader](https://docs.z.ai/api-reference/tools/web-reader.md): Reads and parses the content of the specified URL. Supports selectable return formats, cache control, image retention, and summary options.
 - [Web Search](https://docs.z.ai/api-reference/tools/web-search.md): The [Web Search](/guides/tools/web-search) is a specialized search engine for large language models. Building upon traditional search engine capabilities like web crawling and ranking, it enhances intent recognition to return results better suited for LLM processing (including webpage titles, URLs, summaries, site names, favicons etc.).
@@ -33,7 +34,7 @@ Vidu: A high-performance video large model that combines high consistency and hi
 - [Web Search MCP Server](https://docs.z.ai/devpack/mcp/search-mcp-server.md)
 - [Vision MCP Server](https://docs.z.ai/devpack/mcp/vision-mcp-server.md)
 - [Zread MCP Server](https://docs.z.ai/devpack/mcp/zread-mcp-server.md)
-- [Overview](https://docs.z.ai/devpack/overview.md): AI-powered coding with GLM-5 in Claude Code, Cline, OpenCode, Roo Code and more. Plans start at $3/month to help you code faster, smarter, and more reliably.
+- [Overview](https://docs.z.ai/devpack/overview.md)
 - [Quick Start](https://docs.z.ai/devpack/quick-start.md)
 - [Claude Code](https://docs.z.ai/devpack/tool/claude.md): Methods for Using the GLM Coding Plan in Claude Code
 - [Claude Code IDE Plugin](https://docs.z.ai/devpack/tool/claude-for-ide.md): How to use the Claude Code plugin in VS Code and JetBrains with GLM Coding Plan
@@ -44,6 +45,7 @@ Vidu: A high-performance video large model that combines high consistency and hi
 - [Eigent](https://docs.z.ai/devpack/tool/eigent.md): Methods for Using the GLM Coding Plan in Eigent
 - [Goose](https://docs.z.ai/devpack/tool/goose.md): Methods for Using the GLM Coding Plan in Goose
 - [Kilo Code](https://docs.z.ai/devpack/tool/kilo.md): Methods for Using the GLM Coding Plan in Kilo Code plugin
+- [OpenClaw](https://docs.z.ai/devpack/tool/openclaw.md)
 - [Open Code](https://docs.z.ai/devpack/tool/opencode.md)
 - [Other Tools](https://docs.z.ai/devpack/tool/others.md): Methods for using the GLM Coding Plan in other tools
 - [Roo Code](https://docs.z.ai/devpack/tool/roo.md): Methods for Using the GLM Coding Plan in Roo Code Plugin
@@ -58,7 +60,7 @@ Vidu: A high-performance video large model that combines high consistency and hi
 - [Streaming Messages](https://docs.z.ai/guides/capabilities/streaming.md)
 - [Structured Output](https://docs.z.ai/guides/capabilities/struct-output.md)
 - [Deep Thinking](https://docs.z.ai/guides/capabilities/thinking.md)
-- [Thinking Mode](https://docs.z.ai/guides/capabilities/thinking-mode.md): GLM-5 offers multiple thinking modes for different scenarios. The sections below explain how to enable each mode, key considerations, and example usage.
+- [Thinking Mode](https://docs.z.ai/guides/capabilities/thinking-mode.md): GLM offers multiple thinking modes for different scenarios. The sections below explain how to enable each mode, key considerations, and example usage.
 - [HTTP API Calls](https://docs.z.ai/guides/develop/http/introduction.md)
 - [Official Java SDK](https://docs.z.ai/guides/develop/java/introduction.md)
 - [LangChain Integration](https://docs.z.ai/guides/develop/langchain/introduction.md)
@@ -69,6 +71,7 @@ Vidu: A high-performance video large model that combines high consistency and hi
 - [GLM-4-32B-0414-128K](https://docs.z.ai/guides/llm/glm-4-32b-0414-128k.md)
 - [GLM-4.5](https://docs.z.ai/guides/llm/glm-4.5.md)
 - [GLM-4.6](https://docs.z.ai/guides/llm/glm-4.6.md)
+- [GLM-4.7](https://docs.z.ai/guides/llm/glm-4.7.md)
 - [GLM-5](https://docs.z.ai/guides/llm/glm-5.md)
 - [Core Parameters](https://docs.z.ai/guides/overview/concept-param.md)
 - [Migrate to GLM-5](https://docs.z.ai/guides/overview/migrate-to-glm-new.md)
@@ -83,16 +86,25 @@ Vidu: A high-performance video large model that combines high consistency and hi
 - [AutoGLM-Phone-Multilingual](https://docs.z.ai/guides/vlm/autoglm-phone-multilingual.md)
 - [GLM-4.5V](https://docs.z.ai/guides/vlm/glm-4.5v.md)
 - [GLM-4.6V](https://docs.z.ai/guides/vlm/glm-4.6v.md)
+- [GLM-OCR](https://docs.z.ai/guides/vlm/glm-ocr.md)
 - [FAQ](https://docs.z.ai/help/faq.md)
 - [Privacy Policy](https://docs.z.ai/legal-agreement/privacy-policy.md)
 - [Subscriptions, Fees, and Payment](https://docs.z.ai/legal-agreement/subscription-terms.md)
 - [Terms of Use](https://docs.z.ai/legal-agreement/terms-of-use.md)
 - [New Released](https://docs.z.ai/release-notes/new-released.md): Follow along with updates across Z.AI’s models
-- [Claude Code](https://docs.z.ai/scenario-example/develop-tools/claude.md): Methods for integrating the latest GLM-5 series models from Z.AI with Claude Code
-- [Cline](https://docs.z.ai/scenario-example/develop-tools/cline.md): A complete guide to using the Cline plugin in VS Code to connect to the Z.AI GLM model
+- [Claude Code](https://docs.z.ai/scenario-example/develop-tools/claude.md): Methods for Using the GLM Coding Plan in Claude Code
+- [Claude Code IDE Plugin](https://docs.z.ai/scenario-example/develop-tools/claude-for-ide.md): How to use the Claude Code plugin in VS Code and JetBrains with GLM Coding Plan
+- [Cline](https://docs.z.ai/scenario-example/develop-tools/cline.md): Methods for Using the GLM Coding Plan in Cline Plugin
+- [Crush](https://docs.z.ai/scenario-example/develop-tools/crush.md): Methods for Using the GLM Coding Plan in Crush
+- [Cursor](https://docs.z.ai/scenario-example/develop-tools/cursor.md): Methods for using the GLM Coding Plan in Cursor
+- [Factory Droid](https://docs.z.ai/scenario-example/develop-tools/droid.md): Methods for Using the GLM Coding Plan in Factory Droid
+- [Eigent](https://docs.z.ai/scenario-example/develop-tools/eigent.md): Methods for Using the GLM Coding Plan in Eigent
 - [Gemini CLI](https://docs.z.ai/scenario-example/develop-tools/gemini.md): Complete Guide to Accessing Z.AI GLM Models Using a Customized Gemini CLI
+- [Goose](https://docs.z.ai/scenario-example/develop-tools/goose.md): Methods for Using the GLM Coding Plan in Goose
 - [Grok CLI](https://docs.z.ai/scenario-example/develop-tools/gork.md): Quick Start Guide for Connecting to Z.AI GLM Models Using Grok CLI
-- [Kilo Code](https://docs.z.ai/scenario-example/develop-tools/kilo.md): A complete guide to integrating the GLM model from  Z.AI using the Kilo Code plugin in VS Code
+- [Kilo Code](https://docs.z.ai/scenario-example/develop-tools/kilo.md): Methods for Using the GLM Coding Plan in Kilo Code plugin
 - [n8n Workflow](https://docs.z.ai/scenario-example/develop-tools/n8n.md): Build n8n automations that call Z.AI GLM models
-- [OpenCode](https://docs.z.ai/scenario-example/develop-tools/opencode.md)
-- [Roo Code](https://docs.z.ai/scenario-example/develop-tools/roo.md): A complete guide to integrating the Roo Code plugin with the Z.AI GLM model in VS Code
+- [Open Code](https://docs.z.ai/scenario-example/develop-tools/opencode.md)
+- [Other Tools](https://docs.z.ai/scenario-example/develop-tools/others.md): Methods for using the GLM Coding Plan in other tools
+- [Roo Code](https://docs.z.ai/scenario-example/develop-tools/roo.md): Methods for Using the GLM Coding Plan in Roo Code Plugin
+- [TRAE](https://docs.z.ai/scenario-example/develop-tools/trae.md): Methods for using the GLM Coding Plan in TRAE
