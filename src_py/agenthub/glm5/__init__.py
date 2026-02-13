@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .client import GLM4_7Client
+from .client import GLM5Client
 
 
-__all__ = ["GLM4_7Client"]
+__all__ = ["GLM5Client"]

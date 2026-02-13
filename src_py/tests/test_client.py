@@ -41,10 +41,10 @@ if os.getenv("OPENAI_API_KEY"):
     AVAILABLE_VISION_MODELS.append("gpt-5.2")
 
 if os.getenv("GLM_API_KEY"):
-    AVAILABLE_TEXT_MODELS.append(pytest.param("glm-4.7", marks=pytest.mark.xfail(reason="API rate limit")))
+    AVAILABLE_TEXT_MODELS.append(pytest.param("glm-5", marks=pytest.mark.xfail(reason="API rate limit")))
 
 if os.getenv("OPENROUTER_API_KEY"):
-    OPENROUTER_MODELS.append("z-ai/glm-4.7")
+    OPENROUTER_MODELS.append("z-ai/glm-5")
     OPENROUTER_MODELS.append("qwen/qwen3-30b-a3b-thinking-2507")
 
 if os.getenv("SILICONFLOW_API_KEY"):

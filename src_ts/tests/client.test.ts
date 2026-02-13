@@ -36,11 +36,11 @@ if (process.env.OPENAI_API_KEY) {
 }
 
 if (process.env.GLM_API_KEY) {
-  AVAILABLE_TEXT_MODELS.push("glm-4.7");
+  AVAILABLE_TEXT_MODELS.push("glm-5");
 }
 
 if (process.env.OPENROUTER_API_KEY) {
-  OPENROUTER_MODELS.push("z-ai/glm-4.7");
+  OPENROUTER_MODELS.push("z-ai/glm-5");
   OPENROUTER_MODELS.push("qwen/qwen3-30b-a3b-thinking-2507");
 }
 

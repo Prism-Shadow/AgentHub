@@ -110,7 +110,7 @@ def create_chat_app() -> Flask:
                         <option value="gpt-5.2">GPT 5.2</option>
                         <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
                         <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
-                        <option value="glm-4.7">GLM 4.7</option>
+                        <option value="glm-5">GLM 5</option>
                     </datalist>
                 </div>
                 <div class="flex flex-col">
