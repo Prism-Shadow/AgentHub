@@ -323,10 +323,10 @@ class Tracer:
                         {% if message.usage_metadata or message.finish_reason %}
                         <div class="mt-4 pt-4 border-t border-gray-200 text-right text-xs text-gray-500">
                             {% if message.usage_metadata %}
-                                {% if message.usage_metadata.prompt_tokens is not none %}Prompt: {{ message.usage_metadata.prompt_tokens }} tokens{% endif %}
-                                {% if message.usage_metadata.thoughts_tokens is not none %} • Thoughts: {{ message.usage_metadata.thoughts_tokens }} tokens{% endif %}
-                                {% if message.usage_metadata.response_tokens is not none %} • Response: {{ message.usage_metadata.response_tokens }} tokens{% endif %}
-                                {% if message.usage_metadata.cached_tokens is not none %} • Cached: {{ message.usage_metadata.cached_tokens }} tokens{% endif %}
+                                {% if message.usage_metadata.prompt_tokens %}Prompt: {{ message.usage_metadata.prompt_tokens }} tokens{% endif %}
+                                {% if message.usage_metadata.thoughts_tokens %} • Thoughts: {{ message.usage_metadata.thoughts_tokens }} tokens{% endif %}
+                                {% if message.usage_metadata.response_tokens %} • Response: {{ message.usage_metadata.response_tokens }} tokens{% endif %}
+                                {% if message.usage_metadata.cached_tokens %} • Cached: {{ message.usage_metadata.cached_tokens }} tokens{% endif %}
                                 {% set input_tokens = (message.usage_metadata.cached_tokens or 0) + (message.usage_metadata.prompt_tokens or 0) %}
                                 {% set output_tokens = (message.usage_metadata.thoughts_tokens or 0) + (message.usage_metadata.response_tokens or 0) %}
                                 {% set total_tokens = input_tokens + output_tokens %}
