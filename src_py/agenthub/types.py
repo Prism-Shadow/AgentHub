@@ -88,10 +88,10 @@ PartialContentItem = ContentItem | PartialToolCallContentItem
 class UsageMetadata(TypedDict):
     """Usage metadata for model response."""
 
+    cached_tokens: int | None
     prompt_tokens: int | None
     thoughts_tokens: int | None
     response_tokens: int | None
-    cached_tokens: int | None
 
 
 class UniMessage(TypedDict):

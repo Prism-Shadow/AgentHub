@@ -233,10 +233,10 @@ class Qwen3Client(LLMClient):
                 response_tokens = model_output.usage.completion_tokens
 
             usage_metadata = {
+                "cached_tokens": cached_tokens,
                 "prompt_tokens": prompt_tokens,
                 "thoughts_tokens": reasoning_tokens,
                 "response_tokens": response_tokens,
-                "cached_tokens": cached_tokens,
             }
 
         return {

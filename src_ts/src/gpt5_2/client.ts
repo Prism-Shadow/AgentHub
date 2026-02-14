@@ -303,10 +303,10 @@ export class GPT5_2Client extends LLMClient {
           response.usage.output_tokens_details.reasoning_tokens;
 
         usageMetadata = {
+          cached_tokens: cachedTokens,
           prompt_tokens: inputTokens - cachedTokens,
           thoughts_tokens: reasoningTokens,
           response_tokens: outputTokens - reasoningTokens,
-          cached_tokens: cachedTokens,
         };
       }
     } else if (

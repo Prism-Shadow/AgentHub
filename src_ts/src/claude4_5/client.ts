@@ -302,10 +302,10 @@ export class Claude4_5Client extends LLMClient {
         const cacheCreationTokens =
           message.usage.cache_creation_input_tokens || 0;
         usageMetadata = {
+          cached_tokens: message.usage.cache_read_input_tokens,
           prompt_tokens: message.usage.input_tokens + cacheCreationTokens,
           thoughts_tokens: 0,
           response_tokens: null,
-          cached_tokens: message.usage.cache_read_input_tokens,
         };
       }
     } else if (claudeEventType === "message_delta") {
@@ -325,10 +325,10 @@ export class Claude4_5Client extends LLMClient {
       if (usage) {
         // In message_delta, we only update response_tokens
         usageMetadata = {
+          cached_tokens: null,
           prompt_tokens: null,
           thoughts_tokens: 0,
           response_tokens: usage.output_tokens,
-          cached_tokens: null,
         };
       }
     } else if (claudeEventType === "message_stop") {

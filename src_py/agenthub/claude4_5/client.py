@@ -250,10 +250,10 @@ class Claude4_5Client(LLMClient):
             if getattr(message, "usage", None):
                 cache_creation_tokens = message.usage.cache_creation_input_tokens or 0
                 usage_metadata = {
+                    "cached_tokens": message.usage.cache_read_input_tokens,
                     "prompt_tokens": message.usage.input_tokens + cache_creation_tokens,
                     "thoughts_tokens": 0,
                     "response_tokens": None,
-                    "cached_tokens": message.usage.cache_read_input_tokens,
                 }
 
         elif claude_event_type == "message_delta":
@@ -271,10 +271,10 @@ class Claude4_5Client(LLMClient):
             if getattr(model_output, "usage", None):
                 # In message_delta, we only update response_tokens
                 usage_metadata = {
+                    "cached_tokens": None,
                     "prompt_tokens": None,
                     "thoughts_tokens": None,
                     "response_tokens": model_output.usage.output_tokens,
-                    "cached_tokens": None,
                 }
 
         elif claude_event_type == "message_stop":

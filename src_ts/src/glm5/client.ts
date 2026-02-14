@@ -295,10 +295,10 @@ export class GLM5Client extends LLMClient {
           : modelOutput.usage.completion_tokens;
 
       usageMetadata = {
+        cached_tokens: cachedTokens,
         prompt_tokens: promptTokens,
         thoughts_tokens: reasoningTokens,
         response_tokens: responseTokens,
-        cached_tokens: cachedTokens,
       };
     }
 

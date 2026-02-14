@@ -246,10 +246,10 @@ class GPT5_2Client(LLMClient):
             reasoning_tokens = model_output.response.usage.output_tokens_details.reasoning_tokens
 
             usage_metadata = {
+                "cached_tokens": cached_tokens,
                 "prompt_tokens": input_tokens - cached_tokens,
                 "thoughts_tokens": reasoning_tokens,
                 "response_tokens": output_tokens - reasoning_tokens,
-                "cached_tokens": cached_tokens,
             }
 
         elif openai_event_type in [

@@ -456,10 +456,10 @@ def create_chat_app() -> Flask:
                                         const outputTokens = (usage.thoughts_tokens || 0) + (usage.response_tokens || 0);
                                         const totalTokens = inputTokens + outputTokens;
                                         metadata = {
+                                            cached_tokens: usage.cached_tokens || 0,
                                             prompt_tokens: usage.prompt_tokens || 0,
                                             thoughts_tokens: usage.thoughts_tokens || 0,
                                             response_tokens: usage.response_tokens || 0,
-                                            cached_tokens: usage.cached_tokens || 0,
                                             input_tokens: inputTokens,
                                             output_tokens: outputTokens,
                                             total_tokens: totalTokens
@@ -479,13 +479,13 @@ def create_chat_app() -> Flask:
                     if (metadata) {
                         let metadataHtml = '<div class="flex justify-end gap-3 mt-3 pt-3 border-t border-gray-200 text-xs text-gray-500">';
                         const parts = [];
-                        if (metadata.prompt_tokens) parts.push(`Prompt: ${metadata.prompt_tokens}`);
-                        if (metadata.thoughts_tokens) parts.push(`Thoughts: ${metadata.thoughts_tokens}`);
-                        if (metadata.response_tokens) parts.push(`Response: ${metadata.response_tokens}`);
-                        if (metadata.cached_tokens) parts.push(`Cached: ${metadata.cached_tokens}`);
-                        if (metadata.input_tokens) parts.push(`Input: ${metadata.input_tokens}`);
-                        if (metadata.output_tokens) parts.push(`Output: ${metadata.output_tokens}`);
-                        if (metadata.total_tokens) parts.push(`Total: ${metadata.total_tokens}`);
+                        if (metadata.cached_tokens !== undefined && metadata.cached_tokens !== null) parts.push(`Cached: ${metadata.cached_tokens}`);
+                        if (metadata.prompt_tokens !== undefined && metadata.prompt_tokens !== null) parts.push(`Prompt: ${metadata.prompt_tokens}`);
+                        if (metadata.thoughts_tokens !== undefined && metadata.thoughts_tokens !== null) parts.push(`Thoughts: ${metadata.thoughts_tokens}`);
+                        if (metadata.response_tokens !== undefined && metadata.response_tokens !== null) parts.push(`Response: ${metadata.response_tokens}`);
+                        if (metadata.input_tokens !== undefined && metadata.input_tokens !== null) parts.push(`Input: ${metadata.input_tokens}`);
+                        if (metadata.output_tokens !== undefined && metadata.output_tokens !== null) parts.push(`Output: ${metadata.output_tokens}`);
+                        if (metadata.total_tokens !== undefined && metadata.total_tokens !== null) parts.push(`Total: ${metadata.total_tokens}`);
                         metadataHtml += `<div class="flex items-center gap-1">📊 ${parts.join(' | ')}</div>`;
                         if (metadata.finish_reason) {
                             metadataHtml += `<div class="flex items-center gap-1">🏁 ${metadata.finish_reason}</div>`;
