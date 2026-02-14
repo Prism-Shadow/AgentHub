@@ -394,15 +394,15 @@ Example UniEvent:
 AgentHub provides detailed token usage information through the `usage_metadata` field in streaming events.
 
 The `usage_metadata` object contains four fields:
-- `cached_tokens`: Input tokens read from cache
+- `cached_tokens`: Cached input tokens
 - `prompt_tokens`: Non-cached input tokens
 - `thoughts_tokens`: Chain-of-thought output tokens
-- `response_tokens`: Regular output tokens
+- `response_tokens`: Non-chain-of-thought output tokens
 
 You can calculate the total token usage as follows:
-- input_tokens = cached_tokens + prompt_tokens
-- output_tokens = thoughts_tokens + response_tokens
-- total_tokens = input_tokens + output_tokens
+- `input_tokens = cached_tokens + prompt_tokens`
+- `output_tokens = thoughts_tokens + response_tokens`
+- `total_tokens = input_tokens + output_tokens`
 
 ```
 █████████████  ░░░░░░░░░░░░░ → LLM → ███████████████  ░░░░░░░░░░░░░░░
