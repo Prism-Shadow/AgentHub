@@ -153,7 +153,7 @@ total_tokens = input_tokens + output_tokens
 ```python
 usage_metadata = {
     'prompt_tokens': 12,      # Fresh input
-    'thoughts_tokens': 0,      # No reasoning for this simple task
+    'thoughts_tokens': 0,      # No chain-of-thought reasoning tokens
     'response_tokens': 8,      # Actual response
     'cached_tokens': 0         # No cached input
 }
