@@ -159,14 +159,26 @@ class Tracer:
             if "usage_metadata" in message and message["usage_metadata"]:
                 metadata = message["usage_metadata"]
                 lines.append("\nUsage Metadata:")
-                if metadata.get("prompt_tokens"):
+                if metadata.get("prompt_tokens") is not None:
                     lines.append(f"  Prompt Tokens: {metadata['prompt_tokens']}")
-                if metadata.get("thoughts_tokens"):
+                if metadata.get("thoughts_tokens") is not None:
                     lines.append(f"  Thoughts Tokens: {metadata['thoughts_tokens']}")
-                if metadata.get("response_tokens"):
+                if metadata.get("response_tokens") is not None:
                     lines.append(f"  Response Tokens: {metadata['response_tokens']}")
-                if metadata.get("cached_tokens"):
+                if metadata.get("cached_tokens") is not None:
                     lines.append(f"  Cached Tokens: {metadata['cached_tokens']}")
+                
+                # Calculate and show total tokens
+                # Input tokens = cached_tokens + prompt_tokens
+                # Output tokens = thoughts_tokens + response_tokens
+                # Total tokens = input_tokens + output_tokens
+                input_tokens = (metadata.get("cached_tokens") or 0) + (metadata.get("prompt_tokens") or 0)
+                output_tokens = (metadata.get("thoughts_tokens") or 0) + (metadata.get("response_tokens") or 0)
+                total_tokens = input_tokens + output_tokens
+                
+                lines.append(f"  Input Tokens: {input_tokens}")
+                lines.append(f"  Output Tokens: {output_tokens}")
+                lines.append(f"  Total Tokens: {total_tokens}")
 
             # Add finish reason if available
             if "finish_reason" in message:
@@ -311,10 +323,14 @@ class Tracer:
                         {% if message.usage_metadata or message.finish_reason %}
                         <div class="mt-4 pt-4 border-t border-gray-200 text-right text-xs text-gray-500">
                             {% if message.usage_metadata %}
-                                {% if message.usage_metadata.prompt_tokens %}Prompt: {{ message.usage_metadata.prompt_tokens }} tokens{% endif %}
-                                {% if message.usage_metadata.thoughts_tokens %} • Thoughts: {{ message.usage_metadata.thoughts_tokens }} tokens{% endif %}
-                                {% if message.usage_metadata.response_tokens %} • Response: {{ message.usage_metadata.response_tokens }} tokens{% endif %}
-                                {% if message.usage_metadata.cached_tokens %} • Cached: {{ message.usage_metadata.cached_tokens }} tokens{% endif %}
+                                {% if message.usage_metadata.prompt_tokens is not none %}Prompt: {{ message.usage_metadata.prompt_tokens }} tokens{% endif %}
+                                {% if message.usage_metadata.thoughts_tokens is not none %} • Thoughts: {{ message.usage_metadata.thoughts_tokens }} tokens{% endif %}
+                                {% if message.usage_metadata.response_tokens is not none %} • Response: {{ message.usage_metadata.response_tokens }} tokens{% endif %}
+                                {% if message.usage_metadata.cached_tokens is not none %} • Cached: {{ message.usage_metadata.cached_tokens }} tokens{% endif %}
+                                {% set input_tokens = (message.usage_metadata.cached_tokens or 0) + (message.usage_metadata.prompt_tokens or 0) %}
+                                {% set output_tokens = (message.usage_metadata.thoughts_tokens or 0) + (message.usage_metadata.response_tokens or 0) %}
+                                {% set total_tokens = input_tokens + output_tokens %}
+                                 • Input: {{ input_tokens }} tokens • Output: {{ output_tokens }} tokens • Total: {{ total_tokens }} tokens
                             {% endif %}
                             {% if message.finish_reason %}{% if message.usage_metadata %} • {% endif %}Finish: {{ message.finish_reason|e }}{% endif %}
                         </div>

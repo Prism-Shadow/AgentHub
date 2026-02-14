@@ -183,6 +183,18 @@ export class Tracer {
         if (metadata.cached_tokens !== null) {
           lines.push(`  Cached Tokens: ${metadata.cached_tokens}`);
         }
+        
+        // Calculate and show total tokens
+        // Input tokens = cached_tokens + prompt_tokens
+        // Output tokens = thoughts_tokens + response_tokens
+        // Total tokens = input_tokens + output_tokens
+        const inputTokens = (metadata.cached_tokens || 0) + (metadata.prompt_tokens || 0);
+        const outputTokens = (metadata.thoughts_tokens || 0) + (metadata.response_tokens || 0);
+        const totalTokens = inputTokens + outputTokens;
+        
+        lines.push(`  Input Tokens: ${inputTokens}`);
+        lines.push(`  Output Tokens: ${outputTokens}`);
+        lines.push(`  Total Tokens: ${totalTokens}`);
       }
 
       if (message.finish_reason) {
@@ -443,6 +455,16 @@ export class Tracer {
                       parts.push(
                         `Cached: ${msg.usage_metadata.cached_tokens} tokens`,
                       );
+                    
+                    // Calculate and show total tokens
+                    const inputTokens = (msg.usage_metadata.cached_tokens || 0) + (msg.usage_metadata.prompt_tokens || 0);
+                    const outputTokens = (msg.usage_metadata.thoughts_tokens || 0) + (msg.usage_metadata.response_tokens || 0);
+                    const totalTokens = inputTokens + outputTokens;
+                    
+                    parts.push(`Input: ${inputTokens} tokens`);
+                    parts.push(`Output: ${outputTokens} tokens`);
+                    parts.push(`Total: ${totalTokens} tokens`);
+                    
                     metadataHtml += parts.join(" • ");
                   }
                   if (msg.finish_reason) {
