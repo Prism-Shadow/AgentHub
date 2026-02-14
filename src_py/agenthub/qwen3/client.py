@@ -211,6 +211,8 @@ class Qwen3Client(LLMClient):
 
         if model_output.usage:
             event_type = event_type or "delta"  # deal with separate usage data
+            
+            # Extract reasoning tokens and cached tokens
             if model_output.usage.completion_tokens_details:
                 reasoning_tokens = model_output.usage.completion_tokens_details.reasoning_tokens
             else:
@@ -221,11 +223,29 @@ class Qwen3Client(LLMClient):
             else:
                 cached_tokens = None
 
+            # Calculate prompt_tokens and response_tokens according to the spec:
+            # - cached_tokens is prompt_tokens_details.cached_tokens
+            # - prompt_tokens is prompt_tokens - cached_tokens (non-cached input)
+            # - thoughts_tokens is completion_tokens_details.reasoning_tokens
+            # - response_tokens is completion_tokens - reasoning_tokens (non-cot output)
+            total_prompt = model_output.usage.prompt_tokens
+            total_completion = model_output.usage.completion_tokens
+            
+            if cached_tokens is not None:
+                prompt_tokens = total_prompt - cached_tokens
+            else:
+                prompt_tokens = total_prompt
+                
+            if reasoning_tokens is not None:
+                response_tokens = total_completion - reasoning_tokens
+            else:
+                response_tokens = total_completion
+
             usage_metadata = {
-                "prompt_tokens": model_output.usage.prompt_tokens,
-                "thoughts_tokens": reasoning_tokens,
-                "response_tokens": model_output.usage.completion_tokens,
+                "prompt_tokens": prompt_tokens,
+                "response_tokens": response_tokens,
                 "cached_tokens": cached_tokens,
+                "thoughts_tokens": reasoning_tokens,
             }
 
         return {

@@ -248,11 +248,22 @@ class Claude4_5Client(LLMClient):
             event_type = "start"
             message = model_output.message
             if getattr(message, "usage", None):
+                # Calculate usage according to the spec:
+                # - cached_tokens is cache_read_input_tokens
+                # - prompt_tokens is cache_creation_input_tokens + input_tokens (all non-cached input)
+                # - thoughts_tokens is always 0 (Claude doesn't separate reasoning tokens)
+                # - response_tokens is output_tokens (set in message_delta event)
+                input_tokens = message.usage.input_tokens
+                cache_creation = getattr(message.usage, "cache_creation_input_tokens", None) or 0
+                cache_read = getattr(message.usage, "cache_read_input_tokens", None)
+                
+                prompt_tokens = input_tokens + cache_creation
+                
                 usage_metadata = {
-                    "prompt_tokens": message.usage.input_tokens,
-                    "thoughts_tokens": None,
+                    "prompt_tokens": prompt_tokens,
+                    "thoughts_tokens": 0,
                     "response_tokens": None,
-                    "cached_tokens": message.usage.cache_read_input_tokens,
+                    "cached_tokens": cache_read,
                 }
 
         elif claude_event_type == "message_delta":
@@ -268,9 +279,10 @@ class Claude4_5Client(LLMClient):
                 finish_reason = stop_reason_mapping.get(delta.stop_reason, "unknown")
 
             if getattr(model_output, "usage", None):
+                # In message_delta, we only update response_tokens
                 usage_metadata = {
                     "prompt_tokens": None,
-                    "thoughts_tokens": None,
+                    "thoughts_tokens": 0,
                     "response_tokens": model_output.usage.output_tokens,
                     "cached_tokens": None,
                 }

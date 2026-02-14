@@ -299,11 +299,22 @@ export class Claude4_5Client extends LLMClient {
       eventType = "start";
       const message = modelOutput.message;
       if (message.usage) {
+        // Calculate usage according to the spec:
+        // - cached_tokens is cache_read_input_tokens
+        // - prompt_tokens is cache_creation_input_tokens + input_tokens (all non-cached input)
+        // - thoughts_tokens is always 0 (Claude doesn't separate reasoning tokens)
+        // - response_tokens is output_tokens (set in message_delta event)
+        const inputTokens = message.usage.input_tokens;
+        const cacheCreation = message.usage.cache_creation_input_tokens || 0;
+        const cacheRead = message.usage.cache_read_input_tokens || null;
+        
+        const promptTokens = inputTokens + cacheCreation;
+        
         usageMetadata = {
-          prompt_tokens: message.usage.input_tokens,
-          thoughts_tokens: null,
+          prompt_tokens: promptTokens,
+          thoughts_tokens: 0,
           response_tokens: null,
-          cached_tokens: message.usage.cache_read_input_tokens || null,
+          cached_tokens: cacheRead,
         };
       }
     } else if (claudeEventType === "message_delta") {
@@ -321,9 +332,10 @@ export class Claude4_5Client extends LLMClient {
 
       const usage = modelOutput.usage;
       if (usage) {
+        // In message_delta, we only update response_tokens
         usageMetadata = {
           prompt_tokens: null,
-          thoughts_tokens: null,
+          thoughts_tokens: 0,
           response_tokens: usage.output_tokens,
           cached_tokens: null,
         };

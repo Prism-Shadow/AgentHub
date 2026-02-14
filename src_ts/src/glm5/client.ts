@@ -279,6 +279,8 @@ export class GLM5Client extends LLMClient {
 
     if (modelOutput.usage) {
       eventType = eventType || "delta";
+      
+      // Extract reasoning tokens and cached tokens
       const reasoningTokens =
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (modelOutput.usage as any).completion_tokens_details
@@ -287,10 +289,21 @@ export class GLM5Client extends LLMClient {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (modelOutput.usage as any).prompt_tokens_details?.cached_tokens || null;
 
+      // Calculate prompt_tokens and response_tokens according to the spec:
+      // - cached_tokens is prompt_tokens_details.cached_tokens
+      // - prompt_tokens is prompt_tokens - cached_tokens (non-cached input)
+      // - thoughts_tokens is completion_tokens_details.reasoning_tokens
+      // - response_tokens is completion_tokens - reasoning_tokens (non-cot output)
+      const totalPrompt = modelOutput.usage.prompt_tokens || 0;
+      const totalCompletion = modelOutput.usage.completion_tokens || 0;
+      
+      const promptTokens = cachedTokens !== null ? totalPrompt - cachedTokens : totalPrompt;
+      const responseTokens = reasoningTokens !== null ? totalCompletion - reasoningTokens : totalCompletion;
+
       usageMetadata = {
-        prompt_tokens: modelOutput.usage.prompt_tokens || null,
+        prompt_tokens: promptTokens,
         thoughts_tokens: reasoningTokens,
-        response_tokens: modelOutput.usage.completion_tokens || null,
+        response_tokens: responseTokens,
         cached_tokens: cachedTokens,
       };
     }
