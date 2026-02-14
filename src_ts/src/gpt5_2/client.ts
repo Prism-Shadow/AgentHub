@@ -295,28 +295,17 @@ export class GPT5_2Client extends LLMClient {
         finishReason = finishReasonMapping[response.status];
       }
       if (response.usage) {
-        // Calculate usage according to the spec:
-        // - cached_tokens is input_tokens_details.cached_tokens
-        // - prompt_tokens is input_tokens - cached_tokens (non-cached input)
-        // - thoughts_tokens is output_tokens_details.reasoning_tokens
-        // - response_tokens is output_tokens - reasoning_tokens (non-cot output)
-        const totalInput = response.usage.input_tokens;
-        const totalOutput = response.usage.output_tokens;
-        
+        const inputTokens = response.usage.input_tokens;
+        const outputTokens = response.usage.output_tokens;
+
         const cachedTokens = response.usage.input_tokens_details.cached_tokens;
-        const reasoningTokens = response.usage.output_tokens_details.reasoning_tokens;
-        
-        const promptTokens = cachedTokens !== null && cachedTokens !== undefined
-          ? totalInput - cachedTokens
-          : totalInput;
-        const responseTokens = reasoningTokens !== null && reasoningTokens !== undefined
-          ? totalOutput - reasoningTokens
-          : totalOutput;
-        
+        const reasoningTokens =
+          response.usage.output_tokens_details.reasoning_tokens;
+
         usageMetadata = {
-          prompt_tokens: promptTokens,
+          prompt_tokens: inputTokens - cachedTokens,
           thoughts_tokens: reasoningTokens,
-          response_tokens: responseTokens,
+          response_tokens: outputTokens - reasoningTokens,
           cached_tokens: cachedTokens,
         };
       }

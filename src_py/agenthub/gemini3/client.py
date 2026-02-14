@@ -244,25 +244,14 @@ class Gemini3Client(LLMClient):
 
         if model_output.usage_metadata:
             event_type = event_type or "delta"  # deal with separate usage data
-            
-            # Calculate usage according to the spec:
-            # - cached_tokens is cached_content_token_count
-            # - prompt_tokens is prompt_token_count - cached_content_token_count (non-cached input)
-            # - thoughts_tokens is thoughts_token_count
-            # - response_tokens is candidates_token_count
-            total_prompt = model_output.usage_metadata.prompt_token_count
-            cached_tokens = model_output.usage_metadata.cached_content_token_count
-            
-            if cached_tokens is not None:
-                prompt_tokens = total_prompt - cached_tokens
-            else:
-                prompt_tokens = total_prompt
-            
+
+            prompt_tokens = model_output.usage_metadata.prompt_token_count or 0
+            cached_tokens = model_output.usage_metadata.cached_content_token_count or 0
             usage_metadata = {
-                "prompt_tokens": prompt_tokens,
+                "prompt_tokens": prompt_tokens - cached_tokens,
                 "thoughts_tokens": model_output.usage_metadata.thoughts_token_count,
                 "response_tokens": model_output.usage_metadata.candidates_token_count,
-                "cached_tokens": cached_tokens,
+                "cached_tokens": model_output.usage_metadata.cached_content_token_count,
             }
 
         return {

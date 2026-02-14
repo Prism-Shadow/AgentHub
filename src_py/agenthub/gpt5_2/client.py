@@ -238,32 +238,17 @@ class GPT5_2Client(LLMClient):
                 "incomplete": "length",
             }
             finish_reason = finish_reason_mapping.get(model_output.response.status, "unknown")
-            
-            # Calculate usage according to the spec:
-            # - cached_tokens is input_tokens_details.cached_tokens
-            # - prompt_tokens is input_tokens - cached_tokens (non-cached input)
-            # - thoughts_tokens is output_tokens_details.reasoning_tokens
-            # - response_tokens is output_tokens - reasoning_tokens (non-cot output)
-            total_input = model_output.response.usage.input_tokens
-            total_output = model_output.response.usage.output_tokens
-            
+
+            input_tokens = model_output.response.usage.input_tokens
+            output_tokens = model_output.response.usage.output_tokens
+
             cached_tokens = model_output.response.usage.input_tokens_details.cached_tokens
             reasoning_tokens = model_output.response.usage.output_tokens_details.reasoning_tokens
-            
-            if cached_tokens is not None:
-                prompt_tokens = total_input - cached_tokens
-            else:
-                prompt_tokens = total_input
-                
-            if reasoning_tokens is not None:
-                response_tokens = total_output - reasoning_tokens
-            else:
-                response_tokens = total_output
-            
+
             usage_metadata = {
-                "prompt_tokens": prompt_tokens,
+                "prompt_tokens": input_tokens - cached_tokens,
                 "thoughts_tokens": reasoning_tokens,
-                "response_tokens": response_tokens,
+                "response_tokens": output_tokens - reasoning_tokens,
                 "cached_tokens": cached_tokens,
             }
 

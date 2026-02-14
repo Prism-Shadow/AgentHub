@@ -167,7 +167,7 @@ class Tracer:
                     lines.append(f"  Response Tokens: {metadata['response_tokens']}")
                 if metadata.get("cached_tokens") is not None:
                     lines.append(f"  Cached Tokens: {metadata['cached_tokens']}")
-                
+
                 # Calculate and show total tokens
                 # Input tokens = cached_tokens + prompt_tokens
                 # Output tokens = thoughts_tokens + response_tokens
@@ -175,7 +175,7 @@ class Tracer:
                 input_tokens = (metadata.get("cached_tokens") or 0) + (metadata.get("prompt_tokens") or 0)
                 output_tokens = (metadata.get("thoughts_tokens") or 0) + (metadata.get("response_tokens") or 0)
                 total_tokens = input_tokens + output_tokens
-                
+
                 lines.append(f"  Input Tokens: {input_tokens}")
                 lines.append(f"  Output Tokens: {output_tokens}")
                 lines.append(f"  Total Tokens: {total_tokens}")

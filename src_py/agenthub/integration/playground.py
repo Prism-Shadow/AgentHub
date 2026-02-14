@@ -455,7 +455,6 @@ def create_chat_app() -> Flask:
                                         const inputTokens = (usage.cached_tokens || 0) + (usage.prompt_tokens || 0);
                                         const outputTokens = (usage.thoughts_tokens || 0) + (usage.response_tokens || 0);
                                         const totalTokens = inputTokens + outputTokens;
-                                        
                                         metadata = {
                                             prompt_tokens: usage.prompt_tokens || 0,
                                             thoughts_tokens: usage.thoughts_tokens || 0,
