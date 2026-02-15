@@ -30,6 +30,6 @@ def fix_openrouter_usage_metadata(usage_metadata: UsageMetadata, base_url: str) 
     """
     fixed_usage_metadata = usage_metadata.copy()
     if "openrouter.ai" in base_url and fixed_usage_metadata["response_tokens"] < 0:
-        fixed_usage_metadata["response_tokens"] += fixed_usage_metadata["thoughts_tokens"]
+        fixed_usage_metadata["response_tokens"] += fixed_usage_metadata["thoughts_tokens"] or 0
 
     return fixed_usage_metadata
