@@ -81,7 +81,11 @@ export abstract class LLMClient {
       for (const item of event.content_items) {
         if (item.type === "text") {
           const lastItem = contentItems[contentItems.length - 1];
-          if (lastItem && lastItem.type === "text") {
+          if (
+            lastItem &&
+            lastItem.type === "text" &&
+            !("signature" in lastItem)
+          ) {
             lastItem.text += item.text;
             if (item.signature) {
               lastItem.signature = item.signature;
@@ -91,7 +95,11 @@ export abstract class LLMClient {
           }
         } else if (item.type === "thinking") {
           const lastItem = contentItems[contentItems.length - 1];
-          if (lastItem && lastItem.type === "thinking") {
+          if (
+            lastItem &&
+            lastItem.type === "thinking" &&
+            !("signature" in lastItem)
+          ) {
             lastItem.thinking += item.thinking;
             if (item.signature) {
               lastItem.signature = item.signature;
