@@ -222,21 +222,32 @@ class GLM5Client(LLMClient):
 
         if model_output.usage:
             event_type = event_type or "delta"  # deal with separate usage data
-            if model_output.usage.completion_tokens_details:
-                reasoning_tokens = model_output.usage.completion_tokens_details.reasoning_tokens
-            else:
-                reasoning_tokens = None
 
             if model_output.usage.prompt_tokens_details:
                 cached_tokens = model_output.usage.prompt_tokens_details.cached_tokens
             else:
                 cached_tokens = None
 
+            if model_output.usage.completion_tokens_details:
+                reasoning_tokens = model_output.usage.completion_tokens_details.reasoning_tokens
+            else:
+                reasoning_tokens = None
+
+            if cached_tokens is not None:
+                prompt_tokens = model_output.usage.prompt_tokens - cached_tokens
+            else:
+                prompt_tokens = model_output.usage.prompt_tokens
+
+            if reasoning_tokens is not None:
+                response_tokens = model_output.usage.completion_tokens - reasoning_tokens
+            else:
+                response_tokens = model_output.usage.completion_tokens
+
             usage_metadata = {
-                "prompt_tokens": model_output.usage.prompt_tokens,
-                "response_tokens": model_output.usage.completion_tokens,
                 "cached_tokens": cached_tokens,
+                "prompt_tokens": prompt_tokens,
                 "thoughts_tokens": reasoning_tokens,
+                "response_tokens": response_tokens,
             }
 
         return {

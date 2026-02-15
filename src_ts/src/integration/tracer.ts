@@ -171,6 +171,9 @@ export class Tracer {
       if (message.usage_metadata) {
         const metadata = message.usage_metadata;
         lines.push("\nUsage Metadata:");
+        if (metadata.cached_tokens !== null) {
+          lines.push(`  Cached Tokens: ${metadata.cached_tokens}`);
+        }
         if (metadata.prompt_tokens !== null) {
           lines.push(`  Prompt Tokens: ${metadata.prompt_tokens}`);
         }
@@ -180,9 +183,13 @@ export class Tracer {
         if (metadata.response_tokens !== null) {
           lines.push(`  Response Tokens: ${metadata.response_tokens}`);
         }
-        if (metadata.cached_tokens !== null) {
-          lines.push(`  Cached Tokens: ${metadata.cached_tokens}`);
-        }
+
+        const inputTokens =
+          (metadata.cached_tokens || 0) + (metadata.prompt_tokens || 0);
+        const outputTokens =
+          (metadata.thoughts_tokens || 0) + (metadata.response_tokens || 0);
+        const totalTokens = inputTokens + outputTokens;
+        lines.push(`  Total Tokens: ${totalTokens}`);
       }
 
       if (message.finish_reason) {
@@ -427,22 +434,32 @@ export class Tracer {
                     '<div class="mt-4 pt-4 border-t border-gray-200 text-right text-xs text-gray-500">';
                   if (msg.usage_metadata) {
                     const parts = [];
-                    if (msg.usage_metadata.prompt_tokens !== null)
-                      parts.push(
-                        `Prompt: ${msg.usage_metadata.prompt_tokens} tokens`,
-                      );
-                    if (msg.usage_metadata.thoughts_tokens !== null)
-                      parts.push(
-                        `Thoughts: ${msg.usage_metadata.thoughts_tokens} tokens`,
-                      );
-                    if (msg.usage_metadata.response_tokens !== null)
-                      parts.push(
-                        `Response: ${msg.usage_metadata.response_tokens} tokens`,
-                      );
-                    if (msg.usage_metadata.cached_tokens !== null)
+                    if (msg.usage_metadata.cached_tokens)
                       parts.push(
                         `Cached: ${msg.usage_metadata.cached_tokens} tokens`,
                       );
+                    if (msg.usage_metadata.prompt_tokens)
+                      parts.push(
+                        `Prompt: ${msg.usage_metadata.prompt_tokens} tokens`,
+                      );
+                    if (msg.usage_metadata.thoughts_tokens)
+                      parts.push(
+                        `Thoughts: ${msg.usage_metadata.thoughts_tokens} tokens`,
+                      );
+                    if (msg.usage_metadata.response_tokens)
+                      parts.push(
+                        `Response: ${msg.usage_metadata.response_tokens} tokens`,
+                      );
+
+                    // Calculate and show total tokens
+                    const inputTokens =
+                      (msg.usage_metadata.cached_tokens || 0) +
+                      (msg.usage_metadata.prompt_tokens || 0);
+                    const outputTokens =
+                      (msg.usage_metadata.thoughts_tokens || 0) +
+                      (msg.usage_metadata.response_tokens || 0);
+                    const totalTokens = inputTokens + outputTokens;
+                    parts.push(`Total: ${totalTokens} tokens`);
                     metadataHtml += parts.join(" • ");
                   }
                   if (msg.finish_reason) {

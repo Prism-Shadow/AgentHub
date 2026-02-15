@@ -90,10 +90,10 @@ export type PartialContentItem = ContentItem | PartialToolCallContentItem;
  * Usage metadata for model response.
  */
 export interface UsageMetadata {
+  cached_tokens: number | null;
   prompt_tokens: number | null;
   thoughts_tokens: number | null;
   response_tokens: number | null;
-  cached_tokens: number | null;
 }
 
 /**

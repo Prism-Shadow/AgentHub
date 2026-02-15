@@ -123,7 +123,7 @@ asyncio.run(main())
 # {'role': 'assistant', 'event_type': 'delta', 'content_items': [{'type': 'text', 'text': ','}], 'usage_metadata': None, 'finish_reason': None}
 # {'role': 'assistant', 'event_type': 'delta', 'content_items': [{'type': 'text', 'text': ' World'}], 'usage_metadata': None, 'finish_reason': None}
 # {'role': 'assistant', 'event_type': 'delta', 'content_items': [{'type': 'text', 'text': '!'}], 'usage_metadata': None, 'finish_reason': None}
-# {'role': 'assistant', 'event_type': 'stop', 'content_items': [], 'usage_metadata': {'prompt_tokens': 12, 'thoughts_tokens': 0, 'response_tokens': 8, 'cached_tokens': 0}, 'finish_reason': 'stop'}
+# {'role': 'assistant', 'event_type': 'stop', 'content_items': [], 'usage_metadata': {'cached_tokens': 0, 'prompt_tokens': 12, 'thoughts_tokens': 0, 'response_tokens': 8}, 'finish_reason': 'stop'}
 ```
 
 TypeScript Example:
@@ -151,7 +151,7 @@ main().catch(console.error);
 // {'role': 'assistant', 'event_type': 'delta', 'content_items': [{'type': 'text', 'text': ','}], 'usage_metadata': null, 'finish_reason': null}
 // {'role': 'assistant', 'event_type': 'delta', 'content_items': [{'type': 'text', 'text': ' World'}], 'usage_metadata': null, 'finish_reason': null}
 // {'role': 'assistant', 'event_type': 'delta', 'content_items': [{'type': 'text', 'text': '!'}], 'usage_metadata': null, 'finish_reason': null}
-// {'role': 'assistant', 'event_type': 'stop', 'content_items': [], 'usage_metadata': {'prompt_tokens': 12, 'thoughts_tokens': 0, 'response_tokens': 8, 'cached_tokens': 0}, 'finish_reason': 'stop'}
+// {'role': 'assistant', 'event_type': 'stop', 'content_items': [], 'usage_metadata': {'cached_tokens': 0, 'prompt_tokens': 12, 'thoughts_tokens': 0, 'response_tokens': 8}, 'finish_reason': 'stop'}
 ```
 
 ### Anthropic Claude 4.5
@@ -219,7 +219,7 @@ os.environ["GLM_API_KEY"] = "your-openrouter-api-key"
 os.environ["GLM_BASE_URL"] = "https://openrouter.ai/api/v1"
 
 async def main():
-    client = AutoLLMClient(model="glm-5")
+    client = AutoLLMClient(model="z-ai/glm-5")
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -242,7 +242,7 @@ process.env.GLM_API_KEY = "your-openrouter-api-key";
 process.env.GLM_BASE_URL = "https://openrouter.ai/api/v1";
 
 async function main() {
-  const client = new AutoLLMClient({ model: "glm-5" });
+  const client = new AutoLLMClient({ model: "z-ai/glm-5" });
   for await (const event of client.streamingResponseStateful({
     message: {
       role: "user",
@@ -380,13 +380,34 @@ Example UniEvent:
     {"type": "partial_tool_call", "name": "math", "arguments": "", "tool_call_id": "123"}
   ],
   "usage_metadata": {
+    "cached_tokens": null,
     "prompt_tokens": 10,
     "thoughts_tokens": null,
-    "response_tokens": 1,
-    "cached_tokens": null
+    "response_tokens": 1
   },
   "finish_reason": null
 }
+```
+
+## Token Usage
+
+AgentHub provides detailed token usage information through the `usage_metadata` field in streaming events.
+
+The `usage_metadata` object contains four fields:
+- `cached_tokens`: Cached input tokens
+- `prompt_tokens`: Non-cached input tokens
+- `thoughts_tokens`: Chain-of-thought output tokens
+- `response_tokens`: Non-chain-of-thought output tokens
+
+You can calculate the total token usage as follows:
+- `input_tokens = cached_tokens + prompt_tokens`
+- `output_tokens = thoughts_tokens + response_tokens`
+- `total_tokens = input_tokens + output_tokens`
+
+```
+█████████████  ░░░░░░░░░░░░░ → LLM → ███████████████  ░░░░░░░░░░░░░░░
+cached_tokens  prompt_tokens         thoughts_tokens  response_tokens
+        input_tokens                          output_tokens
 ```
 
 ## Tracing LLM Executions

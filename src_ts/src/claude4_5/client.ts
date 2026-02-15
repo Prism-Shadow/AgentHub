@@ -299,11 +299,13 @@ export class Claude4_5Client extends LLMClient {
       eventType = "start";
       const message = modelOutput.message;
       if (message.usage) {
+        const cacheCreationTokens =
+          message.usage.cache_creation_input_tokens || 0;
         usageMetadata = {
-          prompt_tokens: message.usage.input_tokens,
+          cached_tokens: message.usage.cache_read_input_tokens,
+          prompt_tokens: message.usage.input_tokens + cacheCreationTokens,
           thoughts_tokens: null,
           response_tokens: null,
-          cached_tokens: message.usage.cache_read_input_tokens || null,
         };
       }
     } else if (claudeEventType === "message_delta") {
@@ -321,11 +323,12 @@ export class Claude4_5Client extends LLMClient {
 
       const usage = modelOutput.usage;
       if (usage) {
+        // In message_delta, we only update response_tokens
         usageMetadata = {
+          cached_tokens: null,
           prompt_tokens: null,
           thoughts_tokens: null,
           response_tokens: usage.output_tokens,
-          cached_tokens: null,
         };
       }
     } else if (claudeEventType === "message_stop") {

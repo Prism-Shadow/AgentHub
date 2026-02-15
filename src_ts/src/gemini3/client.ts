@@ -365,12 +365,16 @@ export class Gemini3Client extends LLMClient {
 
     if (modelOutput.usageMetadata) {
       eventType = eventType || "delta"; // deal with separate usage data
+
+      const promptTokens = modelOutput.usageMetadata.promptTokenCount || 0;
+      const cachedTokens =
+        modelOutput.usageMetadata.cachedContentTokenCount || 0;
       usageMetadata = {
-        prompt_tokens: modelOutput.usageMetadata.promptTokenCount || null,
-        thoughts_tokens: modelOutput.usageMetadata.thoughtsTokenCount || null,
-        response_tokens: modelOutput.usageMetadata.candidatesTokenCount || null,
         cached_tokens:
           modelOutput.usageMetadata.cachedContentTokenCount || null,
+        prompt_tokens: promptTokens - cachedTokens,
+        thoughts_tokens: modelOutput.usageMetadata.thoughtsTokenCount || null,
+        response_tokens: modelOutput.usageMetadata.candidatesTokenCount || null,
       };
     }
 

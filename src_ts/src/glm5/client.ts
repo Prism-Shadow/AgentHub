@@ -279,19 +279,26 @@ export class GLM5Client extends LLMClient {
 
     if (modelOutput.usage) {
       eventType = eventType || "delta";
-      const reasoningTokens =
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (modelOutput.usage as any).completion_tokens_details
-          ?.reasoning_tokens || null;
+
       const cachedTokens =
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (modelOutput.usage as any).prompt_tokens_details?.cached_tokens || null;
+        modelOutput.usage.prompt_tokens_details?.cached_tokens || null;
+      const reasoningTokens =
+        modelOutput.usage.completion_tokens_details?.reasoning_tokens || null;
+
+      const promptTokens =
+        cachedTokens !== null
+          ? modelOutput.usage.prompt_tokens - cachedTokens
+          : modelOutput.usage.prompt_tokens;
+      const responseTokens =
+        reasoningTokens !== null
+          ? modelOutput.usage.completion_tokens - reasoningTokens
+          : modelOutput.usage.completion_tokens;
 
       usageMetadata = {
-        prompt_tokens: modelOutput.usage.prompt_tokens || null,
-        thoughts_tokens: reasoningTokens,
-        response_tokens: modelOutput.usage.completion_tokens || null,
         cached_tokens: cachedTokens,
+        prompt_tokens: promptTokens,
+        thoughts_tokens: reasoningTokens,
+        response_tokens: responseTokens,
       };
     }
 

@@ -452,12 +452,15 @@ def create_chat_app() -> Flask:
 
                                     if (event.usage_metadata) {
                                         const usage = event.usage_metadata;
+                                        const inputTokens = (usage.cached_tokens || 0) + (usage.prompt_tokens || 0);
+                                        const outputTokens = (usage.thoughts_tokens || 0) + (usage.response_tokens || 0);
+                                        const totalTokens = inputTokens + outputTokens;
                                         metadata = {
+                                            cached_tokens: usage.cached_tokens || 0,
                                             prompt_tokens: usage.prompt_tokens || 0,
                                             thoughts_tokens: usage.thoughts_tokens || 0,
                                             response_tokens: usage.response_tokens || 0,
-                                            cached_tokens: usage.cached_tokens || 0,
-                                            total_tokens: (usage.prompt_tokens || 0) + (usage.thoughts_tokens || 0) + (usage.response_tokens || 0)
+                                            total_tokens: totalTokens
                                         };
                                     }
                                     if (event.finish_reason) {
@@ -473,15 +476,13 @@ def create_chat_app() -> Flask:
 
                     if (metadata) {
                         let metadataHtml = '<div class="flex justify-end gap-3 mt-3 pt-3 border-t border-gray-200 text-xs text-gray-500">';
-                        if (metadata.prompt_tokens || metadata.thoughts_tokens || metadata.response_tokens) {
-                            const parts = [];
-                            if (metadata.prompt_tokens) parts.push(`Prompt: ${metadata.prompt_tokens}`);
-                            if (metadata.thoughts_tokens) parts.push(`Thoughts: ${metadata.thoughts_tokens}`);
-                            if (metadata.response_tokens) parts.push(`Response: ${metadata.response_tokens}`);
-                            if (metadata.cached_tokens) parts.push(`Cached: ${metadata.cached_tokens}`);
-                            if (metadata.total_tokens) parts.push(`Total: ${metadata.total_tokens}`);
-                            metadataHtml += `<div class="flex items-center gap-1">📊 ${parts.join(' | ')}</div>`;
-                        }
+                        const parts = [];
+                        if (metadata.cached_tokens) parts.push(`Cached: ${metadata.cached_tokens}`);
+                        if (metadata.prompt_tokens) parts.push(`Prompt: ${metadata.prompt_tokens}`);
+                        if (metadata.thoughts_tokens) parts.push(`Thoughts: ${metadata.thoughts_tokens}`);
+                        if (metadata.response_tokens) parts.push(`Response: ${metadata.response_tokens}`);
+                        if (metadata.total_tokens) parts.push(`Total: ${metadata.total_tokens}`);
+                        metadataHtml += `<div class="flex items-center gap-1">📊 ${parts.join(' | ')}</div>`;
                         if (metadata.finish_reason) {
                             metadataHtml += `<div class="flex items-center gap-1">🏁 ${metadata.finish_reason}</div>`;
                         }

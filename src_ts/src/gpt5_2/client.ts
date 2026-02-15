@@ -295,12 +295,18 @@ export class GPT5_2Client extends LLMClient {
         finishReason = finishReasonMapping[response.status];
       }
       if (response.usage) {
+        const inputTokens = response.usage.input_tokens;
+        const outputTokens = response.usage.output_tokens;
+
+        const cachedTokens = response.usage.input_tokens_details.cached_tokens;
+        const reasoningTokens =
+          response.usage.output_tokens_details.reasoning_tokens;
+
         usageMetadata = {
-          prompt_tokens: response.usage.input_tokens,
-          thoughts_tokens:
-            response.usage.output_tokens_details.reasoning_tokens,
-          response_tokens: response.usage.output_tokens,
-          cached_tokens: response.usage.input_tokens_details.cached_tokens,
+          cached_tokens: cachedTokens,
+          prompt_tokens: inputTokens - cachedTokens,
+          thoughts_tokens: reasoningTokens,
+          response_tokens: outputTokens - reasoningTokens,
         };
       }
     } else if (
