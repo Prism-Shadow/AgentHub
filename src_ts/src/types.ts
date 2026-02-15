@@ -39,7 +39,7 @@ export type FinishReason = "stop" | "length" | "unknown";
 export interface TextContentItem {
   type: "text";
   text: string;
-  signature?: string | Buffer;
+  signature?: string;
 }
 
 export interface ImageContentItem {
@@ -50,7 +50,7 @@ export interface ImageContentItem {
 export interface ThinkingContentItem {
   type: "thinking";
   thinking: string;
-  signature?: string | Buffer;
+  signature?: string;
 }
 
 export interface ToolCallContentItem {
@@ -59,7 +59,7 @@ export interface ToolCallContentItem {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   arguments: Record<string, any>;
   tool_call_id: string;
-  signature?: string | Buffer;
+  signature?: string;
 }
 
 export interface PartialToolCallContentItem {
@@ -67,7 +67,7 @@ export interface PartialToolCallContentItem {
   name: string;
   arguments: string;
   tool_call_id: string;
-  signature?: string | Buffer;
+  signature?: string;
 }
 
 export interface ToolResultContentItem {

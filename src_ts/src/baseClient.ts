@@ -84,7 +84,7 @@ export abstract class LLMClient {
           if (
             lastItem &&
             lastItem.type === "text" &&
-            !("signature" in lastItem)
+            lastItem.signature == null
           ) {
             lastItem.text += item.text;
             if (item.signature) {
@@ -98,7 +98,7 @@ export abstract class LLMClient {
           if (
             lastItem &&
             lastItem.type === "thinking" &&
-            !("signature" in lastItem)
+            lastItem.signature == null
           ) {
             lastItem.thinking += item.thinking;
             if (item.signature) {

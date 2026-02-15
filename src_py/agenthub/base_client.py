@@ -89,9 +89,13 @@ class LLMClient(ABC):
             # Merge content_items from all events
             for item in event["content_items"]:
                 if item["type"] == "text":
-                    if content_items and content_items[-1]["type"] == "text" and "signature" not in content_items[-1]:
+                    if (
+                        content_items
+                        and content_items[-1]["type"] == "text"
+                        and content_items[-1].get("signature") is None
+                    ):
                         content_items[-1]["text"] += item["text"]
-                        if "signature" in item:  # finish the current item if signature appears
+                        if "signature" in item:  # finish the current item if signature is not None
                             content_items[-1]["signature"] = item["signature"]
                     elif item["text"]:  # omit empty text items
                         content_items.append(item.copy())
@@ -99,10 +103,10 @@ class LLMClient(ABC):
                     if (
                         content_items
                         and content_items[-1]["type"] == "thinking"
-                        and "signature" not in content_items[-1]
+                        and content_items[-1].get("signature") is None
                     ):
                         content_items[-1]["thinking"] += item["thinking"]
-                        if "signature" in item:  # finish the current item if signature appears
+                        if "signature" in item:  # finish the current item if signature is not None
                             content_items[-1]["signature"] = item["signature"]
                     elif item["thinking"] or item.get("signature"):  # omit empty thinking items
                         content_items.append(item.copy())
