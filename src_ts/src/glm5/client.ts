@@ -31,6 +31,7 @@ import {
   UniMessage,
   UsageMetadata,
 } from "../types";
+import { fixOpenrouterUsageMetadata } from "../utils";
 
 /**
  * GLM-5-specific LLM client implementation using OpenAI-compatible API.
@@ -300,6 +301,10 @@ export class GLM5Client extends LLMClient {
         thoughts_tokens: reasoningTokens,
         response_tokens: responseTokens,
       };
+      usageMetadata = fixOpenrouterUsageMetadata(
+        usageMetadata,
+        this._client.baseURL,
+      );
     }
 
     return {
