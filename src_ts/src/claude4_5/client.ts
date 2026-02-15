@@ -304,7 +304,7 @@ export class Claude4_5Client extends LLMClient {
         usageMetadata = {
           cached_tokens: message.usage.cache_read_input_tokens,
           prompt_tokens: message.usage.input_tokens + cacheCreationTokens,
-          thoughts_tokens: 0,
+          thoughts_tokens: null,
           response_tokens: null,
         };
       }
@@ -327,7 +327,7 @@ export class Claude4_5Client extends LLMClient {
         usageMetadata = {
           cached_tokens: null,
           prompt_tokens: null,
-          thoughts_tokens: 0,
+          thoughts_tokens: null,
           response_tokens: usage.output_tokens,
         };
       }

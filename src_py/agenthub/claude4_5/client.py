@@ -252,7 +252,7 @@ class Claude4_5Client(LLMClient):
                 usage_metadata = {
                     "cached_tokens": message.usage.cache_read_input_tokens,
                     "prompt_tokens": message.usage.input_tokens + cache_creation_tokens,
-                    "thoughts_tokens": 0,
+                    "thoughts_tokens": None,
                     "response_tokens": None,
                 }
 

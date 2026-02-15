@@ -437,19 +437,19 @@ export class Tracer {
                     '<div class="mt-4 pt-4 border-t border-gray-200 text-right text-xs text-gray-500">';
                   if (msg.usage_metadata) {
                     const parts = [];
-                    if (msg.usage_metadata.cached_tokens !== null)
+                    if (msg.usage_metadata.cached_tokens)
                       parts.push(
                         `Cached: ${msg.usage_metadata.cached_tokens} tokens`,
                       );
-                    if (msg.usage_metadata.prompt_tokens !== null)
+                    if (msg.usage_metadata.prompt_tokens)
                       parts.push(
                         `Prompt: ${msg.usage_metadata.prompt_tokens} tokens`,
                       );
-                    if (msg.usage_metadata.thoughts_tokens !== null)
+                    if (msg.usage_metadata.thoughts_tokens)
                       parts.push(
                         `Thoughts: ${msg.usage_metadata.thoughts_tokens} tokens`,
                       );
-                    if (msg.usage_metadata.response_tokens !== null)
+                    if (msg.usage_metadata.response_tokens)
                       parts.push(
                         `Response: ${msg.usage_metadata.response_tokens} tokens`,
                       );
