@@ -31,6 +31,8 @@ import {
   UsageMetadata,
 } from "../types";
 
+const REDACTED_THINKING = "_REDACTED_THINKING";
+
 /**
  * Claude 4.5-specific LLM client implementation.
  */
@@ -183,11 +185,18 @@ export class Claude4_5Client extends LLMClient {
             });
           }
         } else if (item.type === "thinking") {
-          contentBlocks.push({
-            type: "thinking",
-            thinking: item.thinking,
-            signature: item.signature,
-          });
+          if (item.thinking === REDACTED_THINKING) {
+            contentBlocks.push({
+              type: "redacted_thinking",
+              data: item.signature,
+            });
+          } else {
+            contentBlocks.push({
+              type: "thinking",
+              thinking: item.thinking,
+              signature: item.signature,
+            });
+          }
         } else if (item.type === "tool_call") {
           contentBlocks.push({
             type: "tool_use",
@@ -270,6 +279,12 @@ export class Claude4_5Client extends LLMClient {
           name: block.name,
           arguments: "",
           tool_call_id: block.id,
+        });
+      } else if (block.type === "redacted_thinking") {
+        contentItems.push({
+          type: "thinking",
+          thinking: REDACTED_THINKING,
+          signature: block.data,
         });
       }
     } else if (claudeEventType === "content_block_delta") {
