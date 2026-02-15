@@ -183,7 +183,12 @@ async def test_clear_history(model):
 async def test_concat_uni_events_to_uni_message(model):
     """Test concatenation of events into a single message."""
     client = await _create_client(model)
-    messages = [{"role": "user", "content_items": [{"type": "text", "text": "Say hello"}]}]
+    messages = [
+        {
+            "role": "user",
+            "content_items": [{"type": "text", "text": "Say 'The quick brown fox jumps over the lazy dog.'"}],
+        }
+    ]
     config = {}
 
     events = []

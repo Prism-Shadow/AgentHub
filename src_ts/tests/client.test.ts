@@ -238,7 +238,12 @@ if (AVAILABLE_MODELS.length > 0) {
       const messages: UniMessage[] = [
         {
           role: "user",
-          content_items: [{ type: "text", text: "Say hello" }],
+          content_items: [
+            {
+              type: "text",
+              text: "Say 'The quick brown fox jumps over the lazy dog.'",
+            },
+          ],
         },
       ];
       const config: UniConfig = {};
