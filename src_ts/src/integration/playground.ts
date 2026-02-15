@@ -441,8 +441,6 @@ export function createChatApp(): Express {
                                           prompt_tokens: usage.prompt_tokens || 0,
                                           thoughts_tokens: usage.thoughts_tokens || 0,
                                           response_tokens: usage.response_tokens || 0,
-                                          input_tokens: inputTokens,
-                                          output_tokens: outputTokens,
                                           total_tokens: totalTokens
                                       };
                                   }
@@ -464,8 +462,6 @@ export function createChatApp(): Express {
                       if (metadata.prompt_tokens) parts.push(\`Prompt: \${metadata.prompt_tokens}\`);
                       if (metadata.thoughts_tokens) parts.push(\`Thoughts: \${metadata.thoughts_tokens}\`);
                       if (metadata.response_tokens) parts.push(\`Response: \${metadata.response_tokens}\`);
-                      if (metadata.input_tokens) parts.push(\`Input: \${metadata.input_tokens}\`);
-                      if (metadata.output_tokens) parts.push(\`Output: \${metadata.output_tokens}\`);
                       if (metadata.total_tokens) parts.push(\`Total: \${metadata.total_tokens}\`);
                       metadataHtml += \`<div class="flex items-center gap-1">📊 \${parts.join(' | ')}</div>\`;
                       if (metadata.finish_reason) {

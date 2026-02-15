@@ -189,9 +189,6 @@ export class Tracer {
         const outputTokens =
           (metadata.thoughts_tokens || 0) + (metadata.response_tokens || 0);
         const totalTokens = inputTokens + outputTokens;
-
-        lines.push(`  Input Tokens: ${inputTokens}`);
-        lines.push(`  Output Tokens: ${outputTokens}`);
         lines.push(`  Total Tokens: ${totalTokens}`);
       }
 
@@ -462,11 +459,7 @@ export class Tracer {
                       (msg.usage_metadata.thoughts_tokens || 0) +
                       (msg.usage_metadata.response_tokens || 0);
                     const totalTokens = inputTokens + outputTokens;
-
-                    parts.push(`Input: ${inputTokens} tokens`);
-                    parts.push(`Output: ${outputTokens} tokens`);
                     parts.push(`Total: ${totalTokens} tokens`);
-
                     metadataHtml += parts.join(" • ");
                   }
                   if (msg.finish_reason) {

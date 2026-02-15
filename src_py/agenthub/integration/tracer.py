@@ -175,9 +175,6 @@ class Tracer:
                 input_tokens = (metadata.get("cached_tokens") or 0) + (metadata.get("prompt_tokens") or 0)
                 output_tokens = (metadata.get("thoughts_tokens") or 0) + (metadata.get("response_tokens") or 0)
                 total_tokens = input_tokens + output_tokens
-
-                lines.append(f"  Input Tokens: {input_tokens}")
-                lines.append(f"  Output Tokens: {output_tokens}")
                 lines.append(f"  Total Tokens: {total_tokens}")
 
             # Add finish reason if available
@@ -330,7 +327,7 @@ class Tracer:
                                 {% set input_tokens = (message.usage_metadata.cached_tokens or 0) + (message.usage_metadata.prompt_tokens or 0) %}
                                 {% set output_tokens = (message.usage_metadata.thoughts_tokens or 0) + (message.usage_metadata.response_tokens or 0) %}
                                 {% set total_tokens = input_tokens + output_tokens %}
-                                 • Input: {{ input_tokens }} tokens • Output: {{ output_tokens }} tokens • Total: {{ total_tokens }} tokens
+                                 • Total: {{ total_tokens }} tokens
                             {% endif %}
                             {% if message.finish_reason %}{% if message.usage_metadata %} • {% endif %}Finish: {{ message.finish_reason|e }}{% endif %}
                         </div>
