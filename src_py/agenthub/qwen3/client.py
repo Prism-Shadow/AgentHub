@@ -31,6 +31,7 @@ from ..types import (
     UniMessage,
     UsageMetadata,
 )
+from ..utils import fix_openrouter_usage_metadata
 
 
 class Qwen3Client(LLMClient):
@@ -238,6 +239,7 @@ class Qwen3Client(LLMClient):
                 "thoughts_tokens": reasoning_tokens,
                 "response_tokens": response_tokens,
             }
+            usage_metadata = fix_openrouter_usage_metadata(usage_metadata, str(self._client._base_url))
 
         return {
             "role": "assistant",
