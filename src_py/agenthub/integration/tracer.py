@@ -295,7 +295,7 @@ class Tracer:
                                     <div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.thinking|e }}</div>
                                 {% elif item.type == 'tool_call' %}
                                     <div class="bg-yellow-50 p-4 rounded-md border-l-4 border-yellow-500">
-                                        <div class="font-mono text-sm text-gray-800">{{ item.name|e }}({% for key, value in item.arguments.items() %}{{ key|e }}="{{ value|e }}"{% if not loop.last %}, {% endif %}{% endfor %})</div>
+                                        <div class="font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.name|e }}({% for key, value in item.arguments.items() %}{{ key|e }}="{{ value|e }}"{% if not loop.last %}, {% endif %}{% endfor %})</div>
                                     </div>
                                 {% elif item.type == 'tool_result' %}
                                     <div class="bg-green-50 p-4 rounded-md border-l-4 border-green-500">
@@ -320,14 +320,16 @@ class Tracer:
                         {% if message.usage_metadata or message.finish_reason %}
                         <div class="mt-4 pt-4 border-t border-gray-200 text-right text-xs text-gray-500">
                             {% if message.usage_metadata %}
-                                {% if message.usage_metadata.cached_tokens %}Cached: {{ message.usage_metadata.cached_tokens }} tokens{% endif %}
-                                {% if message.usage_metadata.prompt_tokens %} • Prompt: {{ message.usage_metadata.prompt_tokens }} tokens{% endif %}
-                                {% if message.usage_metadata.thoughts_tokens %} • Thoughts: {{ message.usage_metadata.thoughts_tokens }} tokens{% endif %}
-                                {% if message.usage_metadata.response_tokens %} • Response: {{ message.usage_metadata.response_tokens }} tokens{% endif %}
+                                {% set parts = [] %}
+                                {% if message.usage_metadata.cached_tokens %}{% set _ = parts.append('Cached: ' ~ message.usage_metadata.cached_tokens ~ ' tokens') %}{% endif %}
+                                {% if message.usage_metadata.prompt_tokens %}{% set _ = parts.append('Prompt: ' ~ message.usage_metadata.prompt_tokens ~ ' tokens') %}{% endif %}
+                                {% if message.usage_metadata.thoughts_tokens %}{% set _ = parts.append('Thoughts: ' ~ message.usage_metadata.thoughts_tokens ~ ' tokens') %}{% endif %}
+                                {% if message.usage_metadata.response_tokens %}{% set _ = parts.append('Response: ' ~ message.usage_metadata.response_tokens ~ ' tokens') %}{% endif %}
                                 {% set input_tokens = (message.usage_metadata.cached_tokens or 0) + (message.usage_metadata.prompt_tokens or 0) %}
                                 {% set output_tokens = (message.usage_metadata.thoughts_tokens or 0) + (message.usage_metadata.response_tokens or 0) %}
                                 {% set total_tokens = input_tokens + output_tokens %}
-                                 • Total: {{ total_tokens }} tokens
+                                {% set _ = parts.append('Total: ' ~ total_tokens ~ ' tokens') %}
+                                {{ parts|join(' • ') }}
                             {% endif %}
                             {% if message.finish_reason %}{% if message.usage_metadata %} • {% endif %}Finish: {{ message.finish_reason|e }}{% endif %}
                         </div>

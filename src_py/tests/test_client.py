@@ -88,10 +88,19 @@ async def _check_event_integrity(event: dict) -> None:
             assert "tool_call_id" in item
 
     if event["usage_metadata"]:
+        assert "cached_tokens" in event["usage_metadata"]
         assert "prompt_tokens" in event["usage_metadata"]
         assert "thoughts_tokens" in event["usage_metadata"]
         assert "response_tokens" in event["usage_metadata"]
-        assert "cached_tokens" in event["usage_metadata"]
+
+        if event["usage_metadata"]["cached_tokens"] is not None:
+            assert event["usage_metadata"]["cached_tokens"] >= 0
+        if event["usage_metadata"]["prompt_tokens"] is not None:
+            assert event["usage_metadata"]["prompt_tokens"] >= 0
+        if event["usage_metadata"]["thoughts_tokens"] is not None:
+            assert event["usage_metadata"]["thoughts_tokens"] >= 0
+        if event["usage_metadata"]["response_tokens"] is not None:
+            assert event["usage_metadata"]["response_tokens"] >= 0
 
 
 @pytest.mark.asyncio

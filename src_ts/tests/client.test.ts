@@ -97,10 +97,23 @@ function checkEventIntegrity(event: UniEvent): void {
   }
 
   if (event.usage_metadata) {
+    expect(event.usage_metadata).toHaveProperty("cached_tokens");
     expect(event.usage_metadata).toHaveProperty("prompt_tokens");
     expect(event.usage_metadata).toHaveProperty("thoughts_tokens");
     expect(event.usage_metadata).toHaveProperty("response_tokens");
-    expect(event.usage_metadata).toHaveProperty("cached_tokens");
+
+    if (event.usage_metadata.cached_tokens !== null) {
+      expect(event.usage_metadata.cached_tokens).toBeGreaterThanOrEqual(0);
+    }
+    if (event.usage_metadata.prompt_tokens !== null) {
+      expect(event.usage_metadata.prompt_tokens).toBeGreaterThanOrEqual(0);
+    }
+    if (event.usage_metadata.thoughts_tokens !== null) {
+      expect(event.usage_metadata.thoughts_tokens).toBeGreaterThanOrEqual(0);
+    }
+    if (event.usage_metadata.response_tokens !== null) {
+      expect(event.usage_metadata.response_tokens).toBeGreaterThanOrEqual(0);
+    }
   }
 }
 
