@@ -144,8 +144,7 @@ class Tracer:
                     lines.append(f"Image URL: {item['image_url']}")
                 elif item["type"] == "tool_call":
                     lines.append(f"Tool Call: {item['name']}")
-                    args_json = json.dumps(item['arguments'], indent=2, ensure_ascii=False)
-                    lines.append(f"  Arguments: {args_json}")
+                    lines.append(f"  Arguments: {json.dumps(item['arguments'], indent=2, ensure_ascii=False)}")
                     lines.append(f"  Tool Call ID: {item['tool_call_id']}")
                 elif item["type"] == "partial_tool_call":
                     # Skip partial_tool_call - tracer only shows complete tool calls
@@ -296,7 +295,7 @@ class Tracer:
                                     <div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.thinking|e }}</div>
                                 {% elif item.type == 'tool_call' %}
                                     <div class="bg-yellow-50 p-4 rounded-md border-l-4 border-yellow-500">
-                                        <div class="font-mono text-sm text-gray-800">{{ item.name|e }}({% for key, value in item.arguments.items() %}{{ key|e }}="{{ value|e }}"{% if not loop.last %}, {% endif %}{% endfor %})</div>
+                                        <div class="font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.name|e }}({% for key, value in item.arguments.items() %}{{ key|e }}="{{ value|e }}"{% if not loop.last %}, {% endif %}{% endfor %})</div>
                                     </div>
                                 {% elif item.type == 'tool_result' %}
                                     <div class="bg-green-50 p-4 rounded-md border-l-4 border-green-500">
