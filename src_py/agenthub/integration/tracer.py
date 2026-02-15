@@ -144,7 +144,8 @@ class Tracer:
                     lines.append(f"Image URL: {item['image_url']}")
                 elif item["type"] == "tool_call":
                     lines.append(f"Tool Call: {item['name']}")
-                    lines.append(f"  Arguments: {json.dumps(item['arguments'], indent=2, ensure_ascii=False)}")
+                    args_json = json.dumps(item['arguments'], indent=2, ensure_ascii=False)
+                    lines.append(f"  Arguments: {args_json}")
                     lines.append(f"  Tool Call ID: {item['tool_call_id']}")
                 elif item["type"] == "partial_tool_call":
                     # Skip partial_tool_call - tracer only shows complete tool calls
@@ -320,14 +321,16 @@ class Tracer:
                         {% if message.usage_metadata or message.finish_reason %}
                         <div class="mt-4 pt-4 border-t border-gray-200 text-right text-xs text-gray-500">
                             {% if message.usage_metadata %}
-                                {% if message.usage_metadata.cached_tokens %}Cached: {{ message.usage_metadata.cached_tokens }} tokens{% endif %}
-                                {% if message.usage_metadata.prompt_tokens %} • Prompt: {{ message.usage_metadata.prompt_tokens }} tokens{% endif %}
-                                {% if message.usage_metadata.thoughts_tokens %} • Thoughts: {{ message.usage_metadata.thoughts_tokens }} tokens{% endif %}
-                                {% if message.usage_metadata.response_tokens %} • Response: {{ message.usage_metadata.response_tokens }} tokens{% endif %}
+                                {% set parts = [] %}
+                                {% if message.usage_metadata.cached_tokens %}{% set _ = parts.append('Cached: ' ~ message.usage_metadata.cached_tokens ~ ' tokens') %}{% endif %}
+                                {% if message.usage_metadata.prompt_tokens %}{% set _ = parts.append('Prompt: ' ~ message.usage_metadata.prompt_tokens ~ ' tokens') %}{% endif %}
+                                {% if message.usage_metadata.thoughts_tokens %}{% set _ = parts.append('Thoughts: ' ~ message.usage_metadata.thoughts_tokens ~ ' tokens') %}{% endif %}
+                                {% if message.usage_metadata.response_tokens %}{% set _ = parts.append('Response: ' ~ message.usage_metadata.response_tokens ~ ' tokens') %}{% endif %}
                                 {% set input_tokens = (message.usage_metadata.cached_tokens or 0) + (message.usage_metadata.prompt_tokens or 0) %}
                                 {% set output_tokens = (message.usage_metadata.thoughts_tokens or 0) + (message.usage_metadata.response_tokens or 0) %}
                                 {% set total_tokens = input_tokens + output_tokens %}
-                                 • Total: {{ total_tokens }} tokens
+                                {% set _ = parts.append('Total: ' ~ total_tokens ~ ' tokens') %}
+                                {{ parts|join(' • ') }}
                             {% endif %}
                             {% if message.finish_reason %}{% if message.usage_metadata %} • {% endif %}Finish: {{ message.finish_reason|e }}{% endif %}
                         </div>

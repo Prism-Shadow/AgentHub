@@ -156,7 +156,8 @@ export class Tracer {
           lines.push(`Image URL: ${item.image_url}`);
         } else if (item.type === "tool_call") {
           lines.push(`Tool Call: ${item.name}`);
-          lines.push(`  Arguments: ${JSON.stringify(item.arguments, null, 2)}`);
+          const argsJson = JSON.stringify(item.arguments, null, 2);
+          lines.push(`  Arguments: ${argsJson}`);
           lines.push(`  Tool Call ID: ${item.tool_call_id}`);
         } else if (item.type === "tool_result") {
           lines.push(`Tool Result (ID: ${item.tool_call_id}): ${item.text}`);
