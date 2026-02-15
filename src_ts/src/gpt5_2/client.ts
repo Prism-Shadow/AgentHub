@@ -156,10 +156,7 @@ export class GPT5_2Client extends LLMClient {
             image_url: item.image_url,
           });
         } else if (item.type === "thinking") {
-          const signatureStr =
-            typeof item.signature === "string"
-              ? item.signature
-              : item.signature?.toString() || "{}";
+          const signatureStr = item.signature || "{}";
           const signature = JSON.parse(signatureStr);
           inputList.push({
             type: "reasoning",

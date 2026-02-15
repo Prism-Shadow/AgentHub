@@ -153,36 +153,6 @@ describe("Tracer", () => {
     expect(app).toBeDefined();
   });
 
-  test("should serialize bytes to base64", () => {
-    const tracer = new Tracer(tempCacheDir);
-
-    const model = "fake-model";
-    const history: UniMessage[] = [
-      {
-        role: "user",
-        content_items: [
-          {
-            type: "text",
-            text: "Test",
-            signature: Buffer.from("test signature"),
-          },
-        ],
-      },
-    ];
-
-    const config = {};
-    const fileId = "test/bytes_test";
-
-    tracer.saveHistory(model, history, fileId, config);
-
-    const jsonPath = path.join(tempCacheDir, fileId + ".json");
-    const jsonContent = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
-
-    const signature = jsonContent.history[0].content_items[0].signature;
-    expect(typeof signature).toBe("string");
-    expect(Buffer.from(signature, "base64").toString()).toBe("test signature");
-  });
-
   test("should format history with usage metadata", () => {
     const tracer = new Tracer(tempCacheDir);
 

@@ -35,6 +35,9 @@ from ..types import (
 )
 
 
+REDACTED_THINKING = "_REDACTED_THINKING"
+
+
 class Claude4_5Client(LLMClient):
     """Claude 4.5-specific LLM client implementation."""
 
@@ -152,9 +155,12 @@ class Claude4_5Client(LLMClient):
                     else:
                         content_blocks.append({"type": "image", "source": {"type": "url", "url": image_url}})
                 elif item["type"] == "thinking":
-                    content_blocks.append(
-                        {"type": "thinking", "thinking": item["thinking"], "signature": item["signature"]}
-                    )
+                    if item["thinking"] == REDACTED_THINKING:
+                        content_blocks.append({"type": "redacted_thinking", "data": item["signature"]})
+                    else:
+                        content_blocks.append(
+                            {"type": "thinking", "thinking": item["thinking"], "signature": item["signature"]}
+                        )
                 elif item["type"] == "tool_call":
                     content_blocks.append(
                         {
@@ -226,6 +232,8 @@ class Claude4_5Client(LLMClient):
                 content_items.append(
                     {"type": "partial_tool_call", "name": block.name, "arguments": "", "tool_call_id": block.id}
                 )
+            elif block.type == "redacted_thinking":
+                content_items.append({"type": "thinking", "thinking": REDACTED_THINKING, "signature": block.data})
 
         elif claude_event_type == "content_block_delta":
             event_type = "delta"
