@@ -244,7 +244,7 @@ export class Qwen3Client extends LLMClient {
       const finishReasonMapping: { [key: string]: FinishReason } = {
         stop: "stop",
         length: "length",
-        tool_calls: "stop",
+        tool_calls: "tool_call",
         content_filter: "stop",
       };
       finishReason = finishReasonMapping[choice.finish_reason] || "unknown";

@@ -216,7 +216,7 @@ class GLM5Client(LLMClient):
             finish_reason_mapping = {
                 "stop": "stop",
                 "length": "length",
-                "tool_calls": "stop",
+                "tool_calls": "tool_call",
                 "content_filter": "stop",
             }
             finish_reason = finish_reason_mapping.get(choice.finish_reason, "unknown")

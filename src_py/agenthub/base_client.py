@@ -192,6 +192,9 @@ class LLMClient(ABC):
     def _validate_last_event(last_event: UniEvent | None) -> None:
         """Validate that the last event has usage_metadata and finish_reason.
 
+        This validation guards against servers that silently terminate streaming
+        output partway through without sending a proper final event.
+
         Args:
             last_event: The last event yielded by streaming_response
 

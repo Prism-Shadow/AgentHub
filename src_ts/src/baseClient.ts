@@ -184,6 +184,9 @@ export abstract class LLMClient {
   /**
    * Validate that the last event has usage_metadata and finish_reason.
    *
+   * This validation guards against servers that silently terminate streaming
+   * output partway through without sending a proper final event.
+   *
    * @param lastEvent - The last event yielded by streamingResponse
    * @throws Error if lastEvent is null or missing usage_metadata/finish_reason
    */
