@@ -331,7 +331,7 @@ export class Claude4_5Client extends LLMClient {
           end_turn: "stop",
           max_tokens: "length",
           stop_sequence: "stop",
-          tool_use: "stop",
+          tool_use: "tool_call",
         };
         finishReason = stopReasonMapping[delta.stop_reason] || "unknown";
       }

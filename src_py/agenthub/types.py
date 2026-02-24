@@ -37,7 +37,7 @@ class PromptCaching(StrEnum):
 ToolChoice = Literal["auto", "required", "none"] | list[str]
 Role = Literal["user", "assistant"]
 EventType = Literal["start", "delta", "stop", "unused"]
-FinishReason = Literal["stop", "length", "unknown"]
+FinishReason = Literal["stop", "length", "tool_call", "unknown"]
 
 
 class TextContentItem(TypedDict):

@@ -76,7 +76,7 @@ async def _check_event_integrity(event: dict) -> None:
     assert "finish_reason" in event
     assert event["role"] in ["user", "assistant"]
     assert event["event_type"] in ["start", "delta", "stop"]
-    assert event["finish_reason"] in ["stop", "length", "unknown", None]
+    assert event["finish_reason"] in ["stop", "length", "tool_call", "unknown", None]
     for item in event["content_items"]:
         if item["type"] == "text":
             assert "text" in item

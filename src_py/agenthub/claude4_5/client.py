@@ -272,7 +272,7 @@ class Claude4_5Client(LLMClient):
                     "end_turn": "stop",
                     "max_tokens": "length",
                     "stop_sequence": "stop",
-                    "tool_use": "stop",
+                    "tool_use": "tool_call",
                 }
                 finish_reason = stop_reason_mapping.get(delta.stop_reason, "unknown")
 
