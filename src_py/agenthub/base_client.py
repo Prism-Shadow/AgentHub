@@ -200,8 +200,12 @@ class LLMClient(ABC):
         """
         if last_event is None:
             raise ValueError("Streaming response yielded no events")
-        if last_event["usage_metadata"] is None or last_event["finish_reason"] is None:
-            raise ValueError(f"Last event must carry both usage_metadata and finish_reason, got: {last_event}")
+
+        if last_event["usage_metadata"] is None:
+            raise ValueError(f"Last event must carry usage_metadata, got: {last_event}")
+
+        if last_event["finish_reason"] is None:
+            raise ValueError(f"Last event must carry finish_reason, got: {last_event}")
 
     def clear_history(self) -> None:
         """Clear the message history."""

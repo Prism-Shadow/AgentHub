@@ -191,9 +191,14 @@ export abstract class LLMClient {
     if (lastEvent === null) {
       throw new Error("Streaming response yielded no events");
     }
-    if (lastEvent.usage_metadata === null || lastEvent.finish_reason === null) {
+    if (lastEvent.usage_metadata === null) {
       throw new Error(
-        `Last event must carry both usage_metadata and finish_reason, got: ${JSON.stringify(lastEvent)}`,
+        `Last event must carry usage_metadata, got: ${JSON.stringify(lastEvent)}`,
+      );
+    }
+    if (lastEvent.finish_reason === null) {
+      throw new Error(
+        `Last event must carry finish_reason, got: ${JSON.stringify(lastEvent)}`,
       );
     }
   }

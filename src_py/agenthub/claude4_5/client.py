@@ -398,4 +398,5 @@ class Claude4_5Client(LLMClient):
                         }
                         yield last_event
                         partial_usage = {}
+
         self._validate_last_event(last_event)

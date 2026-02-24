@@ -303,4 +303,5 @@ class Gemini3Client(LLMClient):
 
             last_event = event
             yield event
+
         self._validate_last_event(last_event)

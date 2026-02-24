@@ -594,9 +594,7 @@ test("should validate last event has usage_metadata and finish_reason", () => {
   expect(() => LLMClient._validateLastEvent(validEvent)).not.toThrow();
 
   // null event
-  expect(() => LLMClient._validateLastEvent(null)).toThrow(
-    "no events",
-  );
+  expect(() => LLMClient._validateLastEvent(null)).toThrow("no events");
 
   // missing usage_metadata
   expect(() =>

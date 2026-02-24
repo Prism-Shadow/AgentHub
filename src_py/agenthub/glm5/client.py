@@ -345,4 +345,5 @@ class GLM5Client(LLMClient):
                 if event["finish_reason"] or event["usage_metadata"]:
                     last_event = event
                     yield event
+
         self._validate_last_event(last_event)
