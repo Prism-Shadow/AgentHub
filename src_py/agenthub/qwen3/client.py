@@ -201,7 +201,7 @@ class Qwen3Client(LLMClient):
                 )
 
         if choice.finish_reason:
-            event_type = "stop"
+            event_type = event_type or "stop"
             finish_reason_mapping = {
                 "stop": "stop",
                 "length": "length",
@@ -211,7 +211,7 @@ class Qwen3Client(LLMClient):
             finish_reason = finish_reason_mapping.get(choice.finish_reason, "unknown")
 
         if model_output.usage:
-            event_type = event_type or "delta"  # deal with separate usage data
+            event_type = event_type or "stop"  # deal with separate usage data
 
             if model_output.usage.prompt_tokens_details:
                 cached_tokens = model_output.usage.prompt_tokens_details.cached_tokens
@@ -269,9 +269,12 @@ class Qwen3Client(LLMClient):
         stream = await self._client.chat.completions.create(**qwen3_config, messages=qwen3_messages)
 
         partial_tool_call = {}
+        partial_usage = {}
         last_event: UniEvent | None = None
         async for chunk in stream:
             event = self.transform_model_output_to_uni_event(chunk)
+            partial_usage["finish_reason"] = event["finish_reason"] or partial_usage.get("finish_reason")
+            partial_usage["usage_metadata"] = event["usage_metadata"] or partial_usage.get("usage_metadata")
             if event["event_type"] == "start":
                 # start new partial tool call for <tool_call>
                 partial_tool_call = {"data": ""}
@@ -366,8 +369,15 @@ class Qwen3Client(LLMClient):
                     yield last_event
                     partial_tool_call = {}
 
-                if event["finish_reason"] or event["usage_metadata"]:
-                    last_event = event
-                    yield event
+                if partial_usage.get("finish_reason") and partial_usage.get("usage_metadata"):
+                    last_event = {
+                        "role": "assistant",
+                        "event_type": "stop",
+                        "content_items": [],
+                        "usage_metadata": partial_usage["usage_metadata"],
+                        "finish_reason": partial_usage["finish_reason"],
+                    }
+                    yield last_event
+                    partial_usage = {}
 
         self._validate_last_event(last_event)

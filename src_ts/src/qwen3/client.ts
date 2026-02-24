@@ -240,7 +240,7 @@ export class Qwen3Client extends LLMClient {
     }
 
     if (choice?.finish_reason) {
-      eventType = "stop";
+      eventType = eventType || "stop";
       const finishReasonMapping: { [key: string]: FinishReason } = {
         stop: "stop",
         length: "length",
@@ -251,7 +251,7 @@ export class Qwen3Client extends LLMClient {
     }
 
     if (modelOutput.usage) {
-      eventType = eventType || "delta";
+      eventType = eventType || "stop";
 
       const cachedTokens =
         modelOutput.usage.prompt_tokens_details?.cached_tokens || null;
@@ -321,10 +321,18 @@ export class Qwen3Client extends LLMClient {
       tool_call_id?: string;
       data?: string;
     } = {};
+    let partialUsage: {
+      finish_reason?: FinishReason | null;
+      usage_metadata?: UsageMetadata | null;
+    } = {};
 
     let lastEvent: UniEvent | null = null;
     for await (const chunk of stream) {
       const event = this.transformModelOutputToUniEvent(chunk);
+      partialUsage.finish_reason =
+        event.finish_reason || partialUsage.finish_reason;
+      partialUsage.usage_metadata =
+        event.usage_metadata || partialUsage.usage_metadata;
       if (event.event_type === "start") {
         // start new partial tool call for <tool_call>
         partialToolCall.data = "";
@@ -433,9 +441,17 @@ export class Qwen3Client extends LLMClient {
           partialToolCall.tool_call_id = undefined;
         }
 
-        if (event.finish_reason || event.usage_metadata) {
-          lastEvent = event;
-          yield event;
+        if (partialUsage.finish_reason && partialUsage.usage_metadata) {
+          lastEvent = {
+            role: "assistant",
+            event_type: "stop",
+            content_items: [],
+            usage_metadata: partialUsage.usage_metadata,
+            finish_reason: partialUsage.finish_reason,
+          };
+          yield lastEvent;
+          partialUsage.finish_reason = null;
+          partialUsage.usage_metadata = null;
         }
       }
     }
