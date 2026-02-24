@@ -82,7 +82,7 @@ function checkEventIntegrity(event: UniEvent): void {
 
   expect(["user", "assistant"]).toContain(event.role);
   expect(["start", "delta", "stop"]).toContain(event.event_type);
-  expect(["stop", "length", "unknown", null]).toContain(event.finish_reason);
+  expect(["stop", "length", "tool_call", "unknown", null]).toContain(event.finish_reason);
 
   for (const item of event.content_items) {
     if (item.type === "text") {
