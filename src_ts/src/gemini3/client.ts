@@ -405,11 +405,12 @@ export class Gemini3Client extends LLMClient {
       config: geminiConfig,
     });
 
+    let lastEvent: UniEvent | null = null;
     for await (const chunk of responseStream) {
       const event = this.transformModelOutputToUniEvent(chunk);
       for (const item of event.content_items) {
         if (item.type === "tool_call") {
-          yield {
+          lastEvent = {
             role: "assistant",
             event_type: "delta",
             content_items: [
@@ -424,10 +425,13 @@ export class Gemini3Client extends LLMClient {
             usage_metadata: null,
             finish_reason: null,
           };
+          yield lastEvent;
         }
       }
 
+      lastEvent = event;
       yield event;
     }
+    LLMClient._validateLastEvent(lastEvent);
   }
 }

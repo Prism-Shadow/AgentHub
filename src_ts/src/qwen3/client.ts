@@ -322,6 +322,7 @@ export class Qwen3Client extends LLMClient {
       data?: string;
     } = {};
 
+    let lastEvent: UniEvent | null = null;
     for await (const chunk of stream) {
       const event = this.transformModelOutputToUniEvent(chunk);
       if (event.event_type === "start") {
@@ -345,7 +346,7 @@ export class Qwen3Client extends LLMClient {
               partialToolCall.arguments = item.arguments;
             } else if (item.name) {
               // finish previous partial tool call for tool call object
-              yield {
+              lastEvent = {
                 role: "assistant",
                 event_type: "delta",
                 content_items: [
@@ -359,6 +360,7 @@ export class Qwen3Client extends LLMClient {
                 usage_metadata: null,
                 finish_reason: null,
               };
+              yield lastEvent;
               // start new partial tool call for tool call object
               partialToolCall.name = item.name;
               partialToolCall.arguments = item.arguments;
@@ -370,12 +372,13 @@ export class Qwen3Client extends LLMClient {
           }
         }
 
+        lastEvent = event;
         yield event;
       } else if (event.event_type === "stop") {
         if (partialToolCall.data !== undefined) {
           // finish partial tool call for <tool_call>
           const toolCall = JSON.parse(partialToolCall.data.trim());
-          yield {
+          lastEvent = {
             role: "assistant",
             event_type: "delta",
             content_items: [
@@ -389,7 +392,8 @@ export class Qwen3Client extends LLMClient {
             usage_metadata: null,
             finish_reason: null,
           };
-          yield {
+          yield lastEvent;
+          lastEvent = {
             role: "assistant",
             event_type: "delta",
             content_items: [
@@ -403,12 +407,13 @@ export class Qwen3Client extends LLMClient {
             usage_metadata: null,
             finish_reason: null,
           };
+          yield lastEvent;
           partialToolCall.data = undefined;
         }
 
         if (partialToolCall.name) {
           // finish partial tool call for tool call object
-          yield {
+          lastEvent = {
             role: "assistant",
             event_type: "delta",
             content_items: [
@@ -422,15 +427,18 @@ export class Qwen3Client extends LLMClient {
             usage_metadata: null,
             finish_reason: null,
           };
+          yield lastEvent;
           partialToolCall.name = undefined;
           partialToolCall.arguments = undefined;
           partialToolCall.tool_call_id = undefined;
         }
 
         if (event.finish_reason || event.usage_metadata) {
+          lastEvent = event;
           yield event;
         }
       }
     }
+    LLMClient._validateLastEvent(lastEvent);
   }
 }

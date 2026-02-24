@@ -330,6 +330,7 @@ class Claude4_5Client(LLMClient):
         # Stream generate
         partial_tool_call = {}
         partial_usage = {}
+        last_event: UniEvent | None = None
         async with self._client.beta.messages.stream(**claude_config, messages=claude_messages) as stream:
             async for event in stream:
                 event = self.transform_model_output_to_uni_event(event)
@@ -342,6 +343,7 @@ class Claude4_5Client(LLMClient):
                                 "arguments": "",
                                 "tool_call_id": item["tool_call_id"],
                             }
+                            last_event = event
                             yield event
 
                     if event["usage_metadata"] is not None:
@@ -357,12 +359,13 @@ class Claude4_5Client(LLMClient):
                             # update partial_tool_call
                             partial_tool_call["arguments"] += item["arguments"]
 
+                    last_event = event
                     yield event
 
                 elif event["event_type"] == "stop":
                     if "name" in partial_tool_call and "arguments" in partial_tool_call:
                         # finish partial_tool_call
-                        yield {
+                        last_event = {
                             "role": "assistant",
                             "event_type": "delta",
                             "content_items": [
@@ -376,11 +379,12 @@ class Claude4_5Client(LLMClient):
                             "usage_metadata": None,
                             "finish_reason": None,
                         }
+                        yield last_event
                         partial_tool_call = {}
 
                     if "prompt_tokens" in partial_usage and event["usage_metadata"] is not None:
                         # finish partial_usage
-                        yield {
+                        last_event = {
                             "role": "assistant",
                             "event_type": "stop",
                             "content_items": [],
@@ -392,4 +396,6 @@ class Claude4_5Client(LLMClient):
                             },
                             "finish_reason": event["finish_reason"],
                         }
+                        yield last_event
                         partial_usage = {}
+        self._validate_last_event(last_event)

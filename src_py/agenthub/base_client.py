@@ -188,6 +188,21 @@ class LLMClient(ABC):
             tracer = Tracer()
             tracer.save_history(self._model, self._history, config["trace_id"], config)
 
+    @staticmethod
+    def _validate_last_event(last_event: UniEvent | None) -> None:
+        """Validate that the last event has usage_metadata and finish_reason.
+
+        Args:
+            last_event: The last event yielded by streaming_response
+
+        Raises:
+            ValueError: If last_event is None or missing usage_metadata/finish_reason
+        """
+        if last_event is None:
+            raise ValueError("Streaming response yielded no events")
+        if last_event["usage_metadata"] is None or last_event["finish_reason"] is None:
+            raise ValueError(f"Last event must carry both usage_metadata and finish_reason, got: {last_event}")
+
     def clear_history(self) -> None:
         """Clear the message history."""
         self._history.clear()

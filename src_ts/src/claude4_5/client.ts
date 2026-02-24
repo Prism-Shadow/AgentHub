@@ -413,6 +413,7 @@ export class Claude4_5Client extends LLMClient {
       messages: claudeMessages,
     });
 
+    let lastEvent: UniEvent | null = null;
     for await (const event of stream) {
       const uniEvent = this.transformModelOutputToUniEvent(event);
       if (uniEvent.event_type === "start") {
@@ -421,6 +422,7 @@ export class Claude4_5Client extends LLMClient {
             partialToolCall.name = item.name;
             partialToolCall.arguments = "";
             partialToolCall.tool_call_id = item.tool_call_id;
+            lastEvent = uniEvent;
             yield uniEvent;
           }
         }
@@ -437,10 +439,11 @@ export class Claude4_5Client extends LLMClient {
           }
         }
 
+        lastEvent = uniEvent;
         yield uniEvent;
       } else if (uniEvent.event_type === "stop") {
         if (partialToolCall.name && partialToolCall.arguments !== undefined) {
-          yield {
+          lastEvent = {
             role: "assistant",
             event_type: "delta",
             content_items: [
@@ -454,6 +457,7 @@ export class Claude4_5Client extends LLMClient {
             usage_metadata: null,
             finish_reason: null,
           };
+          yield lastEvent;
           partialToolCall.name = undefined;
           partialToolCall.arguments = undefined;
           partialToolCall.tool_call_id = undefined;
@@ -464,7 +468,7 @@ export class Claude4_5Client extends LLMClient {
           partialUsage.prompt_tokens !== null &&
           uniEvent.usage_metadata !== null
         ) {
-          yield {
+          lastEvent = {
             role: "assistant",
             event_type: "stop",
             content_items: [],
@@ -476,10 +480,12 @@ export class Claude4_5Client extends LLMClient {
             },
             finish_reason: uniEvent.finish_reason,
           };
+          yield lastEvent;
           partialUsage.prompt_tokens = undefined;
           partialUsage.cached_tokens = undefined;
         }
       }
     }
+    LLMClient._validateLastEvent(lastEvent);
   }
 }

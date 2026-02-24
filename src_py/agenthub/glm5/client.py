@@ -280,6 +280,7 @@ class GLM5Client(LLMClient):
         stream = await self._client.chat.completions.create(**glm_config, messages=glm_messages)
 
         partial_tool_call = {}
+        last_event: UniEvent | None = None
         async for chunk in stream:
             event = self.transform_model_output_to_uni_event(chunk)
             if event["event_type"] == "delta":
@@ -294,7 +295,7 @@ class GLM5Client(LLMClient):
                             }
                         elif item["name"]:
                             # finish previous partial tool call
-                            yield {
+                            last_event = {
                                 "role": "assistant",
                                 "event_type": "delta",
                                 "content_items": [
@@ -308,6 +309,7 @@ class GLM5Client(LLMClient):
                                 "usage_metadata": None,
                                 "finish_reason": None,
                             }
+                            yield last_event
                             # start new partial tool call
                             partial_tool_call = {
                                 "name": item["name"],
@@ -318,11 +320,12 @@ class GLM5Client(LLMClient):
                             # update partial tool call
                             partial_tool_call["arguments"] += item["arguments"]
 
+                last_event = event
                 yield event
             elif event["event_type"] == "stop":
                 if partial_tool_call:
                     # finish partial tool call
-                    yield {
+                    last_event = {
                         "role": "assistant",
                         "event_type": "delta",
                         "content_items": [
@@ -336,7 +339,10 @@ class GLM5Client(LLMClient):
                         "usage_metadata": None,
                         "finish_reason": None,
                     }
+                    yield last_event
                     partial_tool_call = {}
 
                 if event["finish_reason"] or event["usage_metadata"]:
+                    last_event = event
                     yield event
+        self._validate_last_event(last_event)

@@ -347,6 +347,7 @@ export class GLM5Client extends LLMClient {
       tool_call_id?: string;
     } = {};
 
+    let lastEvent: UniEvent | null = null;
     for await (const chunk of stream) {
       const event = this.transformModelOutputToUniEvent(chunk);
       if (event.event_type === "delta") {
@@ -359,7 +360,7 @@ export class GLM5Client extends LLMClient {
               partialToolCall.tool_call_id = item.tool_call_id;
             } else if (item.name) {
               // finish the previous partial tool call
-              yield {
+              lastEvent = {
                 role: "assistant",
                 event_type: "delta",
                 content_items: [
@@ -373,6 +374,7 @@ export class GLM5Client extends LLMClient {
                 usage_metadata: null,
                 finish_reason: null,
               };
+              yield lastEvent;
               // start a new partial tool call
               partialToolCall.name = item.name;
               partialToolCall.arguments = item.arguments;
@@ -384,11 +386,12 @@ export class GLM5Client extends LLMClient {
             }
           }
         }
+        lastEvent = event;
         yield event;
       } else if (event.event_type === "stop") {
         if (partialToolCall.name) {
           // finish the partial tool call
-          yield {
+          lastEvent = {
             role: "assistant",
             event_type: "delta",
             content_items: [
@@ -402,15 +405,18 @@ export class GLM5Client extends LLMClient {
             usage_metadata: null,
             finish_reason: null,
           };
+          yield lastEvent;
           partialToolCall.name = undefined;
           partialToolCall.arguments = undefined;
           partialToolCall.tool_call_id = undefined;
         }
 
         if (event.finish_reason || event.usage_metadata) {
+          lastEvent = event;
           yield event;
         }
       }
     }
+    LLMClient._validateLastEvent(lastEvent);
   }
 }
