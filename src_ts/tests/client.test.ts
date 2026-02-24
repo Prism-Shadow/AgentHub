@@ -573,3 +573,36 @@ test("should reject unknown model", () => {
     "not supported",
   );
 });
+
+test("should validate last event has usage_metadata and finish_reason", () => {
+  const { LLMClient } = require("../src/baseClient");
+
+  const validEvent = {
+    role: "assistant",
+    event_type: "stop",
+    content_items: [],
+    usage_metadata: {
+      cached_tokens: 0,
+      prompt_tokens: 10,
+      thoughts_tokens: null,
+      response_tokens: 5,
+    },
+    finish_reason: "stop",
+  };
+
+  // should not throw
+  expect(() => LLMClient._validateLastEvent(validEvent)).not.toThrow();
+
+  // null event
+  expect(() => LLMClient._validateLastEvent(null)).toThrow("no events");
+
+  // missing usage_metadata
+  expect(() =>
+    LLMClient._validateLastEvent({ ...validEvent, usage_metadata: null }),
+  ).toThrow("usage_metadata");
+
+  // missing finish_reason
+  expect(() =>
+    LLMClient._validateLastEvent({ ...validEvent, finish_reason: null }),
+  ).toThrow("finish_reason");
+});

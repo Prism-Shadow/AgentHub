@@ -268,7 +268,7 @@ export class GLM5Client extends LLMClient {
     }
 
     if (choice?.finish_reason) {
-      eventType = "stop";
+      eventType = eventType || "stop";
       const finishReasonMapping: { [key: string]: FinishReason } = {
         stop: "stop",
         length: "length",
@@ -279,7 +279,7 @@ export class GLM5Client extends LLMClient {
     }
 
     if (modelOutput.usage) {
-      eventType = eventType || "delta";
+      eventType = eventType || "stop";
 
       const cachedTokens =
         modelOutput.usage.prompt_tokens_details?.cached_tokens || null;
@@ -346,9 +346,18 @@ export class GLM5Client extends LLMClient {
       arguments?: string;
       tool_call_id?: string;
     } = {};
+    let partialUsage: {
+      finish_reason?: FinishReason | null;
+      usage_metadata?: UsageMetadata | null;
+    } = {};
 
+    let lastEvent: UniEvent | null = null;
     for await (const chunk of stream) {
       const event = this.transformModelOutputToUniEvent(chunk);
+      partialUsage.finish_reason =
+        event.finish_reason || partialUsage.finish_reason;
+      partialUsage.usage_metadata =
+        event.usage_metadata || partialUsage.usage_metadata;
       if (event.event_type === "delta") {
         for (const item of event.content_items) {
           if (item.type === "partial_tool_call") {
@@ -359,7 +368,7 @@ export class GLM5Client extends LLMClient {
               partialToolCall.tool_call_id = item.tool_call_id;
             } else if (item.name) {
               // finish the previous partial tool call
-              yield {
+              lastEvent = {
                 role: "assistant",
                 event_type: "delta",
                 content_items: [
@@ -373,6 +382,7 @@ export class GLM5Client extends LLMClient {
                 usage_metadata: null,
                 finish_reason: null,
               };
+              yield lastEvent;
               // start a new partial tool call
               partialToolCall.name = item.name;
               partialToolCall.arguments = item.arguments;
@@ -384,11 +394,12 @@ export class GLM5Client extends LLMClient {
             }
           }
         }
+        lastEvent = event;
         yield event;
       } else if (event.event_type === "stop") {
         if (partialToolCall.name) {
           // finish the partial tool call
-          yield {
+          lastEvent = {
             role: "assistant",
             event_type: "delta",
             content_items: [
@@ -402,15 +413,26 @@ export class GLM5Client extends LLMClient {
             usage_metadata: null,
             finish_reason: null,
           };
+          yield lastEvent;
           partialToolCall.name = undefined;
           partialToolCall.arguments = undefined;
           partialToolCall.tool_call_id = undefined;
         }
 
-        if (event.finish_reason || event.usage_metadata) {
-          yield event;
+        if (partialUsage.finish_reason && partialUsage.usage_metadata) {
+          lastEvent = {
+            role: "assistant",
+            event_type: "stop",
+            content_items: [],
+            usage_metadata: partialUsage.usage_metadata,
+            finish_reason: partialUsage.finish_reason,
+          };
+          yield lastEvent;
+          partialUsage.finish_reason = null;
+          partialUsage.usage_metadata = null;
         }
       }
     }
+    LLMClient._validateLastEvent(lastEvent);
   }
 }

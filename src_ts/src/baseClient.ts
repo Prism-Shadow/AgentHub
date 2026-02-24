@@ -182,6 +182,28 @@ export abstract class LLMClient {
   }
 
   /**
+   * Validate that the last event has usage_metadata and finish_reason.
+   *
+   * @param lastEvent - The last event yielded by streamingResponse
+   * @throws Error if lastEvent is null or missing usage_metadata/finish_reason
+   */
+  protected static _validateLastEvent(lastEvent: UniEvent | null): void {
+    if (lastEvent === null) {
+      throw new Error("Streaming response yielded no events");
+    }
+    if (lastEvent.usage_metadata === null) {
+      throw new Error(
+        `Last event must carry usage_metadata, got: ${JSON.stringify(lastEvent)}`,
+      );
+    }
+    if (lastEvent.finish_reason === null) {
+      throw new Error(
+        `Last event must carry finish_reason, got: ${JSON.stringify(lastEvent)}`,
+      );
+    }
+  }
+
+  /**
    * Clear the message history.
    */
   clearHistory(): void {

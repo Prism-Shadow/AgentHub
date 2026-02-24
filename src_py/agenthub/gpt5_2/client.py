@@ -291,6 +291,7 @@ class GPT5_2Client(LLMClient):
         partial_tool_call = {}
         stream = await self._client.responses.create(**openai_config, input=input_list, stream=True)
 
+        last_event: UniEvent | None = None
         async for event in stream:
             event = self.transform_model_output_to_uni_event(event)
             if event["event_type"] == "start":
@@ -302,6 +303,7 @@ class GPT5_2Client(LLMClient):
                             "arguments": "",
                             "tool_call_id": item["tool_call_id"],
                         }
+                        last_event = event
                         yield event
             elif event["event_type"] == "delta":
                 for item in event["content_items"]:
@@ -309,11 +311,12 @@ class GPT5_2Client(LLMClient):
                         # update partial_tool_call
                         partial_tool_call["arguments"] += item["arguments"]
 
+                last_event = event
                 yield event
             elif event["event_type"] == "stop":
                 if "name" in partial_tool_call and "arguments" in partial_tool_call:
                     # finish partial_tool_call
-                    yield {
+                    last_event = {
                         "role": "assistant",
                         "event_type": "delta",
                         "content_items": [
@@ -327,7 +330,11 @@ class GPT5_2Client(LLMClient):
                         "usage_metadata": None,
                         "finish_reason": None,
                     }
+                    yield last_event
                     partial_tool_call = {}
 
                 if event["finish_reason"] or event["usage_metadata"]:
+                    last_event = event
                     yield event
+
+        self._validate_last_event(last_event)

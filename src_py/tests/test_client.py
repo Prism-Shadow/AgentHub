@@ -224,6 +224,28 @@ async def test_unknown_model():
 
 
 @pytest.mark.asyncio
+async def test_validate_last_event_raises_on_missing_usage_metadata():
+    """Test that _validate_last_event raises ValueError when usage_metadata is None."""
+    valid_event = {
+        "role": "assistant",
+        "event_type": "stop",
+        "content_items": [],
+        "usage_metadata": {"cached_tokens": 0, "prompt_tokens": 10, "thoughts_tokens": None, "response_tokens": 5},
+        "finish_reason": "stop",
+    }
+    AutoLLMClient._validate_last_event(valid_event)  # should not raise
+
+    with pytest.raises(ValueError, match="no events"):
+        AutoLLMClient._validate_last_event(None)
+
+    with pytest.raises(ValueError, match="usage_metadata"):
+        AutoLLMClient._validate_last_event({**valid_event, "usage_metadata": None})
+
+    with pytest.raises(ValueError, match="finish_reason"):
+        AutoLLMClient._validate_last_event({**valid_event, "finish_reason": None})
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("model", AVAILABLE_MODELS)
 async def test_tool_use(model):
     """Test tool use capability."""

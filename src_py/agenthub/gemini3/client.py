@@ -278,12 +278,13 @@ class Gemini3Client(LLMClient):
         response_stream = await self._client.aio.models.generate_content_stream(
             model=self._model, contents=contents, config=gemini_config
         )
+        last_event: UniEvent | None = None
         async for chunk in response_stream:
             event = self.transform_model_output_to_uni_event(chunk)
             for item in event["content_items"]:
                 if item["type"] == "tool_call":
                     # gemini 3 does not support partial tool call, mock a partial tool call event
-                    yield {
+                    last_event = {
                         "role": "assistant",
                         "event_type": "delta",
                         "content_items": [
@@ -298,5 +299,9 @@ class Gemini3Client(LLMClient):
                         "usage_metadata": None,
                         "finish_reason": None,
                     }
+                    yield last_event
 
+            last_event = event
             yield event
+
+        self._validate_last_event(last_event)
