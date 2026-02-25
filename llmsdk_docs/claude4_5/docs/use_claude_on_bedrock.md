@@ -9,7 +9,6 @@ The following code examples show how to send a text message to Anthropic Claude,
 ## Prerequisites
 
 - An active AWS account with access to Amazon Bedrock
-- [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) configured with appropriate credentials
 - Python 3.8+ with `boto3` installed: `pip install boto3`
 - Model access enabled for the Anthropic Claude model in the AWS Bedrock console
 
@@ -333,11 +332,11 @@ pip install anthropic[bedrock]
 from anthropic import AnthropicBedrock
 
 client = AnthropicBedrock(
-    # aws_profile="my-profile",          # optional: AWS profile name
-    # aws_region="us-east-1",            # optional: AWS region
-    # aws_access_key="...",              # optional: explicit credentials
     # aws_secret_key="...",
-    # aws_session_token="...",
+    # aws_access_key="...",              # optional: explicit credentials
+    # aws_region="us-east-1",            # optional: AWS region
+    # aws_profile="my-profile",          # optional: AWS profile name
+    # aws_session_token="...",           # optional: explicit session token
 )
 
 message = client.messages.create(

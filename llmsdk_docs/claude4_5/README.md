@@ -18,6 +18,7 @@ The `docs/` folder contains detailed guides on various Claude 4.5 features:
 - [tool-use-overview.md](./docs/tool-use-overview.md) - Function calling and tool use
 - [vision.md](./docs/vision.md) - Image and vision capabilities
 - [working-with-messages.md](./docs/working-with-messages.md) - Message formatting and conversation management
+- [use_claude_on_bedrock.md](./docs/use_claude_on_bedrock.md) - Using Claude 4.5 on AWS Bedrock
 
 ## Examples
 
