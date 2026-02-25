@@ -53,14 +53,14 @@ if os.getenv("SILICONFLOW_API_KEY"):
     SILICONFLOW_MODELS.append("Qwen/Qwen3-8B")
 
 if os.getenv("ANTHROPIC_AWS_ACCESS_KEY") and os.getenv("ANTHROPIC_AWS_SECRET_ACCESS_KEY"):
+    AVAILABLE_VISION_MODELS.append("global.anthropic.claude-sonnet-4-5-20250929-v1:0")
     BEDROCK_MODELS.append("global.anthropic.claude-sonnet-4-5-20250929-v1:0")
 
-AVAILABLE_MODELS = AVAILABLE_VISION_MODELS + AVAILABLE_TEXT_MODELS + OPENROUTER_MODELS + SILICONFLOW_MODELS + BEDROCK_MODELS
+AVAILABLE_MODELS = AVAILABLE_VISION_MODELS + AVAILABLE_TEXT_MODELS + OPENROUTER_MODELS + SILICONFLOW_MODELS
 
 
 @pytest.fixture(autouse=True)
-def bedrock_env(request, monkeypatch):
-    model = request.node.funcargs.get("model", "")
+def bedrock_env(model: str, monkeypatch: pytest.MonkeyPatch):
     if model in BEDROCK_MODELS:
         monkeypatch.setenv("USE_ANTHROPIC_ON_BEDROCK", "1")
 
@@ -231,14 +231,16 @@ async def test_concat_uni_events_to_uni_message(model):
 
 
 @pytest.mark.asyncio
-async def test_unknown_model():
+@pytest.mark.parametrize("model", ["unknown-model"])
+async def test_unknown_model(model):
     """Test that unknown models raise ValueError."""
     with pytest.raises(ValueError, match="not support"):
-        AutoLLMClient(model="unknown-model")
+        AutoLLMClient(model=model)
 
 
 @pytest.mark.asyncio
-async def test_validate_last_event_raises_on_missing_usage_metadata():
+@pytest.mark.parametrize("model", ["unknown-model"])
+async def test_validate_last_event_raises_on_missing_usage_metadata(model):
     """Test that _validate_last_event raises ValueError when usage_metadata is None."""
     valid_event = {
         "role": "assistant",

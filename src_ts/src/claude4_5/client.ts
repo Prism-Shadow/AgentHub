@@ -70,6 +70,54 @@ export class Claude4_5Client extends LLMClient {
   }
 
   /**
+   * Convert image URL to image source.
+   *
+   * Bedrock does not support image url sources, so we need to fetch the image bytes and encode them.
+   */
+  private async _convertImageUrlToSource(url: string): Promise<{
+    type: string;
+    source: { type: string; media_type?: string; data?: string; url?: string };
+  }> {
+    if (url.startsWith("data:")) {
+      const match = url.match(/data:([^;]+);base64,(.+)/);
+      if (match) {
+        const mediaType = match[1];
+        const base64Data = match[2];
+        return {
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: mediaType,
+            data: base64Data,
+          },
+        };
+      } else {
+        throw new Error(`Invalid base64 image: ${url}`);
+      }
+    } else if (process.env.USE_ANTHROPIC_ON_BEDROCK) {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch image: ${response.status} ${response.statusText}`,
+        );
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const mime_type = response.headers.get("content-type") || "image/jpeg";
+      return {
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: mime_type,
+          data: buffer.toString("base64"),
+        },
+      };
+    } else {
+      return { type: "image", source: { type: "url", url } };
+    }
+  }
+
+  /**
    * Convert ThinkingLevel enum to Claude's budget_tokens.
    */
   private _convertThinkingLevelToBudget(thinkingLevel: ThinkingLevel): {
@@ -161,7 +209,9 @@ export class Claude4_5Client extends LLMClient {
   /**
    * Transform universal message format to Claude's MessageParam format.
    */
-  transformUniMessageToModelInput(messages: UniMessage[]): BetaMessageParam[] {
+  async transformUniMessageToModelInput(
+    messages: UniMessage[],
+  ): Promise<BetaMessageParam[]> {
     const claudeMessages: BetaMessageParam[] = [];
 
     for (const msg of messages) {
@@ -172,28 +222,7 @@ export class Claude4_5Client extends LLMClient {
           contentBlocks.push({ type: "text", text: item.text });
         } else if (item.type === "image_url") {
           const imageUrl = item.image_url;
-          if (imageUrl.startsWith("data:")) {
-            const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
-            if (match) {
-              const mediaType = match[1];
-              const base64Data = match[2];
-              contentBlocks.push({
-                type: "image",
-                source: {
-                  type: "base64",
-                  media_type: mediaType,
-                  data: base64Data,
-                },
-              });
-            } else {
-              throw new Error(`Invalid base64 image: ${imageUrl}`);
-            }
-          } else {
-            contentBlocks.push({
-              type: "image",
-              source: { type: "url", url: imageUrl },
-            });
-          }
+          contentBlocks.push(await this._convertImageUrlToSource(imageUrl));
         } else if (item.type === "thinking") {
           if (item.thinking === REDACTED_THINKING) {
             contentBlocks.push({
@@ -224,28 +253,7 @@ export class Claude4_5Client extends LLMClient {
 
           if (item.images) {
             for (const imageUrl of item.images) {
-              if (imageUrl.startsWith("data:")) {
-                const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
-                if (match) {
-                  const mediaType = match[1];
-                  const base64Data = match[2];
-                  toolResult.push({
-                    type: "image",
-                    source: {
-                      type: "base64",
-                      media_type: mediaType,
-                      data: base64Data,
-                    },
-                  });
-                } else {
-                  throw new Error(`Invalid base64 image: ${imageUrl}`);
-                }
-              } else {
-                toolResult.push({
-                  type: "image",
-                  source: { type: "url", url: imageUrl },
-                });
-              }
+              toolResult.push(await this._convertImageUrlToSource(imageUrl));
             }
           }
 
@@ -383,7 +391,7 @@ export class Claude4_5Client extends LLMClient {
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
     const claudeConfig = this.transformUniConfigToModelConfig(options.config);
-    const claudeMessages = this.transformUniMessageToModelInput(
+    const claudeMessages = await this.transformUniMessageToModelInput(
       options.messages,
     );
 

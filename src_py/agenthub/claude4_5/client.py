@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import json
+import mimetypes
 import os
 import re
 from typing import Any, AsyncIterator
 
+import httpx
 from anthropic import AsyncAnthropic, AsyncAnthropicBedrock
 from anthropic.types.beta import BetaMessageParam, BetaRawMessageStreamEvent
 
@@ -53,6 +56,47 @@ class Claude4_5Client(LLMClient):
             base_url = base_url or os.getenv("ANTHROPIC_BASE_URL")
             self._client = AsyncAnthropic(api_key=api_key, base_url=base_url)
         self._history: list[UniMessage] = []
+
+    async def _convert_image_url_to_source(self, url: str) -> dict[str, Any]:
+        """Convert image URL to image source.
+
+        Bedrock does not support image url sources, so we need to fetch the image bytes and encode them.
+
+        Args:
+            url: Image URL to convert
+
+        Returns:
+            Image source
+        """
+        if url.startswith("data:"):
+            match = re.match(r"data:([^;]+);base64,(.+)", url)
+            if match:
+                media_type = match.group(1)
+                base64_data = match.group(2)
+                source = {
+                    "type": "image",
+                    "source": {"type": "base64", "media_type": media_type, "data": base64_data},
+                }
+            else:
+                raise ValueError(f"Invalid base64 image: {url}")
+        elif os.getenv("USE_ANTHROPIC_ON_BEDROCK"):
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                image_bytes = response.content
+                mime_type = mimetypes.guess_type(url)[0] or "image/jpeg"
+                source = {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": mime_type,
+                        "data": base64.b64encode(image_bytes).decode("utf-8"),
+                    },
+                }
+        else:
+            source = {"type": "image", "source": {"type": "url", "url": url}}
+
+        return source
 
     def _convert_thinking_level_to_budget(self, thinking_level: ThinkingLevel) -> dict[str, Any]:
         """Convert ThinkingLevel enum to Claude's budget_tokens."""
@@ -125,7 +169,7 @@ class Claude4_5Client(LLMClient):
 
         return claude_config
 
-    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[BetaMessageParam]:
+    async def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[BetaMessageParam]:
         """
         Transform universal message format to Claude's BetaMessageParam format.
 
@@ -143,22 +187,7 @@ class Claude4_5Client(LLMClient):
                 if item["type"] == "text":
                     content_blocks.append({"type": "text", "text": item["text"]})
                 elif item["type"] == "image_url":
-                    image_url = item["image_url"]
-                    if image_url.startswith("data:"):
-                        match = re.match(r"data:([^;]+);base64,(.+)", image_url)
-                        if match:
-                            media_type = match.group(1)
-                            base64_data = match.group(2)
-                            content_blocks.append(
-                                {
-                                    "type": "image",
-                                    "source": {"type": "base64", "media_type": media_type, "data": base64_data},
-                                }
-                            )
-                        else:
-                            raise ValueError(f"Invalid base64 image: {image_url}")
-                    else:
-                        content_blocks.append({"type": "image", "source": {"type": "url", "url": image_url}})
+                    content_blocks.append(await self._convert_image_url_to_source(item["image_url"]))
                 elif item["type"] == "thinking":
                     if item["thinking"] == REDACTED_THINKING:
                         content_blocks.append({"type": "redacted_thinking", "data": item["signature"]})
@@ -182,25 +211,7 @@ class Claude4_5Client(LLMClient):
                     tool_result = [{"type": "text", "text": item["text"]}]
                     if "images" in item:
                         for image_url in item["images"]:
-                            if image_url.startswith("data:"):
-                                match = re.match(r"data:([^;]+);base64,(.+)", image_url)
-                                if match:
-                                    media_type = match.group(1)
-                                    base64_data = match.group(2)
-                                    tool_result.append(
-                                        {
-                                            "type": "image",
-                                            "source": {
-                                                "type": "base64",
-                                                "media_type": media_type,
-                                                "data": base64_data,
-                                            },
-                                        }
-                                    )
-                                else:
-                                    raise ValueError(f"Invalid base64 image: {image_url}")
-                            else:
-                                tool_result.append({"type": "image", "source": {"type": "url", "url": image_url}})
+                            tool_result.append(await self._convert_image_url_to_source(image_url))
 
                     content_blocks.append(
                         {"type": "tool_result", "content": tool_result, "tool_use_id": item["tool_call_id"]}
@@ -317,7 +328,7 @@ class Claude4_5Client(LLMClient):
         claude_config = self.transform_uni_config_to_model_config(config)
 
         # Use unified message conversion
-        claude_messages = self.transform_uni_message_to_model_input(messages)
+        claude_messages = await self.transform_uni_message_to_model_input(messages)
 
         # Add cache_control to last user message's last item if enabled
         prompt_caching = config.get("prompt_caching", PromptCaching.ENABLE)
@@ -338,7 +349,6 @@ class Claude4_5Client(LLMClient):
         last_event: UniEvent | None = None
         stream = await self._client.beta.messages.create(**claude_config, messages=claude_messages)
         async for event in stream:
-            print(event)
             event = self.transform_model_output_to_uni_event(event)
             if event["event_type"] == "start":
                 for item in event["content_items"]:
