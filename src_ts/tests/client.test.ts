@@ -62,6 +62,7 @@ const AVAILABLE_MODELS = [
   ...AVAILABLE_TEXT_MODELS,
   ...OPENROUTER_MODELS,
   ...SILICONFLOW_MODELS,
+  ...BEDROCK_MODELS,
 ];
 
 function createClient(model: string): AutoLLMClient {
@@ -74,6 +75,9 @@ function createClient(model: string): AutoLLMClient {
   } else if (SILICONFLOW_MODELS.includes(model)) {
     apiKey = process.env.SILICONFLOW_API_KEY;
     baseUrl = "https://api.siliconflow.cn/v1";
+  } else if (BEDROCK_MODELS.includes(model)) {
+    apiKey = process.env.ANTHROPIC_AWS_SECRET_ACCESS_KEY;
+    baseUrl = undefined;
   } else {
     apiKey = undefined;
     baseUrl = undefined;
@@ -129,6 +133,16 @@ function checkEventIntegrity(event: UniEvent): void {
 
 if (AVAILABLE_MODELS.length > 0) {
   describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
+    beforeEach(() => {
+      if (BEDROCK_MODELS.includes(model)) {
+        process.env.USE_ANTHROPIC_ON_BEDROCK = "1";
+      }
+    });
+
+    afterEach(() => {
+      delete process.env.USE_ANTHROPIC_ON_BEDROCK;
+    });
+
     test("should stream basic response", async () => {
       const client = createClient(model);
       const messages: UniMessage[] = [
@@ -616,41 +630,3 @@ test("should validate last event has usage_metadata and finish_reason", () => {
     LLMClient._validateLastEvent({ ...validEvent, finish_reason: null }),
   ).toThrow("finish_reason");
 });
-
-if (BEDROCK_MODELS.length > 0) {
-  describe.each(BEDROCK_MODELS)("Bedrock client tests for %s", (model) => {
-    beforeEach(() => {
-      process.env.USE_ANTHROPIC_ON_BEDROCK = "1";
-    });
-
-    afterEach(() => {
-      delete process.env.USE_ANTHROPIC_ON_BEDROCK;
-    });
-
-    test("should stream basic response via Bedrock", async () => {
-      const client = new AutoLLMClient({
-        model,
-        apiKey: process.env.ANTHROPIC_AWS_SECRET_ACCESS_KEY,
-      });
-      const messages: UniMessage[] = [
-        {
-          role: "user",
-          content_items: [{ type: "text", text: "What is 2+3?" }],
-        },
-      ];
-      const config: UniConfig = {};
-
-      let text = "";
-      for await (const event of client.streamingResponse({ messages, config })) {
-        checkEventIntegrity(event);
-        for (const item of event.content_items) {
-          if (item.type === "text") {
-            text += item.text;
-          }
-        }
-      }
-
-      expect(text).toContain("5");
-    }, 60000);
-  });
-}

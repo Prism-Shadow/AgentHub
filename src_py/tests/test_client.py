@@ -55,7 +55,14 @@ if os.getenv("SILICONFLOW_API_KEY"):
 if os.getenv("ANTHROPIC_AWS_ACCESS_KEY") and os.getenv("ANTHROPIC_AWS_SECRET_ACCESS_KEY"):
     BEDROCK_MODELS.append("global.anthropic.claude-sonnet-4-5-20250929-v1:0")
 
-AVAILABLE_MODELS = AVAILABLE_VISION_MODELS + AVAILABLE_TEXT_MODELS + OPENROUTER_MODELS + SILICONFLOW_MODELS
+AVAILABLE_MODELS = AVAILABLE_VISION_MODELS + AVAILABLE_TEXT_MODELS + OPENROUTER_MODELS + SILICONFLOW_MODELS + BEDROCK_MODELS
+
+
+@pytest.fixture(autouse=True)
+def bedrock_env(request, monkeypatch):
+    model = request.node.funcargs.get("model", "")
+    if model in BEDROCK_MODELS:
+        monkeypatch.setenv("USE_ANTHROPIC_ON_BEDROCK", "1")
 
 
 async def _create_client(model: str) -> AutoLLMClient:
@@ -66,6 +73,9 @@ async def _create_client(model: str) -> AutoLLMClient:
     elif model in SILICONFLOW_MODELS:
         api_key = os.getenv("SILICONFLOW_API_KEY")
         base_url = "https://api.siliconflow.cn/v1"
+    elif model in BEDROCK_MODELS:
+        api_key = os.getenv("ANTHROPIC_AWS_SECRET_ACCESS_KEY")
+        base_url = None
     else:
         api_key, base_url = None, None
 
@@ -461,28 +471,6 @@ async def test_tool_result_with_image(model):
                 text += item["text"]
 
     assert ("flower" in text.lower()) or ("narcissus" in text.lower())
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("model", BEDROCK_MODELS)
-async def test_bedrock_streaming_response(model):
-    """Test basic streaming response via AWS Bedrock."""
-    os.environ["USE_ANTHROPIC_ON_BEDROCK"] = "1"
-    try:
-        client = AutoLLMClient(model=model, api_key=os.getenv("ANTHROPIC_AWS_SECRET_ACCESS_KEY"))
-        messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is 2+3?"}]}]
-        config = {}
-
-        text = ""
-        async for event in client.streaming_response(messages=messages, config=config):
-            await _check_event_integrity(event)
-            for item in event["content_items"]:
-                if item["type"] == "text":
-                    text += item["text"]
-
-        assert "5" in text
-    finally:
-        os.environ.pop("USE_ANTHROPIC_ON_BEDROCK", None)
 
 
 if __name__ == "__main__":
