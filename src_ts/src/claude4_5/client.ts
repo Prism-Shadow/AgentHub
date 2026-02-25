@@ -13,10 +13,12 @@
 // limitations under the License.
 
 import Anthropic from "@anthropic-ai/sdk";
+import AnthropicBedrock from "@anthropic-ai/bedrock-sdk";
 import {
   BetaMessageParam,
   BetaRawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/beta/messages";
+import { Stream } from "@anthropic-ai/sdk/core/streaming";
 import { LLMClient } from "../baseClient";
 import {
   EventType,
@@ -38,7 +40,7 @@ const REDACTED_THINKING = "_REDACTED_THINKING";
  */
 export class Claude4_5Client extends LLMClient {
   protected _model: string;
-  private _client: Anthropic;
+  private _client: Anthropic | AnthropicBedrock;
 
   /**
    * Initialize Claude 4.5 client with model and API key.
@@ -55,9 +57,10 @@ export class Claude4_5Client extends LLMClient {
     const url = options.baseUrl || process.env.ANTHROPIC_BASE_URL || undefined;
 
     if (process.env.USE_ANTHROPIC_ON_BEDROCK) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const AnthropicBedrock = require("@anthropic-ai/bedrock-sdk").default;
-      this._client = new AnthropicBedrock({ awsSecretKey: key }) as unknown as Anthropic;
+      this._client = new AnthropicBedrock({
+        awsSecretKey: key || "",
+        awsAccessKey: process.env.ANTHROPIC_AWS_ACCESS_KEY || "",
+      });
     } else {
       this._client = new Anthropic({
         apiKey: key,
@@ -111,6 +114,7 @@ export class Claude4_5Client extends LLMClient {
     const claudeConfig: any = {
       model: this._model,
       betas: ["interleaved-thinking-2025-05-14"],
+      stream: true,
     };
 
     if (config.system_prompt !== undefined) {
@@ -414,10 +418,10 @@ export class Claude4_5Client extends LLMClient {
       cached_tokens?: number | null;
     } = {};
 
-    const stream = await this._client.beta.messages.stream({
+    const stream = (await this._client.beta.messages.create({
       ...claudeConfig,
       messages: claudeMessages,
-    });
+    })) as unknown as Stream<BetaRawMessageStreamEvent>;
 
     let lastEvent: UniEvent | null = null;
     for await (const event of stream) {
