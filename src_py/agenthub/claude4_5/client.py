@@ -45,8 +45,13 @@ class Claude4_5Client(LLMClient):
         """Initialize Claude 4.5 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
-        base_url = base_url or os.getenv("ANTHROPIC_BASE_URL")
-        self._client = AsyncAnthropic(api_key=api_key, base_url=base_url)
+        if os.getenv("USE_ANTHROPIC_ON_BEDROCK"):
+            from anthropic import AsyncAnthropicBedrock
+
+            self._client = AsyncAnthropicBedrock(aws_secret_key=api_key)
+        else:
+            base_url = base_url or os.getenv("ANTHROPIC_BASE_URL")
+            self._client = AsyncAnthropic(api_key=api_key, base_url=base_url)
         self._history: list[UniMessage] = []
 
     def _convert_thinking_level_to_budget(self, thinking_level: ThinkingLevel) -> dict[str, Any]:

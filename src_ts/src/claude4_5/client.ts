@@ -54,10 +54,16 @@ export class Claude4_5Client extends LLMClient {
     const key = options.apiKey || process.env.ANTHROPIC_API_KEY || undefined;
     const url = options.baseUrl || process.env.ANTHROPIC_BASE_URL || undefined;
 
-    this._client = new Anthropic({
-      apiKey: key,
-      baseURL: url,
-    });
+    if (process.env.USE_ANTHROPIC_ON_BEDROCK) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const AnthropicBedrock = require("@anthropic-ai/bedrock-sdk").default;
+      this._client = new AnthropicBedrock({ awsSecretKey: key }) as unknown as Anthropic;
+    } else {
+      this._client = new Anthropic({
+        apiKey: key,
+        baseURL: url,
+      });
+    }
   }
 
   /**
