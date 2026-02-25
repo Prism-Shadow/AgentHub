@@ -30,6 +30,7 @@ AVAILABLE_TEXT_MODELS = []
 AVAILABLE_VISION_MODELS = []
 OPENROUTER_MODELS = []
 SILICONFLOW_MODELS = []
+BEDROCK_MODELS = []
 
 if os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"):
     AVAILABLE_VISION_MODELS.append("gemini-3-flash-preview")
@@ -50,6 +51,9 @@ if os.getenv("OPENROUTER_API_KEY"):
 if os.getenv("SILICONFLOW_API_KEY"):
     SILICONFLOW_MODELS.append("Pro/zai-org/GLM-5")
     SILICONFLOW_MODELS.append("Qwen/Qwen3-8B")
+
+if os.getenv("ANTHROPIC_AWS_ACCESS_KEY") and os.getenv("ANTHROPIC_AWS_SECRET_ACCESS_KEY"):
+    BEDROCK_MODELS.append("global.anthropic.claude-sonnet-4-5-20250929-v1:0")
 
 AVAILABLE_MODELS = AVAILABLE_VISION_MODELS + AVAILABLE_TEXT_MODELS + OPENROUTER_MODELS + SILICONFLOW_MODELS
 
@@ -457,6 +461,28 @@ async def test_tool_result_with_image(model):
                 text += item["text"]
 
     assert ("flower" in text.lower()) or ("narcissus" in text.lower())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", BEDROCK_MODELS)
+async def test_bedrock_streaming_response(model):
+    """Test basic streaming response via AWS Bedrock."""
+    os.environ["USE_ANTHROPIC_ON_BEDROCK"] = "1"
+    try:
+        client = AutoLLMClient(model=model, api_key=os.getenv("ANTHROPIC_AWS_SECRET_ACCESS_KEY"))
+        messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is 2+3?"}]}]
+        config = {}
+
+        text = ""
+        async for event in client.streaming_response(messages=messages, config=config):
+            await _check_event_integrity(event)
+            for item in event["content_items"]:
+                if item["type"] == "text":
+                    text += item["text"]
+
+        assert "5" in text
+    finally:
+        os.environ.pop("USE_ANTHROPIC_ON_BEDROCK", None)
 
 
 if __name__ == "__main__":

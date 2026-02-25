@@ -79,6 +79,8 @@ When writing tests that require calling AI models, the following secrets are ava
 - `GLM_API_KEY` - API key for Z.AI GLM SDK
 - `OPENROUTER_API_KEY` - API key for OpenRouter SDK
 - `SILICONFLOW_API_KEY` - API key for SiliconFlow SDK
+- `ANTHROPIC_AWS_ACCESS_KEY` - AWS access key ID for Anthropic Claude on Amazon Bedrock
+- `ANTHROPIC_AWS_SECRET_ACCESS_KEY` - AWS secret access key for Anthropic Claude on Amazon Bedrock
 
 To use these secrets in your workflow files, reference them in the `env:` section:
 
@@ -90,6 +92,8 @@ env:
   GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
   OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
   SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+  ANTHROPIC_AWS_ACCESS_KEY: ${{ secrets.ANTHROPIC_AWS_ACCESS_KEY }}
+  ANTHROPIC_AWS_SECRET_ACCESS_KEY: ${{ secrets.ANTHROPIC_AWS_SECRET_ACCESS_KEY }}
 ```
 
 These secrets can be used in your test code to authenticate with the respective AI model providers. Make sure to handle these credentials securely and never log or expose them in test output.

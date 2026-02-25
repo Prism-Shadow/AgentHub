@@ -22,6 +22,7 @@ const AVAILABLE_TEXT_MODELS: string[] = [];
 const AVAILABLE_VISION_MODELS: string[] = [];
 const OPENROUTER_MODELS: string[] = [];
 const SILICONFLOW_MODELS: string[] = [];
+const BEDROCK_MODELS: string[] = [];
 
 if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
   AVAILABLE_VISION_MODELS.push("gemini-3-flash-preview");
@@ -47,6 +48,13 @@ if (process.env.OPENROUTER_API_KEY) {
 if (process.env.SILICONFLOW_API_KEY) {
   SILICONFLOW_MODELS.push("Pro/zai-org/GLM-5");
   SILICONFLOW_MODELS.push("Qwen/Qwen3-8B");
+}
+
+if (
+  process.env.ANTHROPIC_AWS_ACCESS_KEY &&
+  process.env.ANTHROPIC_AWS_SECRET_ACCESS_KEY
+) {
+  BEDROCK_MODELS.push("global.anthropic.claude-sonnet-4-5-20250929-v1:0");
 }
 
 const AVAILABLE_MODELS = [
@@ -608,3 +616,41 @@ test("should validate last event has usage_metadata and finish_reason", () => {
     LLMClient._validateLastEvent({ ...validEvent, finish_reason: null }),
   ).toThrow("finish_reason");
 });
+
+if (BEDROCK_MODELS.length > 0) {
+  describe.each(BEDROCK_MODELS)("Bedrock client tests for %s", (model) => {
+    beforeEach(() => {
+      process.env.USE_ANTHROPIC_ON_BEDROCK = "1";
+    });
+
+    afterEach(() => {
+      delete process.env.USE_ANTHROPIC_ON_BEDROCK;
+    });
+
+    test("should stream basic response via Bedrock", async () => {
+      const client = new AutoLLMClient({
+        model,
+        apiKey: process.env.ANTHROPIC_AWS_SECRET_ACCESS_KEY,
+      });
+      const messages: UniMessage[] = [
+        {
+          role: "user",
+          content_items: [{ type: "text", text: "What is 2+3?" }],
+        },
+      ];
+      const config: UniConfig = {};
+
+      let text = "";
+      for await (const event of client.streamingResponse({ messages, config })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
+          }
+        }
+      }
+
+      expect(text).toContain("5");
+    }, 60000);
+  });
+}
