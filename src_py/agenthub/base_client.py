@@ -167,18 +167,19 @@ class LLMClient(ABC):
         Yields:
             Universal events from the streaming response
         """
-        # Add user message to history
-        self._history.append(message)
+        # Build a temporary messages list for inference without mutating history yet
+        temp_messages = self._history + [message]
 
         # Collect all events for history
         events = []
-        async for event in self.streaming_response(messages=self._history, config=config):
+        async for event in self.streaming_response(messages=temp_messages, config=config):
             events.append(event)
             yield event
 
-        # Convert events to message and add to history
+        # Only update history after successful inference
         if events:
             assistant_message = self.concat_uni_events_to_uni_message(events)
+            self._history.append(message)
             self._history.append(assistant_message)
 
         # Save history to file if trace_id is specified
