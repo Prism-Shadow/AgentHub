@@ -168,11 +168,11 @@ class LLMClient(ABC):
             Universal events from the streaming response
         """
         # Build a temporary messages list for inference without mutating history yet
-        messages_for_inference = self._history + [message]
+        temp_messages = self._history + [message]
 
         # Collect all events for history
         events = []
-        async for event in self.streaming_response(messages=messages_for_inference, config=config):
+        async for event in self.streaming_response(messages=temp_messages, config=config):
             events.append(event)
             yield event
 

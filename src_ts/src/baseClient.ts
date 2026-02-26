@@ -158,11 +158,11 @@ export abstract class LLMClient {
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
     const { message, config } = options;
-    const messagesForInference = [...this._history, message];
+    const tempMessages = [...this._history, message];
 
     const events: UniEvent[] = [];
     for await (const event of this.streamingResponse({
-      messages: messagesForInference,
+      messages: tempMessages,
       config,
     })) {
       events.push(event);
