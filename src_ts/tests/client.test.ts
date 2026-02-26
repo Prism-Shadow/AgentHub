@@ -22,6 +22,7 @@ const AVAILABLE_TEXT_MODELS: string[] = [];
 const AVAILABLE_VISION_MODELS: string[] = [];
 const OPENROUTER_MODELS: string[] = [];
 const SILICONFLOW_MODELS: string[] = [];
+const BEDROCK_MODELS: string[] = [];
 
 if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
   AVAILABLE_VISION_MODELS.push("gemini-3-flash-preview");
@@ -49,6 +50,16 @@ if (process.env.SILICONFLOW_API_KEY) {
   SILICONFLOW_MODELS.push("Qwen/Qwen3-8B");
 }
 
+if (
+  process.env.ANTHROPIC_AWS_ACCESS_KEY &&
+  process.env.ANTHROPIC_AWS_SECRET_ACCESS_KEY
+) {
+  AVAILABLE_VISION_MODELS.push(
+    "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  );
+  BEDROCK_MODELS.push("global.anthropic.claude-sonnet-4-5-20250929-v1:0");
+}
+
 const AVAILABLE_MODELS = [
   ...AVAILABLE_VISION_MODELS,
   ...AVAILABLE_TEXT_MODELS,
@@ -66,6 +77,9 @@ function createClient(model: string): AutoLLMClient {
   } else if (SILICONFLOW_MODELS.includes(model)) {
     apiKey = process.env.SILICONFLOW_API_KEY;
     baseUrl = "https://api.siliconflow.cn/v1";
+  } else if (BEDROCK_MODELS.includes(model)) {
+    apiKey = process.env.ANTHROPIC_AWS_SECRET_ACCESS_KEY;
+    baseUrl = undefined;
   } else {
     apiKey = undefined;
     baseUrl = undefined;
@@ -82,7 +96,9 @@ function checkEventIntegrity(event: UniEvent): void {
 
   expect(["user", "assistant"]).toContain(event.role);
   expect(["start", "delta", "stop"]).toContain(event.event_type);
-  expect(["stop", "length", "tool_call", "unknown", null]).toContain(event.finish_reason);
+  expect(["stop", "length", "tool_call", "unknown", null]).toContain(
+    event.finish_reason,
+  );
 
   for (const item of event.content_items) {
     if (item.type === "text") {
@@ -119,6 +135,16 @@ function checkEventIntegrity(event: UniEvent): void {
 
 if (AVAILABLE_MODELS.length > 0) {
   describe.each(AVAILABLE_MODELS)("Client tests for %s", (model) => {
+    beforeEach(() => {
+      if (BEDROCK_MODELS.includes(model)) {
+        process.env.USE_ANTHROPIC_ON_BEDROCK = "1";
+      }
+    });
+
+    afterEach(() => {
+      delete process.env.USE_ANTHROPIC_ON_BEDROCK;
+    });
+
     test("should stream basic response", async () => {
       const client = createClient(model);
       const messages: UniMessage[] = [
@@ -408,6 +434,16 @@ if (AVAILABLE_MODELS.length > 0) {
 
 if (AVAILABLE_VISION_MODELS.length > 0) {
   describe.each(AVAILABLE_VISION_MODELS)("Vision test for %s", (model) => {
+    beforeEach(() => {
+      if (BEDROCK_MODELS.includes(model)) {
+        process.env.USE_ANTHROPIC_ON_BEDROCK = "1";
+      }
+    });
+
+    afterEach(() => {
+      delete process.env.USE_ANTHROPIC_ON_BEDROCK;
+    });
+
     test("should handle image understanding", async () => {
       const client = createClient(model);
       const config: UniConfig = {};
