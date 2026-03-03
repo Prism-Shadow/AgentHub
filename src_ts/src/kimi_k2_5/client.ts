@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as path from "path";
 import OpenAI from "openai";
 import type {
   ChatCompletionChunk,
@@ -51,12 +52,51 @@ export class KimiK2_5Client extends LLMClient {
   }) {
     super();
     this._model = options.model;
-    const key = options.apiKey || process.env.KIMI_API_KEY || undefined;
+    const key = options.apiKey || process.env.MOONSHOT_API_KEY || undefined;
     const url =
       options.baseUrl ||
-      process.env.KIMI_BASE_URL ||
+      process.env.MOONSHOT_BASE_URL ||
       "https://api.moonshot.cn/v1";
     this._client = new OpenAI({ apiKey: key, baseURL: url });
+  }
+
+  /**
+   * Detect MIME type from URL extension for image.
+   */
+  private _detectImageMimeType(url: string): string {
+    const ext = path.extname(url).toLowerCase();
+    const mimeTypes: { [key: string]: string } = {
+      ".bmp": "image/bmp",
+      ".gif": "image/gif",
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".svg": "image/svg+xml",
+      ".tiff": "image/tiff",
+      ".webp": "image/webp",
+    };
+    return mimeTypes[ext] || "image/jpeg";
+  }
+
+  /**
+   * Convert image URL to base64-encoded data URL.
+   */
+  private async _convertImageUrlToBase64(url: string): Promise<string> {
+    if (url.startsWith("data:")) {
+      return url;
+    }
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch image: ${response.status} ${response.statusText}`,
+      );
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const mimeType = this._detectImageMimeType(url);
+    const base64String = buffer.toString("base64");
+    return `data:${mimeType};base64,${base64String}`;
   }
 
   /**
@@ -80,8 +120,10 @@ export class KimiK2_5Client extends LLMClient {
   private _convertToolChoice(toolChoice: ToolChoice): string {
     if (toolChoice === "auto") {
       return "auto";
+    } else if (toolChoice === "none") {
+      return "none";
     } else {
-      throw new Error('Kimi only supports "auto" for tool_choice.');
+      throw new Error('Kimi only supports "auto" and "none" for tool_choice.');
     }
   }
 
@@ -94,15 +136,15 @@ export class KimiK2_5Client extends LLMClient {
     const kimiConfig: any = {
       model: this._model,
       stream: true,
-      extra_body: { tool_stream: true },
+      stream_options: { include_usage: true },
     };
 
     if (config.max_tokens !== undefined) {
       kimiConfig.max_tokens = config.max_tokens;
     }
 
-    if (config.temperature !== undefined) {
-      kimiConfig.temperature = config.temperature;
+    if (config.temperature !== undefined && config.temperature !== 1.0) {
+      throw new Error("Kimi K2.5 does not support setting temperature.");
     }
 
     if (config.thinking_level !== undefined) {
@@ -133,15 +175,20 @@ export class KimiK2_5Client extends LLMClient {
       throw new Error("prompt_caching must be ENABLE for Kimi K2.5.");
     }
 
+    if (config.trace_id !== undefined) {
+      // use trace_id as the prompt cache key
+      kimiConfig.prompt_cache_key = config.trace_id;
+    }
+
     return kimiConfig;
   }
 
   /**
    * Transform universal message format to OpenAI's message format.
    */
-  transformUniMessageToModelInput(
+  async transformUniMessageToModelInput(
     messages: UniMessage[],
-  ): ChatCompletionMessageParam[] {
+  ): Promise<ChatCompletionMessageParam[]> {
     const openaiMessages: ChatCompletionMessageParam[] = [];
 
     for (const msg of messages) {
@@ -158,9 +205,12 @@ export class KimiK2_5Client extends LLMClient {
         if (item.type === "text") {
           contentParts.push({ type: "text", text: item.text });
         } else if (item.type === "image_url") {
+          const base64Image = await this._convertImageUrlToBase64(
+            item.image_url,
+          );
           contentParts.push({
             type: "image_url",
-            image_url: { url: item.image_url },
+            image_url: { url: base64Image },
           });
         } else if (item.type === "thinking") {
           thinking += item.thinking;
@@ -178,14 +228,23 @@ export class KimiK2_5Client extends LLMClient {
             throw new Error("tool_call_id is required for tool result.");
           }
 
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const content: any[] = [{ type: "text", text: item.text }];
+
           if (item.images && item.images.length > 0) {
-            throw new Error("Kimi does not support images in tool results.");
+            for (const imageUrl of item.images) {
+              const base64Image = await this._convertImageUrlToBase64(imageUrl);
+              content.push({
+                type: "image_url",
+                image_url: { url: base64Image },
+              });
+            }
           }
 
           openaiMessages.push({
             role: "tool",
             tool_call_id: item.tool_call_id,
-            content: item.text,
+            content,
           });
         } else {
           throw new Error(
@@ -226,56 +285,58 @@ export class KimiK2_5Client extends LLMClient {
     let usageMetadata: UsageMetadata | null = null;
     let finishReason: FinishReason | null = null;
 
-    const choice = modelOutput.choices[0];
-    const delta = choice?.delta;
+    if (modelOutput.choices.length > 0) {
+      const choice = modelOutput.choices[0];
+      const delta = choice?.delta;
 
-    if (delta?.content) {
-      eventType = "delta";
-      contentItems.push({ type: "text", text: delta.content });
-    }
+      if (delta?.content) {
+        eventType = "delta";
+        contentItems.push({ type: "text", text: delta.content });
+      }
 
-    // vLLM & siliconflow compatibility
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((delta as any)?.reasoning_content) {
-      eventType = "delta";
-      contentItems.push({
-        type: "thinking",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        thinking: (delta as any).reasoning_content,
-      });
-    }
-    // openrouter compatibility
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    else if ((delta as any)?.reasoning) {
-      eventType = "delta";
-      contentItems.push({
-        type: "thinking",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        thinking: (delta as any).reasoning,
-      });
-    }
-
-    if (delta?.tool_calls) {
-      eventType = "delta";
-      for (const toolCall of delta.tool_calls) {
+      // vLLM & siliconflow compatibility
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((delta as any)?.reasoning_content) {
+        eventType = "delta";
         contentItems.push({
-          type: "partial_tool_call",
-          name: toolCall.function?.name || "",
-          arguments: toolCall.function?.arguments || "",
-          tool_call_id: toolCall.id || "",
+          type: "thinking",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          thinking: (delta as any).reasoning_content,
         });
       }
-    }
+      // openrouter compatibility
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      else if ((delta as any)?.reasoning) {
+        eventType = "delta";
+        contentItems.push({
+          type: "thinking",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          thinking: (delta as any).reasoning,
+        });
+      }
 
-    if (choice?.finish_reason) {
-      eventType = eventType || "stop";
-      const finishReasonMapping: { [key: string]: FinishReason } = {
-        stop: "stop",
-        length: "length",
-        tool_calls: "tool_call",
-        content_filter: "stop",
-      };
-      finishReason = finishReasonMapping[choice.finish_reason] || "unknown";
+      if (delta?.tool_calls) {
+        eventType = "delta";
+        for (const toolCall of delta.tool_calls) {
+          contentItems.push({
+            type: "partial_tool_call",
+            name: toolCall.function?.name || "",
+            arguments: toolCall.function?.arguments || "",
+            tool_call_id: toolCall.id || "",
+          });
+        }
+      }
+
+      if (choice?.finish_reason) {
+        eventType = eventType || "stop";
+        const finishReasonMapping: { [key: string]: FinishReason } = {
+          stop: "stop",
+          length: "length",
+          tool_calls: "tool_call",
+          content_filter: "stop",
+        };
+        finishReason = finishReasonMapping[choice.finish_reason] || "unknown";
+      }
     }
 
     if (modelOutput.usage) {
@@ -319,12 +380,14 @@ export class KimiK2_5Client extends LLMClient {
   /**
    * Stream generate using Kimi SDK with unified conversion methods.
    */
-  async *streamingResponse(options: {
+  async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
     const kimiConfig = this.transformUniConfigToModelConfig(options.config);
-    const kimiMessages = this.transformUniMessageToModelInput(options.messages);
+    const kimiMessages = await this.transformUniMessageToModelInput(
+      options.messages,
+    );
 
     if (options.config.system_prompt) {
       kimiMessages.unshift({
@@ -351,9 +414,9 @@ export class KimiK2_5Client extends LLMClient {
       usage_metadata?: UsageMetadata | null;
     } = {};
 
-    let lastEvent: UniEvent | null = null;
     for await (const chunk of stream) {
       const event = this.transformModelOutputToUniEvent(chunk);
+      // the finish reason and usage metadata should be accumulated
       partialUsage.finish_reason =
         event.finish_reason || partialUsage.finish_reason;
       partialUsage.usage_metadata =
@@ -368,7 +431,7 @@ export class KimiK2_5Client extends LLMClient {
               partialToolCall.tool_call_id = item.tool_call_id;
             } else if (item.name) {
               // finish the previous partial tool call
-              lastEvent = {
+              yield {
                 role: "assistant",
                 event_type: "delta",
                 content_items: [
@@ -382,7 +445,6 @@ export class KimiK2_5Client extends LLMClient {
                 usage_metadata: null,
                 finish_reason: null,
               };
-              yield lastEvent;
               // start a new partial tool call
               partialToolCall.name = item.name;
               partialToolCall.arguments = item.arguments;
@@ -394,12 +456,11 @@ export class KimiK2_5Client extends LLMClient {
             }
           }
         }
-        lastEvent = event;
         yield event;
       } else if (event.event_type === "stop") {
         if (partialToolCall.name) {
           // finish the partial tool call
-          lastEvent = {
+          yield {
             role: "assistant",
             event_type: "delta",
             content_items: [
@@ -413,26 +474,23 @@ export class KimiK2_5Client extends LLMClient {
             usage_metadata: null,
             finish_reason: null,
           };
-          yield lastEvent;
           partialToolCall.name = undefined;
           partialToolCall.arguments = undefined;
           partialToolCall.tool_call_id = undefined;
         }
 
         if (partialUsage.finish_reason && partialUsage.usage_metadata) {
-          lastEvent = {
+          yield {
             role: "assistant",
             event_type: "stop",
             content_items: [],
             usage_metadata: partialUsage.usage_metadata,
             finish_reason: partialUsage.finish_reason,
           };
-          yield lastEvent;
           partialUsage.finish_reason = null;
           partialUsage.usage_metadata = null;
         }
       }
     }
-    LLMClient._validateLastEvent(lastEvent);
   }
 }

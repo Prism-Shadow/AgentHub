@@ -54,12 +54,17 @@ export class Claude4_5Client extends LLMClient {
     super();
     this._model = options.model;
     const key = options.apiKey || process.env.ANTHROPIC_API_KEY || undefined;
-    const url = options.baseUrl || process.env.ANTHROPIC_BASE_URL || undefined;
+    const url =
+      options.baseUrl || process.env.ANTHROPIC_BASE_URL || undefined;
 
-    if (process.env.USE_ANTHROPIC_ON_BEDROCK) {
+    if (url && url.includes("bedrock")) {
+      // example: bedrock://us-east-1
+      const region = url.replace("bedrock://", "");
+      const [accessKey, secretKey] = (key || "").split(",");
       this._client = new AnthropicBedrock({
-        awsSecretKey: key || "",
-        awsAccessKey: process.env.ANTHROPIC_AWS_ACCESS_KEY || "",
+        awsSecretKey: secretKey,
+        awsAccessKey: accessKey,
+        awsRegion: region,
       });
     } else {
       this._client = new Anthropic({
@@ -386,7 +391,7 @@ export class Claude4_5Client extends LLMClient {
   /**
    * Stream generate using Claude SDK with unified conversion methods.
    */
-  async *streamingResponse(options: {
+  async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
@@ -431,7 +436,6 @@ export class Claude4_5Client extends LLMClient {
       messages: claudeMessages,
     })) as unknown as Stream<BetaRawMessageStreamEvent>;
 
-    let lastEvent: UniEvent | null = null;
     for await (const event of stream) {
       const uniEvent = this.transformModelOutputToUniEvent(event);
       if (uniEvent.event_type === "start") {
@@ -440,7 +444,6 @@ export class Claude4_5Client extends LLMClient {
             partialToolCall.name = item.name;
             partialToolCall.arguments = "";
             partialToolCall.tool_call_id = item.tool_call_id;
-            lastEvent = uniEvent;
             yield uniEvent;
           }
         }
@@ -457,11 +460,10 @@ export class Claude4_5Client extends LLMClient {
           }
         }
 
-        lastEvent = uniEvent;
         yield uniEvent;
       } else if (uniEvent.event_type === "stop") {
         if (partialToolCall.name && partialToolCall.arguments !== undefined) {
-          lastEvent = {
+          yield {
             role: "assistant",
             event_type: "delta",
             content_items: [
@@ -475,7 +477,6 @@ export class Claude4_5Client extends LLMClient {
             usage_metadata: null,
             finish_reason: null,
           };
-          yield lastEvent;
           partialToolCall.name = undefined;
           partialToolCall.arguments = undefined;
           partialToolCall.tool_call_id = undefined;
@@ -486,7 +487,7 @@ export class Claude4_5Client extends LLMClient {
           partialUsage.prompt_tokens !== null &&
           uniEvent.usage_metadata !== null
         ) {
-          lastEvent = {
+          yield {
             role: "assistant",
             event_type: "stop",
             content_items: [],
@@ -498,12 +499,10 @@ export class Claude4_5Client extends LLMClient {
             },
             finish_reason: uniEvent.finish_reason,
           };
-          yield lastEvent;
           partialUsage.prompt_tokens = undefined;
           partialUsage.cached_tokens = undefined;
         }
       }
     }
-    LLMClient._validateLastEvent(lastEvent);
   }
 }

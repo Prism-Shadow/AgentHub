@@ -96,6 +96,34 @@ export class Gemini3Client extends LLMClient {
   }
 
   /**
+   * Get image bytes and MIME type from URL.
+   */
+  private async _getImageBytesAndMimeType(
+    url: string,
+  ): Promise<{ data: Buffer; mimeType: string }> {
+    if (url.startsWith("data:")) {
+      const match = url.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        const mimeType = match[1];
+        const base64Data = match[2];
+        const data = Buffer.from(base64Data, "base64");
+        return { data, mimeType };
+      } else {
+        throw new Error(`Invalid base64 image: ${url}`);
+      }
+    } else {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${url}`);
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      const data = Buffer.from(arrayBuffer);
+      const mimeType = this._detectImageMimeType(url);
+      return { data, mimeType };
+    }
+  }
+
+  /**
    * Convert ThinkingLevel enum to Gemini's ThinkingLevel.
    */
   private _convertThinkingLevel(
@@ -210,29 +238,13 @@ export class Gemini3Client extends LLMClient {
           } as Part);
         } else if (item.type === "image_url") {
           const urlValue = item.image_url;
-          if (urlValue.startsWith("data:")) {
-            const match = urlValue.match(/^data:([^;]+);base64,(.+)$/);
-            if (match) {
-              const mimeType = match[1];
-              const base64Data = match[2];
-              parts.push({
-                inlineData: {
-                  mimeType: mimeType,
-                  data: base64Data,
-                },
-              } as Part);
-            } else {
-              throw new Error(`Invalid base64 image: ${urlValue}`);
-            }
-          } else {
-            const mimeType = this._detectImageMimeType(urlValue);
-            parts.push({
-              fileData: {
-                fileUri: urlValue,
-                mimeType: mimeType,
-              },
-            } as Part);
-          }
+          const imageData = await this._getImageBytesAndMimeType(urlValue);
+          parts.push({
+            inlineData: {
+              mimeType: imageData.mimeType,
+              data: imageData.data.toString("base64"),
+            },
+          } as Part);
         } else if (item.type === "thinking") {
           parts.push({
             text: item.thinking,
@@ -259,33 +271,11 @@ export class Gemini3Client extends LLMClient {
 
           if (item.images) {
             for (const imageUrl of item.images) {
-              let imageBytes: Uint8Array;
-              let mimeType: string;
-              if (imageUrl.startsWith("data:")) {
-                const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
-                if (match) {
-                  mimeType = match[1];
-                  const base64Data = match[2];
-                  imageBytes = Uint8Array.from(
-                    Buffer.from(base64Data, "base64"),
-                  );
-                } else {
-                  throw new Error(`Invalid base64 image: ${imageUrl}`);
-                }
-              } else {
-                const response = await fetch(imageUrl);
-                if (!response.ok) {
-                  throw new Error(`Failed to fetch image: ${imageUrl}`);
-                }
-                const arrayBuffer = await response.arrayBuffer();
-                imageBytes = new Uint8Array(arrayBuffer);
-                mimeType = this._detectImageMimeType(imageUrl);
-              }
-              const base64Data = Buffer.from(imageBytes).toString("base64");
+              const imageData = await this._getImageBytesAndMimeType(imageUrl);
               multimodalParts.push({
                 inlineData: {
-                  mimeType: mimeType,
-                  data: base64Data,
+                  mimeType: imageData.mimeType,
+                  data: imageData.data.toString("base64"),
                 } as FunctionResponseBlob,
               } as FunctionResponsePart);
             }
@@ -390,7 +380,7 @@ export class Gemini3Client extends LLMClient {
   /**
    * Stream generate using Gemini SDK with unified conversion methods.
    */
-  async *streamingResponse(options: {
+  async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
@@ -405,12 +395,12 @@ export class Gemini3Client extends LLMClient {
       config: geminiConfig,
     });
 
-    let lastEvent: UniEvent | null = null;
     for await (const chunk of responseStream) {
       const event = this.transformModelOutputToUniEvent(chunk);
       for (const item of event.content_items) {
         if (item.type === "tool_call") {
-          lastEvent = {
+          // gemini 3 does not support partial tool call, mock a partial tool call event
+          yield {
             role: "assistant",
             event_type: "delta",
             content_items: [
@@ -425,13 +415,10 @@ export class Gemini3Client extends LLMClient {
             usage_metadata: null,
             finish_reason: null,
           };
-          yield lastEvent;
         }
       }
 
-      lastEvent = event;
       yield event;
     }
-    LLMClient._validateLastEvent(lastEvent);
   }
 }

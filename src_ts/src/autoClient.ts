@@ -68,7 +68,7 @@ export class AutoLLMClient extends LLMClient {
   ): LLMClient {
     clientType = clientType || process.env.CLIENT_TYPE || model.toLowerCase();
 
-    if (clientType.includes("gemini-3")) {
+    if (clientType.includes("gemini-3-") || clientType.includes("gemini-3.1-")) {
       return new Gemini3Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("claude") && clientType.includes("4-5")) {
       return new Claude4_5Client({ model, apiKey, baseUrl });
@@ -83,14 +83,14 @@ export class AutoLLMClient extends LLMClient {
       clientType.includes("glm-5")
     ) {
       return new GLM5Client({ model, apiKey, baseUrl });
-    } else if (clientType.includes("kimi-k2")) {
+    } else if (clientType.includes("kimi-k2.5")) {
       return new KimiK2_5Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("qwen3")) {
       return new Qwen3Client({ model, apiKey, baseUrl });
     } else {
       throw new Error(
         `${clientType} is not supported. ` +
-          "Supported client types: gemini-3, claude-4-5, gpt-5.2, glm-4.6, glm-4.7, glm-5, kimi-k2, qwen3.",
+          "Supported client types: gemini-3, claude-4-5, gpt-5.2, glm-4.6, glm-4.7, glm-5, kimi-k2.5, qwen3.",
       );
     }
   }
@@ -117,6 +117,14 @@ export class AutoLLMClient extends LLMClient {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   transformModelOutputToUniEvent(modelOutput: any): UniEvent {
     return this._client.transformModelOutputToUniEvent(modelOutput);
+  }
+
+  /**
+   * Not implemented - use streamingResponse instead.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async *_streamingResponseInternal(_options: any): AsyncGenerator<UniEvent> {
+    throw new Error("Please use streamingResponse instead.");
   }
 
   /**

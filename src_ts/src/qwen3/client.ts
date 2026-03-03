@@ -127,7 +127,7 @@ export class Qwen3Client extends LLMClient {
         if (item.type === "text") {
           contentParts.push({ type: "text", text: item.text });
         } else if (item.type === "image_url") {
-          throw new Error("Qwen3 does not support image_url.");
+          throw new Error("Qwen3 does not support image inputs.");
         } else if (item.type === "thinking") {
           thinking += item.thinking;
         } else if (item.type === "tool_call") {
@@ -192,62 +192,64 @@ export class Qwen3Client extends LLMClient {
     let usageMetadata: UsageMetadata | null = null;
     let finishReason: FinishReason | null = null;
 
-    const choice = modelOutput.choices[0];
-    const delta = choice?.delta;
+    if (modelOutput.choices.length > 0) {
+      const choice = modelOutput.choices[0];
+      const delta = choice?.delta;
 
-    if (delta?.content) {
-      if (delta.content === "<tool_call>") {
-        eventType = "start";
-      } else if (delta.content === "</tool_call>") {
-        eventType = "stop";
-      } else {
-        eventType = "delta";
-        contentItems.push({ type: "text", text: delta.content });
+      if (delta?.content) {
+        if (delta.content === "<tool_call>") {
+          eventType = "start";
+        } else if (delta.content === "</tool_call>") {
+          eventType = "stop";
+        } else {
+          eventType = "delta";
+          contentItems.push({ type: "text", text: delta.content });
+        }
       }
-    }
 
-    // vLLM & siliconflow compatibility
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((delta as any)?.reasoning_content) {
-      eventType = "delta";
-      contentItems.push({
-        type: "thinking",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        thinking: (delta as any).reasoning_content,
-      });
-    }
-    // openrouter compatibility
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    else if ((delta as any)?.reasoning) {
-      eventType = "delta";
-      contentItems.push({
-        type: "thinking",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        thinking: (delta as any).reasoning,
-      });
-    }
-
-    if (delta?.tool_calls) {
-      for (const toolCall of delta.tool_calls) {
+      // vLLM & siliconflow compatibility
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((delta as any)?.reasoning_content) {
         eventType = "delta";
         contentItems.push({
-          type: "partial_tool_call",
-          name: toolCall.function?.name || "",
-          arguments: toolCall.function?.arguments || "",
-          tool_call_id: toolCall.function?.name || "",
+          type: "thinking",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          thinking: (delta as any).reasoning_content,
         });
       }
-    }
+      // openrouter compatibility
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      else if ((delta as any)?.reasoning) {
+        eventType = "delta";
+        contentItems.push({
+          type: "thinking",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          thinking: (delta as any).reasoning,
+        });
+      }
 
-    if (choice?.finish_reason) {
-      eventType = eventType || "stop";
-      const finishReasonMapping: { [key: string]: FinishReason } = {
-        stop: "stop",
-        length: "length",
-        tool_calls: "tool_call",
-        content_filter: "stop",
-      };
-      finishReason = finishReasonMapping[choice.finish_reason] || "unknown";
+      if (delta?.tool_calls) {
+        for (const toolCall of delta.tool_calls) {
+          eventType = "delta";
+          contentItems.push({
+            type: "partial_tool_call",
+            name: toolCall.function?.name || "",
+            arguments: toolCall.function?.arguments || "",
+            tool_call_id: toolCall.function?.name || "",
+          });
+        }
+      }
+
+      if (choice?.finish_reason) {
+        eventType = eventType || "stop";
+        const finishReasonMapping: { [key: string]: FinishReason } = {
+          stop: "stop",
+          length: "length",
+          tool_calls: "tool_call",
+          content_filter: "stop",
+        };
+        finishReason = finishReasonMapping[choice.finish_reason] || "unknown";
+      }
     }
 
     if (modelOutput.usage) {
@@ -291,7 +293,7 @@ export class Qwen3Client extends LLMClient {
   /**
    * Stream generate using Qwen3 SDK with unified conversion methods.
    */
-  async *streamingResponse(options: {
+  async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
@@ -326,9 +328,9 @@ export class Qwen3Client extends LLMClient {
       usage_metadata?: UsageMetadata | null;
     } = {};
 
-    let lastEvent: UniEvent | null = null;
     for await (const chunk of stream) {
       const event = this.transformModelOutputToUniEvent(chunk);
+      // the finish reason and usage metadata should be accumulated
       partialUsage.finish_reason =
         event.finish_reason || partialUsage.finish_reason;
       partialUsage.usage_metadata =
@@ -354,7 +356,7 @@ export class Qwen3Client extends LLMClient {
               partialToolCall.arguments = item.arguments;
             } else if (item.name) {
               // finish previous partial tool call for tool call object
-              lastEvent = {
+              yield {
                 role: "assistant",
                 event_type: "delta",
                 content_items: [
@@ -368,7 +370,6 @@ export class Qwen3Client extends LLMClient {
                 usage_metadata: null,
                 finish_reason: null,
               };
-              yield lastEvent;
               // start new partial tool call for tool call object
               partialToolCall.name = item.name;
               partialToolCall.arguments = item.arguments;
@@ -380,13 +381,12 @@ export class Qwen3Client extends LLMClient {
           }
         }
 
-        lastEvent = event;
         yield event;
       } else if (event.event_type === "stop") {
         if (partialToolCall.data !== undefined) {
           // finish partial tool call for <tool_call>
           const toolCall = JSON.parse(partialToolCall.data.trim());
-          lastEvent = {
+          yield {
             role: "assistant",
             event_type: "delta",
             content_items: [
@@ -400,8 +400,7 @@ export class Qwen3Client extends LLMClient {
             usage_metadata: null,
             finish_reason: null,
           };
-          yield lastEvent;
-          lastEvent = {
+          yield {
             role: "assistant",
             event_type: "delta",
             content_items: [
@@ -415,13 +414,12 @@ export class Qwen3Client extends LLMClient {
             usage_metadata: null,
             finish_reason: null,
           };
-          yield lastEvent;
           partialToolCall.data = undefined;
         }
 
         if (partialToolCall.name) {
           // finish partial tool call for tool call object
-          lastEvent = {
+          yield {
             role: "assistant",
             event_type: "delta",
             content_items: [
@@ -435,26 +433,23 @@ export class Qwen3Client extends LLMClient {
             usage_metadata: null,
             finish_reason: null,
           };
-          yield lastEvent;
           partialToolCall.name = undefined;
           partialToolCall.arguments = undefined;
           partialToolCall.tool_call_id = undefined;
         }
 
         if (partialUsage.finish_reason && partialUsage.usage_metadata) {
-          lastEvent = {
+          yield {
             role: "assistant",
             event_type: "stop",
             content_items: [],
             usage_metadata: partialUsage.usage_metadata,
             finish_reason: partialUsage.finish_reason,
           };
-          yield lastEvent;
           partialUsage.finish_reason = null;
           partialUsage.usage_metadata = null;
         }
       }
     }
-    LLMClient._validateLastEvent(lastEvent);
   }
 }
