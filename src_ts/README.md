@@ -57,8 +57,8 @@ const config = {};
 tracer.saveHistory(model, history, "session/conv_001", config);
 
 // Start web server to view saved conversations
-tracer.startWebServer("127.0.0.1", 5000);
-// Open http://127.0.0.1:5000 in your browser
+tracer.startWebServer("127.0.0.1", 25750);
+// Open http://127.0.0.1:25750 in your browser
 ```
 
 ### Playground Usage
@@ -69,8 +69,8 @@ Interactive web interface for chatting with LLMs:
 import { startPlaygroundServer } from "@prismshadow/agenthub/integration/playground";
 
 // Start the playground server
-startPlaygroundServer("127.0.0.1", 5001);
-// Open http://127.0.0.1:5001 in your browser
+startPlaygroundServer("127.0.0.1", 25751);
+// Open http://127.0.0.1:25751 in your browser
 ```
 
 ## Examples

@@ -40,9 +40,10 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 
 | Model Name     | Vendor                          | Reasoning          | Tool Use           | Image Understanding           |
 | -------------- | ------------------------------- | ------------------ | ------------------ | ----------------------------- |
-| Gemini 3       | Official                        | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
+| Gemini 3/3.1   | Official                        | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
 | Claude 4.5     | Official                        | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
 | GPT-5.2        | Official                        | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
+| Kimi-K2.5      | Official/OpenRouter/SiliconFlow | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
 | GLM-5          | Official/OpenRouter/SiliconFlow | :white_check_mark: | :white_check_mark: | :negative_squared_cross_mark: |
 | Qwen3          | OpenRouter/SiliconFlow/vLLM     | :white_check_mark: | :white_check_mark: | :negative_squared_cross_mark: |
 
@@ -431,10 +432,10 @@ async for event in client.streaming_response_stateful(
 from agenthub.integration.tracer import Tracer
 
 tracer = Tracer()
-tracer.start_web_server(host="127.0.0.1", port=5000, debug=False)
+tracer.start_web_server(host="127.0.0.1", port=25750, debug=False)
 ```
 
-Then you can view the tracing output in the dashboard at `http://localhost:5000/`.
+Then you can view the tracing output in the dashboard at `http://localhost:25750/`.
 
 ## LLM Playground
 
@@ -445,10 +446,10 @@ We provide a LLM playground to help you test your LLMs.
 ```python
 from agenthub.integration.playground import start_playground_server
 
-start_playground_server(host="127.0.0.1", port=5001, debug=False)
+start_playground_server(host="127.0.0.1", port=25751, debug=False)
 ```
 
-You can access the playground at `http://localhost:5001/`.
+You can access the playground at `http://localhost:25751/`.
 
 ## Related Work
 

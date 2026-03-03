@@ -612,7 +612,7 @@ def create_chat_app() -> Flask:
     return app
 
 
-def start_playground_server(host: str = "127.0.0.1", port: int = 5001, debug: bool = False) -> None:
+def start_playground_server(host: str = "127.0.0.1", port: int = 25751, debug: bool = False) -> None:
     """
     Start the playground web server.
 
@@ -631,7 +631,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Start the LLM Playground web server")
     parser.add_argument("--host", type=str, default="127.0.0.1", help="Host address to bind to")
-    parser.add_argument("--port", type=int, default=5001, help="Port number to listen on")
+    parser.add_argument("--port", type=int, default=25751, help="Port number to listen on")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
 
     args = parser.parse_args()

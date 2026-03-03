@@ -124,7 +124,7 @@ async def run_traced_chat():
 def start_web_server():
     """Start the web server in a background thread."""
     tracer = Tracer()
-    tracer.start_web_server(host="127.0.0.1", port=5000, debug=False)
+    tracer.start_web_server(host="127.0.0.1", port=25750, debug=False)
 
 
 async def main():
@@ -136,7 +136,7 @@ async def main():
     print("\n" + "=" * 60)
     print("Starting Web Server")
     print("=" * 60)
-    print("\nYou can now browse the conversations at http://127.0.0.1:5000")
+    print("\nYou can now browse the conversations at http://127.0.0.1:25750")
     print("Press Ctrl+C to stop the server.\n")
 
     # Start web server in a background thread

@@ -101,7 +101,7 @@ class Qwen3Client(LLMClient):
                 if item["type"] == "text":
                     content_parts.append({"type": "text", "text": item["text"]})
                 elif item["type"] == "image_url":
-                    raise ValueError("Qwen3 does not support image_url.")
+                    raise ValueError("Qwen3 does not support image inputs.")
                 elif item["type"] == "thinking":
                     thinking += item["thinking"]
                 elif item["type"] == "tool_call":
@@ -165,50 +165,51 @@ class Qwen3Client(LLMClient):
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
 
-        choice = model_output.choices[0]
-        delta = choice.delta
+        if len(model_output.choices) > 0:
+            choice = model_output.choices[0]
+            delta = choice.delta
 
-        if delta.content:
-            # manually check for content since tool parser of vLLM is not stable
-            if delta.content == "<tool_call>":
-                event_type = "start"
-            elif delta.content == "</tool_call>":
-                event_type = "stop"
-            else:
+            if delta.content:
+                # manually check for content since tool parser of vLLM is not stable
+                if delta.content == "<tool_call>":
+                    event_type = "start"
+                elif delta.content == "</tool_call>":
+                    event_type = "stop"
+                else:
+                    event_type = "delta"
+                    content_items.append({"type": "text", "text": delta.content})
+
+            # vLLM & siliconflow compatibility
+            if getattr(delta, "reasoning_content", None):
                 event_type = "delta"
-                content_items.append({"type": "text", "text": delta.content})
+                content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning_content")})
 
-        # vLLM & siliconflow compatibility
-        if getattr(delta, "reasoning_content", None):
-            event_type = "delta"
-            content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning_content")})
-
-        # openrouter compatibility
-        elif getattr(delta, "reasoning", None):
-            event_type = "delta"
-            content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning")})
-
-        if delta.tool_calls:
-            for tool_call in delta.tool_calls:
+            # openrouter compatibility
+            elif getattr(delta, "reasoning", None):
                 event_type = "delta"
-                content_items.append(
-                    {
-                        "type": "partial_tool_call",
-                        "name": tool_call.function.name or "",
-                        "arguments": tool_call.function.arguments or "",
-                        "tool_call_id": tool_call.function.name or "",
-                    }
-                )
+                content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning")})
 
-        if choice.finish_reason:
-            event_type = event_type or "stop"
-            finish_reason_mapping = {
-                "stop": "stop",
-                "length": "length",
-                "tool_calls": "tool_call",
-                "content_filter": "stop",
-            }
-            finish_reason = finish_reason_mapping.get(choice.finish_reason, "unknown")
+            if delta.tool_calls:
+                for tool_call in delta.tool_calls:
+                    event_type = "delta"
+                    content_items.append(
+                        {
+                            "type": "partial_tool_call",
+                            "name": tool_call.function.name or "",
+                            "arguments": tool_call.function.arguments or "",
+                            "tool_call_id": tool_call.function.name or "",
+                        }
+                    )
+
+            if choice.finish_reason:
+                event_type = event_type or "stop"
+                finish_reason_mapping = {
+                    "stop": "stop",
+                    "length": "length",
+                    "tool_calls": "tool_call",
+                    "content_filter": "stop",
+                }
+                finish_reason = finish_reason_mapping.get(choice.finish_reason, "unknown")
 
         if model_output.usage:
             event_type = event_type or "stop"  # deal with separate usage data
@@ -249,7 +250,7 @@ class Qwen3Client(LLMClient):
             "finish_reason": finish_reason,
         }
 
-    async def streaming_response(
+    async def _streaming_response_internal(
         self,
         messages: list[UniMessage],
         config: UniConfig,
@@ -270,9 +271,9 @@ class Qwen3Client(LLMClient):
 
         partial_tool_call = {}
         partial_usage = {}
-        last_event: UniEvent | None = None
         async for chunk in stream:
             event = self.transform_model_output_to_uni_event(chunk)
+            # the finish reason and usage metadata should be accumulated
             partial_usage["finish_reason"] = event["finish_reason"] or partial_usage.get("finish_reason")
             partial_usage["usage_metadata"] = event["usage_metadata"] or partial_usage.get("usage_metadata")
             if event["event_type"] == "start":
@@ -291,7 +292,7 @@ class Qwen3Client(LLMClient):
                             partial_tool_call = {"name": item["name"], "arguments": item["arguments"]}
                         elif item["name"]:
                             # finish previous partial tool call for tool call object
-                            last_event = {
+                            yield {
                                 "role": "assistant",
                                 "event_type": "delta",
                                 "content_items": [
@@ -305,20 +306,18 @@ class Qwen3Client(LLMClient):
                                 "usage_metadata": None,
                                 "finish_reason": None,
                             }
-                            yield last_event
                             # start new partial tool call for tool call object
                             partial_tool_call = {"name": item["name"], "arguments": item["arguments"]}
                         else:
                             # update partial tool call for tool call object
                             partial_tool_call["arguments"] += item["arguments"]
 
-                last_event = event
                 yield event
             elif event["event_type"] == "stop":
                 if "data" in partial_tool_call:
                     # finish partial tool call for <tool_call>
                     tool_call = json.loads(partial_tool_call["data"].strip())
-                    last_event = {
+                    yield {
                         "role": "assistant",
                         "event_type": "delta",
                         "content_items": [
@@ -332,8 +331,7 @@ class Qwen3Client(LLMClient):
                         "usage_metadata": None,
                         "finish_reason": None,
                     }
-                    yield last_event
-                    last_event = {
+                    yield {
                         "role": "assistant",
                         "event_type": "delta",
                         "content_items": [
@@ -347,12 +345,11 @@ class Qwen3Client(LLMClient):
                         "usage_metadata": None,
                         "finish_reason": None,
                     }
-                    yield last_event
                     partial_tool_call = {}
 
                 if partial_tool_call:
                     # finish partial tool call for tool call object
-                    last_event = {
+                    yield {
                         "role": "assistant",
                         "event_type": "delta",
                         "content_items": [
@@ -366,18 +363,14 @@ class Qwen3Client(LLMClient):
                         "usage_metadata": None,
                         "finish_reason": None,
                     }
-                    yield last_event
                     partial_tool_call = {}
 
                 if partial_usage.get("finish_reason") and partial_usage.get("usage_metadata"):
-                    last_event = {
+                    yield {
                         "role": "assistant",
                         "event_type": "stop",
                         "content_items": [],
                         "usage_metadata": partial_usage["usage_metadata"],
                         "finish_reason": partial_usage["finish_reason"],
                     }
-                    yield last_event
                     partial_usage = {}
-
-        self._validate_last_event(last_event)

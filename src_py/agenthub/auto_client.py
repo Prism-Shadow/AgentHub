@@ -46,7 +46,7 @@ class AutoLLMClient(LLMClient):
     ) -> LLMClient:
         """Create the appropriate client for the given model."""
         client_type = client_type or os.getenv("CLIENT_TYPE", model.lower())
-        if "gemini-3" in client_type:  # e.g., gemini-3-flash-preview
+        if "gemini-3-" in client_type or "gemini-3.1-" in client_type:  # e.g., gemini-3-flash-preview
             from .gemini3 import Gemini3Client
 
             return Gemini3Client(model=model, api_key=api_key, base_url=base_url)
@@ -62,7 +62,7 @@ class AutoLLMClient(LLMClient):
             from .glm5 import GLM5Client
 
             return GLM5Client(model=model, api_key=api_key, base_url=base_url)
-        elif "kimi-k2" in client_type:
+        elif "kimi-k2.5" in client_type:
             from .kimi_k2_5 import KimiK2_5Client
 
             return KimiK2_5Client(model=model, api_key=api_key, base_url=base_url)
@@ -73,7 +73,7 @@ class AutoLLMClient(LLMClient):
         else:
             raise ValueError(
                 f"{client_type} is not supported. "
-                "Supported client types: gemini-3, claude-4-5, gpt-5.2, glm-4.6, glm-4.7, glm-5, kimi-k2, qwen3."
+                "Supported client types: gemini-3, claude-4-5, gpt-5.2, glm-4.6, glm-4.7, glm-5, kimi-k2.5, qwen3."
             )
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:
@@ -87,6 +87,13 @@ class AutoLLMClient(LLMClient):
     def transform_model_output_to_uni_event(self, model_output: Any) -> UniEvent:
         """Delegate to underlying client's transform_model_output_to_uni_event."""
         return self._client.transform_model_output_to_uni_event(model_output)
+
+    async def _streaming_response_internal(
+        self,
+        messages: list[UniMessage],
+        config: UniConfig,
+    ) -> AsyncIterator[UniEvent]:
+        raise NotImplementedError("Please use streaming_response instead.")
 
     async def streaming_response(
         self,

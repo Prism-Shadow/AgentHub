@@ -41,8 +41,8 @@ class GLM5Client(LLMClient):
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
         """Initialize GLM-5 client with model and API key."""
         self._model = model
-        api_key = api_key or os.getenv("GLM_API_KEY")
-        base_url = base_url or os.getenv("GLM_BASE_URL", "https://api.z.ai/api/paas/v4/")
+        api_key = api_key or os.getenv("ZAI_API_KEY")
+        base_url = base_url or os.getenv("ZAI_BASE_URL", "https://api.z.ai/api/paas/v4/")
         self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self._history: list[UniMessage] = []
 
@@ -118,7 +118,7 @@ class GLM5Client(LLMClient):
                 if item["type"] == "text":
                     content_parts.append({"type": "text", "text": item["text"]})
                 elif item["type"] == "image_url":
-                    content_parts.append({"type": "image_url", "image_url": {"url": item["image_url"]}})
+                    raise ValueError("GLM-5 does not support image inputs.")
                 elif item["type"] == "thinking":
                     thinking += item["thinking"]
                 elif item["type"] == "tool_call":
@@ -137,7 +137,7 @@ class GLM5Client(LLMClient):
                         raise ValueError("tool_call_id is required for tool result.")
 
                     if "images" in item and item["images"]:
-                        raise ValueError("GLM does not support images in tool results.")
+                        raise ValueError("GLM-5 does not support images in tool results.")
 
                     # Tool results are sent as separate messages
                     openai_messages.append(
@@ -182,44 +182,45 @@ class GLM5Client(LLMClient):
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
 
-        choice = model_output.choices[0]
-        delta = choice.delta
+        if len(model_output.choices) > 0:
+            choice = model_output.choices[0]
+            delta = choice.delta
 
-        if delta.content:
-            event_type = "delta"
-            content_items.append({"type": "text", "text": delta.content})
+            if delta.content:
+                event_type = "delta"
+                content_items.append({"type": "text", "text": delta.content})
 
-        # vLLM & siliconflow compatibility
-        if getattr(delta, "reasoning_content", None):
-            event_type = "delta"
-            content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning_content")})
+            # vLLM & siliconflow compatibility
+            if getattr(delta, "reasoning_content", None):
+                event_type = "delta"
+                content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning_content")})
 
-        # openrouter compatibility
-        elif getattr(delta, "reasoning", None):
-            event_type = "delta"
-            content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning")})
+            # openrouter compatibility
+            elif getattr(delta, "reasoning", None):
+                event_type = "delta"
+                content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning")})
 
-        if delta.tool_calls:
-            event_type = "delta"
-            for tool_call in delta.tool_calls:
-                content_items.append(
-                    {
-                        "type": "partial_tool_call",
-                        "name": tool_call.function.name,
-                        "arguments": tool_call.function.arguments,
-                        "tool_call_id": tool_call.id,
-                    }
-                )
+            if delta.tool_calls:
+                event_type = "delta"
+                for tool_call in delta.tool_calls:
+                    content_items.append(
+                        {
+                            "type": "partial_tool_call",
+                            "name": tool_call.function.name,
+                            "arguments": tool_call.function.arguments,
+                            "tool_call_id": tool_call.id,
+                        }
+                    )
 
-        if choice.finish_reason:
-            event_type = event_type or "stop"
-            finish_reason_mapping = {
-                "stop": "stop",
-                "length": "length",
-                "tool_calls": "tool_call",
-                "content_filter": "stop",
-            }
-            finish_reason = finish_reason_mapping.get(choice.finish_reason, "unknown")
+            if choice.finish_reason:
+                event_type = event_type or "stop"
+                finish_reason_mapping = {
+                    "stop": "stop",
+                    "length": "length",
+                    "tool_calls": "tool_call",
+                    "content_filter": "stop",
+                }
+                finish_reason = finish_reason_mapping.get(choice.finish_reason, "unknown")
 
         if model_output.usage:
             event_type = event_type or "stop"  # deal with separate usage data
@@ -260,7 +261,7 @@ class GLM5Client(LLMClient):
             "finish_reason": finish_reason,
         }
 
-    async def streaming_response(
+    async def _streaming_response_internal(
         self,
         messages: list[UniMessage],
         config: UniConfig,
@@ -281,9 +282,9 @@ class GLM5Client(LLMClient):
 
         partial_tool_call = {}
         partial_usage = {}
-        last_event: UniEvent | None = None
         async for chunk in stream:
             event = self.transform_model_output_to_uni_event(chunk)
+            # the finish reason and usage metadata should be accumulated
             partial_usage["finish_reason"] = event["finish_reason"] or partial_usage.get("finish_reason")
             partial_usage["usage_metadata"] = event["usage_metadata"] or partial_usage.get("usage_metadata")
             if event["event_type"] == "delta":
@@ -298,7 +299,7 @@ class GLM5Client(LLMClient):
                             }
                         elif item["name"]:
                             # finish previous partial tool call
-                            last_event = {
+                            yield {
                                 "role": "assistant",
                                 "event_type": "delta",
                                 "content_items": [
@@ -312,7 +313,6 @@ class GLM5Client(LLMClient):
                                 "usage_metadata": None,
                                 "finish_reason": None,
                             }
-                            yield last_event
                             # start new partial tool call
                             partial_tool_call = {
                                 "name": item["name"],
@@ -323,12 +323,11 @@ class GLM5Client(LLMClient):
                             # update partial tool call
                             partial_tool_call["arguments"] += item["arguments"]
 
-                last_event = event
                 yield event
             elif event["event_type"] == "stop":
                 if partial_tool_call:
                     # finish partial tool call
-                    last_event = {
+                    yield {
                         "role": "assistant",
                         "event_type": "delta",
                         "content_items": [
@@ -342,18 +341,14 @@ class GLM5Client(LLMClient):
                         "usage_metadata": None,
                         "finish_reason": None,
                     }
-                    yield last_event
                     partial_tool_call = {}
 
                 if partial_usage.get("finish_reason") and partial_usage.get("usage_metadata"):
-                    last_event = {
+                    yield {
                         "role": "assistant",
                         "event_type": "stop",
                         "content_items": [],
                         "usage_metadata": partial_usage["usage_metadata"],
                         "finish_reason": partial_usage["finish_reason"],
                     }
-                    yield last_event
                     partial_usage = {}
-
-        self._validate_last_event(last_event)

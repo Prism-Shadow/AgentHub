@@ -56,6 +56,25 @@ class Gemini3Client(LLMClient):
         mime_type, _ = mimetypes.guess_type(url)
         return mime_type or "image/jpeg"
 
+    async def _get_image_bytes_and_mime_type(self, url: str) -> dict[str, bytes | str]:
+        """Get image bytes and MIME type from URL."""
+        if url.startswith("data:"):
+            match = re.match(r"data:([^;]+);base64,(.+)", url)
+            if match:
+                mime_type = match.group(1)
+                base64_string = match.group(2)
+                image_bytes = base64.b64decode(base64_string)
+            else:
+                raise ValueError(f"Invalid base64 image: {url}")
+        else:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                image_bytes = response.content
+                mime_type = self._detect_image_mime_type(url)
+
+        return {"data": image_bytes, "mime_type": mime_type}
+
     def _convert_thinking_level(self, thinking_level: ThinkingLevel | None) -> types.ThinkingLevel | None:
         """Convert ThinkingLevel enum to Gemini's ThinkingLevel."""
         mapping = {
@@ -135,18 +154,8 @@ class Gemini3Client(LLMClient):
                     parts.append(types.Part(text=item["text"], thought_signature=item.get("signature")))
                 elif item["type"] == "image_url":
                     image_url = item["image_url"]
-                    if image_url.startswith("data:"):
-                        match = re.match(r"data:([^;]+);base64,(.+)", image_url)
-                        if match:
-                            mime_type = match.group(1)
-                            base64_string = match.group(2)
-                            base64_bytes = base64.b64decode(base64_string)
-                            parts.append(types.Part.from_bytes(data=base64_bytes, mime_type=mime_type))
-                        else:
-                            raise ValueError(f"Invalid base64 image: {image_url}")
-                    else:
-                        mime_type = self._detect_image_mime_type(image_url)
-                        parts.append(types.Part.from_uri(file_uri=image_url, mime_type=mime_type))
+                    image_data = await self._get_image_bytes_and_mime_type(image_url)
+                    parts.append(types.Part.from_bytes(**image_data))
                 elif item["type"] == "thinking":
                     parts.append(
                         types.Part(text=item["thinking"], thought=True, thought_signature=item.get("signature"))
@@ -161,30 +170,11 @@ class Gemini3Client(LLMClient):
                     tool_result = {"result": item["text"]}
                     multimodal_parts = []
                     if "images" in item:
-                        async with httpx.AsyncClient() as client:
-                            for image_url in item["images"]:
-                                if image_url.startswith("data:"):
-                                    match = re.match(r"data:([^;]+);base64,(.+)", image_url)
-                                    if match:
-                                        mime_type = match.group(1)
-                                        base64_string = match.group(2)
-                                        image_bytes = base64.b64decode(base64_string)
-                                    else:
-                                        raise ValueError(f"Invalid base64 image: {image_url}")
-                                else:
-                                    response = await client.get(image_url)
-                                    response.raise_for_status()
-                                    image_bytes = response.content
-                                    mime_type = self._detect_image_mime_type(image_url)
-
-                                multimodal_parts.append(
-                                    types.FunctionResponsePart(
-                                        inline_data=types.FunctionResponseBlob(
-                                            mime_type=mime_type,
-                                            data=image_bytes,
-                                        )
-                                    )
-                                )
+                        for image_url in item["images"]:
+                            image_data = await self._get_image_bytes_and_mime_type(image_url)
+                            multimodal_parts.append(
+                                types.FunctionResponsePart(inline_data=types.FunctionResponseBlob(**image_data))
+                            )
 
                     parts.append(
                         types.Part.from_function_response(
@@ -262,7 +252,7 @@ class Gemini3Client(LLMClient):
             "finish_reason": finish_reason,
         }
 
-    async def streaming_response(
+    async def _streaming_response_internal(
         self,
         messages: list[UniMessage],
         config: UniConfig,
@@ -278,13 +268,12 @@ class Gemini3Client(LLMClient):
         response_stream = await self._client.aio.models.generate_content_stream(
             model=self._model, contents=contents, config=gemini_config
         )
-        last_event: UniEvent | None = None
         async for chunk in response_stream:
             event = self.transform_model_output_to_uni_event(chunk)
             for item in event["content_items"]:
                 if item["type"] == "tool_call":
                     # gemini 3 does not support partial tool call, mock a partial tool call event
-                    last_event = {
+                    yield {
                         "role": "assistant",
                         "event_type": "delta",
                         "content_items": [
@@ -299,9 +288,5 @@ class Gemini3Client(LLMClient):
                         "usage_metadata": None,
                         "finish_reason": None,
                     }
-                    yield last_event
 
-            last_event = event
             yield event
-
-        self._validate_last_event(last_event)

@@ -481,7 +481,7 @@ class Tracer:
 
         return app
 
-    def start_web_server(self, host: str = "127.0.0.1", port: int = 5000, debug: bool = False) -> None:
+    def start_web_server(self, host: str = "127.0.0.1", port: int = 25750, debug: bool = False) -> None:
         """
         Start the web server for browsing conversation files.
 
@@ -502,7 +502,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Start the Tracer web server for browsing conversation files")
     parser.add_argument("--cache_dir", type=str, default=None, help="Directory to store conversation history files")
     parser.add_argument("--host", type=str, default="127.0.0.1", help="Host address to bind to")
-    parser.add_argument("--port", type=int, default=5000, help="Port number to listen on")
+    parser.add_argument("--port", type=int, default=25750, help="Port number to listen on")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
 
     args = parser.parse_args()

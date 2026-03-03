@@ -127,6 +127,26 @@ class LLMClient(ABC):
         }
 
     @abstractmethod
+    async def _streaming_response_internal(
+        self,
+        messages: list[UniMessage],
+        config: UniConfig,
+    ) -> AsyncIterator[UniEvent]:
+        """
+        Internal method to handle streaming response.
+
+        This method should be implemented by each model client to handle
+        the actual streaming request and yield model-specific events.
+
+        Args:
+            messages: List of universal message dictionaries
+            config: Universal configuration dict
+
+        Yields:
+            Model-specific events from the streaming response
+        """
+        pass
+
     async def streaming_response(
         self,
         messages: list[UniMessage],
@@ -146,7 +166,12 @@ class LLMClient(ABC):
         Yields:
             Universal events from the streaming response
         """
-        pass
+        last_event: UniEvent | None = None
+        async for event in self._streaming_response_internal(messages, config):
+            last_event = event
+            yield event
+
+        self._validate_last_event(last_event)
 
     async def streaming_response_stateful(
         self,

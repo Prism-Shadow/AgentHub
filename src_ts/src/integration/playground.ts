@@ -595,7 +595,7 @@ export function createChatApp(): Express {
  */
 export function startPlaygroundServer(
   host: string = "127.0.0.1",
-  port: number = 5001,
+  port: number = 25751,
 ): void {
   const app = createChatApp();
   app.listen(port, host, () => {

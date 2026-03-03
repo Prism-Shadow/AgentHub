@@ -30,7 +30,7 @@ if __name__ == "__main__":
     print("AgentHub LLM Playground")
     print("=" * 60)
     print("\nStarting web server...")
-    print("\nOpen http://127.0.0.1:5001 in your browser to start chatting!")
+    print("\nOpen http://127.0.0.1:25751 in your browser to start chatting!")
     print("Press Ctrl+C to stop the server.\n")
 
-    start_playground_server(host="127.0.0.1", port=5001, debug=False)
+    start_playground_server(host="127.0.0.1", port=25751, debug=False)
