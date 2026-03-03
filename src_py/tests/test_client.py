@@ -65,7 +65,7 @@ if os.getenv("SILICONFLOW_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="Qwen/Qwen3-8B", provider="siliconflow", support_vision=False))
     AVAILABLE_MODELS.append(Model(name="Pro/moonshotai/Kimi-K2.5", provider="siliconflow"))
 
-if os.getenv("ANTHROPIC_AWS_ACCESS_KEY") and os.getenv("ANTHROPIC_AWS_SECRET_ACCESS_KEY"):
+if os.getenv("BEDROCK_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="global.anthropic.claude-sonnet-4-5-20250929-v1:0", provider="bedrock"))
 
 

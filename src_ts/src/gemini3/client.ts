@@ -313,7 +313,10 @@ export class Gemini3Client extends LLMClient {
     let usageMetadata: UsageMetadata | null = null;
     let finishReason: FinishReason | null = null;
 
-    if (modelOutput.candidates?.length !== undefined && modelOutput.candidates?.length > 0) {
+    if (
+      modelOutput.candidates?.length !== undefined &&
+      modelOutput.candidates?.length > 0
+    ) {
       const candidate = modelOutput.candidates?.[0];
       for (const part of candidate.content?.parts || []) {
         if (part.functionCall) {

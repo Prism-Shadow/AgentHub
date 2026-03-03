@@ -54,8 +54,7 @@ export class Claude4_5Client extends LLMClient {
     super();
     this._model = options.model;
     const key = options.apiKey || process.env.ANTHROPIC_API_KEY || undefined;
-    const url =
-      options.baseUrl || process.env.ANTHROPIC_BASE_URL || undefined;
+    const url = options.baseUrl || process.env.ANTHROPIC_BASE_URL || undefined;
 
     if (url && url.includes("bedrock")) {
       // example: bedrock://us-east-1

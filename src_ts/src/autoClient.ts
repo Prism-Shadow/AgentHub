@@ -68,7 +68,10 @@ export class AutoLLMClient extends LLMClient {
   ): LLMClient {
     clientType = clientType || process.env.CLIENT_TYPE || model.toLowerCase();
 
-    if (clientType.includes("gemini-3-") || clientType.includes("gemini-3.1-")) {
+    if (
+      clientType.includes("gemini-3-") ||
+      clientType.includes("gemini-3.1-")
+    ) {
       return new Gemini3Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("claude") && clientType.includes("4-5")) {
       return new Claude4_5Client({ model, apiKey, baseUrl });
@@ -124,6 +127,13 @@ export class AutoLLMClient extends LLMClient {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async *_streamingResponseInternal(_options: any): AsyncGenerator<UniEvent> {
+    yield {
+      role: "assistant",
+      event_type: "delta",
+      content_items: [],
+      usage_metadata: null,
+      finish_reason: null,
+    };
     throw new Error("Please use streamingResponse instead.");
   }
 

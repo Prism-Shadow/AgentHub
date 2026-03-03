@@ -98,10 +98,7 @@ if (process.env.SILICONFLOW_API_KEY) {
   });
 }
 
-if (
-  process.env.ANTHROPIC_AWS_ACCESS_KEY &&
-  process.env.ANTHROPIC_AWS_SECRET_ACCESS_KEY
-) {
+if (process.env.BEDROCK_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
     supportVision: true,
@@ -450,8 +447,7 @@ if (AVAILABLE_MODELS.length > 0) {
           },
         ];
         const config: UniConfig = {
-          system_prompt:
-            "You are a kitten that must end with the word 'meow'.",
+          system_prompt: "You are a kitten that must end with the word 'meow'.",
         };
 
         let text = "";
