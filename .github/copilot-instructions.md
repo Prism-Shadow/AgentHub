@@ -76,7 +76,7 @@ When writing tests that require calling AI models, the following secrets are ava
 - `ANTHROPIC_API_KEY` - API key for Anthropic Claude Models
 - `GEMINI_API_KEY` - API key for Google Gemini Models
 - `OPENAI_API_KEY` - API key for OpenAI GPT Models
-- `GLM_API_KEY` - API key for Z.AI GLM Models
+- `ZAI_API_KEY` - API key for Z.AI GLM Models
 - `MOONSHOT_API_KEY` - API key for MoonShot Kimi Models
 - `OPENROUTER_API_KEY` - API key for OpenRouter Models
 - `SILICONFLOW_API_KEY` - API key for SiliconFlow Models
@@ -89,7 +89,7 @@ env:
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
+  ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
   MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
   OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
   SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}

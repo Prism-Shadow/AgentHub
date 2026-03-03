@@ -450,7 +450,6 @@ async def test_tool_result_with_image(model: Model):
         await _check_event_integrity(event)
         for item in event["content_items"]:
             if item["type"] == "tool_call":
-                print(item)
                 tool_name = item["name"]
                 tool_call_id = item["tool_call_id"]
 
