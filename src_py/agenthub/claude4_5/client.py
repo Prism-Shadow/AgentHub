@@ -55,8 +55,10 @@ class Claude4_5Client(LLMClient):
             self._client = AsyncAnthropicBedrock(
                 aws_secret_key=secret_key, aws_access_key=access_key, aws_region=region
             )
+            self._use_bedrock = True
         else:
             self._client = AsyncAnthropic(api_key=api_key, base_url=base_url)
+            self._use_bedrock = False
 
         self._history: list[UniMessage] = []
 
@@ -82,7 +84,7 @@ class Claude4_5Client(LLMClient):
                 }
             else:
                 raise ValueError(f"Invalid base64 image: {url}")
-        elif os.getenv("USE_ANTHROPIC_ON_BEDROCK"):
+        elif self._use_bedrock:
             async with httpx.AsyncClient() as client:
                 response = await client.get(url)
                 response.raise_for_status()

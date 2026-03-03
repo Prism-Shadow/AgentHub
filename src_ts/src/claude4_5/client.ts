@@ -41,6 +41,7 @@ const REDACTED_THINKING = "_REDACTED_THINKING";
 export class Claude4_5Client extends LLMClient {
   protected _model: string;
   private _client: Anthropic | AnthropicBedrock;
+  private _use_bedrock: boolean;
 
   /**
    * Initialize Claude 4.5 client with model and API key.
@@ -65,11 +66,13 @@ export class Claude4_5Client extends LLMClient {
         awsAccessKey: accessKey,
         awsRegion: region,
       });
+      this._use_bedrock = true;
     } else {
       this._client = new Anthropic({
         apiKey: key,
         baseURL: url,
       });
+      this._use_bedrock = false;
     }
   }
 
@@ -98,7 +101,7 @@ export class Claude4_5Client extends LLMClient {
       } else {
         throw new Error(`Invalid base64 image: ${url}`);
       }
-    } else if (process.env.USE_ANTHROPIC_ON_BEDROCK) {
+    } else if (this._use_bedrock) {
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(

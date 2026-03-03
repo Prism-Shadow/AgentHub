@@ -21,6 +21,7 @@ const IMAGE =
 interface Model {
   name: string;
   supportVision: boolean;
+  supportTemperature: boolean;
   provider: "official" | "siliconflow" | "openrouter" | "bedrock";
 }
 
@@ -30,6 +31,7 @@ if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "gemini-3-flash-preview",
     supportVision: true,
+    supportTemperature: true,
     provider: "official",
   });
 }
@@ -38,6 +40,7 @@ if (process.env.ANTHROPIC_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "claude-sonnet-4-5-20250929",
     supportVision: true,
+    supportTemperature: true,
     provider: "official",
   });
 }
@@ -46,6 +49,7 @@ if (process.env.OPENAI_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "gpt-5.2",
     supportVision: true,
+    supportTemperature: false,
     provider: "official",
   });
 }
@@ -54,6 +58,7 @@ if (process.env.ZAI_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "glm-5",
     supportVision: false,
+    supportTemperature: true,
     provider: "official",
   });
 }
@@ -62,6 +67,7 @@ if (process.env.MOONSHOT_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "kimi-k2.5",
     supportVision: true,
+    supportTemperature: false,
     provider: "official",
   });
 }
@@ -70,30 +76,35 @@ if (process.env.OPENROUTER_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "z-ai/glm-5",
     supportVision: false,
+    supportTemperature: true,
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
     name: "qwen/qwen3-30b-a3b-thinking-2507",
     supportVision: false,
+    supportTemperature: true,
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
     name: "moonshotai/kimi-k2.5",
     supportVision: true,
+    supportTemperature: false,
     provider: "openrouter",
   });
 }
 
 if (process.env.SILICONFLOW_API_KEY) {
-  // AVAILABLE_MODELS.push({ name: "Pro/zai-org/GLM-5", supportVision: false, provider: "siliconflow" });
+  // AVAILABLE_MODELS.push({ name: "Pro/zai-org/GLM-5", supportVision: false, supportTemperature: true, provider: "siliconflow" });
   AVAILABLE_MODELS.push({
     name: "Qwen/Qwen3-8B",
     supportVision: false,
+    supportTemperature: true,
     provider: "siliconflow",
   });
   AVAILABLE_MODELS.push({
     name: "Pro/moonshotai/Kimi-K2.5",
     supportVision: true,
+    supportTemperature: false,
     provider: "siliconflow",
   });
 }
@@ -102,6 +113,7 @@ if (process.env.BEDROCK_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
     supportVision: true,
+    supportTemperature: true,
     provider: "bedrock",
   });
 }
@@ -217,11 +229,7 @@ if (AVAILABLE_MODELS.length > 0) {
           thinking_level: ThinkingLevel.LOW,
         };
 
-        const throwsError = ["gpt-5.2", "kimi-k2.5"].some((name) =>
-          model.name.toLowerCase().includes(name),
-        );
-
-        if (throwsError) {
+        if (!model.supportTemperature) {
           await expect(async () => {
             for await (const _ of client.streamingResponse({
               messages,
