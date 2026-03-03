@@ -127,20 +127,40 @@ export abstract class LLMClient {
   }
 
   /**
+   * Internal method to handle streaming response.
+   *
+   * This method should be implemented by each model client to handle
+   * the actual streaming request and yield model-specific events.
+   *
+   * @param options - Object containing messages and config
+   * @yields Model-specific events from the streaming response
+   */
+  abstract _streamingResponseInternal(options: {
+    messages: UniMessage[];
+    config: UniConfig;
+  }): AsyncGenerator<UniEvent>;
+
+  /**
    * Generate content in streaming mode (stateless).
    *
    * This method should use transformUniConfigToModelConfig and
    * transformUniMessageToModelInput to prepare the request, then
    * transformModelOutputToUniEvent to convert each chunk.
    *
-   * @param messages - List of universal message objects containing conversation history
-   * @param config - Universal configuration object
+   * @param options - Object containing messages and config
    * @yields Universal events from the streaming response
    */
-  abstract streamingResponse(options: {
+  async *streamingResponse(options: {
     messages: UniMessage[];
     config: UniConfig;
-  }): AsyncGenerator<UniEvent>;
+  }): AsyncGenerator<UniEvent> {
+    let lastEvent: UniEvent | null = null;
+    for await (const event of this._streamingResponseInternal(options)) {
+      lastEvent = event;
+      yield event;
+    }
+    LLMClient._validateLastEvent(lastEvent);
+  }
 
   /**
    * Generate content in streaming mode (stateful).

@@ -28,7 +28,7 @@ console.log("=".repeat(60));
 console.log("AgentHub LLM Playground");
 console.log("=".repeat(60));
 console.log("\nStarting web server...");
-console.log("\nOpen http://127.0.0.1:5001 in your browser to start chatting!");
+console.log("\nOpen http://127.0.0.1:25751 in your browser to start chatting!");
 console.log("Press Ctrl+C to stop the server.\n");
 
-startPlaygroundServer("127.0.0.1", 5001);
+startPlaygroundServer("127.0.0.1", 25751);

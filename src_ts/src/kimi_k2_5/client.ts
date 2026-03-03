@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as path from "path";
 import OpenAI from "openai";
 import type {
   ChatCompletionChunk,
@@ -34,14 +35,14 @@ import {
 import { fixOpenrouterUsageMetadata } from "../utils";
 
 /**
- * GLM-5-specific LLM client implementation using OpenAI-compatible API.
+ * Kimi K2.5-specific LLM client implementation using OpenAI-compatible API.
  */
-export class GLM5Client extends LLMClient {
+export class KimiK2_5Client extends LLMClient {
   protected _model: string;
   private _client: OpenAI;
 
   /**
-   * Initialize GLM-5 client with model and API key.
+   * Initialize Kimi K2.5 client with model and API key.
    */
   constructor(options: {
     model: string;
@@ -51,16 +52,55 @@ export class GLM5Client extends LLMClient {
   }) {
     super();
     this._model = options.model;
-    const key = options.apiKey || process.env.ZAI_API_KEY || undefined;
+    const key = options.apiKey || process.env.MOONSHOT_API_KEY || undefined;
     const url =
       options.baseUrl ||
-      process.env.ZAI_BASE_URL ||
-      "https://api.z.ai/api/paas/v4/";
+      process.env.MOONSHOT_BASE_URL ||
+      "https://api.moonshot.cn/v1";
     this._client = new OpenAI({ apiKey: key, baseURL: url });
   }
 
   /**
-   * Convert ThinkingLevel enum to GLM's thinking configuration.
+   * Detect MIME type from URL extension for image.
+   */
+  private _detectImageMimeType(url: string): string {
+    const ext = path.extname(url).toLowerCase();
+    const mimeTypes: { [key: string]: string } = {
+      ".bmp": "image/bmp",
+      ".gif": "image/gif",
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".svg": "image/svg+xml",
+      ".tiff": "image/tiff",
+      ".webp": "image/webp",
+    };
+    return mimeTypes[ext] || "image/jpeg";
+  }
+
+  /**
+   * Convert image URL to base64-encoded data URL.
+   */
+  private async _convertImageUrlToBase64(url: string): Promise<string> {
+    if (url.startsWith("data:")) {
+      return url;
+    }
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch image: ${response.status} ${response.statusText}`,
+      );
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const mimeType = this._detectImageMimeType(url);
+    const base64String = buffer.toString("base64");
+    return `data:${mimeType};base64,${base64String}`;
+  }
+
+  /**
+   * Convert ThinkingLevel enum to Kimi's thinking configuration.
    */
   private _convertThinkingLevelToConfig(thinkingLevel: ThinkingLevel): {
     type: string;
@@ -80,68 +120,75 @@ export class GLM5Client extends LLMClient {
   private _convertToolChoice(toolChoice: ToolChoice): string {
     if (toolChoice === "auto") {
       return "auto";
+    } else if (toolChoice === "none") {
+      return "none";
     } else {
-      throw new Error('GLM only supports "auto" for tool_choice.');
+      throw new Error('Kimi only supports "auto" and "none" for tool_choice.');
     }
   }
 
   /**
-   * Transform universal configuration to GLM-specific configuration.
+   * Transform universal configuration to Kimi-specific configuration.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   transformUniConfigToModelConfig(config: UniConfig): any {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const glmConfig: any = {
+    const kimiConfig: any = {
       model: this._model,
       stream: true,
-      extra_body: { tool_stream: true },
+      stream_options: { include_usage: true },
     };
 
     if (config.max_tokens !== undefined) {
-      glmConfig.max_tokens = config.max_tokens;
+      kimiConfig.max_tokens = config.max_tokens;
     }
 
-    if (config.temperature !== undefined) {
-      glmConfig.temperature = config.temperature;
+    if (config.temperature !== undefined && config.temperature !== 1.0) {
+      throw new Error("Kimi K2.5 does not support setting temperature.");
     }
 
     if (config.thinking_level !== undefined) {
       const thinkingConfig = this._convertThinkingLevelToConfig(
         config.thinking_level,
       );
-      glmConfig.extra_body = {
-        ...(glmConfig.extra_body || {}),
+      kimiConfig.extra_body = {
+        ...(kimiConfig.extra_body || {}),
         thinking: thinkingConfig,
       };
     }
 
     if (config.tools !== undefined) {
-      glmConfig.tools = config.tools.map((tool) => ({
+      kimiConfig.tools = config.tools.map((tool) => ({
         type: "function",
         function: tool,
       }));
     }
 
     if (config.tool_choice !== undefined) {
-      glmConfig.tool_choice = this._convertToolChoice(config.tool_choice);
+      kimiConfig.tool_choice = this._convertToolChoice(config.tool_choice);
     }
 
     if (
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE
     ) {
-      throw new Error("prompt_caching must be ENABLE for GLM-5.");
+      throw new Error("prompt_caching must be ENABLE for Kimi K2.5.");
     }
 
-    return glmConfig;
+    if (config.trace_id !== undefined) {
+      // use trace_id as the prompt cache key
+      kimiConfig.prompt_cache_key = config.trace_id;
+    }
+
+    return kimiConfig;
   }
 
   /**
    * Transform universal message format to OpenAI's message format.
    */
-  transformUniMessageToModelInput(
+  async transformUniMessageToModelInput(
     messages: UniMessage[],
-  ): ChatCompletionMessageParam[] {
+  ): Promise<ChatCompletionMessageParam[]> {
     const openaiMessages: ChatCompletionMessageParam[] = [];
 
     for (const msg of messages) {
@@ -158,7 +205,13 @@ export class GLM5Client extends LLMClient {
         if (item.type === "text") {
           contentParts.push({ type: "text", text: item.text });
         } else if (item.type === "image_url") {
-          throw new Error("GLM-5 does not support image inputs.");
+          const base64Image = await this._convertImageUrlToBase64(
+            item.image_url,
+          );
+          contentParts.push({
+            type: "image_url",
+            image_url: { url: base64Image },
+          });
         } else if (item.type === "thinking") {
           thinking += item.thinking;
         } else if (item.type === "tool_call") {
@@ -175,14 +228,31 @@ export class GLM5Client extends LLMClient {
             throw new Error("tool_call_id is required for tool result.");
           }
 
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const content: any[] = [{ type: "text", text: item.text }];
+
           if (item.images && item.images.length > 0) {
-            throw new Error("GLM-5 does not support images in tool results.");
+            for (const imageUrl of item.images) {
+              const base64Image = await this._convertImageUrlToBase64(imageUrl);
+              if (this._client.baseURL.includes("siliconflow.cn")) {
+                // siliconflow does not support image_url in tool result
+                contentParts.push({
+                  type: "image_url",
+                  image_url: { url: base64Image },
+                });
+              } else {
+                content.push({
+                  type: "image_url",
+                  image_url: { url: base64Image },
+                });
+              }
+            }
           }
 
           openaiMessages.push({
             role: "tool",
             tool_call_id: item.tool_call_id,
-            content: item.text,
+            content,
           });
         } else {
           throw new Error(
@@ -215,7 +285,7 @@ export class GLM5Client extends LLMClient {
   }
 
   /**
-   * Transform GLM model output to universal event format.
+   * Transform Kimi model output to universal event format.
    */
   transformModelOutputToUniEvent(modelOutput: ChatCompletionChunk): UniEvent {
     let eventType: EventType | null = null;
@@ -316,25 +386,27 @@ export class GLM5Client extends LLMClient {
   }
 
   /**
-   * Stream generate using GLM SDK with unified conversion methods.
+   * Stream generate using Kimi SDK with unified conversion methods.
    */
   async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
-    const glmConfig = this.transformUniConfigToModelConfig(options.config);
-    const glmMessages = this.transformUniMessageToModelInput(options.messages);
+    const kimiConfig = this.transformUniConfigToModelConfig(options.config);
+    const kimiMessages = await this.transformUniMessageToModelInput(
+      options.messages,
+    );
 
     if (options.config.system_prompt) {
-      glmMessages.unshift({
+      kimiMessages.unshift({
         role: "system",
         content: options.config.system_prompt,
       });
     }
 
     const params: ChatCompletionCreateParamsStreaming = {
-      ...glmConfig,
-      messages: glmMessages,
+      ...kimiConfig,
+      messages: kimiMessages,
       stream: true,
     };
 

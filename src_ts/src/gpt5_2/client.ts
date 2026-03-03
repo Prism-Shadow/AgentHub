@@ -335,7 +335,7 @@ export class GPT5_2Client extends LLMClient {
   /**
    * Stream generate using OpenAI Responses API with unified conversion methods.
    */
-  async *streamingResponse(options: {
+  async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
@@ -356,7 +356,6 @@ export class GPT5_2Client extends LLMClient {
 
     const stream = await this._client.responses.create(params);
 
-    let lastEvent: UniEvent | null = null;
     for await (const event of stream) {
       const uniEvent = this.transformModelOutputToUniEvent(event);
       if (uniEvent.event_type === "start") {
@@ -365,7 +364,6 @@ export class GPT5_2Client extends LLMClient {
             partialToolCall.name = item.name;
             partialToolCall.arguments = "";
             partialToolCall.tool_call_id = item.tool_call_id;
-            lastEvent = uniEvent;
             yield uniEvent;
           }
         }
@@ -377,11 +375,10 @@ export class GPT5_2Client extends LLMClient {
           }
         }
 
-        lastEvent = uniEvent;
         yield uniEvent;
       } else if (uniEvent.event_type === "stop") {
         if (partialToolCall.name && partialToolCall.arguments !== undefined) {
-          lastEvent = {
+          yield {
             role: "assistant",
             event_type: "delta",
             content_items: [
@@ -395,18 +392,15 @@ export class GPT5_2Client extends LLMClient {
             usage_metadata: null,
             finish_reason: null,
           };
-          yield lastEvent;
           partialToolCall.name = undefined;
           partialToolCall.arguments = undefined;
           partialToolCall.tool_call_id = undefined;
         }
 
         if (uniEvent.finish_reason || uniEvent.usage_metadata) {
-          lastEvent = uniEvent;
           yield uniEvent;
         }
       }
     }
-    LLMClient._validateLastEvent(lastEvent);
   }
 }

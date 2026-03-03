@@ -626,7 +626,7 @@ export class Tracer {
    * @param host - Host address to bind to
    * @param port - Port number to listen on
    */
-  startWebServer(host: string = "127.0.0.1", port: number = 5000): void {
+  startWebServer(host: string = "127.0.0.1", port: number = 25750): void {
     const app = this.createWebApp();
     app.listen(port, host, () => {
       console.log(`Starting tracer web server at http://${host}:${port}`);

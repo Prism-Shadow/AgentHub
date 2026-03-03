@@ -91,6 +91,7 @@ export function createChatApp(): Express {
                       <option value="gpt-5.2">GPT 5.2</option>
                       <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
                       <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
+                      <option value="kimi-k2.5">Kimi K2.5</option>
                       <option value="glm-5">GLM 5</option>
                   </datalist>
               </div>
@@ -595,7 +596,7 @@ export function createChatApp(): Express {
  */
 export function startPlaygroundServer(
   host: string = "127.0.0.1",
-  port: number = 5001,
+  port: number = 25751,
 ): void {
   const app = createChatApp();
   app.listen(port, host, () => {

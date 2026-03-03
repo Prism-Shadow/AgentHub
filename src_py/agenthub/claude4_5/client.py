@@ -48,13 +48,18 @@ class Claude4_5Client(LLMClient):
         """Initialize Claude 4.5 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
-        if os.getenv("USE_ANTHROPIC_ON_BEDROCK"):
+        base_url = base_url or os.getenv("ANTHROPIC_BASE_URL")
+        if base_url and "bedrock" in base_url:  # example: bedrock://us-east-1
+            region = base_url.replace("bedrock://", "")
+            access_key, secret_key = api_key.split(",")
             self._client = AsyncAnthropicBedrock(
-                aws_secret_key=api_key, aws_access_key=os.getenv("ANTHROPIC_AWS_ACCESS_KEY")
+                aws_secret_key=secret_key, aws_access_key=access_key, aws_region=region
             )
+            self._use_bedrock = True
         else:
-            base_url = base_url or os.getenv("ANTHROPIC_BASE_URL")
             self._client = AsyncAnthropic(api_key=api_key, base_url=base_url)
+            self._use_bedrock = False
+
         self._history: list[UniMessage] = []
 
     async def _convert_image_url_to_source(self, url: str) -> dict[str, Any]:
@@ -79,7 +84,7 @@ class Claude4_5Client(LLMClient):
                 }
             else:
                 raise ValueError(f"Invalid base64 image: {url}")
-        elif os.getenv("USE_ANTHROPIC_ON_BEDROCK"):
+        elif self._use_bedrock:
             async with httpx.AsyncClient() as client:
                 response = await client.get(url)
                 response.raise_for_status()
@@ -318,7 +323,7 @@ class Claude4_5Client(LLMClient):
             "finish_reason": finish_reason,
         }
 
-    async def streaming_response(
+    async def _streaming_response_internal(
         self,
         messages: list[UniMessage],
         config: UniConfig,
@@ -346,7 +351,6 @@ class Claude4_5Client(LLMClient):
         # Stream generate
         partial_tool_call = {}
         partial_usage = {}
-        last_event: UniEvent | None = None
         stream = await self._client.beta.messages.create(**claude_config, messages=claude_messages)
         async for event in stream:
             event = self.transform_model_output_to_uni_event(event)
@@ -359,7 +363,6 @@ class Claude4_5Client(LLMClient):
                             "arguments": "",
                             "tool_call_id": item["tool_call_id"],
                         }
-                        last_event = event
                         yield event
 
                 if event["usage_metadata"] is not None:
@@ -375,13 +378,12 @@ class Claude4_5Client(LLMClient):
                         # update partial_tool_call
                         partial_tool_call["arguments"] += item["arguments"]
 
-                last_event = event
                 yield event
 
             elif event["event_type"] == "stop":
                 if "name" in partial_tool_call and "arguments" in partial_tool_call:
                     # finish partial_tool_call
-                    last_event = {
+                    yield {
                         "role": "assistant",
                         "event_type": "delta",
                         "content_items": [
@@ -395,12 +397,11 @@ class Claude4_5Client(LLMClient):
                         "usage_metadata": None,
                         "finish_reason": None,
                     }
-                    yield last_event
                     partial_tool_call = {}
 
                 if "prompt_tokens" in partial_usage and event["usage_metadata"] is not None:
                     # finish partial_usage
-                    last_event = {
+                    yield {
                         "role": "assistant",
                         "event_type": "stop",
                         "content_items": [],
@@ -412,7 +413,4 @@ class Claude4_5Client(LLMClient):
                         },
                         "finish_reason": event["finish_reason"],
                     }
-                    yield last_event
                     partial_usage = {}
-
-        self._validate_last_event(last_event)

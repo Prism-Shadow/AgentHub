@@ -70,8 +70,8 @@ tracer.saveHistory(config.model, history, "example/conversation_001", config);
 console.log("\nConversation saved successfully!");
 console.log("\nStarting web server...");
 console.log(
-  "\nOpen http://127.0.0.1:5000 in your browser to view saved conversations!",
+  "\nOpen http://127.0.0.1:25750 in your browser to view saved conversations!",
 );
 console.log("Press Ctrl+C to stop the server.\n");
 
-tracer.startWebServer("127.0.0.1", 5000);
+tracer.startWebServer("127.0.0.1", 25750);

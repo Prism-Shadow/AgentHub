@@ -110,6 +110,7 @@ def create_chat_app() -> Flask:
                         <option value="gpt-5.2">GPT 5.2</option>
                         <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
                         <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
+                        <option value="kimi-k2.5">Kimi K2.5</option>
                         <option value="glm-5">GLM 5</option>
                     </datalist>
                 </div>
@@ -612,7 +613,7 @@ def create_chat_app() -> Flask:
     return app
 
 
-def start_playground_server(host: str = "127.0.0.1", port: int = 5001, debug: bool = False) -> None:
+def start_playground_server(host: str = "127.0.0.1", port: int = 25751, debug: bool = False) -> None:
     """
     Start the playground web server.
 
@@ -631,7 +632,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Start the LLM Playground web server")
     parser.add_argument("--host", type=str, default="127.0.0.1", help="Host address to bind to")
-    parser.add_argument("--port", type=int, default=5001, help="Port number to listen on")
+    parser.add_argument("--port", type=int, default=25751, help="Port number to listen on")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
 
     args = parser.parse_args()
