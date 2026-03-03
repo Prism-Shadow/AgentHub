@@ -355,7 +355,7 @@ async def test_system_prompt(model: Model):
 async def test_image_understanding(model: Model):
     """Test image understanding with a URL."""
     if not model.support_vision:
-        pytest.skip(f"Image understanding is not supported by {model}.")
+        pytest.skip(f"Image understanding is not supported by {model.name}.")
 
     client = await _create_client(model)
     config = {}
@@ -383,7 +383,7 @@ async def test_image_understanding(model: Model):
 async def test_image_understanding_base64(model: Model):
     """Test image understanding with base64 encoded image."""
     if not model.support_vision:
-        pytest.skip(f"Image understanding is not supported by {model}.")
+        pytest.skip(f"Image understanding is not supported by {model.name}.")
 
     client = await _create_client(model)
     config = {}
@@ -420,7 +420,7 @@ async def test_image_understanding_base64(model: Model):
 async def test_tool_result_with_image(model: Model):
     """Test tool result with image_url."""
     if not model.support_vision:
-        pytest.skip(f"Image in tool result is not supported by {model}.")
+        pytest.skip(f"Image in tool result is not supported by {model.name}.")
 
     client = await _create_client(model)
 
