@@ -251,7 +251,7 @@ class GLM5Client(LLMClient):
                 "thoughts_tokens": reasoning_tokens,
                 "response_tokens": response_tokens,
             }
-            usage_metadata = fix_openrouter_usage_metadata(usage_metadata, str(self._client._base_url))
+            usage_metadata = fix_openrouter_usage_metadata(usage_metadata, str(self._client.base_url))
 
         return {
             "role": "assistant",

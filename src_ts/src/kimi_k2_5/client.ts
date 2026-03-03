@@ -234,10 +234,18 @@ export class KimiK2_5Client extends LLMClient {
           if (item.images && item.images.length > 0) {
             for (const imageUrl of item.images) {
               const base64Image = await this._convertImageUrlToBase64(imageUrl);
-              content.push({
-                type: "image_url",
-                image_url: { url: base64Image },
-              });
+              if (this._client.baseURL.includes("siliconflow.cn")) {
+                // siliconflow does not support image_url in tool result
+                contentParts.push({
+                  type: "image_url",
+                  image_url: { url: base64Image },
+                });
+              } else {
+                content.push({
+                  type: "image_url",
+                  image_url: { url: base64Image },
+                });
+              }
             }
           }
 

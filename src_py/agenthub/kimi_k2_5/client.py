@@ -172,7 +172,11 @@ class KimiK2_5Client(LLMClient):
                     if "images" in item and item["images"]:
                         for image_url in item["images"]:
                             base64_image = await self._convert_image_url_to_base64(image_url)
-                            content_parts.append({"type": "image_url", "image_url": {"url": base64_image}})
+                            if "siliconflow.cn" in str(self._client.base_url):
+                                # siliconflow does not support image_url in tool result
+                                content_parts.append({"type": "image_url", "image_url": {"url": base64_image}})
+                            else:
+                                content.append({"type": "image_url", "image_url": {"url": base64_image}})
 
                     # Tool results are sent as separate messages
                     openai_messages.append(
@@ -286,7 +290,7 @@ class KimiK2_5Client(LLMClient):
                 "thoughts_tokens": reasoning_tokens,
                 "response_tokens": response_tokens,
             }
-            usage_metadata = fix_openrouter_usage_metadata(usage_metadata, str(self._client._base_url))
+            usage_metadata = fix_openrouter_usage_metadata(usage_metadata, str(self._client.base_url))
 
         return {
             "role": "assistant",
