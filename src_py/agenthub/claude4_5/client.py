@@ -49,7 +49,7 @@ class Claude4_5Client(LLMClient):
         self._model = model
         api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         base_url = base_url or os.getenv("ANTHROPIC_BASE_URL")
-        if "bedrock" in base_url:  # example: bedrock://us-east-1
+        if base_url and "bedrock" in base_url:  # example: bedrock://us-east-1
             region = base_url.replace("bedrock://", "")
             access_key, secret_key = api_key.split(",")
             self._client = AsyncAnthropicBedrock(
