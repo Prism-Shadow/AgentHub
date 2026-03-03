@@ -313,44 +313,42 @@ export class Gemini3Client extends LLMClient {
     let usageMetadata: UsageMetadata | null = null;
     let finishReason: FinishReason | null = null;
 
-    const candidate = modelOutput.candidates?.[0];
-    if (!candidate) {
-      throw new Error("No candidate in response");
-    }
-
-    for (const part of candidate.content?.parts || []) {
-      if (part.functionCall) {
-        contentItems.push({
-          type: "tool_call",
-          name: part.functionCall.name || "",
-          arguments: part.functionCall.args || {},
-          tool_call_id: part.functionCall.name || "",
-          signature: part.thoughtSignature as string | undefined,
-        });
-      } else if (part.text !== undefined && part.thought) {
-        contentItems.push({
-          type: "thinking",
-          thinking: part.text,
-          signature: part.thoughtSignature as string | undefined,
-        });
-      } else if (part.text !== undefined) {
-        contentItems.push({
-          type: "text",
-          text: part.text,
-          signature: part.thoughtSignature as string | undefined,
-        });
-      } else {
-        throw new Error(`Unknown output: ${JSON.stringify(part)}`);
+    if (modelOutput.candidates?.length !== undefined && modelOutput.candidates?.length > 0) {
+      const candidate = modelOutput.candidates?.[0];
+      for (const part of candidate.content?.parts || []) {
+        if (part.functionCall) {
+          contentItems.push({
+            type: "tool_call",
+            name: part.functionCall.name || "",
+            arguments: part.functionCall.args || {},
+            tool_call_id: part.functionCall.name || "",
+            signature: part.thoughtSignature as string | undefined,
+          });
+        } else if (part.text !== undefined && part.thought) {
+          contentItems.push({
+            type: "thinking",
+            thinking: part.text,
+            signature: part.thoughtSignature as string | undefined,
+          });
+        } else if (part.text !== undefined) {
+          contentItems.push({
+            type: "text",
+            text: part.text,
+            signature: part.thoughtSignature as string | undefined,
+          });
+        } else {
+          throw new Error(`Unknown output: ${JSON.stringify(part)}`);
+        }
       }
-    }
 
-    if (candidate.finishReason) {
-      eventType = "stop";
-      const stopReasonMapping: { [key: string]: FinishReason } = {
-        [GeminiFinishReason.STOP]: "stop",
-        [GeminiFinishReason.MAX_TOKENS]: "length",
-      };
-      finishReason = stopReasonMapping[candidate.finishReason] || "unknown";
+      if (candidate.finishReason) {
+        eventType = "stop";
+        const stopReasonMapping: { [key: string]: FinishReason } = {
+          [GeminiFinishReason.STOP]: "stop",
+          [GeminiFinishReason.MAX_TOKENS]: "length",
+        };
+        finishReason = stopReasonMapping[candidate.finishReason] || "unknown";
+      }
     }
 
     if (modelOutput.usageMetadata) {

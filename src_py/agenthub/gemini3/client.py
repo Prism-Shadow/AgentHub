@@ -205,32 +205,35 @@ class Gemini3Client(LLMClient):
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
 
-        candidate = model_output.candidates[0]
-        for part in candidate.content.parts:
-            if part.function_call is not None:
-                content_items.append(
-                    {
-                        "type": "tool_call",
-                        "name": part.function_call.name,
-                        "arguments": part.function_call.args,
-                        "tool_call_id": part.function_call.name,
-                        "signature": part.thought_signature,
-                    }
-                )
-            elif part.text is not None and part.thought:
-                content_items.append({"type": "thinking", "thinking": part.text, "signature": part.thought_signature})
-            elif part.text is not None:
-                content_items.append({"type": "text", "text": part.text, "signature": part.thought_signature})
-            else:
-                raise ValueError(f"Unknown output: {part}")
+        if len(model_output.candidates) > 0:
+            candidate = model_output.candidates[0]
+            for part in candidate.content.parts:
+                if part.function_call is not None:
+                    content_items.append(
+                        {
+                            "type": "tool_call",
+                            "name": part.function_call.name,
+                            "arguments": part.function_call.args,
+                            "tool_call_id": part.function_call.name,
+                            "signature": part.thought_signature,
+                        }
+                    )
+                elif part.text is not None and part.thought:
+                    content_items.append(
+                        {"type": "thinking", "thinking": part.text, "signature": part.thought_signature}
+                    )
+                elif part.text is not None:
+                    content_items.append({"type": "text", "text": part.text, "signature": part.thought_signature})
+                else:
+                    raise ValueError(f"Unknown output: {part}")
 
-        if candidate.finish_reason:
-            event_type = "stop"
-            stop_reason_mapping = {
-                types.FinishReason.STOP: "stop",
-                types.FinishReason.MAX_TOKENS: "length",
-            }
-            finish_reason = stop_reason_mapping.get(candidate.finish_reason, "unknown")
+            if candidate.finish_reason:
+                event_type = "stop"
+                stop_reason_mapping = {
+                    types.FinishReason.STOP: "stop",
+                    types.FinishReason.MAX_TOKENS: "length",
+                }
+                finish_reason = stop_reason_mapping.get(candidate.finish_reason, "unknown")
 
         if model_output.usage_metadata:
             event_type = event_type or "delta"  # deal with separate usage data
