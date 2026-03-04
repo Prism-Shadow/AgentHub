@@ -99,7 +99,7 @@ def create_chat_app() -> Flask:
             </div>
         </div>
 
-        <div class="bg-white border-b border-gray-200 px-6 py-4 hidden" id="configPanel">
+        <div class="bg-white border-b border-gray-200 px-6 py-4" id="configPanel">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div class="flex flex-col">
                     <label class="text-sm font-semibold text-gray-900 mb-1" for="modelSelect">Model</label>

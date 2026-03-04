@@ -72,7 +72,9 @@ if (process.env.MOONSHOT_API_KEY) {
   });
 }
 
-if (process.env.OPENROUTER_API_KEY) {
+const RUN_SLOW_TEST = process.env.RUN_SLOW_TEST === "1";
+
+if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
     name: "z-ai/glm-5",
     supportVision: false,
@@ -93,7 +95,7 @@ if (process.env.OPENROUTER_API_KEY) {
   });
 }
 
-if (process.env.SILICONFLOW_API_KEY) {
+if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
   // AVAILABLE_MODELS.push({
   //   name: "Pro/zai-org/GLM-5",
   //   supportVision: false,
@@ -114,7 +116,7 @@ if (process.env.SILICONFLOW_API_KEY) {
   });
 }
 
-if (process.env.BEDROCK_API_KEY) {
+if (process.env.BEDROCK_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
     name: "global.anthropic.claude-sonnet-4-6",
     supportVision: true,
@@ -123,7 +125,7 @@ if (process.env.BEDROCK_API_KEY) {
   });
 }
 
-if (process.env.VERTEX_API_KEY) {
+if (process.env.VERTEX_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
     name: "gemini-3-flash-preview",
     supportVision: true,
