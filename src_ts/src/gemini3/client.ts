@@ -73,11 +73,27 @@ export class Gemini3Client extends LLMClient {
 
     const httpOptions = url ? { baseUrl: url } : undefined;
     if (key && fs.existsSync(key)) {
-      process.env.GOOGLE_APPLICATION_CREDENTIALS = key;
-      this._client = new GoogleGenAI({
-        vertexai: true,
-        httpOptions: httpOptions,
-      });
+      const oldCredentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      const oldGeminiKey = process.env.GEMINI_API_KEY;
+      try {
+        process.env.GOOGLE_APPLICATION_CREDENTIALS = key;
+        delete process.env.GEMINI_API_KEY;
+        this._client = new GoogleGenAI({
+          vertexai: true,
+          httpOptions: httpOptions,
+        });
+      } finally {
+        if (oldCredentials === undefined) {
+          delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+        } else {
+          process.env.GOOGLE_APPLICATION_CREDENTIALS = oldCredentials;
+        }
+        if (oldGeminiKey === undefined) {
+          delete process.env.GEMINI_API_KEY;
+        } else {
+          process.env.GEMINI_API_KEY = oldGeminiKey;
+        }
+      }
     } else {
       this._client = new GoogleGenAI({
         apiKey: key,
