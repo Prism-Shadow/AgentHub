@@ -103,7 +103,7 @@ class Claude4_6Client(LLMClient):
 
         return source
 
-    def _convert_thinking_level_to_budget(self, thinking_level: ThinkingLevel) -> dict[str, Any]:
+    def _convert_thinking_level_to_thinking_config(self, thinking_level: ThinkingLevel) -> dict[str, Any]:
         """Convert ThinkingLevel enum to Claude's adaptive thinking config."""
         mapping = {
             ThinkingLevel.NONE: {},  # omit thinking config
@@ -153,7 +153,7 @@ class Claude4_6Client(LLMClient):
         # NOTE: Claude always provides thinking summary
         if config.get("thinking_level") is not None:
             claude_config["temperature"] = 1.0  # `temperature` may only be set to 1 when thinking is enabled
-            claude_config.update(self._convert_thinking_level_to_budget(config["thinking_level"]))
+            claude_config.update(self._convert_thinking_level_to_thinking_config(config["thinking_level"]))
 
         # Convert tools to Claude's tool schema
         if config.get("tools") is not None:

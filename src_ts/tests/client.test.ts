@@ -94,12 +94,12 @@ if (process.env.OPENROUTER_API_KEY) {
 }
 
 if (process.env.SILICONFLOW_API_KEY) {
-  AVAILABLE_MODELS.push({
-    name: "Pro/zai-org/GLM-5",
-    supportVision: false,
-    supportTemperature: true,
-    provider: "siliconflow",
-  });
+  // AVAILABLE_MODELS.push({
+  //   name: "Pro/zai-org/GLM-5",
+  //   supportVision: false,
+  //   supportTemperature: true,
+  //   provider: "siliconflow",
+  // });
   AVAILABLE_MODELS.push({
     name: "Qwen/Qwen3-8B",
     supportVision: false,
