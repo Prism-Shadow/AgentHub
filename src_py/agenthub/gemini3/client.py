@@ -53,7 +53,13 @@ class Gemini3Client(LLMClient):
             credentials = service_account.Credentials.from_service_account_info(
                 service_account_info, scopes=["https://www.googleapis.com/auth/cloud-platform"]
             )
-            self._client = genai.Client(vertexai=True, credentials=credentials, http_options=http_options)
+            self._client = genai.Client(
+                vertexai=True,
+                credentials=credentials,
+                project=service_account_info["project_id"],
+                location="global",
+                http_options=http_options,
+            )
         else:
             self._client = genai.Client(api_key=api_key, http_options=http_options)
 
