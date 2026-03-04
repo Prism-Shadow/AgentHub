@@ -30,7 +30,7 @@ interface Model {
 
 const AVAILABLE_MODELS: Model[] = [];
 
-if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
+if (process.env.GEMINI_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "gemini-3-flash-preview",
     supportVision: true,
@@ -97,7 +97,12 @@ if (process.env.OPENROUTER_API_KEY) {
 }
 
 if (process.env.SILICONFLOW_API_KEY) {
-  // AVAILABLE_MODELS.push({ name: "Pro/zai-org/GLM-5", supportVision: false, supportTemperature: true, provider: "siliconflow" });
+  AVAILABLE_MODELS.push({
+    name: "Pro/zai-org/GLM-5",
+    supportVision: false,
+    supportTemperature: true,
+    provider: "siliconflow",
+  });
   AVAILABLE_MODELS.push({
     name: "Qwen/Qwen3-8B",
     supportVision: false,
@@ -134,20 +139,7 @@ function createClient(model: Model): AutoLLMClient {
   let apiKey: string | undefined;
   let baseUrl: string | undefined;
 
-  if (model.provider === "vertex") {
-    const vertexKey = process.env.VERTEX_API_KEY;
-    if (vertexKey) {
-      const tmpFile = path.join(os.tmpdir(), `vertex_key_${Date.now()}.json`);
-      fs.writeFileSync(tmpFile, vertexKey);
-      try {
-        apiKey = tmpFile;
-        return new AutoLLMClient({ model: model.name, apiKey, baseUrl });
-      } finally {
-        fs.rmSync(tmpFile, { force: true });
-      }
-    }
-    return new AutoLLMClient({ model: model.name, apiKey, baseUrl });
-  } else if (model.provider === "openrouter") {
+  if (model.provider === "openrouter") {
     apiKey = process.env.OPENROUTER_API_KEY;
     baseUrl = "https://openrouter.ai/api/v1";
   } else if (model.provider === "siliconflow") {
@@ -156,6 +148,9 @@ function createClient(model: Model): AutoLLMClient {
   } else if (model.provider === "bedrock") {
     apiKey = process.env.BEDROCK_API_KEY;
     baseUrl = "bedrock://us-east-1";
+  } else if (model.provider === "vertex") {
+    apiKey = process.env.VERTEX_API_KEY;
+    baseUrl = undefined;
   } else {
     apiKey = undefined;
     baseUrl = undefined;

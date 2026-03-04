@@ -17,12 +17,12 @@ import json
 import mimetypes
 import os
 import re
-from contextlib import contextmanager
 from typing import AsyncIterator
 
 import httpx
 from google import genai
 from google.genai import types
+from google.oauth2 import service_account
 
 from ..base_client import LLMClient
 from ..types import (
@@ -39,25 +39,6 @@ from ..types import (
 )
 
 
-@contextmanager
-def _temp_env(**kwargs):
-    """Temporary set environment variables."""
-    old_env = {k: os.environ.get(k) for k in kwargs}
-    try:
-        for k, v in kwargs.items():
-            if v is None:
-                os.environ.pop(k, None)
-            else:
-                os.environ[k] = v
-        yield
-    finally:
-        for k, v in old_env.items():
-            if v is None:
-                os.environ.pop(k, None)
-            else:
-                os.environ[k] = v
-
-
 class Gemini3Client(LLMClient):
     """Gemini 3-specific LLM client implementation."""
 
@@ -67,9 +48,12 @@ class Gemini3Client(LLMClient):
         api_key = api_key or os.getenv("GEMINI_API_KEY")
         base_url = base_url or os.getenv("GEMINI_BASE_URL")
         http_options = {"base_url": base_url} if base_url else None
-        if api_key and os.path.isfile(api_key):
-            with _temp_env(GOOGLE_APPLICATION_CREDENTIALS=api_key, GEMINI_API_KEY=None):
-                self._client = genai.Client(vertexai=True, http_options=http_options)
+        if api_key and api_key.startswith("{"):
+            service_account_info = json.loads(api_key)
+            credentials = service_account.Credentials.from_service_account_info(
+                service_account_info, scopes=["https://www.googleapis.com/auth/cloud-platform"]
+            )
+            self._client = genai.Client(vertexai=True, credentials=credentials, http_options=http_options)
         else:
             self._client = genai.Client(api_key=api_key, http_options=http_options)
 

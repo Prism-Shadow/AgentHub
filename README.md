@@ -40,8 +40,8 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 
 | Model Name     | Vendor                          | Reasoning          | Tool Use           | Image Understanding           |
 | -------------- | ------------------------------- | ------------------ | ------------------ | ----------------------------- |
-| Gemini 3/3.1   | Official                        | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
-| Claude 4.6     | Official                        | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
+| Gemini 3/3.1   | Official/Google Vertex AI       | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
+| Claude 4.6     | Official/Amazon Bedrock         | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
 | GPT-5.2        | Official                        | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
 | Kimi-K2.5      | Official/OpenRouter/SiliconFlow | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
 | GLM-5          | Official/OpenRouter/SiliconFlow | :white_check_mark: | :white_check_mark: | :negative_squared_cross_mark: |

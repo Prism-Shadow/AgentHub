@@ -16,7 +16,6 @@ import base64
 import json
 import mimetypes
 import os
-import tempfile
 from contextlib import nullcontext
 from dataclasses import dataclass
 from typing import Literal
@@ -43,7 +42,7 @@ class Model:
 
 AVAILABLE_MODELS: list[Model] = []
 
-if os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"):
+if os.getenv("GEMINI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="gemini-3-flash-preview"))
 
 if os.getenv("ANTHROPIC_API_KEY"):
@@ -66,7 +65,7 @@ if os.getenv("OPENROUTER_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="moonshotai/kimi-k2.5", provider="openrouter", support_temperature=False))
 
 if os.getenv("SILICONFLOW_API_KEY"):
-    # AVAILABLE_MODELS.append(Model(name="Pro/zai-org/GLM-5", provider="siliconflow", support_vision=False))
+    AVAILABLE_MODELS.append(Model(name="Pro/zai-org/GLM-5", provider="siliconflow", support_vision=False))
     AVAILABLE_MODELS.append(Model(name="Qwen/Qwen3-8B", provider="siliconflow", support_vision=False))
     AVAILABLE_MODELS.append(Model(name="Pro/moonshotai/Kimi-K2.5", provider="siliconflow", support_temperature=False))
 
@@ -79,12 +78,6 @@ if os.getenv("VERTEX_API_KEY"):
 
 async def _create_client(model: Model) -> AutoLLMClient:
     """Create a client for the given model."""
-    if model.provider == "vertex":
-        with tempfile.NamedTemporaryFile("w") as f:
-            f.write(os.getenv("VERTEX_API_KEY"))
-            f.flush()
-            return AutoLLMClient(model=model.name, api_key=f.name)
-
     if model.provider == "openrouter":
         api_key = os.getenv("OPENROUTER_API_KEY")
         base_url = "https://openrouter.ai/api/v1"
@@ -94,6 +87,9 @@ async def _create_client(model: Model) -> AutoLLMClient:
     elif model.provider == "bedrock":
         api_key = os.getenv("BEDROCK_API_KEY")
         base_url = "bedrock://us-east-1"
+    elif model.provider == "vertex":
+        api_key = os.getenv("VERTEX_API_KEY")
+        base_url = None
     else:
         api_key, base_url = None, None
 

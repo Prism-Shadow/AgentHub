@@ -128,16 +128,16 @@ export class Claude4_6Client extends LLMClient {
    * Convert ThinkingLevel enum to Claude's adaptive thinking config.
    */
   private _convertThinkingLevelToBudget(thinkingLevel: ThinkingLevel): {
-    thinking: { type: string };
+    thinking?: { type: string };
     output_config?: { effort: string };
   } {
     const mapping: {
       [key: string]: {
-        thinking: { type: string };
+        thinking?: { type: string };
         output_config?: { effort: string };
       };
     } = {
-      [ThinkingLevel.NONE]: { thinking: { type: "disabled" } },
+      [ThinkingLevel.NONE]: {}, // omit thinking config
       [ThinkingLevel.LOW]: {
         thinking: { type: "adaptive" },
         output_config: { effort: "low" },
@@ -200,9 +200,10 @@ export class Claude4_6Client extends LLMClient {
 
     if (config.thinking_level !== undefined) {
       claudeConfig.temperature = 1.0; // `temperature` may only be set to 1 when thinking is enabled
-      Object.assign(claudeConfig, this._convertThinkingLevelToBudget(
-        config.thinking_level,
-      ));
+      Object.assign(
+        claudeConfig,
+        this._convertThinkingLevelToBudget(config.thinking_level),
+      );
     }
 
     if (config.tools !== undefined) {

@@ -29,7 +29,6 @@ import {
   FunctionResponseBlob,
   FunctionResponse,
 } from "@google/genai";
-import * as fs from "fs";
 import * as path from "path";
 import { LLMClient } from "../baseClient";
 import {
@@ -63,41 +62,26 @@ export class Gemini3Client extends LLMClient {
   }) {
     super();
     this._model = options.model;
-    const key =
-      options.apiKey ||
-      process.env.GEMINI_API_KEY ||
-      process.env.GOOGLE_API_KEY ||
-      undefined;
-    const url =
-      options.baseUrl || process.env.GOOGLE_GEMINI_BASE_URL || undefined;
-
+    const key = options.apiKey || process.env.GEMINI_API_KEY || undefined;
+    const url = options.baseUrl || process.env.GEMINI_BASE_URL || undefined;
     const httpOptions = url ? { baseUrl: url } : undefined;
-    if (key && fs.existsSync(key)) {
-      const oldCredentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-      const oldGeminiKey = process.env.GEMINI_API_KEY;
-      try {
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = key;
-        delete process.env.GEMINI_API_KEY;
-        this._client = new GoogleGenAI({
-          vertexai: true,
-          httpOptions: httpOptions,
-        });
-      } finally {
-        if (oldCredentials === undefined) {
-          delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
-        } else {
-          process.env.GOOGLE_APPLICATION_CREDENTIALS = oldCredentials;
-        }
-        if (oldGeminiKey === undefined) {
-          delete process.env.GEMINI_API_KEY;
-        } else {
-          process.env.GEMINI_API_KEY = oldGeminiKey;
-        }
-      }
+    if (key && key.startsWith("{")) {
+      const credentials = JSON.parse(key);
+      const googleAuthOptions = {
+        credentials,
+        scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+      };
+      this._client = new GoogleGenAI({
+        vertexai: true,
+        location: "global",
+        project: credentials.project_id,
+        googleAuthOptions,
+        httpOptions,
+      });
     } else {
       this._client = new GoogleGenAI({
         apiKey: key,
-        httpOptions: httpOptions,
+        httpOptions,
       });
     }
   }

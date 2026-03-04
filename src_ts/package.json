@@ -16,7 +16,7 @@
     "build": "tsc -p tsconfig.json",
     "lint": "eslint src --ext .ts",
     "start": "node dist/index.js",
-    "test": "jest --verbose",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --verbose",
     "tracer": "tsx examples/tracerExample.ts",
     "playground": "tsx examples/playgroundExample.ts"
   },

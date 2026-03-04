@@ -104,10 +104,9 @@ class Claude4_6Client(LLMClient):
         return source
 
     def _convert_thinking_level_to_budget(self, thinking_level: ThinkingLevel) -> dict[str, Any]:
-        """Convert ThinkingLevel enum to Claude's budget_tokens."""
-
+        """Convert ThinkingLevel enum to Claude's adaptive thinking config."""
         mapping = {
-            ThinkingLevel.NONE: {"thinking": {"type": "disabled"}},
+            ThinkingLevel.NONE: {},  # omit thinking config
             ThinkingLevel.LOW: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "low"}},
             ThinkingLevel.MEDIUM: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "medium"}},
             ThinkingLevel.HIGH: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "high"}},

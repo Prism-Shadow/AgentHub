@@ -52,8 +52,6 @@ class KimiK2_5Client(LLMClient):
     async def _convert_image_url_to_base64(self, url: str) -> str:
         """Convert image URL to base64-encoded string.
 
-        Bedrock does not support image url sources, so we need to fetch the image bytes and encode them.
-
         Args:
             url: Image URL to convert
 
