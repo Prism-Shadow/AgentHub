@@ -62,19 +62,28 @@ export class Gemini3Client extends LLMClient {
   }) {
     super();
     this._model = options.model;
-    const key =
-      options.apiKey ||
-      process.env.GEMINI_API_KEY ||
-      process.env.GOOGLE_API_KEY ||
-      undefined;
-    const url =
-      options.baseUrl || process.env.GOOGLE_GEMINI_BASE_URL || undefined;
-
+    const key = options.apiKey || process.env.GEMINI_API_KEY || undefined;
+    const url = options.baseUrl || process.env.GEMINI_BASE_URL || undefined;
     const httpOptions = url ? { baseUrl: url } : undefined;
-    this._client = new GoogleGenAI({
-      apiKey: key,
-      httpOptions: httpOptions,
-    });
+    if (key && key.startsWith("{")) {
+      const credentials = JSON.parse(key);
+      const googleAuthOptions = {
+        credentials,
+        scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+      };
+      this._client = new GoogleGenAI({
+        vertexai: true,
+        location: "global",
+        project: credentials.project_id,
+        googleAuthOptions,
+        httpOptions,
+      });
+    } else {
+      this._client = new GoogleGenAI({
+        apiKey: key,
+        httpOptions,
+      });
+    }
   }
 
   /**

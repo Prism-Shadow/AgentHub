@@ -34,16 +34,19 @@ class Model:
     name: str
     support_vision: bool = True
     support_temperature: bool = True
-    provider: Literal["official", "siliconflow", "openrouter", "bedrock"] = "official"
+    provider: Literal["official", "siliconflow", "openrouter", "bedrock", "vertex"] = "official"
+
+    def __repr__(self) -> str:
+        return f"{self.name}:{self.provider}"
 
 
 AVAILABLE_MODELS: list[Model] = []
 
-if os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"):
+if os.getenv("GEMINI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="gemini-3-flash-preview"))
 
 if os.getenv("ANTHROPIC_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="claude-sonnet-4-5-20250929"))
+    AVAILABLE_MODELS.append(Model(name="claude-sonnet-4-6"))
 
 if os.getenv("OPENAI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="gpt-5.2", support_temperature=False))
@@ -67,7 +70,10 @@ if os.getenv("SILICONFLOW_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="Pro/moonshotai/Kimi-K2.5", provider="siliconflow", support_temperature=False))
 
 if os.getenv("BEDROCK_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="global.anthropic.claude-sonnet-4-5-20250929-v1:0", provider="bedrock"))
+    AVAILABLE_MODELS.append(Model(name="global.anthropic.claude-sonnet-4-6", provider="bedrock"))
+
+if os.getenv("VERTEX_API_KEY"):
+    AVAILABLE_MODELS.append(Model(name="gemini-3-flash-preview", provider="vertex"))
 
 
 async def _create_client(model: Model) -> AutoLLMClient:
@@ -81,6 +87,9 @@ async def _create_client(model: Model) -> AutoLLMClient:
     elif model.provider == "bedrock":
         api_key = os.getenv("BEDROCK_API_KEY")
         base_url = "bedrock://us-east-1"
+    elif model.provider == "vertex":
+        api_key = os.getenv("VERTEX_API_KEY")
+        base_url = None
     else:
         api_key, base_url = None, None
 
@@ -123,7 +132,7 @@ async def _check_event_integrity(event: dict) -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[model.name for model in AVAILABLE_MODELS])
+@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_streaming_response_basic(model: Model):
     """Test basic stateless stream generation."""
     client = await _create_client(model)
@@ -141,7 +150,7 @@ async def test_streaming_response_basic(model: Model):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[model.name for model in AVAILABLE_MODELS])
+@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_streaming_response_with_all_parameters(model: Model):
     """Test stream generation with all optional parameters."""
     client = await _create_client(model)
@@ -165,7 +174,7 @@ async def test_streaming_response_with_all_parameters(model: Model):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[model.name for model in AVAILABLE_MODELS])
+@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_streaming_response_stateful(model: Model):
     """Test stateful stream generation."""
     client = await _create_client(model)
@@ -190,7 +199,7 @@ async def test_streaming_response_stateful(model: Model):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[model.name for model in AVAILABLE_MODELS])
+@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_clear_history(model: Model):
     """Test clearing conversation history."""
     client = await _create_client(model)
@@ -207,7 +216,7 @@ async def test_clear_history(model: Model):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[model.name for model in AVAILABLE_MODELS])
+@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_concat_uni_events_to_uni_message(model: Model):
     """Test concatenation of events into a single message."""
     client = await _create_client(model)
@@ -265,7 +274,7 @@ async def test_validate_last_event_raises_on_missing_usage_metadata():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[model.name for model in AVAILABLE_MODELS])
+@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_tool_use(model: Model):
     """Test tool use capability."""
     client = await _create_client(model)
@@ -333,7 +342,7 @@ async def test_tool_use(model: Model):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[model.name for model in AVAILABLE_MODELS])
+@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_system_prompt(model: Model):
     """Test system prompt capability."""
     client = await _create_client(model)
@@ -351,7 +360,7 @@ async def test_system_prompt(model: Model):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[model.name for model in AVAILABLE_MODELS])
+@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_image_understanding(model: Model):
     """Test image understanding with a URL."""
     if not model.support_vision:
@@ -379,7 +388,7 @@ async def test_image_understanding(model: Model):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[model.name for model in AVAILABLE_MODELS])
+@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_image_understanding_base64(model: Model):
     """Test image understanding with base64 encoded image."""
     if not model.support_vision:
@@ -416,7 +425,7 @@ async def test_image_understanding_base64(model: Model):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[model.name for model in AVAILABLE_MODELS])
+@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_tool_result_with_image(model: Model):
     """Test tool result with image_url."""
     if not model.support_vision:

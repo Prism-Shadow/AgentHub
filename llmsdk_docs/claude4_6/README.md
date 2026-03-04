@@ -1,6 +1,6 @@
-# Claude 4.5 SDK Documentation
+# Claude 4.6 SDK Documentation
 
-This directory contains comprehensive documentation and examples for using Anthropic's Claude 4.5 API.
+This directory contains comprehensive documentation and examples for using Anthropic's Claude 4.6 API.
 
 ## Quick Start
 
@@ -9,16 +9,19 @@ This directory contains comprehensive documentation and examples for using Anthr
 
 ## Documentation
 
-The `docs/` folder contains detailed guides on various Claude 4.5 features:
+The `docs/` folder contains detailed guides on various Claude 4.6 features:
 
+- [adaptive-thinking.md](./docs/adaptive-thinking.md) - Adaptive thinking capabilities
+- [effort.md](./docs/effort.md) - Understanding reasoning effort parameters
 - [extended-thinking.md](./docs/extended-thinking.md) - Extended thinking capabilities
-- [migrating-to-claude-4.md](./docs/migrating-to-claude-4.md) - Migration guide from previous versions
-- [reasoning-effort.md](./docs/reasoning-effort.md) - Understanding reasoning effort parameters
+- [migration-guide.md](./docs/migration-guide.md) - Migration guide from previous versions
+- [prompt-caching.md](./docs/prompt-caching.md) - Prompt caching capabilities
 - [streaming.md](./docs/streaming.md) - Streaming responses
 - [tool-use-overview.md](./docs/tool-use-overview.md) - Function calling and tool use
+- [use-claude-on-bedrock.md](./docs/use-claude-on-bedrock.md) - Using Claude 4.6 on AWS Bedrock
 - [vision.md](./docs/vision.md) - Image and vision capabilities
+- [whats-new-claude-4-6.md](./docs/whats-new-claude-4-6.md) - What's new in Claude 4.6
 - [working-with-messages.md](./docs/working-with-messages.md) - Message formatting and conversation management
-- [use_claude_on_bedrock.md](./docs/use_claude_on_bedrock.md) - Using Claude 4.5 on AWS Bedrock
 
 ## Examples
 

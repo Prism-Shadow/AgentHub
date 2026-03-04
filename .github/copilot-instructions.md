@@ -81,6 +81,7 @@ When writing tests that require calling AI models, the following secrets are ava
 - `OPENROUTER_API_KEY` - API key for OpenRouter Models
 - `SILICONFLOW_API_KEY` - API key for SiliconFlow Models
 - `BEDROCK_API_KEY` - API key for Amazon Bedrock Models
+- `VERTEX_API_KEY` - API key for Google Vertex AI Models
 
 To use these secrets in your workflow files, reference them in the `env:` section:
 
@@ -94,6 +95,7 @@ env:
   OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
   SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
   BEDROCK_API_KEY: ${{ secrets.BEDROCK_API_KEY }}
+  VERTEX_API_KEY: ${{ secrets.VERTEX_API_KEY }}
 ```
 
 These secrets can be used in your test code to authenticate with the respective AI model providers. Make sure to handle these credentials securely and never log or expose them in test output.

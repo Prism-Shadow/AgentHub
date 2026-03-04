@@ -22,6 +22,7 @@ from typing import AsyncIterator
 import httpx
 from google import genai
 from google.genai import types
+from google.oauth2 import service_account
 
 from ..base_client import LLMClient
 from ..types import (
@@ -44,11 +45,24 @@ class Gemini3Client(LLMClient):
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
         """Initialize Gemini 3 client with model and API key."""
         self._model = model
-        api_key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-        base_url = base_url or os.getenv("GOOGLE_GEMINI_BASE_URL")
-        self._client = (
-            genai.Client(api_key=api_key, http_options={"base_url": base_url}) if api_key else genai.Client()
-        )
+        api_key = api_key or os.getenv("GEMINI_API_KEY")
+        base_url = base_url or os.getenv("GEMINI_BASE_URL")
+        http_options = {"base_url": base_url} if base_url else None
+        if api_key and api_key.startswith("{"):
+            service_account_info = json.loads(api_key)
+            credentials = service_account.Credentials.from_service_account_info(
+                service_account_info, scopes=["https://www.googleapis.com/auth/cloud-platform"]
+            )
+            self._client = genai.Client(
+                vertexai=True,
+                credentials=credentials,
+                project=service_account_info["project_id"],
+                location="global",
+                http_options=http_options,
+            )
+        else:
+            self._client = genai.Client(api_key=api_key, http_options=http_options)
+
         self._history: list[UniMessage] = []
 
     def _detect_image_mime_type(self, url: str) -> str:

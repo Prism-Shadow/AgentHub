@@ -22,12 +22,12 @@ interface Model {
   name: string;
   supportVision: boolean;
   supportTemperature: boolean;
-  provider: "official" | "siliconflow" | "openrouter" | "bedrock";
+  provider: "official" | "siliconflow" | "openrouter" | "bedrock" | "vertex";
 }
 
 const AVAILABLE_MODELS: Model[] = [];
 
-if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
+if (process.env.GEMINI_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "gemini-3-flash-preview",
     supportVision: true,
@@ -38,7 +38,7 @@ if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
 
 if (process.env.ANTHROPIC_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "claude-sonnet-4-5-20250929",
+    name: "claude-sonnet-4-6",
     supportVision: true,
     supportTemperature: true,
     provider: "official",
@@ -94,7 +94,12 @@ if (process.env.OPENROUTER_API_KEY) {
 }
 
 if (process.env.SILICONFLOW_API_KEY) {
-  // AVAILABLE_MODELS.push({ name: "Pro/zai-org/GLM-5", supportVision: false, supportTemperature: true, provider: "siliconflow" });
+  // AVAILABLE_MODELS.push({
+  //   name: "Pro/zai-org/GLM-5",
+  //   supportVision: false,
+  //   supportTemperature: true,
+  //   provider: "siliconflow",
+  // });
   AVAILABLE_MODELS.push({
     name: "Qwen/Qwen3-8B",
     supportVision: false,
@@ -111,10 +116,19 @@ if (process.env.SILICONFLOW_API_KEY) {
 
 if (process.env.BEDROCK_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    name: "global.anthropic.claude-sonnet-4-6",
     supportVision: true,
     supportTemperature: true,
     provider: "bedrock",
+  });
+}
+
+if (process.env.VERTEX_API_KEY) {
+  AVAILABLE_MODELS.push({
+    name: "gemini-3-flash-preview",
+    supportVision: true,
+    supportTemperature: true,
+    provider: "vertex",
   });
 }
 
@@ -131,6 +145,9 @@ function createClient(model: Model): AutoLLMClient {
   } else if (model.provider === "bedrock") {
     apiKey = process.env.BEDROCK_API_KEY;
     baseUrl = "bedrock://us-east-1";
+  } else if (model.provider === "vertex") {
+    apiKey = process.env.VERTEX_API_KEY;
+    baseUrl = undefined;
   } else {
     apiKey = undefined;
     baseUrl = undefined;
@@ -185,7 +202,7 @@ function checkEventIntegrity(event: UniEvent): void {
 }
 
 if (AVAILABLE_MODELS.length > 0) {
-  describe.each(AVAILABLE_MODELS.map((m) => [m.name, m]))(
+  describe.each(AVAILABLE_MODELS.map((m) => [m.name + ":" + m.provider, m]))(
     "Client tests for %s",
     (_name, model: Model) => {
       test("should stream basic response", async () => {
