@@ -72,12 +72,15 @@ export function createChatApp(): Express {
   <body class="bg-gray-50 flex flex-col h-screen">
       <div class="bg-gray-900 text-white px-6 py-4 border-b border-gray-700 flex justify-between items-center">
           <h1 class="text-xl font-semibold">🤖 LLM Playground</h1>
-          <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm transition-colors" onclick="toggleConfig()">
-              ⚙️ Config
-          </button>
+          <div class="flex items-center gap-4">
+              <a href="https://github.com/Prism-Shadow/AgentHub" target="_blank" class="text-gray-400 hover:text-white text-sm transition-colors">GitHub</a>
+              <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm transition-colors" onclick="toggleConfig()">
+                  ⚙️ Config
+              </button>
+          </div>
       </div>
 
-      <div class="bg-white border-b border-gray-200 px-6 py-4 hidden" id="configPanel">
+      <div class="bg-white border-b border-gray-200 px-6 py-4" id="configPanel">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div class="flex flex-col">
                   <label class="text-sm font-semibold text-gray-900 mb-1" for="modelSelect">Model</label>
@@ -411,7 +414,9 @@ export function createChatApp(): Express {
                                           if (!thinkingContainer) {
                                               thinkingContainer = document.createElement('div');
                                               thinkingContainer.className = 'thinking-content bg-blue-50 p-3 rounded-md border-l-4 border-blue-500 mb-2 italic';
-                                              contentDiv.appendChild(thinkingContainer);
+                                              // Always insert thinking before any text content so it appears on top
+                                              const textContainer = contentDiv.querySelector('.text-content');
+                                              contentDiv.insertBefore(thinkingContainer, textContainer || contentDiv.firstChild);
                                           }
                                           thinkingContainer.textContent = \`💭 \${fullThinking}\`;
                                       } else if (item.type === 'partial_tool_call') {
@@ -507,7 +512,7 @@ export function createChatApp(): Express {
           }
 
           document.getElementById('messageInput').addEventListener('keydown', function(e) {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
                   e.preventDefault();
                   sendMessage();
               }
