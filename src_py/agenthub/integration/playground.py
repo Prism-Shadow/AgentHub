@@ -91,9 +91,12 @@ def create_chat_app() -> Flask:
     <body class="bg-gray-50 flex flex-col h-screen">
         <div class="bg-gray-900 text-white px-6 py-4 border-b border-gray-700 flex justify-between items-center">
             <h1 class="text-xl font-semibold">🤖 LLM Playground</h1>
-            <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm transition-colors" onclick="toggleConfig()">
-                ⚙️ Config
-            </button>
+            <div class="flex items-center gap-4">
+                <a href="https://github.com/Prism-Shadow/AgentHub" target="_blank" class="text-gray-400 hover:text-white text-sm transition-colors">GitHub</a>
+                <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm transition-colors" onclick="toggleConfig()">
+                    ⚙️ Config
+                </button>
+            </div>
         </div>
 
         <div class="bg-white border-b border-gray-200 px-6 py-4 hidden" id="configPanel">
@@ -430,7 +433,9 @@ def create_chat_app() -> Flask:
                                             if (!thinkingContainer) {
                                                 thinkingContainer = document.createElement('div');
                                                 thinkingContainer.className = 'thinking-content bg-blue-50 p-3 rounded-md border-l-4 border-blue-500 mb-2 italic';
-                                                contentDiv.appendChild(thinkingContainer);
+                                                // Always insert thinking before any text content so it appears on top
+                                                const textContainer = contentDiv.querySelector('.text-content');
+                                                contentDiv.insertBefore(thinkingContainer, textContainer || contentDiv.firstChild);
                                             }
                                             thinkingContainer.textContent = `💭 ${fullThinking}`;
                                         } else if (item.type === 'partial_tool_call') {

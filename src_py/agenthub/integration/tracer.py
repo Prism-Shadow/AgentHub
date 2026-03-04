@@ -207,7 +207,10 @@ class Tracer:
         </head>
         <body class="bg-gray-50 min-h-screen">
             <div class="max-w-5xl mx-auto p-6">
-                <h1 class="text-3xl font-bold text-gray-900 mb-6">Tracer</h1>
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-3xl font-bold text-gray-900">Tracer</h1>
+                    <a href="https://github.com/Prism-Shadow/AgentHub" target="_blank" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">GitHub</a>
+                </div>
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
                     <p class="text-sm text-gray-600"><strong>Path:</strong> {{ breadcrumb|safe }}</p>
                 </div>
@@ -247,7 +250,10 @@ class Tracer:
         </head>
         <body class="bg-gray-50 min-h-screen">
             <div class="max-w-5xl mx-auto p-6">
-                <h1 class="text-3xl font-bold text-gray-900 mb-4">{{ filename }}</h1>
+                <div class="flex justify-between items-center mb-4">
+                    <h1 class="text-3xl font-bold text-gray-900">{{ filename }}</h1>
+                    <a href="https://github.com/Prism-Shadow/AgentHub" target="_blank" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">GitHub</a>
+                </div>
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
                     <p class="text-sm text-gray-600"><strong>Path:</strong> {{ breadcrumb|safe }}</p>
                 </div>
@@ -367,7 +373,10 @@ class Tracer:
         </head>
         <body class="bg-gray-50 min-h-screen">
             <div class="max-w-5xl mx-auto p-6">
-                <h1 class="text-3xl font-bold text-gray-900 mb-4">{{ filename }}</h1>
+                <div class="flex justify-between items-center mb-4">
+                    <h1 class="text-3xl font-bold text-gray-900">{{ filename }}</h1>
+                    <a href="https://github.com/Prism-Shadow/AgentHub" target="_blank" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">GitHub</a>
+                </div>
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
                     <p class="text-sm text-gray-600"><strong>Path:</strong> {{ breadcrumb|safe }}</p>
                 </div>
