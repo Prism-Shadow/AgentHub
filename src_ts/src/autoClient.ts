@@ -93,7 +93,7 @@ export class AutoLLMClient extends LLMClient {
     } else {
       throw new Error(
         `${clientType} is not supported. ` +
-          "Supported client types: gemini-3, claude-4-5, gpt-5.2, glm-4.6, glm-4.7, glm-5, kimi-k2.5, qwen3.",
+          "Supported client types: gemini-3, claude-4-6, gpt-5.2, glm-4.6, glm-4.7, glm-5, kimi-k2.5, qwen3.",
       );
     }
   }
