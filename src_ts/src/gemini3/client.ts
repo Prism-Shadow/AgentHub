@@ -29,6 +29,7 @@ import {
   FunctionResponseBlob,
   FunctionResponse,
 } from "@google/genai";
+import * as fs from "fs";
 import * as path from "path";
 import { LLMClient } from "../baseClient";
 import {
@@ -71,10 +72,18 @@ export class Gemini3Client extends LLMClient {
       options.baseUrl || process.env.GOOGLE_GEMINI_BASE_URL || undefined;
 
     const httpOptions = url ? { baseUrl: url } : undefined;
-    this._client = new GoogleGenAI({
-      apiKey: key,
-      httpOptions: httpOptions,
-    });
+    if (key && fs.existsSync(key)) {
+      process.env.GOOGLE_APPLICATION_CREDENTIALS = key;
+      this._client = new GoogleGenAI({
+        vertexai: true,
+        httpOptions: httpOptions,
+      });
+    } else {
+      this._client = new GoogleGenAI({
+        apiKey: key,
+        httpOptions: httpOptions,
+      });
+    }
   }
 
   /**

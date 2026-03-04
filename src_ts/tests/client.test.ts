@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 import { AutoLLMClient } from "../src/autoClient";
 import { ThinkingLevel, UniMessage, UniConfig, UniEvent } from "../src/types";
 
@@ -22,7 +25,7 @@ interface Model {
   name: string;
   supportVision: boolean;
   supportTemperature: boolean;
-  provider: "official" | "siliconflow" | "openrouter" | "bedrock";
+  provider: "official" | "siliconflow" | "openrouter" | "bedrock" | "vertex";
 }
 
 const AVAILABLE_MODELS: Model[] = [];
@@ -38,7 +41,7 @@ if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
 
 if (process.env.ANTHROPIC_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "claude-sonnet-4-5-20250929",
+    name: "claude-sonnet-4-6",
     supportVision: true,
     supportTemperature: true,
     provider: "official",
@@ -111,10 +114,19 @@ if (process.env.SILICONFLOW_API_KEY) {
 
 if (process.env.BEDROCK_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    name: "global.anthropic.claude-sonnet-4-6",
     supportVision: true,
     supportTemperature: true,
     provider: "bedrock",
+  });
+}
+
+if (process.env.VERTEX_API_KEY) {
+  AVAILABLE_MODELS.push({
+    name: "gemini-3-flash-preview",
+    supportVision: true,
+    supportTemperature: true,
+    provider: "vertex",
   });
 }
 
@@ -122,7 +134,20 @@ function createClient(model: Model): AutoLLMClient {
   let apiKey: string | undefined;
   let baseUrl: string | undefined;
 
-  if (model.provider === "openrouter") {
+  if (model.provider === "vertex") {
+    const vertexKey = process.env.VERTEX_API_KEY;
+    if (vertexKey) {
+      const tmpFile = path.join(os.tmpdir(), `vertex_key_${Date.now()}.json`);
+      fs.writeFileSync(tmpFile, vertexKey);
+      try {
+        apiKey = tmpFile;
+        return new AutoLLMClient({ model: model.name, apiKey, baseUrl });
+      } finally {
+        fs.rmSync(tmpFile, { force: true });
+      }
+    }
+    return new AutoLLMClient({ model: model.name, apiKey, baseUrl });
+  } else if (model.provider === "openrouter") {
     apiKey = process.env.OPENROUTER_API_KEY;
     baseUrl = "https://openrouter.ai/api/v1";
   } else if (model.provider === "siliconflow") {

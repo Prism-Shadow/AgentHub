@@ -90,7 +90,7 @@ export function createChatApp(): Express {
                   <datalist id="modelList">
                       <option value="gpt-5.2">GPT 5.2</option>
                       <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
-                      <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
+                      <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
                       <option value="kimi-k2.5">Kimi K2.5</option>
                       <option value="glm-5">GLM 5</option>
                   </datalist>

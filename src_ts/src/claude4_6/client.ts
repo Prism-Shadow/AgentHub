@@ -125,19 +125,32 @@ export class Claude4_6Client extends LLMClient {
   }
 
   /**
-   * Convert ThinkingLevel enum to Claude's budget_tokens.
+   * Convert ThinkingLevel enum to Claude's adaptive thinking config.
    */
   private _convertThinkingLevelToBudget(thinkingLevel: ThinkingLevel): {
-    type: string;
-    budget_tokens?: number;
+    thinking: { type: string };
+    output_config?: { effort: string };
   } {
-    const mapping: { [key: string]: { type: string; budget_tokens?: number } } =
-      {
-        [ThinkingLevel.NONE]: { type: "disabled" },
-        [ThinkingLevel.LOW]: { type: "enabled", budget_tokens: 1024 },
-        [ThinkingLevel.MEDIUM]: { type: "enabled", budget_tokens: 4096 },
-        [ThinkingLevel.HIGH]: { type: "enabled", budget_tokens: 16384 },
+    const mapping: {
+      [key: string]: {
+        thinking: { type: string };
+        output_config?: { effort: string };
       };
+    } = {
+      [ThinkingLevel.NONE]: { thinking: { type: "disabled" } },
+      [ThinkingLevel.LOW]: {
+        thinking: { type: "adaptive" },
+        output_config: { effort: "low" },
+      },
+      [ThinkingLevel.MEDIUM]: {
+        thinking: { type: "adaptive" },
+        output_config: { effort: "medium" },
+      },
+      [ThinkingLevel.HIGH]: {
+        thinking: { type: "adaptive" },
+        output_config: { effort: "high" },
+      },
+    };
     return mapping[thinkingLevel];
   }
 
@@ -168,7 +181,6 @@ export class Claude4_6Client extends LLMClient {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const claudeConfig: any = {
       model: this._model,
-      betas: ["interleaved-thinking-2025-05-14"],
       stream: true,
     };
 
@@ -188,9 +200,9 @@ export class Claude4_6Client extends LLMClient {
 
     if (config.thinking_level !== undefined) {
       claudeConfig.temperature = 1.0; // `temperature` may only be set to 1 when thinking is enabled
-      claudeConfig.thinking = this._convertThinkingLevelToBudget(
+      Object.assign(claudeConfig, this._convertThinkingLevelToBudget(
         config.thinking_level,
-      );
+      ));
     }
 
     if (config.tools !== undefined) {
