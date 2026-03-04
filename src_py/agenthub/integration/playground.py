@@ -531,7 +531,7 @@ def create_chat_app() -> Flask:
             }
 
             document.getElementById('messageInput').addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
+                if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
                     e.preventDefault();
                     sendMessage();
                 }
