@@ -80,11 +80,7 @@ export class AutoLLMClient extends LLMClient {
       clientType.includes("gpt-5.2")
     ) {
       return new GPT5_2Client({ model, apiKey, baseUrl });
-    } else if (
-      clientType.includes("glm-4.6") ||
-      clientType.includes("glm-4.7") ||
-      clientType.includes("glm-5")
-    ) {
+    } else if (clientType.includes("glm-5")) {
       return new GLM5Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("kimi-k2.5")) {
       return new KimiK2_5Client({ model, apiKey, baseUrl });
@@ -93,7 +89,7 @@ export class AutoLLMClient extends LLMClient {
     } else {
       throw new Error(
         `${clientType} is not supported. ` +
-          "Supported client types: gemini-3, claude-4-6, gpt-5.2, glm-4.6, glm-4.7, glm-5, kimi-k2.5, qwen3.",
+          "Supported client types: gemini-3, claude-4-6, gpt-5.2, glm-5, kimi-k2.5, qwen3.",
       );
     }
   }

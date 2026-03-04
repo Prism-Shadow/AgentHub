@@ -58,7 +58,7 @@ class AutoLLMClient(LLMClient):
             from .gpt5_2 import GPT5_2Client
 
             return GPT5_2Client(model=model, api_key=api_key, base_url=base_url)
-        elif "glm-4.6" in client_type or "glm-4.7" in client_type or "glm-5" in client_type:
+        elif "glm-5" in client_type:
             from .glm5 import GLM5Client
 
             return GLM5Client(model=model, api_key=api_key, base_url=base_url)
@@ -73,7 +73,7 @@ class AutoLLMClient(LLMClient):
         else:
             raise ValueError(
                 f"{client_type} is not supported. "
-                "Supported client types: gemini-3, claude-4-6, gpt-5.2, glm-4.6, glm-4.7, glm-5, kimi-k2.5, qwen3."
+                "Supported client types: gemini-3, claude-4-6, gpt-5.2, glm-5, kimi-k2.5, qwen3."
             )
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:
