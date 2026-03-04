@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
 import { AutoLLMClient } from "../src/autoClient";
 import { ThinkingLevel, UniMessage, UniConfig, UniEvent } from "../src/types";
 
@@ -205,7 +202,7 @@ function checkEventIntegrity(event: UniEvent): void {
 }
 
 if (AVAILABLE_MODELS.length > 0) {
-  describe.each(AVAILABLE_MODELS.map((m) => [m.name, m]))(
+  describe.each(AVAILABLE_MODELS.map((m) => [m.name + ":" + m.provider, m]))(
     "Client tests for %s",
     (_name, model: Model) => {
       test("should stream basic response", async () => {
