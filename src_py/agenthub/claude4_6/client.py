@@ -41,15 +41,15 @@ from ..types import (
 REDACTED_THINKING = "_REDACTED_THINKING"
 
 
-class Claude4_5Client(LLMClient):
-    """Claude 4.5-specific LLM client implementation."""
+class Claude4_6Client(LLMClient):
+    """Claude 4.6-specific LLM client implementation."""
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
-        """Initialize Claude 4.5 client with model and API key."""
+        """Initialize Claude 4.6 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         base_url = base_url or os.getenv("ANTHROPIC_BASE_URL")
-        if base_url and "bedrock" in base_url:  # example: bedrock://us-east-1
+        if base_url and base_url.startswith("bedrock://"):  # example: bedrock://us-east-1
             region = base_url.replace("bedrock://", "")
             access_key, secret_key = api_key.split(",")
             self._client = AsyncAnthropicBedrock(
@@ -107,10 +107,10 @@ class Claude4_5Client(LLMClient):
         """Convert ThinkingLevel enum to Claude's budget_tokens."""
 
         mapping = {
-            ThinkingLevel.NONE: {"type": "disabled"},
-            ThinkingLevel.LOW: {"type": "enabled", "budget_tokens": 1024},
-            ThinkingLevel.MEDIUM: {"type": "enabled", "budget_tokens": 4096},
-            ThinkingLevel.HIGH: {"type": "enabled", "budget_tokens": 16384},
+            ThinkingLevel.NONE: {"thinking": {"type": "disabled"}},
+            ThinkingLevel.LOW: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "low"}},
+            ThinkingLevel.MEDIUM: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "medium"}},
+            ThinkingLevel.HIGH: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "high"}},
         }
         return mapping.get(thinking_level)
 
@@ -138,7 +138,7 @@ class Claude4_5Client(LLMClient):
         Returns:
             Claude configuration dictionary
         """
-        claude_config = {"model": self._model, "betas": ["interleaved-thinking-2025-05-14"], "stream": True}
+        claude_config = {"model": self._model, "stream": True}
 
         if config.get("system_prompt") is not None:
             claude_config["system"] = config["system_prompt"]
@@ -154,7 +154,7 @@ class Claude4_5Client(LLMClient):
         # NOTE: Claude always provides thinking summary
         if config.get("thinking_level") is not None:
             claude_config["temperature"] = 1.0  # `temperature` may only be set to 1 when thinking is enabled
-            claude_config["thinking"] = self._convert_thinking_level_to_budget(config["thinking_level"])
+            claude_config.update(self._convert_thinking_level_to_budget(config["thinking_level"]))
 
         # Convert tools to Claude's tool schema
         if config.get("tools") is not None:

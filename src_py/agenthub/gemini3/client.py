@@ -17,6 +17,7 @@ import json
 import mimetypes
 import os
 import re
+from contextlib import contextmanager
 from typing import AsyncIterator
 
 import httpx
@@ -38,17 +39,40 @@ from ..types import (
 )
 
 
+@contextmanager
+def _temp_env(**kwargs):
+    """Temporary set environment variables."""
+    old_env = {k: os.environ.get(k) for k in kwargs}
+    try:
+        for k, v in kwargs.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        yield
+    finally:
+        for k, v in old_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
 class Gemini3Client(LLMClient):
     """Gemini 3-specific LLM client implementation."""
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
         """Initialize Gemini 3 client with model and API key."""
         self._model = model
-        api_key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-        base_url = base_url or os.getenv("GOOGLE_GEMINI_BASE_URL")
-        self._client = (
-            genai.Client(api_key=api_key, http_options={"base_url": base_url}) if api_key else genai.Client()
-        )
+        api_key = api_key or os.getenv("GEMINI_API_KEY")
+        base_url = base_url or os.getenv("GEMINI_BASE_URL")
+        http_options = {"base_url": base_url} if base_url else None
+        if api_key and os.path.isfile(api_key):
+            with _temp_env(GOOGLE_APPLICATION_CREDENTIALS=api_key, GEMINI_API_KEY=None):
+                self._client = genai.Client(vertexai=True, http_options=http_options)
+        else:
+            self._client = genai.Client(api_key=api_key, http_options=http_options)
+
         self._history: list[UniMessage] = []
 
     def _detect_image_mime_type(self, url: str) -> str:

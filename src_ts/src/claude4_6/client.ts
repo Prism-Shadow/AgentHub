@@ -36,15 +36,15 @@ import {
 const REDACTED_THINKING = "_REDACTED_THINKING";
 
 /**
- * Claude 4.5-specific LLM client implementation.
+ * Claude 4.6-specific LLM client implementation.
  */
-export class Claude4_5Client extends LLMClient {
+export class Claude4_6Client extends LLMClient {
   protected _model: string;
   private _client: Anthropic | AnthropicBedrock;
   private _use_bedrock: boolean;
 
   /**
-   * Initialize Claude 4.5 client with model and API key.
+   * Initialize Claude 4.6 client with model and API key.
    */
   constructor(options: {
     model: string;
@@ -57,7 +57,7 @@ export class Claude4_5Client extends LLMClient {
     const key = options.apiKey || process.env.ANTHROPIC_API_KEY || undefined;
     const url = options.baseUrl || process.env.ANTHROPIC_BASE_URL || undefined;
 
-    if (url && url.includes("bedrock")) {
+    if (url && url.startsWith("bedrock://")) {
       // example: bedrock://us-east-1
       const region = url.replace("bedrock://", "");
       const [accessKey, secretKey] = (key || "").split(",");

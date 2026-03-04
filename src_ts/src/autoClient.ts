@@ -14,7 +14,7 @@
 
 import { LLMClient } from "./baseClient";
 import { Gemini3Client } from "./gemini3";
-import { Claude4_5Client } from "./claude4_5";
+import { Claude4_6Client } from "./claude4_6";
 import { GPT5_2Client } from "./gpt5_2";
 import { GLM5Client } from "./glm5";
 import { KimiK2_5Client } from "./kimi_k2_5";
@@ -73,8 +73,8 @@ export class AutoLLMClient extends LLMClient {
       clientType.includes("gemini-3.1-")
     ) {
       return new Gemini3Client({ model, apiKey, baseUrl });
-    } else if (clientType.includes("claude") && clientType.includes("4-5")) {
-      return new Claude4_5Client({ model, apiKey, baseUrl });
+    } else if (clientType.includes("claude") && clientType.includes("4-6")) {
+      return new Claude4_6Client({ model, apiKey, baseUrl });
     } else if (
       clientType.includes("gpt-5.1") ||
       clientType.includes("gpt-5.2")
