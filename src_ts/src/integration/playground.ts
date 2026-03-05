@@ -338,6 +338,7 @@ export function createChatApp(): Express {
               isStreaming = true;
               sendButton.disabled = true;
               input.value = '';
+              input.style.height = 'auto';
 
               const currentImages = [...selectedImages];
               selectedImages = [];

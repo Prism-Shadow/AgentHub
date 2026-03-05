@@ -357,6 +357,7 @@ def create_chat_app() -> Flask:
                 isStreaming = true;
                 sendButton.disabled = true;
                 input.value = '';
+                input.style.height = 'auto';
 
                 const currentImages = [...selectedImages];
                 selectedImages = [];

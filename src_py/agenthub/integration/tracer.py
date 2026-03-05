@@ -268,9 +268,15 @@ class Tracer:
                         <div class="py-2 text-sm">
                             <strong class="text-gray-900">{{ key|e }}:</strong>
                             {% if key == 'system_prompt' and value is not none %}
-                                <div class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap">{{ value|e }}</div>
+                                <details class="mt-1">
+                                    <summary class="cursor-pointer text-blue-600 hover:text-blue-800 text-xs select-none">Show / Hide</summary>
+                                    <div class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap">{{ value|e }}</div>
+                                </details>
                             {% elif key == 'tools' and value is iterable and value is not string %}
-                                <div class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap">{{ value|tojson(indent=2)|e }}</div>
+                                <details class="mt-1">
+                                    <summary class="cursor-pointer text-blue-600 hover:text-blue-800 text-xs select-none">Show / Hide</summary>
+                                    <div class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap">{{ value|tojson(indent=2)|e }}</div>
+                                </details>
                             {% else %}
                                 <span class="text-gray-600">{{ value|e }}</span>
                             {% endif %}

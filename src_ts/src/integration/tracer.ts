@@ -387,7 +387,7 @@ export class Tracer {
                   ${configItems
                     .map((item) => {
                       if (item.isSystemPrompt || item.isTools) {
-                        return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><div class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap">${this._escapeHtml(String(item.value))}</div></div>`;
+                        return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><details class="mt-1"><summary class="cursor-pointer text-blue-600 hover:text-blue-800 text-xs select-none">Show / Hide</summary><div class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap">${this._escapeHtml(String(item.value))}</div></details></div>`;
                       } else {
                         return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><span class="text-gray-600">${this._escapeHtml(String(item.value))}</span></div>`;
                       }
