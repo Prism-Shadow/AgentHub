@@ -160,7 +160,7 @@ def create_chat_app() -> Flask:
                 </div>
                 <div class="flex flex-col">
                     <label class="text-sm font-semibold text-gray-900 mb-1" for="toolsInput">Tools (JSON Array)</label>
-                    <textarea id="toolsInput" rows="3" placeholder='[{"name": "function_name", "description": "...", "parameters": {...}}]' class="px-3 py-2 border border-gray-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"></textarea>
+                    <textarea id="toolsInput" rows="3" placeholder='[{"name": "function_name", "description": "...", "parameters": {...}}]' class="px-3 py-2 border border-gray-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"></textarea>
                 </div>
                 <div class="flex flex-col">
                     <label class="text-sm font-semibold text-gray-900 mb-1" for="traceIdInput">Trace ID</label>
@@ -447,11 +447,11 @@ def create_chat_app() -> Flask:
                                                 toolcallContainer.className = 'toolcall-content bg-yellow-50 p-3 rounded-md border-l-4 border-yellow-500 mb-2';
                                                 contentDiv.appendChild(toolcallContainer);
                                             }
-                                            toolcallContainer.innerHTML = `<strong class="text-sm">🛠️ Tool Call:</strong> ${escapeHtml(fullToolName || '...')}<br><pre class="mt-1 text-xs">${escapeHtml(fullToolArgs || '')}</pre>`;
+                                            toolcallContainer.innerHTML = `<strong class="text-sm">🛠️ Tool Call:</strong> ${escapeHtml(fullToolName || '...')}<br><div class="mt-1 text-xs" style="white-space: pre-wrap;">${escapeHtml(fullToolArgs || '')}</div>`;
                                         } else if (item.type === 'tool_result') {
                                             const toolResultDiv = document.createElement('div');
                                             toolResultDiv.className = 'bg-green-50 p-3 rounded-md border-l-4 border-green-500 mb-2';
-                                            toolResultDiv.innerHTML = `<strong class="text-sm">✅ Tool Result:</strong><br><pre class="mt-1 text-xs">${escapeHtml(item.text)}</pre>`;
+                                            toolResultDiv.innerHTML = `<strong class="text-sm">✅ Tool Result:</strong><br><div class="mt-1 text-xs" style="white-space: pre-wrap;">${escapeHtml(item.text)}</div>`;
                                             contentDiv.appendChild(toolResultDiv);
                                         }
                                     }
