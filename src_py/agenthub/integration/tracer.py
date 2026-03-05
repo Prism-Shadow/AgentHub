@@ -268,9 +268,11 @@ class Tracer:
                         <div class="py-2 text-sm">
                             <strong class="text-gray-900">{{ key|e }}:</strong>
                             {% if key == 'system_prompt' and value is not none %}
-                                <pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto; white-space: pre-wrap;">{{ value|e }}</pre>
+                                <button onclick="toggleConfig('{{ key|e }}')" class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300 transition-colors"><span id="icon-{{ key|e }}" class="transform transition-transform">▶</span> Show</button>
+                                <div id="content-{{ key|e }}" class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap hidden">{{ value|e }}</div>
                             {% elif key == 'tools' and value is iterable and value is not string %}
-                                <pre style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; overflow-x: auto;">{{ value|tojson(indent=2)|e }}</pre>
+                                <button onclick="toggleConfig('{{ key|e }}')" class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300 transition-colors"><span id="icon-{{ key|e }}" class="transform transition-transform">▶</span> Show</button>
+                                <div id="content-{{ key|e }}" class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap hidden">{{ value|tojson(indent=2)|e }}</div>
                             {% else %}
                                 <span class="text-gray-600">{{ value|e }}</span>
                             {% endif %}
@@ -345,6 +347,12 @@ class Tracer:
                 {% endfor %}
             </div>
             <script>
+                function toggleConfig(key) {
+                    const content = document.getElementById('content-' + key);
+                    const icon = document.getElementById('icon-' + key);
+                    content.classList.toggle('hidden');
+                    icon.classList.toggle('rotate-90');
+                }
                 function toggleMessage(idx) {
                     const content = document.getElementById('content-' + idx);
                     const icon = document.getElementById('icon-' + idx);
@@ -384,7 +392,7 @@ class Tracer:
                     ← Back to Directory
                 </a>
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 overflow-x-auto">
-                    <pre class="font-mono text-sm whitespace-pre-wrap text-gray-800">{{ content|e }}</pre>
+                    <div class="font-mono text-sm text-gray-800 whitespace-pre-wrap">{{ content|e }}</div>
                 </div>
             </div>
         </body>
