@@ -268,6 +268,12 @@ export class Tracer {
             ${historyHtml}
         </div>
         <script>
+            function toggleConfig(key) {
+                const content = document.getElementById('content-' + key);
+                const icon = document.getElementById('icon-' + key);
+                content.classList.toggle('hidden');
+                icon.classList.toggle('rotate-90');
+            }
             function toggleMessage(idx) {
                 const content = document.getElementById('content-' + idx);
                 const icon = document.getElementById('icon-' + idx);
@@ -387,7 +393,7 @@ export class Tracer {
                   ${configItems
                     .map((item) => {
                       if (item.isSystemPrompt || item.isTools) {
-                        return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><details class="mt-1"><summary class="cursor-pointer text-blue-600 hover:text-blue-800 text-xs select-none">Show / Hide</summary><div class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap">${this._escapeHtml(String(item.value))}</div></details></div>`;
+                        return `<div class="py-2 text-sm"><strong class="text-gray-900">${this._escapeHtml(item.key)}:</strong><button onclick="toggleConfig('${this._escapeHtml(item.key)}')" class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300 transition-colors"><span id="icon-${this._escapeHtml(item.key)}" class="transform transition-transform">▶</span> Show</button><div id="content-${this._escapeHtml(item.key)}" class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap hidden">${this._escapeHtml(String(item.value))}</div></div>`;
                       } else {
                         return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><span class="text-gray-600">${this._escapeHtml(String(item.value))}</span></div>`;
                       }

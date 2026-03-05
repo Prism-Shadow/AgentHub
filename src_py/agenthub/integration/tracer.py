@@ -268,15 +268,11 @@ class Tracer:
                         <div class="py-2 text-sm">
                             <strong class="text-gray-900">{{ key|e }}:</strong>
                             {% if key == 'system_prompt' and value is not none %}
-                                <details class="mt-1">
-                                    <summary class="cursor-pointer text-blue-600 hover:text-blue-800 text-xs select-none">Show / Hide</summary>
-                                    <div class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap">{{ value|e }}</div>
-                                </details>
+                                <button onclick="toggleConfig('{{ key|e }}')" class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300 transition-colors"><span id="icon-{{ key|e }}" class="transform transition-transform">▶</span> Show</button>
+                                <div id="content-{{ key|e }}" class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap hidden">{{ value|e }}</div>
                             {% elif key == 'tools' and value is iterable and value is not string %}
-                                <details class="mt-1">
-                                    <summary class="cursor-pointer text-blue-600 hover:text-blue-800 text-xs select-none">Show / Hide</summary>
-                                    <div class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap">{{ value|tojson(indent=2)|e }}</div>
-                                </details>
+                                <button onclick="toggleConfig('{{ key|e }}')" class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300 transition-colors"><span id="icon-{{ key|e }}" class="transform transition-transform">▶</span> Show</button>
+                                <div id="content-{{ key|e }}" class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap hidden">{{ value|tojson(indent=2)|e }}</div>
                             {% else %}
                                 <span class="text-gray-600">{{ value|e }}</span>
                             {% endif %}
@@ -351,6 +347,12 @@ class Tracer:
                 {% endfor %}
             </div>
             <script>
+                function toggleConfig(key) {
+                    const content = document.getElementById('content-' + key);
+                    const icon = document.getElementById('icon-' + key);
+                    content.classList.toggle('hidden');
+                    icon.classList.toggle('rotate-90');
+                }
                 function toggleMessage(idx) {
                     const content = document.getElementById('content-' + idx);
                     const icon = document.getElementById('icon-' + idx);
