@@ -428,11 +428,11 @@ export function createChatApp(): Express {
                                               toolcallContainer.className = 'toolcall-content bg-yellow-50 p-3 rounded-md border-l-4 border-yellow-500 mb-2';
                                               contentDiv.appendChild(toolcallContainer);
                                           }
-                                          toolcallContainer.innerHTML = \`<strong class="text-sm">🛠️ Tool Call:</strong> \${escapeHtml(fullToolName || '...')}<br><div class="mt-1 text-xs" style="white-space: pre-wrap;">\${escapeHtml(fullToolArgs || '')}</div>\`;
+                                          toolcallContainer.innerHTML = \`<strong class="text-sm">🛠️ Tool Call:</strong> \${escapeHtml(fullToolName || '...')}<br><div class="mt-1 text-xs whitespace-pre-wrap">\${escapeHtml(fullToolArgs || '')}</div>\`;
                                       } else if (item.type === 'tool_result') {
                                           const toolResultDiv = document.createElement('div');
                                           toolResultDiv.className = 'bg-green-50 p-3 rounded-md border-l-4 border-green-500 mb-2';
-                                          toolResultDiv.innerHTML = \`<strong class="text-sm">✅ Tool Result:</strong><br><div class="mt-1 text-xs" style="white-space: pre-wrap;">\${escapeHtml(item.text)}</div>\`;
+                                          toolResultDiv.innerHTML = \`<strong class="text-sm">✅ Tool Result:</strong><br><div class="mt-1 text-xs whitespace-pre-wrap">\${escapeHtml(item.text)}</div>\`;
                                           contentDiv.appendChild(toolResultDiv);
                                       }
                                   }

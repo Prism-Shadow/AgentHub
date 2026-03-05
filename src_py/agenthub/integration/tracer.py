@@ -263,15 +263,14 @@ class Tracer:
                 {% if config %}
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                     <h2 class="text-xl font-semibold text-gray-900 mb-4">Configuration</h2>
-                    {% set code_block_style = "margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; white-space: pre-wrap;" %}
                     {% for key, value in config.items() %}
                         {% if key != 'trace_id' %}
                         <div class="py-2 text-sm">
                             <strong class="text-gray-900">{{ key|e }}:</strong>
                             {% if key == 'system_prompt' and value is not none %}
-                                <div style="{{ code_block_style }}">{{ value|e }}</div>
+                                <div class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap">{{ value|e }}</div>
                             {% elif key == 'tools' and value is iterable and value is not string %}
-                                <div style="{{ code_block_style }}">{{ value|tojson(indent=2)|e }}</div>
+                                <div class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap">{{ value|tojson(indent=2)|e }}</div>
                             {% else %}
                                 <span class="text-gray-600">{{ value|e }}</span>
                             {% endif %}
@@ -385,7 +384,7 @@ class Tracer:
                     ← Back to Directory
                 </a>
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 overflow-x-auto">
-                    <div class="font-mono text-sm text-gray-800" style="white-space: pre-wrap;">{{ content|e }}</div>
+                    <div class="font-mono text-sm text-gray-800 whitespace-pre-wrap">{{ content|e }}</div>
                 </div>
             </div>
         </body>

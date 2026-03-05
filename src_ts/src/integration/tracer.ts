@@ -311,7 +311,7 @@ export class Tracer {
                 ← Back to Directory
             </a>
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 overflow-x-auto">
-                <div class="font-mono text-sm text-gray-800" style="white-space: pre-wrap;">${content}</div>
+                <div class="font-mono text-sm text-gray-800 whitespace-pre-wrap">${content}</div>
             </div>
         </div>
     </body>
@@ -387,7 +387,7 @@ export class Tracer {
                   ${configItems
                     .map((item) => {
                       if (item.isSystemPrompt || item.isTools) {
-                        return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><div style="margin: 4px 0 0 0; padding: 8px; background-color: #f6f8fa; border-radius: 4px; font-size: 12px; white-space: pre-wrap;">${this._escapeHtml(String(item.value))}</div></div>`;
+                        return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><div class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap">${this._escapeHtml(String(item.value))}</div></div>`;
                       } else {
                         return `<div class="py-2 text-sm"><strong class="text-gray-900">${item.key}:</strong><span class="text-gray-600">${this._escapeHtml(String(item.value))}</span></div>`;
                       }
