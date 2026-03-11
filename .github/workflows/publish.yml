@@ -1,9 +1,10 @@
 name: Publish to PyPI and npm
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
+  release:
+    types:
+      - published
 
 permissions:
   id-token: write
@@ -37,6 +38,7 @@ jobs:
   publish-npm:
     name: Publish TypeScript package to npm
     runs-on: ubuntu-latest
+    environment: npm
 
     steps:
       - name: Checkout
