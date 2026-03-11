@@ -1,0 +1,67 @@
+name: Publish to PyPI and npm
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - published
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish-pypi:
+    name: Publish Python package to PyPI
+    runs-on: ubuntu-latest
+    environment: pypi
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+          github-token: ${{ github.token }}
+
+      - name: Build package
+        working-directory: ./src_py
+        run: uv build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: src_py/dist
+
+  publish-npm:
+    name: Publish TypeScript package to npm
+    runs-on: ubuntu-latest
+    environment: npm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        working-directory: ./src_ts
+        run: npm ci
+
+      - name: Build package
+        working-directory: ./src_ts
+        run: npm run build
+
+      - name: Run tests
+        working-directory: ./src_ts
+        run: npm test
+
+      - name: Publish to npm
+        working-directory: ./src_ts
+        run: npm publish --access public
