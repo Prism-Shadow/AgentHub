@@ -1,3 +1,11 @@
 # Changelog
 
-- <2026-03-11> GPT-5.4 uses `phase` labels in assistant messages, we need to preserve and send them to the server.
+- [2026-03-11] GPT-5.4 is supported. We now add `phase` labels to assistant messages, and preserve and send them to the server.
+
+- [2026-03-04] Claude 4.6 is supported. We switch to using the adaptive thinking and `effort` parameter instead of the thinking budget.
+
+- [2026-02-26] Supports Claude on Amazon Bedrock. Bedrock requires image base64 encoding, we convert images to base64 in the client.
+
+- [2026-02-15] Fix encrypted thinking message in Claude models. It needs to be preserved and sent to the server.
+
+- [2026-02-15] Fix the calculation of token usage in from OpenRouter provider.
