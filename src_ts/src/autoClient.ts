@@ -15,7 +15,7 @@
 import { LLMClient } from "./baseClient";
 import { Gemini3Client } from "./gemini3";
 import { Claude4_6Client } from "./claude4_6";
-import { GPT5_4Client } from "./gpt5_2";
+import { GPT5_4Client } from "./gpt5_4";
 import { GLM5Client } from "./glm5";
 import { KimiK2_5Client } from "./kimi_k2_5";
 import { Qwen3Client } from "./qwen3";
