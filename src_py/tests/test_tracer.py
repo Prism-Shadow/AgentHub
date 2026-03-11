@@ -241,7 +241,7 @@ async def test_monitoring_integration(temp_cache_dir):
     """Test monitoring integration with AutoLLMClient."""
 
     os.environ["AGENTHUB_CACHE_DIR"] = temp_cache_dir
-    client = AutoLLMClient(model="gpt-5.2")
+    client = AutoLLMClient(model="gpt-5.4")
     config = {"trace_id": "integration_test/conversation.txt"}
 
     message = {"role": "user", "content_items": [{"type": "text", "text": "Say hello"}]}
@@ -265,7 +265,7 @@ async def test_monitoring_updates_on_multiple_messages(temp_cache_dir):
     """Test that monitoring file is updated with each new message."""
 
     os.environ["AGENTHUB_CACHE_DIR"] = temp_cache_dir
-    client = AutoLLMClient(model="gpt-5.2")
+    client = AutoLLMClient(model="gpt-5.4")
     config = {"trace_id": "multi_message_test/conversation.txt"}
 
     # First message

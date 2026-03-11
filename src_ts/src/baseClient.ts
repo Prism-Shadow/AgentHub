@@ -84,7 +84,8 @@ export abstract class LLMClient {
           if (
             lastItem &&
             lastItem.type === "text" &&
-            lastItem.signature == null
+            lastItem.signature == null &&
+            lastItem.phase === item.phase
           ) {
             lastItem.text += item.text;
             if (item.signature) {

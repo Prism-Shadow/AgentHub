@@ -47,7 +47,7 @@ if (process.env.ANTHROPIC_API_KEY) {
 
 if (process.env.OPENAI_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "gpt-5.2",
+    name: "gpt-5.4",
     supportVision: true,
     supportTemperature: false,
     provider: "official",
@@ -365,11 +365,11 @@ if (AVAILABLE_MODELS.length > 0) {
 
         const message = client.concatUniEventsToUniMessage(events);
         expect(message.role).toBe("assistant");
-        for (const item of message.content_items) {
-          if (item.type === "text") {
-            expect(item.text).toBe(text);
-          }
-        }
+        const allText = message.content_items
+          .filter((item) => item.type === "text")
+          .map((item) => (item as { type: "text"; text: string }).text)
+          .join("");
+        expect(allText).toBe(text);
       }, 60000);
 
       test("should handle tool use", async () => {

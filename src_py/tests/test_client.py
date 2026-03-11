@@ -49,7 +49,7 @@ if os.getenv("ANTHROPIC_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="claude-sonnet-4-6"))
 
 if os.getenv("OPENAI_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="gpt-5.2", support_temperature=False))
+    AVAILABLE_MODELS.append(Model(name="gpt-5.4", support_temperature=False))
 
 if os.getenv("ZAI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="glm-5", support_vision=False))
@@ -241,9 +241,8 @@ async def test_concat_uni_events_to_uni_message(model: Model):
     # Concatenate events to get the full message
     message = client.concat_uni_events_to_uni_message(events)
     assert message["role"] == "assistant"
-    for item in message["content_items"]:
-        if item["type"] == "text":
-            assert item["text"] == text
+    all_text = "".join(item["text"] for item in message["content_items"] if item["type"] == "text")
+    assert all_text == text
 
 
 @pytest.mark.asyncio
@@ -492,4 +491,4 @@ async def test_tool_result_with_image(model: Model):
 if __name__ == "__main__":
     import asyncio
 
-    asyncio.run(test_tool_use(Model(name=os.getenv("MODEL", "gpt-5.2"))))
+    asyncio.run(test_tool_use(Model(name=os.getenv("MODEL", "gpt-5.4"))))
