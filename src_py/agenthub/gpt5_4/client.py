@@ -112,10 +112,10 @@ class GPT5_4Client(LLMClient):
             List of input items for OpenAI Responses API
         """
         input_list: list[ResponseInputParam] = []
-        last_phase: str | None = None
 
         for msg in messages:
             content_items: list = []
+            last_phase: str | None = None
 
             for item in msg["content_items"]:
                 if item["type"] == "text":
