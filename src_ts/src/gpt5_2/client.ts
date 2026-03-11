@@ -143,26 +143,27 @@ export class GPT5_4Client extends LLMClient {
     for (const msg of messages) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let contentItems: any[] = [];
-      let currentPhase: string | null = null;
+      let lastPhase: string | null = null;
 
       for (const item of msg.content_items) {
         if (item.type === "text") {
-          const itemPhase = msg.role === "assistant" ? (item.phase ?? null) : null;
-          if (itemPhase !== currentPhase && contentItems.length > 0) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const entry: any = { role: msg.role, content: contentItems };
-            if (currentPhase !== null) {
-              entry.phase = currentPhase;
+          if (msg.role === "assistant" && item.phase) {
+            // split different phases
+            if (lastPhase !== null && contentItems.length > 0) {
+              inputList.push({
+                role: msg.role,
+                content: contentItems,
+                phase: lastPhase,
+              });
+              contentItems = [];
             }
-            inputList.push(entry);
-            contentItems = [];
+            lastPhase = item.phase;
           }
-          currentPhase = itemPhase;
-          contentItems.push(
-            msg.role === "user"
-              ? { type: "input_text", text: item.text }
-              : { type: "output_text", text: item.text },
-          );
+          if (msg.role === "user") {
+            contentItems.push({ type: "input_text", text: item.text });
+          } else {
+            contentItems.push({ type: "output_text", text: item.text });
+          }
         } else if (item.type === "image_url") {
           contentItems.push({
             type: "input_image",
@@ -214,8 +215,8 @@ export class GPT5_4Client extends LLMClient {
       if (contentItems.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const entry: any = { role: msg.role, content: contentItems };
-        if (currentPhase !== null) {
-          entry.phase = currentPhase;
+        if (lastPhase !== null) {
+          entry.phase = lastPhase;
         }
         inputList.push(entry);
       }
@@ -261,8 +262,7 @@ export class GPT5_4Client extends LLMClient {
           thinking: "",
           signature: JSON.stringify(signature),
         });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } else if ((item as any).type === "output_text") {
+      } else if (item.type === "message") {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const phase = (item as any).phase as string | undefined;
         if (phase != null) {
@@ -376,8 +376,8 @@ export class GPT5_4Client extends LLMClient {
 
     const stream = await this._client.responses.create(params);
 
-    for await (const rawEvent of stream) {
-      const uniEvent = this.transformModelOutputToUniEvent(rawEvent);
+    for await (const event of stream) {
+      const uniEvent = this.transformModelOutputToUniEvent(event);
 
       if (uniEvent.event_type === "start") {
         for (const item of uniEvent.content_items) {

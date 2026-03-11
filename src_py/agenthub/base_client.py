@@ -92,8 +92,8 @@ class LLMClient(ABC):
                     if (
                         content_items
                         and content_items[-1]["type"] == "text"
-                        and content_items[-1].get("signature") is None
-                        and item.get("phase") is None  # no new phase — continue current group
+                        and content_items[-1].get("signature") is None  # no signature yet
+                        and item.get("phase") is None  # no new phase
                     ):
                         content_items[-1]["text"] += item["text"]
                         if "signature" in item:  # finish the current item if signature is not None
@@ -104,7 +104,7 @@ class LLMClient(ABC):
                     if (
                         content_items
                         and content_items[-1]["type"] == "thinking"
-                        and content_items[-1].get("signature") is None
+                        and content_items[-1].get("signature") is None  # no signature yet
                     ):
                         content_items[-1]["thinking"] += item["thinking"]
                         if "signature" in item:  # finish the current item if signature is not None

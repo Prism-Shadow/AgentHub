@@ -84,14 +84,15 @@ export abstract class LLMClient {
           if (
             lastItem &&
             lastItem.type === "text" &&
-            lastItem.signature == null &&
-            item.phase == null // no new phase — continue current group
+            lastItem.signature == null && // no signature yet
+            item.phase == null // no new phase
           ) {
             lastItem.text += item.text;
             if (item.signature) {
               lastItem.signature = item.signature;
             }
-          } else if (item.text || item.phase != null) { // text or new phase starts an item
+          } else if (item.text || item.phase != null) {
+            // text or new phase starts an item
             contentItems.push({ ...item });
           }
         } else if (item.type === "thinking") {
