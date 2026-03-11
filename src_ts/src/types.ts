@@ -39,6 +39,7 @@ export type FinishReason = "stop" | "length" | "tool_call" | "unknown";
 export interface TextContentItem {
   type: "text";
   text: string;
+  phase?: string | null;
   // signature is always base64 encode string in typescript
   signature?: string;
 }

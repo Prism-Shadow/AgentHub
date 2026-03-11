@@ -43,6 +43,7 @@ FinishReason = Literal["stop", "length", "tool_call", "unknown"]
 class TextContentItem(TypedDict):
     type: Literal["text"]
     text: str
+    phase: NotRequired[str | None]
     signature: NotRequired[str | bytes]
 
 

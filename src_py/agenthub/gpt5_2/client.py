@@ -33,11 +33,11 @@ from ..types import (
 )
 
 
-class GPT5_2Client(LLMClient):
-    """GPT-5.2-specific LLM client implementation."""
+class GPT5_4Client(LLMClient):
+    """GPT-5.4-specific LLM client implementation."""
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
-        """Initialize GPT-5.2 client with model and API key."""
+        """Initialize GPT-5.4 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("OPENAI_API_KEY")
         base_url = base_url or os.getenv("OPENAI_BASE_URL")
@@ -86,7 +86,7 @@ class GPT5_2Client(LLMClient):
             openai_config["max_output_tokens"] = config["max_tokens"]
 
         if config.get("temperature") is not None and config["temperature"] != 1.0:
-            raise ValueError("GPT-5.2 does not support setting temperature.")
+            raise ValueError("GPT-5.4 does not support setting temperature.")
 
         if config.get("thinking_level") is not None:
             openai_config["reasoning"] = {"effort": self._convert_thinking_level_to_effort(config["thinking_level"])}
@@ -112,11 +112,20 @@ class GPT5_2Client(LLMClient):
             List of input items for OpenAI Responses API
         """
         input_list: list[ResponseInputParam] = []
+        last_phase: str | None = None
 
         for msg in messages:
-            content_items = []
+            content_items: list = []
+
             for item in msg["content_items"]:
                 if item["type"] == "text":
+                    if msg["role"] == "assistant" and item.get("phase"):  # split different phases
+                        if last_phase is not None and content_items:
+                            input_list.append({"role": msg["role"], "content": content_items, "phase": last_phase})
+                            content_items = []
+
+                        last_phase = item["phase"]
+
                     if msg["role"] == "user":
                         content_items.append({"type": "input_text", "text": item["text"]})
                     else:
@@ -161,7 +170,11 @@ class GPT5_2Client(LLMClient):
                     raise ValueError(f"Unknown item: {item}")
 
             if content_items:
-                input_list.append({"role": msg["role"], "content": content_items})
+                entry = {"role": msg["role"], "content": content_items}
+                if last_phase is not None:  # add phase if not None
+                    entry["phase"] = last_phase
+
+                input_list.append(entry)
 
         return input_list
 
@@ -207,6 +220,14 @@ class GPT5_2Client(LLMClient):
                     "encrypted_content": model_output.item.encrypted_content,
                 }
                 content_items.append({"type": "thinking", "thinking": "", "signature": json.dumps(signature)})
+            elif model_output.item.type == "message":
+                if hasattr(model_output.item, "phase"):
+                    event_type = "delta"
+                    content_items.append(
+                        {"type": "text", "text": "", "phase": getattr(model_output.item, "phase", None)}
+                    )
+                else:
+                    event_type = "unused"
             else:
                 event_type = "unused"
 
