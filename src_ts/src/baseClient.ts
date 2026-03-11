@@ -29,7 +29,7 @@ import {
  */
 export abstract class LLMClient {
   protected _model: string;
-  private _history: UniMessage[];
+  protected _history: UniMessage[];
 
   constructor() {
     this._model = "";

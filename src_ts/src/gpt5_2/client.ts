@@ -23,6 +23,7 @@ import {
   EventType,
   FinishReason,
   PartialContentItem,
+  Phase,
   ThinkingLevel,
   ToolChoice,
   UniConfig,
@@ -32,14 +33,14 @@ import {
 } from "../types";
 
 /**
- * GPT-5.2-specific LLM client implementation.
+ * GPT-5.4-specific LLM client implementation.
  */
-export class GPT5_2Client extends LLMClient {
+export class GPT5_4Client extends LLMClient {
   protected _model: string;
   private _client: OpenAI;
 
   /**
-   * Initialize GPT-5.2 client with model and API key.
+   * Initialize GPT-5.4 client with model and API key.
    */
   constructor(options: {
     model: string;
@@ -107,7 +108,7 @@ export class GPT5_2Client extends LLMClient {
     }
 
     if (config.temperature !== undefined && config.temperature !== 1.0) {
-      throw new Error("GPT-5.2 does not support setting temperature.");
+      throw new Error("GPT-5.4 does not support setting temperature.");
     }
 
     if (config.thinking_level !== undefined) {
@@ -207,7 +208,12 @@ export class GPT5_2Client extends LLMClient {
       }
 
       if (contentItems.length > 0) {
-        inputList.push({ role: msg.role, content: contentItems });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const msgInput: any = { role: msg.role, content: contentItems };
+        if (msg.phase != null) {
+          msgInput.phase = msg.phase;
+        }
+        inputList.push(msgInput);
       }
     }
 
@@ -251,6 +257,20 @@ export class GPT5_2Client extends LLMClient {
           thinking: "",
           signature: JSON.stringify(signature),
         });
+      } else if (item.type === "message") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const itemPhase = (item as any).phase as Phase | undefined;
+        if (itemPhase) {
+          return {
+            role: "assistant",
+            event_type: "unused",
+            content_items: [],
+            usage_metadata: null,
+            finish_reason: null,
+            phase: itemPhase,
+          };
+        }
+        eventType = "unused";
       } else {
         eventType = "unused";
       }
@@ -348,6 +368,8 @@ export class GPT5_2Client extends LLMClient {
       tool_call_id?: string;
     } = {};
 
+    let currentPhase: Phase | null = null;
+
     const params: ResponseCreateParamsStreaming = {
       ...openaiConfig,
       input: inputList,
@@ -356,8 +378,19 @@ export class GPT5_2Client extends LLMClient {
 
     const stream = await this._client.responses.create(params);
 
-    for await (const event of stream) {
-      const uniEvent = this.transformModelOutputToUniEvent(event);
+    for await (const rawEvent of stream) {
+      const uniEvent = this.transformModelOutputToUniEvent(rawEvent);
+
+      // Track phase from message output items and propagate to subsequent events
+      if (uniEvent.phase != null) {
+        currentPhase = uniEvent.phase;
+      }
+
+      // Tag non-phase events with the current phase
+      if (currentPhase !== null && uniEvent.phase == null) {
+        uniEvent.phase = currentPhase;
+      }
+
       if (uniEvent.event_type === "start") {
         for (const item of uniEvent.content_items) {
           if (item.type === "partial_tool_call") {
@@ -391,6 +424,7 @@ export class GPT5_2Client extends LLMClient {
             ],
             usage_metadata: null,
             finish_reason: null,
+            phase: currentPhase,
           };
           partialToolCall.name = undefined;
           partialToolCall.arguments = undefined;
@@ -401,6 +435,66 @@ export class GPT5_2Client extends LLMClient {
           yield uniEvent;
         }
       }
+    }
+  }
+
+  /**
+   * Stream generate (stateful), splitting history by phase for GPT-5.4.
+   */
+  async *streamingResponseStateful(options: {
+    message: UniMessage;
+    config: UniConfig;
+  }): AsyncGenerator<UniEvent> {
+    const { message, config } = options;
+    const tempMessages = [...this._history, message];
+
+    const events: UniEvent[] = [];
+    for await (const event of this.streamingResponse({
+      messages: tempMessages,
+      config,
+    })) {
+      events.push(event);
+      yield event;
+    }
+
+    if (events.length > 0) {
+      this._history.push(message);
+
+      // Group events by phase, creating a separate UniMessage per phase
+      const phaseGroups: Array<{ phase: Phase | null; events: UniEvent[] }> =
+        [];
+      let currentPhase: Phase | null = null;
+      let currentEvents: UniEvent[] = [];
+
+      for (const event of events) {
+        const eventPhase = event.phase ?? null;
+        if (eventPhase !== currentPhase && currentEvents.length > 0) {
+          phaseGroups.push({ phase: currentPhase, events: currentEvents });
+          currentEvents = [];
+          currentPhase = eventPhase;
+        } else if (currentEvents.length === 0) {
+          currentPhase = eventPhase;
+        }
+        currentEvents.push(event);
+      }
+
+      if (currentEvents.length > 0) {
+        phaseGroups.push({ phase: currentPhase, events: currentEvents });
+      }
+
+      for (const { phase, events: phaseEvents } of phaseGroups) {
+        const msg = this.concatUniEventsToUniMessage(phaseEvents);
+        if (phase !== null) {
+          msg.phase = phase;
+        }
+        this._history.push(msg);
+      }
+    }
+
+    if (config.trace_id) {
+      const { Tracer } = await import("../integration/tracer");
+      const tracer = new Tracer();
+      tracer.saveHistory(this._model, this._history, config.trace_id, config);
     }
   }
 }

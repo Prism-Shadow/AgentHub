@@ -38,6 +38,7 @@ ToolChoice = Literal["auto", "required", "none"] | list[str]
 Role = Literal["user", "assistant"]
 EventType = Literal["start", "delta", "stop", "unused"]
 FinishReason = Literal["stop", "length", "tool_call", "unknown"]
+Phase = Literal["commentary", "final_answer"]
 
 
 class TextContentItem(TypedDict):
@@ -99,6 +100,7 @@ class UniMessage(TypedDict):
 
     role: Role
     content_items: list[ContentItem]
+    phase: NotRequired[Phase | None]
     usage_metadata: NotRequired[UsageMetadata | None]
     finish_reason: NotRequired[FinishReason | None]
 
@@ -111,6 +113,7 @@ class UniEvent(TypedDict):
     content_items: list[PartialContentItem]
     usage_metadata: UsageMetadata | None
     finish_reason: FinishReason | None
+    phase: NotRequired[Phase | None]
 
 
 class ToolSchema(TypedDict):

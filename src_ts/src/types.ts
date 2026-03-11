@@ -35,6 +35,7 @@ export type ToolChoice = ("auto" | "required" | "none") | string[];
 export type Role = "user" | "assistant";
 export type EventType = "start" | "delta" | "stop" | "unused";
 export type FinishReason = "stop" | "length" | "tool_call" | "unknown";
+export type Phase = "commentary" | "final_answer";
 
 export interface TextContentItem {
   type: "text";
@@ -103,6 +104,7 @@ export interface UsageMetadata {
 export interface UniMessage {
   role: Role;
   content_items: ContentItem[];
+  phase?: Phase | null;
   usage_metadata?: UsageMetadata | null;
   finish_reason?: FinishReason | null;
 }
@@ -116,6 +118,7 @@ export interface UniEvent {
   content_items: PartialContentItem[];
   usage_metadata: UsageMetadata | null;
   finish_reason: FinishReason | null;
+  phase?: Phase | null;
 }
 
 /**

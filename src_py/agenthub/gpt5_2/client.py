@@ -24,6 +24,7 @@ from ..types import (
     EventType,
     FinishReason,
     PartialContentItem,
+    Phase,
     ThinkingLevel,
     ToolChoice,
     UniConfig,
@@ -33,11 +34,11 @@ from ..types import (
 )
 
 
-class GPT5_2Client(LLMClient):
-    """GPT-5.2-specific LLM client implementation."""
+class GPT5_4Client(LLMClient):
+    """GPT-5.4-specific LLM client implementation."""
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
-        """Initialize GPT-5.2 client with model and API key."""
+        """Initialize GPT-5.4 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("OPENAI_API_KEY")
         base_url = base_url or os.getenv("OPENAI_BASE_URL")
@@ -86,7 +87,7 @@ class GPT5_2Client(LLMClient):
             openai_config["max_output_tokens"] = config["max_tokens"]
 
         if config.get("temperature") is not None and config["temperature"] != 1.0:
-            raise ValueError("GPT-5.2 does not support setting temperature.")
+            raise ValueError("GPT-5.4 does not support setting temperature.")
 
         if config.get("thinking_level") is not None:
             openai_config["reasoning"] = {"effort": self._convert_thinking_level_to_effort(config["thinking_level"])}
@@ -161,7 +162,10 @@ class GPT5_2Client(LLMClient):
                     raise ValueError(f"Unknown item: {item}")
 
             if content_items:
-                input_list.append({"role": msg["role"], "content": content_items})
+                msg_input: dict[str, Any] = {"role": msg["role"], "content": content_items}
+                if msg.get("phase") is not None:
+                    msg_input["phase"] = msg["phase"]
+                input_list.append(msg_input)
 
         return input_list
 
@@ -207,6 +211,18 @@ class GPT5_2Client(LLMClient):
                     "encrypted_content": model_output.item.encrypted_content,
                 }
                 content_items.append({"type": "thinking", "thinking": "", "signature": json.dumps(signature)})
+            elif model_output.item.type == "message":
+                event_type = "unused"
+                item_phase = getattr(model_output.item, "phase", None)
+                if item_phase:
+                    return {
+                        "role": "assistant",
+                        "event_type": "unused",
+                        "content_items": [],
+                        "usage_metadata": None,
+                        "finish_reason": None,
+                        "phase": item_phase,
+                    }
             else:
                 event_type = "unused"
 
@@ -289,10 +305,20 @@ class GPT5_2Client(LLMClient):
 
         # Stream generate
         partial_tool_call = {}
+        current_phase: Phase | None = None
         stream = await self._client.responses.create(**openai_config, input=input_list, stream=True)
 
-        async for event in stream:
-            event = self.transform_model_output_to_uni_event(event)
+        async for raw_event in stream:
+            event = self.transform_model_output_to_uni_event(raw_event)
+
+            # Track phase from message output items and propagate to subsequent events
+            if event.get("phase") is not None:
+                current_phase = event["phase"]
+
+            # Tag non-phase events with the current phase
+            if current_phase is not None and "phase" not in event:
+                event["phase"] = current_phase
+
             if event["event_type"] == "start":
                 for item in event["content_items"]:
                     if item["type"] == "partial_tool_call":
@@ -326,8 +352,55 @@ class GPT5_2Client(LLMClient):
                         ],
                         "usage_metadata": None,
                         "finish_reason": None,
+                        "phase": current_phase,
                     }
                     partial_tool_call = {}
 
                 if event["finish_reason"] or event["usage_metadata"]:
                     yield event
+
+    async def streaming_response_stateful(
+        self,
+        message: UniMessage,
+        config: UniConfig,
+    ) -> AsyncIterator[UniEvent]:
+        """Stream generate (stateful), splitting history by phase for GPT-5.4."""
+        temp_messages = self._history + [message]
+
+        events: list[UniEvent] = []
+        async for event in self.streaming_response(messages=temp_messages, config=config):
+            events.append(event)
+            yield event
+
+        if events:
+            self._history.append(message)
+
+            # Group events by phase, creating a separate UniMessage per phase
+            phase_groups: list[tuple[Phase | None, list[UniEvent]]] = []
+            current_phase: Phase | None = None
+            current_events: list[UniEvent] = []
+
+            for event in events:
+                event_phase = event.get("phase")
+                if event_phase != current_phase and current_events:
+                    phase_groups.append((current_phase, current_events))
+                    current_events = []
+                    current_phase = event_phase
+                elif not current_events:
+                    current_phase = event_phase
+                current_events.append(event)
+
+            if current_events:
+                phase_groups.append((current_phase, current_events))
+
+            for phase, phase_events in phase_groups:
+                msg = self.concat_uni_events_to_uni_message(phase_events)
+                if phase is not None:
+                    msg["phase"] = phase
+                self._history.append(msg)
+
+        if config.get("trace_id"):
+            from ..integration.tracer import Tracer
+
+            tracer = Tracer()
+            tracer.save_history(self._model, self._history, config["trace_id"], config)
