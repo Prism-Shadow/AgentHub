@@ -32,14 +32,14 @@ import {
 } from "../types";
 
 /**
- * GPT-5.2-specific LLM client implementation.
+ * GPT-5.4-specific LLM client implementation.
  */
-export class GPT5_2Client extends LLMClient {
+export class GPT5_4Client extends LLMClient {
   protected _model: string;
   private _client: OpenAI;
 
   /**
-   * Initialize GPT-5.2 client with model and API key.
+   * Initialize GPT-5.4 client with model and API key.
    */
   constructor(options: {
     model: string;
@@ -107,7 +107,7 @@ export class GPT5_2Client extends LLMClient {
     }
 
     if (config.temperature !== undefined && config.temperature !== 1.0) {
-      throw new Error("GPT-5.2 does not support setting temperature.");
+      throw new Error("GPT-5.4 does not support setting temperature.");
     }
 
     if (config.thinking_level !== undefined) {
@@ -142,9 +142,23 @@ export class GPT5_2Client extends LLMClient {
 
     for (const msg of messages) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const contentItems: any[] = [];
+      let contentItems: any[] = [];
+      let lastPhase: string | null = null;
+
       for (const item of msg.content_items) {
         if (item.type === "text") {
+          if (msg.role === "assistant" && item.phase) {
+            // split different phases
+            if (lastPhase !== null && contentItems.length > 0) {
+              inputList.push({
+                role: msg.role,
+                content: contentItems,
+                phase: lastPhase,
+              });
+              contentItems = [];
+            }
+            lastPhase = item.phase;
+          }
           if (msg.role === "user") {
             contentItems.push({ type: "input_text", text: item.text });
           } else {
@@ -180,19 +194,11 @@ export class GPT5_2Client extends LLMClient {
 
           // Tool results are input items
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const toolResult: any[] = [
-            {
-              type: "input_text",
-              text: item.text,
-            },
-          ];
+          const toolResult: any[] = [{ type: "input_text", text: item.text }];
 
           if (item.images) {
             for (const imageUrl of item.images) {
-              toolResult.push({
-                type: "input_image",
-                image_url: imageUrl,
-              });
+              toolResult.push({ type: "input_image", image_url: imageUrl });
             }
           }
 
@@ -207,7 +213,12 @@ export class GPT5_2Client extends LLMClient {
       }
 
       if (contentItems.length > 0) {
-        inputList.push({ role: msg.role, content: contentItems });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const entry: any = { role: msg.role, content: contentItems };
+        if (lastPhase !== null) {
+          entry.phase = lastPhase;
+        }
+        inputList.push(entry);
       }
     }
 
@@ -251,6 +262,15 @@ export class GPT5_2Client extends LLMClient {
           thinking: "",
           signature: JSON.stringify(signature),
         });
+      } else if (item.type === "message") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const phase = (item as any).phase as string | undefined;
+        if (phase != null) {
+          eventType = "delta";
+          contentItems.push({ type: "text", text: "", phase });
+        } else {
+          eventType = "unused";
+        }
       } else {
         eventType = "unused";
       }
@@ -358,6 +378,7 @@ export class GPT5_2Client extends LLMClient {
 
     for await (const event of stream) {
       const uniEvent = this.transformModelOutputToUniEvent(event);
+
       if (uniEvent.event_type === "start") {
         for (const item of uniEvent.content_items) {
           if (item.type === "partial_tool_call") {
