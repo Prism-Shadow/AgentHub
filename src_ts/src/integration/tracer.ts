@@ -22,7 +22,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import express, { Express, Request, Response } from "express";
-import { UniConfig, UniMessage } from "../types";
+import { UniConfig, UniMessage, TextContentItem } from "../types";
 
 /**
  * Tracer for saving conversation history to local files.
@@ -442,7 +442,17 @@ export class Tracer {
                   .join("");
 
                 let metadataHtml = "";
-                if (msg.usage_metadata || msg.finish_reason) {
+                const phases = [
+                  ...new Set(
+                    msg.content_items
+                      .filter(
+                        (item): item is TextContentItem & { phase: string } =>
+                          item.type === "text" && !!item.phase,
+                      )
+                      .map((item) => item.phase),
+                  ),
+                ];
+                if (msg.usage_metadata || msg.finish_reason || phases.length > 0) {
                   metadataHtml +=
                     '<div class="mt-4 pt-4 border-t border-gray-200 text-right text-xs text-gray-500">';
                   if (msg.usage_metadata) {
@@ -475,8 +485,12 @@ export class Tracer {
                     parts.push(`Total: ${totalTokens} tokens`);
                     metadataHtml += parts.join(" • ");
                   }
-                  if (msg.finish_reason) {
+                  if (phases.length > 0) {
                     if (msg.usage_metadata) metadataHtml += " • ";
+                    metadataHtml += `Phase: ${this._escapeHtml(phases.join(", "))}`;
+                  }
+                  if (msg.finish_reason) {
+                    if (msg.usage_metadata || phases.length > 0) metadataHtml += " • ";
                     metadataHtml += `Finish: ${msg.finish_reason}`;
                   }
                   metadataHtml += "</div>";

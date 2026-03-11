@@ -42,7 +42,7 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 | -------------- | ------------------------------- | ------------------ | ------------------ | ----------------------------- |
 | Gemini 3/3.1   | Official/Google Vertex AI       | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
 | Claude 4.6     | Official/Amazon Bedrock         | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
-| GPT-5.2        | Official                        | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
+| GPT-5.4        | Official                        | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
 | Kimi-K2.5      | Official/OpenRouter/SiliconFlow | :white_check_mark: | :white_check_mark: | :white_check_mark:            |
 | GLM-5          | Official/OpenRouter/SiliconFlow | :white_check_mark: | :white_check_mark: | :negative_squared_cross_mark: |
 | Qwen3          | OpenRouter/SiliconFlow/vLLM     | :white_check_mark: | :white_check_mark: | :negative_squared_cross_mark: |
@@ -97,7 +97,7 @@ See [src_ts/README.md](src_ts/README.md) for comprehensive usage examples and AP
 > [!NOTE]
 > We recommend using the **stateful interface** when calling the AgentHub SDK.
 
-### OpenAI GPT-5.2
+### OpenAI GPT-5.4
 
 Python Example:
 
@@ -109,7 +109,7 @@ from agenthub import AutoLLMClient
 os.environ["OPENAI_API_KEY"] = "your-openai-api-key"
 
 async def main():
-    client = AutoLLMClient(model="gpt-5.2")
+    client = AutoLLMClient(model="gpt-5.4")
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -135,7 +135,7 @@ import { AutoLLMClient } from "@prismshadow/agenthub";
 process.env.OPENAI_API_KEY = "your-openai-api-key";
 
 async function main() {
-  const client = new AutoLLMClient({ model: "gpt-5.2" });
+  const client = new AutoLLMClient({ model: "gpt-5.4" });
   for await (const event of client.streamingResponseStateful({
     message: {
       role: "user",

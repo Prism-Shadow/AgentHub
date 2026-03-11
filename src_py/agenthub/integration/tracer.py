@@ -325,7 +325,8 @@ class Tracer:
                             </div>
                         {% endfor %}
 
-                        {% if message.usage_metadata or message.finish_reason %}
+                        {% set content_phases = message.content_items|selectattr('type', 'equalto', 'text')|selectattr('phase')|map(attribute='phase')|unique|list %}
+                        {% if message.usage_metadata or message.finish_reason or content_phases %}
                         <div class="mt-4 pt-4 border-t border-gray-200 text-right text-xs text-gray-500">
                             {% if message.usage_metadata %}
                                 {% set parts = [] %}
@@ -339,7 +340,8 @@ class Tracer:
                                 {% set _ = parts.append('Total: ' ~ total_tokens ~ ' tokens') %}
                                 {{ parts|join(' • ') }}
                             {% endif %}
-                            {% if message.finish_reason %}{% if message.usage_metadata %} • {% endif %}Finish: {{ message.finish_reason|e }}{% endif %}
+                            {% if content_phases %}{% if message.usage_metadata %} • {% endif %}Phase: {{ content_phases|join(', ')|e }}{% endif %}
+                            {% if message.finish_reason %}{% if message.usage_metadata or content_phases %} • {% endif %}Finish: {{ message.finish_reason|e }}{% endif %}
                         </div>
                         {% endif %}
                     </div>
