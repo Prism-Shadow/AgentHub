@@ -142,48 +142,33 @@ export class GPT5_4Client extends LLMClient {
 
     for (const msg of messages) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let currentContent: any[] = [];
+      let contentItems: any[] = [];
       let currentPhase: string | null = null;
 
       for (const item of msg.content_items) {
         if (item.type === "text") {
           const itemPhase = msg.role === "assistant" ? (item.phase ?? null) : null;
-          const converted =
-            msg.role === "user"
-              ? { type: "input_text", text: item.text }
-              : { type: "output_text", text: item.text };
-
-          if (currentContent.length === 0 || itemPhase === currentPhase) {
-            currentContent.push(converted);
-            currentPhase = itemPhase;
-          } else {
-            // Phase changed — flush the current group
+          if (itemPhase !== currentPhase && contentItems.length > 0) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const entry: any = { role: msg.role, content: currentContent };
+            const entry: any = { role: msg.role, content: contentItems };
             if (currentPhase !== null) {
               entry.phase = currentPhase;
             }
             inputList.push(entry);
-            currentContent = [converted];
-            currentPhase = itemPhase;
+            contentItems = [];
           }
+          currentPhase = itemPhase;
+          contentItems.push(
+            msg.role === "user"
+              ? { type: "input_text", text: item.text }
+              : { type: "output_text", text: item.text },
+          );
         } else if (item.type === "image_url") {
-          currentContent.push({
+          contentItems.push({
             type: "input_image",
             image_url: item.image_url,
           });
         } else if (item.type === "thinking") {
-          // Flush pending content before inserting a reasoning item
-          if (currentContent.length > 0) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const entry: any = { role: msg.role, content: currentContent };
-            if (currentPhase !== null) {
-              entry.phase = currentPhase;
-            }
-            inputList.push(entry);
-            currentContent = [];
-            currentPhase = null;
-          }
           const signatureStr = item.signature || "{}";
           const signature = JSON.parse(signatureStr);
           inputList.push({
@@ -195,17 +180,6 @@ export class GPT5_4Client extends LLMClient {
             encrypted_content: signature.encrypted_content,
           });
         } else if (item.type === "tool_call") {
-          // Flush pending content before inserting a function call
-          if (currentContent.length > 0) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const entry: any = { role: msg.role, content: currentContent };
-            if (currentPhase !== null) {
-              entry.phase = currentPhase;
-            }
-            inputList.push(entry);
-            currentContent = [];
-            currentPhase = null;
-          }
           inputList.push({
             type: "function_call",
             call_id: item.tool_call_id,
@@ -219,19 +193,11 @@ export class GPT5_4Client extends LLMClient {
 
           // Tool results are input items
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const toolResult: any[] = [
-            {
-              type: "input_text",
-              text: item.text,
-            },
-          ];
+          const toolResult: any[] = [{ type: "input_text", text: item.text }];
 
           if (item.images) {
             for (const imageUrl of item.images) {
-              toolResult.push({
-                type: "input_image",
-                image_url: imageUrl,
-              });
+              toolResult.push({ type: "input_image", image_url: imageUrl });
             }
           }
 
@@ -245,10 +211,9 @@ export class GPT5_4Client extends LLMClient {
         }
       }
 
-      // Flush any remaining content
-      if (currentContent.length > 0) {
+      if (contentItems.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const entry: any = { role: msg.role, content: currentContent };
+        const entry: any = { role: msg.role, content: contentItems };
         if (currentPhase !== null) {
           entry.phase = currentPhase;
         }
@@ -296,6 +261,16 @@ export class GPT5_4Client extends LLMClient {
           thinking: "",
           signature: JSON.stringify(signature),
         });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } else if ((item as any).type === "output_text") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const phase = (item as any).phase as string | undefined;
+        if (phase != null) {
+          eventType = "delta";
+          contentItems.push({ type: "text", text: "", phase });
+        } else {
+          eventType = "unused";
+        }
       } else {
         eventType = "unused";
       }
@@ -393,8 +368,6 @@ export class GPT5_4Client extends LLMClient {
       tool_call_id?: string;
     } = {};
 
-    let currentPhase: string | null = null;
-
     const params: ResponseCreateParamsStreaming = {
       ...openaiConfig,
       input: inputList,
@@ -404,25 +377,7 @@ export class GPT5_4Client extends LLMClient {
     const stream = await this._client.responses.create(params);
 
     for await (const rawEvent of stream) {
-      // Track phase from output_item.added events for output_text items
-      if (rawEvent.type === "response.output_item.added") {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const item = rawEvent.item as any;
-        if (item.type === "output_text") {
-          currentPhase = (item.phase as string) ?? null;
-        }
-      }
-
       const uniEvent = this.transformModelOutputToUniEvent(rawEvent);
-
-      // Inject current phase into text delta content items
-      if (uniEvent.event_type === "delta" && currentPhase !== null) {
-        for (const item of uniEvent.content_items) {
-          if (item.type === "text") {
-            item.phase = currentPhase;
-          }
-        }
-      }
 
       if (uniEvent.event_type === "start") {
         for (const item of uniEvent.content_items) {

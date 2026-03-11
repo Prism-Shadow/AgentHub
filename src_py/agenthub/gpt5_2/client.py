@@ -114,39 +114,26 @@ class GPT5_4Client(LLMClient):
         input_list: list[ResponseInputParam] = []
 
         for msg in messages:
-            current_content: list = []
+            content_items: list = []
             current_phase: str | None = None
 
             for item in msg["content_items"]:
                 if item["type"] == "text":
                     item_phase = item.get("phase") if msg["role"] == "assistant" else None
-                    converted = (
-                        {"type": "input_text", "text": item["text"]}
-                        if msg["role"] == "user"
-                        else {"type": "output_text", "text": item["text"]}
-                    )
-                    if not current_content or item_phase == current_phase:
-                        current_content.append(converted)
-                        current_phase = item_phase
+                    if item_phase != current_phase and content_items:
+                        entry: dict = {"role": msg["role"], "content": content_items}
+                        if current_phase is not None:
+                            entry["phase"] = current_phase
+                        input_list.append(entry)
+                        content_items = []
+                    current_phase = item_phase
+                    if msg["role"] == "user":
+                        content_items.append({"type": "input_text", "text": item["text"]})
                     else:
-                        # Phase changed — flush the current group
-                        entry: dict = {"role": msg["role"], "content": current_content}
-                        if current_phase is not None:
-                            entry["phase"] = current_phase
-                        input_list.append(entry)
-                        current_content = [converted]
-                        current_phase = item_phase
+                        content_items.append({"type": "output_text", "text": item["text"]})
                 elif item["type"] == "image_url":
-                    current_content.append({"type": "input_image", "image_url": item["image_url"]})
+                    content_items.append({"type": "input_image", "image_url": item["image_url"]})
                 elif item["type"] == "thinking":
-                    # Flush pending content before inserting a reasoning item
-                    if current_content:
-                        entry = {"role": msg["role"], "content": current_content}
-                        if current_phase is not None:
-                            entry["phase"] = current_phase
-                        input_list.append(entry)
-                        current_content = []
-                        current_phase = None
                     signature = json.loads(item["signature"])
                     input_list.append(
                         {
@@ -159,14 +146,6 @@ class GPT5_4Client(LLMClient):
                         }
                     )
                 elif item["type"] == "tool_call":
-                    # Flush pending content before inserting a function call
-                    if current_content:
-                        entry = {"role": msg["role"], "content": current_content}
-                        if current_phase is not None:
-                            entry["phase"] = current_phase
-                        input_list.append(entry)
-                        current_content = []
-                        current_phase = None
                     input_list.append(
                         {
                             "type": "function_call",
@@ -191,9 +170,8 @@ class GPT5_4Client(LLMClient):
                 else:
                     raise ValueError(f"Unknown item: {item}")
 
-            # Flush any remaining content
-            if current_content:
-                entry = {"role": msg["role"], "content": current_content}
+            if content_items:
+                entry = {"role": msg["role"], "content": content_items}
                 if current_phase is not None:
                     entry["phase"] = current_phase
                 input_list.append(entry)
@@ -242,6 +220,13 @@ class GPT5_4Client(LLMClient):
                     "encrypted_content": model_output.item.encrypted_content,
                 }
                 content_items.append({"type": "thinking", "thinking": "", "signature": json.dumps(signature)})
+            elif model_output.item.type == "output_text":
+                phase = getattr(model_output.item, "phase", None)
+                if phase is not None:
+                    event_type = "delta"
+                    content_items.append({"type": "text", "text": "", "phase": phase})
+                else:
+                    event_type = "unused"
             else:
                 event_type = "unused"
 
@@ -324,22 +309,10 @@ class GPT5_4Client(LLMClient):
 
         # Stream generate
         partial_tool_call = {}
-        current_phase: str | None = None
         stream = await self._client.responses.create(**openai_config, input=input_list, stream=True)
 
         async for raw_event in stream:
-            # Track phase from output_item.added events for output_text items
-            if raw_event.type == "response.output_item.added" and raw_event.item.type == "output_text":
-                current_phase = getattr(raw_event.item, "phase", None)
-
             event = self.transform_model_output_to_uni_event(raw_event)
-
-            # Inject current phase into text delta content items
-            if event["event_type"] == "delta" and current_phase is not None:
-                for item in event["content_items"]:
-                    if item["type"] == "text":
-                        item["phase"] = current_phase
-
             if event["event_type"] == "start":
                 for item in event["content_items"]:
                     if item["type"] == "partial_tool_call":

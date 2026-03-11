@@ -85,13 +85,13 @@ export abstract class LLMClient {
             lastItem &&
             lastItem.type === "text" &&
             lastItem.signature == null &&
-            lastItem.phase === item.phase
+            item.phase == null // no new phase — continue current group
           ) {
             lastItem.text += item.text;
             if (item.signature) {
               lastItem.signature = item.signature;
             }
-          } else if (item.text) {
+          } else if (item.text || item.phase != null) { // text or new phase starts an item
             contentItems.push({ ...item });
           }
         } else if (item.type === "thinking") {
