@@ -1,7 +1,9 @@
 [project]
 name = "agenthub-python"
-version = "0.3.0"
+version = "0.3.1.dev0"
 description = "AgentHub is the LLM API Hub for the Agent era, built for high-precision autonomous agents."
+readme = "README.md"
+license = { text = "Apache-2.0" }
 requires-python = ">=3.11"
 dependencies = ["google-genai>=1.5.0", "anthropic[bedrock]>=0.40.0", "flask>=3.0.0", "openai>=1.0.0", "httpx>=0.27.0"]
 
