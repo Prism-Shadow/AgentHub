@@ -14,7 +14,9 @@ jobs:
   publish-pypi:
     name: Publish Python package to PyPI
     runs-on: ubuntu-latest
-    environment: pypi
+    environment:
+      name: pypi
+      url: https://pypi.org/project/agenthub-python/
 
     steps:
       - name: Checkout
@@ -38,7 +40,9 @@ jobs:
   publish-npm:
     name: Publish TypeScript package to npm
     runs-on: ubuntu-latest
-    environment: npm
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@prismshadow/agenthub
 
     steps:
       - name: Checkout
