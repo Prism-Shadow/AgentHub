@@ -24,6 +24,7 @@ from ..types import (
     EventType,
     FinishReason,
     PartialContentItem,
+    PromptCaching,
     ThinkingLevel,
     ToolChoice,
     UniConfig,
@@ -98,6 +99,9 @@ class GPT5_4Client(LLMClient):
 
         if config.get("tool_choice") is not None:
             openai_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
+
+        if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
+            raise ValueError("prompt_caching must be ENABLE for GPT-5.4.")
 
         return openai_config
 

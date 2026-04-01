@@ -223,6 +223,14 @@ export class Claude4_6Client extends LLMClient {
       claudeConfig.tool_choice = this._convertToolChoice(config.tool_choice);
     }
 
+    // Add cache_control if prompt caching is enabled
+    const promptCaching = config.prompt_caching || PromptCaching.ENABLE;
+    if (promptCaching === PromptCaching.ENABLE) {
+      claudeConfig.cache_control = { type: "ephemeral" };
+    } else if (promptCaching === PromptCaching.ENHANCE) {
+      claudeConfig.cache_control = { type: "ephemeral", ttl: "1h" };
+    }
+
     return claudeConfig;
   }
 
@@ -414,26 +422,6 @@ export class Claude4_6Client extends LLMClient {
     const claudeMessages = await this.transformUniMessageToModelInput(
       options.messages,
     );
-
-    // Add cache_control to last user message's last item if enabled
-    const promptCaching = options.config.prompt_caching || PromptCaching.ENABLE;
-    if (promptCaching !== PromptCaching.DISABLE && claudeMessages.length > 0) {
-      try {
-        const reversedMessages = [...claudeMessages].reverse();
-        const lastUserMessage = reversedMessages.find((x) => x.role === "user");
-        if (lastUserMessage && Array.isArray(lastUserMessage.content)) {
-          const lastContentItem =
-            lastUserMessage.content[lastUserMessage.content.length - 1];
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (lastContentItem as any).cache_control = {
-            type: "ephemeral",
-            ttl: promptCaching === PromptCaching.ENHANCE ? "1h" : "5m",
-          };
-        }
-      } catch {
-        // Ignore errors in cache_control setup
-      }
-    }
 
     // Stream generate
     const partialToolCall: {
