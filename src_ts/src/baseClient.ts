@@ -15,7 +15,6 @@
 import {
   ContentItem,
   FinishReason,
-  RawUniEvent,
   UniConfig,
   UniEvent,
   UniMessage,
@@ -62,7 +61,7 @@ export abstract class LLMClient {
    * @returns Universal event object
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  abstract transformModelOutputToUniEvent(modelOutput: any): RawUniEvent;
+  abstract transformModelOutputToUniEvent(modelOutput: any): UniEvent;
 
   /**
    * Concatenate a stream of universal events into a single universal message.
@@ -144,7 +143,7 @@ export abstract class LLMClient {
   abstract _streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
-  }): AsyncGenerator<RawUniEvent>;
+  }): AsyncGenerator<UniEvent>;
 
   /**
    * Generate content in streaming mode (stateless).
@@ -171,8 +170,8 @@ export abstract class LLMClient {
 
     let lastEvent: UniEvent | null = null;
     const events: UniEvent[] = [];
-    for await (const rawEvent of this._streamingResponseInternal(options)) {
-      const event: UniEvent = { ...rawEvent, created_at: Date.now() };
+    for await (const event of this._streamingResponseInternal(options)) {
+      event.created_at = Date.now();
       lastEvent = event;
       events.push(event);
       yield event;

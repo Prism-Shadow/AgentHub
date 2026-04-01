@@ -28,7 +28,6 @@ import {
   ThinkingLevel,
   ToolChoice,
   UniConfig,
-  RawUniEvent,
   UniEvent,
   UniMessage,
   UsageMetadata,
@@ -310,7 +309,7 @@ export class Claude4_6Client extends LLMClient {
    */
   transformModelOutputToUniEvent(
     modelOutput: BetaRawMessageStreamEvent,
-  ): RawUniEvent {
+  ): UniEvent {
     let eventType: EventType | null = null;
     const contentItems: PartialContentItem[] = [];
     let usageMetadata: UsageMetadata | null = null;
@@ -418,7 +417,7 @@ export class Claude4_6Client extends LLMClient {
   async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
-  }): AsyncGenerator<RawUniEvent> {
+  }): AsyncGenerator<UniEvent> {
     const claudeConfig = this.transformUniConfigToModelConfig(options.config);
     const claudeMessages = await this.transformUniMessageToModelInput(
       options.messages,

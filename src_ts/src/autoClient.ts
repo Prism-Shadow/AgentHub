@@ -19,7 +19,7 @@ import { GPT5_4Client } from "./gpt5_4";
 import { GLM5Client } from "./glm5";
 import { KimiK2_5Client } from "./kimi_k2_5";
 import { Qwen3Client } from "./qwen3";
-import { UniConfig, UniEvent, UniMessage, RawUniEvent } from "./types";
+import { UniConfig, UniEvent, UniMessage } from "./types";
 
 /**
  * Auto-routing LLM client that dispatches to appropriate model-specific client.
@@ -111,7 +111,7 @@ export class AutoLLMClient extends LLMClient {
    * Delegate to underlying client's transformModelOutputToUniEvent.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  transformModelOutputToUniEvent(modelOutput: any): RawUniEvent {
+  transformModelOutputToUniEvent(modelOutput: any): UniEvent {
     return this._client.transformModelOutputToUniEvent(modelOutput);
   }
 
@@ -119,7 +119,7 @@ export class AutoLLMClient extends LLMClient {
    * Not implemented - use streamingResponse instead.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async *_streamingResponseInternal(_options: any): AsyncGenerator<RawUniEvent> {
+  async *_streamingResponseInternal(_options: any): AsyncGenerator<UniEvent> {
     yield {
       role: "assistant",
       event_type: "delta",

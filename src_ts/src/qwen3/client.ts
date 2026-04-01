@@ -26,7 +26,6 @@ import {
   PromptCaching,
   ToolChoice,
   UniConfig,
-  RawUniEvent,
   UniEvent,
   UniMessage,
   UsageMetadata,
@@ -187,7 +186,7 @@ export class Qwen3Client extends LLMClient {
   /**
    * Transform Qwen3 model output to universal event format.
    */
-  transformModelOutputToUniEvent(modelOutput: ChatCompletionChunk): RawUniEvent {
+  transformModelOutputToUniEvent(modelOutput: ChatCompletionChunk): UniEvent {
     let eventType: EventType | null = null;
     const contentItems: PartialContentItem[] = [];
     let usageMetadata: UsageMetadata | null = null;
@@ -297,7 +296,7 @@ export class Qwen3Client extends LLMClient {
   async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
-  }): AsyncGenerator<RawUniEvent> {
+  }): AsyncGenerator<UniEvent> {
     const qwen3Config = this.transformUniConfigToModelConfig(options.config);
     const qwen3Messages = this.transformUniMessageToModelInput(
       options.messages,

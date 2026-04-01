@@ -506,7 +506,7 @@ export class Tracer {
                         <div class="flex items-center gap-3">
                           <span class="font-semibold text-sm uppercase ${roleClass}">${msg.role}</span>
                           <span class="text-xs text-gray-500">• ${msg.content_items.length} item(s)</span>
-                          <span class="text-xs text-gray-400">• 第 ${roundNum}/${totalRounds} 轮</span>
+                          <span class="text-xs text-gray-400">• Round ${roundNum} / ${totalRounds}</span>
                         </div>
                         <div class="flex items-center gap-3">
                           ${timestampHtml}
@@ -523,7 +523,7 @@ export class Tracer {
               })
               .join("");
 
-            const sidebarHtml = this._buildSidebarHtml(history, totalRounds);
+            const sidebarHtml = this._buildSidebarHtml(totalRounds);
 
             const html = JSON_VIEWER_TEMPLATE(
               path.basename(fullPath),
@@ -655,34 +655,20 @@ export class Tracer {
   /**
    * Build the round navigation sidebar HTML.
    *
-   * @param history - Conversation history
    * @param totalRounds - Total number of rounds
    * @returns HTML string for the sidebar
    */
   private _buildSidebarHtml(
-    history: UniMessage[],
     totalRounds: number,
   ): string {
-    let html = `<h3 class="font-semibold text-sm text-gray-900 mb-1">轮次</h3>
-<p class="text-xs text-gray-500 mb-3">共 ${totalRounds} 轮</p>`;
+    let html = `<h3 class="font-semibold text-sm text-gray-900 mb-3">Rounds (${totalRounds})</h3>`;
 
     for (let roundIdx = 0; roundIdx < totalRounds; roundIdx++) {
       const userIdx = roundIdx * 2;
-      const asstIdx = roundIdx * 2 + 1;
-      const userMsg = history[userIdx];
-      const asstMsg = history[asstIdx];
 
-      html += `<div class="mb-3 pb-3 border-b border-gray-100 last:border-b-0 last:mb-0 last:pb-0">
-  <a href="#msg-${userIdx}" class="block text-xs font-medium text-gray-700 hover:text-blue-600 mb-1">第 ${roundIdx + 1} 轮</a>`;
-
-      if (userMsg?.created_at) {
-        html += `<div class="text-xs text-gray-400">👤 ${this._formatTimestamp(userMsg.created_at)}</div>`;
-      }
-      if (asstMsg?.created_at) {
-        html += `<div class="text-xs text-gray-400">🤖 ${this._formatTimestamp(asstMsg.created_at)}</div>`;
-      }
-
-      html += `</div>`;
+      html += `<div class="mb-3">
+  <a href="#msg-${userIdx}" class="block text-xs font-medium text-gray-700 hover:text-blue-600">Round ${roundIdx + 1}</a>
+</div>`;
     }
 
     return html;

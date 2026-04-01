@@ -26,7 +26,6 @@ import {
   ThinkingLevel,
   ToolChoice,
   UniConfig,
-  RawUniEvent,
   UniEvent,
   UniMessage,
   PromptCaching,
@@ -237,7 +236,7 @@ export class GPT5_4Client extends LLMClient {
   /**
    * Transform OpenAI Responses API streaming event to universal event format.
    */
-  transformModelOutputToUniEvent(modelOutput: ResponseStreamEvent): RawUniEvent {
+  transformModelOutputToUniEvent(modelOutput: ResponseStreamEvent): UniEvent {
     let eventType: EventType | null = null;
     const contentItems: PartialContentItem[] = [];
     let usageMetadata: UsageMetadata | null = null;
@@ -367,7 +366,7 @@ export class GPT5_4Client extends LLMClient {
   async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
-  }): AsyncGenerator<RawUniEvent> {
+  }): AsyncGenerator<UniEvent> {
     const openaiConfig = this.transformUniConfigToModelConfig(options.config);
     const inputList = this.transformUniMessageToModelInput(options.messages);
 

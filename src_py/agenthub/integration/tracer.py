@@ -298,7 +298,7 @@ class Tracer:
                                 <div class="flex items-center gap-3">
                                     <span class="font-semibold text-sm uppercase {% if message.role == 'user' %}text-blue-600{% else %}text-green-600{% endif %}">{{ message.role }}</span>
                                     <span class="text-xs text-gray-500">• {{ message.content_items|length }} item(s)</span>
-                                    <span class="text-xs text-gray-400">• 第 {{ msg_idx // 2 + 1 }}/{{ total_rounds }} 轮</span>
+                                    <span class="text-xs text-gray-400">• Round {{ msg_idx // 2 + 1 }} / {{ total_rounds }}</span>
                                 </div>
                                 <div class="flex items-center gap-3">
                                     {% if message.created_at %}
@@ -367,9 +367,9 @@ class Tracer:
                         <h3 class="font-semibold text-sm text-gray-900 mb-3">Rounds ({{ total_rounds }})</h3>
                         {% for round_idx in range(total_rounds) %}
                             {% set user_idx = round_idx * 2 %}
-                            <div class="mb-1">
+                            <div class="mb-3">
                                 <a href="#msg-{{ user_idx }}" class="block text-xs font-medium text-gray-700 hover:text-blue-600">
-                                    Round {{ round_idx + 1 }} / {{ total_rounds }}
+                                    Round {{ round_idx + 1 }}
                                 </a>
                             </div>
                         {% endfor %}

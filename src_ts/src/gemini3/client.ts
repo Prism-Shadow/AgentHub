@@ -39,7 +39,6 @@ import {
   ThinkingLevel,
   ToolChoice,
   UniConfig,
-  RawUniEvent,
   UniEvent,
   UniMessage,
   UsageMetadata,
@@ -317,7 +316,7 @@ export class Gemini3Client extends LLMClient {
    */
   transformModelOutputToUniEvent(
     modelOutput: GenerateContentResponse,
-  ): RawUniEvent {
+  ): UniEvent {
     let eventType: EventType = "delta";
     const contentItems: PartialContentItem[] = [];
     let usageMetadata: UsageMetadata | null = null;
@@ -394,7 +393,7 @@ export class Gemini3Client extends LLMClient {
   async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
-  }): AsyncGenerator<RawUniEvent> {
+  }): AsyncGenerator<UniEvent> {
     const geminiConfig = this.transformUniConfigToModelConfig(options.config);
     const contents = await this.transformUniMessageToModelInput(
       options.messages,
