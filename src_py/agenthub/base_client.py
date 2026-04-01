@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, cast
 import time
 
 from .types import ContentItem, FinishReason, UniConfig, UniEvent, UniMessage, UsageMetadata
@@ -202,7 +202,7 @@ class LLMClient(ABC):
         """
         # Stamp input message with current time if not provided
         if "created_at" not in message:
-            message = {**message, "created_at": int(time.time() * 1000)}  # type: ignore[misc]
+            message = cast(UniMessage, {**message, "created_at": int(time.time() * 1000)})
 
         # Build a temporary messages list for inference without mutating history yet
         temp_messages = self._history + [message]

@@ -189,7 +189,7 @@ export abstract class LLMClient {
     let { message } = options;
     const { config } = options;
 
-    // Stamp input message with current time if not provided
+    // Stamp input message with current time if not provided (shallow copy to avoid mutating caller's object)
     if (message.created_at == null) {
       message = { ...message, created_at: Date.now() };
     }
