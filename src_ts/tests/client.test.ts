@@ -169,6 +169,8 @@ function checkEventIntegrity(event: UniEvent): void {
   expect(["stop", "length", "tool_call", "unknown", null]).toContain(
     event.finish_reason,
   );
+  expect(event).toHaveProperty("created_at");
+  expect(event.created_at).toBeGreaterThan(0);
 
   for (const item of event.content_items) {
     if (item.type === "text") {

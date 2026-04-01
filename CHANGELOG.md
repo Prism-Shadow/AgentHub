@@ -1,6 +1,6 @@
 # Changelog
 
-- [2026-04-02] Switch to automatic caching for Claude 4.6. Add message timestamp and round index to the tracer tool.
+- [2026-04-02] Switch to automatic caching for Claude 4.6 (but not for bedrock yet). Add message timestamp and round index to the tracer tool.
 
 - [2026-03-11] GPT-5.4 is supported. We now add `phase` labels to assistant messages, and preserve and send them to the server.
 
