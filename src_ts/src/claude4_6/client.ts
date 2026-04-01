@@ -225,7 +225,7 @@ export class Claude4_6Client extends LLMClient {
 
     // Add cache_control if prompt caching is enabled
     // TODO: wait for bedrock to support cache_control in config
-    if (this._use_bedrock) {
+    if (!this._use_bedrock) {
       const promptCaching = config.prompt_caching || PromptCaching.ENABLE;
       if (promptCaching === PromptCaching.ENABLE) {
         claudeConfig.cache_control = { type: "ephemeral" };
@@ -428,7 +428,7 @@ export class Claude4_6Client extends LLMClient {
 
     // Add cache_control to last user message's last item if enabled
     // TODO: remove after bedrock supports cache_control in config
-    if (!this._use_bedrock) {
+    if (this._use_bedrock) {
       const promptCaching =
         options.config.prompt_caching || PromptCaching.ENABLE;
       if (

@@ -217,13 +217,14 @@ class GPT5_4Client(LLMClient):
                         "tool_call_id": model_output.item.call_id,
                     }
                 )
-            elif model_output.item.type == "reasoning":
-                event_type = "delta"
-                signature = {
-                    "id": model_output.item.id,
-                    "encrypted_content": model_output.item.encrypted_content,
-                }
-                content_items.append({"type": "thinking", "thinking": "", "signature": json.dumps(signature)})
+            # adding the following thinking item leads to 400 invalid request error, why?
+            # elif model_output.item.type == "reasoning":
+            #     event_type = "delta"
+            #     signature = {
+            #         "id": model_output.item.id,
+            #         "encrypted_content": model_output.item.encrypted_content,
+            #     }
+            #     content_items.append({"type": "thinking", "thinking": "", "signature": json.dumps(signature)})
             elif model_output.item.type == "message":
                 if hasattr(model_output.item, "phase"):
                     event_type = "delta"
@@ -315,7 +316,6 @@ class GPT5_4Client(LLMClient):
         # Stream generate
         partial_tool_call = {}
         stream = await self._client.responses.create(**openai_config, input=input_list, stream=True)
-
         async for event in stream:
             event = self.transform_model_output_to_uni_event(event)
             if event["event_type"] == "start":
