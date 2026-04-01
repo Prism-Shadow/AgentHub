@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 from abc import ABC, abstractmethod
 from typing import Any, AsyncIterator
-import time
 
 from .types import ContentItem, FinishReason, UniConfig, UniEvent, UniMessage, UsageMetadata
 

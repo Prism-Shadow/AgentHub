@@ -658,9 +658,7 @@ export class Tracer {
    * @param totalRounds - Total number of rounds
    * @returns HTML string for the sidebar
    */
-  private _buildSidebarHtml(
-    totalRounds: number,
-  ): string {
+  private _buildSidebarHtml(totalRounds: number): string {
     let html = `<h3 class="font-semibold text-sm text-gray-900 mb-3">Rounds (${totalRounds})</h3>`;
 
     for (let roundIdx = 0; roundIdx < totalRounds; roundIdx++) {
