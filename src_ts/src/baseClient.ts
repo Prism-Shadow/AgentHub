@@ -127,10 +127,8 @@ export abstract class LLMClient {
       content_items: contentItems,
       usage_metadata: usageMetadata,
       finish_reason: finishReason,
+      created_at: createdAt ?? undefined,
     };
-    if (createdAt !== null) {
-      result.created_at = createdAt;
-    }
     return result;
   }
 
@@ -162,13 +160,37 @@ export abstract class LLMClient {
     messages: UniMessage[];
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
+    const { messages, config } = options;
+
+    // Stamp any messages that don't yet have a created_at timestamp
+    for (const msg of messages) {
+      if (msg.created_at == null) {
+        msg.created_at = Date.now();
+      }
+    }
+
     let lastEvent: UniEvent | null = null;
+    const events: UniEvent[] = [];
     for await (const event of this._streamingResponseInternal(options)) {
       event.created_at = Date.now();
       lastEvent = event;
+      events.push(event);
       yield event;
     }
     LLMClient._validateLastEvent(lastEvent);
+
+    // Save history to file if trace_id is specified
+    if (config.trace_id && events.length > 0) {
+      const { Tracer } = await import("./integration/tracer");
+      const assistantMessage = this.concatUniEventsToUniMessage(events);
+      const tracer = new Tracer();
+      tracer.saveHistory(
+        this._model,
+        [...messages, assistantMessage],
+        config.trace_id,
+        config,
+      );
+    }
   }
 
   /**
@@ -186,13 +208,7 @@ export abstract class LLMClient {
     message: UniMessage;
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
-    let { message } = options;
-    const { config } = options;
-
-    // Stamp input message with current time if not provided (shallow copy to avoid mutating caller's object)
-    if (message.created_at == null) {
-      message = { ...message, created_at: Date.now() };
-    }
+    const { message, config } = options;
 
     const tempMessages = [...this._history, message];
 
@@ -205,16 +221,11 @@ export abstract class LLMClient {
       yield event;
     }
 
+    // tempMessages[-1] is the user message, now stamped with created_at by streamingResponse
     if (events.length > 0) {
       const assistantMessage = this.concatUniEventsToUniMessage(events);
-      this._history.push(message);
+      this._history.push(tempMessages[tempMessages.length - 1]);
       this._history.push(assistantMessage);
-    }
-
-    if (config.trace_id) {
-      const { Tracer } = await import("./integration/tracer");
-      const tracer = new Tracer();
-      tracer.saveHistory(this._model, this._history, config.trace_id, config);
     }
   }
 

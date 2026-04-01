@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Any, AsyncIterator, cast
+from typing import Any, AsyncIterator
 import time
 
 from .types import ContentItem, FinishReason, UniConfig, UniEvent, UniMessage, UsageMetadata
@@ -123,15 +123,13 @@ class LLMClient(ABC):
             finish_reason = event.get("finish_reason")  # finish_reason is taken from the last event
             created_at = event.get("created_at")  # created_at is taken from the last event
 
-        result: UniMessage = {
+        return {
             "role": "assistant",
             "content_items": content_items,
             "usage_metadata": usage_metadata,
             "finish_reason": finish_reason,
+            "created_at": created_at,
         }
-        if created_at is not None:
-            result["created_at"] = created_at
-        return result
 
     @abstractmethod
     async def _streaming_response_internal(
@@ -173,13 +171,28 @@ class LLMClient(ABC):
         Yields:
             Universal events from the streaming response
         """
+        # Stamp any messages that don't yet have a created_at timestamp
+        for msg in messages:
+            if "created_at" not in msg:
+                msg["created_at"] = int(time.time() * 1000)
+
         last_event: UniEvent | None = None
+        events = []
         async for event in self._streaming_response_internal(messages, config):
             event["created_at"] = int(time.time() * 1000)
             last_event = event
+            events.append(event)
             yield event
 
         self._validate_last_event(last_event)
+
+        # Save history to file if trace_id is specified
+        if config.get("trace_id") and events:
+            from .integration.tracer import Tracer
+
+            assistant_message = self.concat_uni_events_to_uni_message(events)
+            tracer = Tracer()
+            tracer.save_history(self._model, messages + [assistant_message], config["trace_id"], config)
 
     async def streaming_response_stateful(
         self,
@@ -200,10 +213,6 @@ class LLMClient(ABC):
         Yields:
             Universal events from the streaming response
         """
-        # Stamp input message with current time if not provided
-        if "created_at" not in message:
-            message = cast(UniMessage, {**message, "created_at": int(time.time() * 1000)})
-
         # Build a temporary messages list for inference without mutating history yet
         temp_messages = self._history + [message]
 
@@ -214,17 +223,11 @@ class LLMClient(ABC):
             yield event
 
         # Only update history after successful inference
+        # temp_messages[-1] is the user message, now stamped with created_at by streaming_response
         if events:
             assistant_message = self.concat_uni_events_to_uni_message(events)
-            self._history.append(message)
+            self._history.append(temp_messages[-1])
             self._history.append(assistant_message)
-
-        # Save history to file if trace_id is specified
-        if config.get("trace_id"):
-            from .integration.tracer import Tracer
-
-            tracer = Tracer()
-            tracer.save_history(self._model, self._history, config["trace_id"], config)
 
     @staticmethod
     def _validate_last_event(last_event: UniEvent | None) -> None:
