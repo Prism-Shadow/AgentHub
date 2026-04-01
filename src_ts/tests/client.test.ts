@@ -96,12 +96,12 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
 }
 
 if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
-  // AVAILABLE_MODELS.push({
-  //   name: "Pro/zai-org/GLM-5",
-  //   supportVision: false,
-  //   supportTemperature: true,
-  //   provider: "siliconflow",
-  // });
+  AVAILABLE_MODELS.push({
+    name: "Pro/zai-org/GLM-5",
+    supportVision: false,
+    supportTemperature: true,
+    provider: "siliconflow",
+  });
   AVAILABLE_MODELS.push({
     name: "Qwen/Qwen3-8B",
     supportVision: false,
@@ -116,7 +116,7 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
   });
 }
 
-if (process.env.BEDROCK_API_KEY && RUN_SLOW_TEST) {
+if (process.env.BEDROCK_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "global.anthropic.claude-sonnet-4-6",
     supportVision: true,
@@ -125,7 +125,7 @@ if (process.env.BEDROCK_API_KEY && RUN_SLOW_TEST) {
   });
 }
 
-if (process.env.VERTEX_API_KEY && RUN_SLOW_TEST) {
+if (process.env.VERTEX_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "gemini-3-flash-preview",
     supportVision: true,

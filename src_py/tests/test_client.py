@@ -67,14 +67,14 @@ if os.getenv("OPENROUTER_API_KEY") and RUN_SLOW_TEST:
     AVAILABLE_MODELS.append(Model(name="moonshotai/kimi-k2.5", provider="openrouter", support_temperature=False))
 
 if os.getenv("SILICONFLOW_API_KEY") and RUN_SLOW_TEST:
-    # AVAILABLE_MODELS.append(Model(name="Pro/zai-org/GLM-5", provider="siliconflow", support_vision=False))
+    AVAILABLE_MODELS.append(Model(name="Pro/zai-org/GLM-5", provider="siliconflow", support_vision=False))
     AVAILABLE_MODELS.append(Model(name="Qwen/Qwen3-8B", provider="siliconflow", support_vision=False))
     AVAILABLE_MODELS.append(Model(name="Pro/moonshotai/Kimi-K2.5", provider="siliconflow", support_temperature=False))
 
-if os.getenv("BEDROCK_API_KEY") and RUN_SLOW_TEST:
+if os.getenv("BEDROCK_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="global.anthropic.claude-sonnet-4-6", provider="bedrock"))
 
-if os.getenv("VERTEX_API_KEY") and RUN_SLOW_TEST:
+if os.getenv("VERTEX_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="gemini-3-flash-preview", provider="vertex"))
 
 
