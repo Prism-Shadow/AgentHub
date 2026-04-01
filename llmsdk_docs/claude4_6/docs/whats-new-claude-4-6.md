@@ -10,12 +10,10 @@ Claude 4.6 represents the next generation of Claude models, bringing significant
 
 | Model | API model ID | Description |
 |:------|:-------------|:------------|
-| Claude Opus 4.6 | `claude-opus-4-6` | Our most intelligent model for building agents and coding |
-| Claude Sonnet 4.6 | `claude-sonnet-4-6` | Our best combination of speed and intelligence |
+| Claude Opus 4.6 | `claude-opus-4-6` | The most intelligent model for building agents and coding |
+| Claude Sonnet 4.6 | `claude-sonnet-4-6` | The best combination of speed and intelligence |
 
-Claude Opus 4.6 supports a 200K context window (with [1M token context window](/docs/en/build-with-claude/context-windows#1m-token-context-window) available in beta), 128K max output tokens, extended thinking, and all existing Claude API features.
-
-Claude Sonnet 4.6 supports a 200K context window (with [1M token context window](/docs/en/build-with-claude/context-windows#1m-token-context-window) available in beta), 64K max output tokens, extended thinking, and adaptive thinking.
+Claude Opus 4.6 and Sonnet 4.6 both support a [1M token context window](/docs/en/build-with-claude/context-windows), extended thinking, and all existing Claude API features. Opus 4.6 offers 128k max output tokens; Sonnet 4.6 offers 64k max output tokens.
 
 For complete pricing and specs, see the [models overview](/docs/en/about-claude/models/overview).
 
@@ -27,7 +25,7 @@ For complete pricing and specs, see the [models overview](/docs/en/about-claude/
 
 `thinking: {type: "enabled"}` and `budget_tokens` are **deprecated** on Opus 4.6 and Sonnet 4.6. They remain functional but will be removed in a future model release. Use adaptive thinking and the [effort parameter](/docs/en/build-with-claude/effort) to control thinking depth instead. Adaptive thinking also automatically enables interleaved thinking.
 
-```python nocheck
+```python
 response = client.messages.create(
     model="claude-opus-4-6",
     max_tokens=16000,
@@ -57,18 +55,18 @@ The following tools are now generally available:
 - [Web fetch](/docs/en/agents-and-tools/tool-use/web-fetch-tool)
 - [Programmatic tool calling](/docs/en/agents-and-tools/tool-use/programmatic-tool-calling)
 - [Tool search tool](/docs/en/agents-and-tools/tool-use/tool-search-tool)
-- [Tool use examples](/docs/en/agents-and-tools/tool-use/implement-tool-use#providing-tool-use-examples)
+- [Tool use examples](/docs/en/agents-and-tools/tool-use/define-tools#providing-tool-use-examples)
 - [Memory tool](/docs/en/agents-and-tools/tool-use/memory-tool)
 
 ### Compaction API (beta)
 
 [Compaction](/docs/en/build-with-claude/compaction) provides automatic, server-side context summarization, enabling effectively infinite conversations. When context approaches the window limit, the API automatically summarizes earlier parts of the conversation.
 
-### Fast mode (research preview)
+### Fast mode (beta: research preview)
 
 [Fast mode](/docs/en/build-with-claude/fast-mode) (`speed: "fast"`) delivers significantly faster output token generation for Opus models. Fast mode is up to 2.5x as fast at premium pricing ($30/$150 per MTok). This is the same model running with faster inference (no change to intelligence or capabilities).
 
-```python nocheck
+```python
 response = client.beta.messages.create(
     model="claude-opus-4-6",
     max_tokens=4096,
@@ -82,9 +80,11 @@ response = client.beta.messages.create(
 
 [Fine-grained tool streaming](/docs/en/agents-and-tools/tool-use/fine-grained-tool-streaming) is now generally available on all models and platforms. No beta header is required.
 
-### 128K output tokens
+### Higher output token limits
 
-Opus 4.6 supports up to 128K output tokens, doubling the previous 64K limit. This enables longer thinking budgets and more comprehensive responses. The SDKs require streaming for requests with large `max_tokens` values to avoid HTTP timeouts. If you don't need to process events incrementally, use `.stream()` with `.get_final_message()` to get the complete response. See [Streaming Messages](/docs/en/build-with-claude/streaming#get-the-final-message-without-handling-events) for details.
+Opus 4.6 supports up to 128k output tokens. This enables longer thinking budgets and more comprehensive responses. The SDKs require streaming for requests with large `max_tokens` values to avoid HTTP timeouts. If you don't need to process events incrementally, use `.stream()` with `.get_final_message()` to get the complete response. See [Streaming Messages](/docs/en/build-with-claude/streaming#get-the-final-message-without-handling-events) for details.
+
+On the Message Batches API, Opus 4.6 and Sonnet 4.6 can generate up to 300k output tokens by using the `output-300k-2026-03-24` beta header. See [Batch processing](/docs/en/build-with-claude/batch-processing#extended-output-beta) for details.
 
 ### Data residency controls
 
@@ -94,13 +94,13 @@ Opus 4.6 supports up to 128K output tokens, doubling the previous 64K limit. Thi
 
 ### `type: "enabled"` and `budget_tokens`
 
-`thinking: {type: "enabled", budget_tokens: N}` is **deprecated** on Opus 4.6. It remains functional but will be removed in a future model release. Migrate to `thinking: {type: "adaptive"}` with the [effort parameter](/docs/en/build-with-claude/effort).
+`thinking: {type: "enabled", budget_tokens: N}` is [**deprecated**](/docs/en/build-with-claude/overview#feature-availability) on Opus 4.6 and Sonnet 4.6. It is still functional but no longer recommended and will be removed in a future model release. Migrate to `thinking: {type: "adaptive"}` with the [effort parameter](/docs/en/build-with-claude/effort).
 
 ### `interleaved-thinking-2025-05-14` beta header
 
 The `interleaved-thinking-2025-05-14` beta header is **deprecated** on Opus 4.6. It is safely ignored if included, but is no longer required. [Adaptive thinking](/docs/en/build-with-claude/adaptive-thinking) automatically enables [interleaved thinking](/docs/en/build-with-claude/extended-thinking#interleaved-thinking). Remove `betas=["interleaved-thinking-2025-05-14"]` from your requests when using Opus 4.6.
 
-**Sonnet 4.6** continues to support the `interleaved-thinking-2025-05-14` beta header for use with manual extended thinking (`thinking: {type: "enabled"}`). You can use either interleaved thinking with the beta header or adaptive thinking on Sonnet 4.6.
+On **Sonnet 4.6**, the `interleaved-thinking-2025-05-14` beta header is still functional for use with manual extended thinking (`thinking: {type: "enabled"}`), but manual mode is deprecated. Adaptive thinking is the recommended path and automatically enables interleaved thinking.
 
 ### `output_format`
 

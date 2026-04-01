@@ -171,6 +171,13 @@ class Claude4_6Client(LLMClient):
         if config.get("tool_choice") is not None:
             claude_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
 
+        # Add cache_control if prompt caching is enabled
+        prompt_caching = config.get("prompt_caching", PromptCaching.ENABLE)
+        if prompt_caching == PromptCaching.ENABLE:
+            claude_config["cache_control"] = {"type": "ephemeral"}
+        elif prompt_caching == PromptCaching.ENHANCE:
+            claude_config["cache_control"] = {"type": "ephemeral", "ttl": "1h"}
+
         return claude_config
 
     async def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[BetaMessageParam]:
@@ -333,19 +340,6 @@ class Claude4_6Client(LLMClient):
 
         # Use unified message conversion
         claude_messages = await self.transform_uni_message_to_model_input(messages)
-
-        # Add cache_control to last user message's last item if enabled
-        prompt_caching = config.get("prompt_caching", PromptCaching.ENABLE)
-        if prompt_caching != PromptCaching.DISABLE and claude_messages:
-            try:
-                last_user_message = next(filter(lambda x: x["role"] == "user", claude_messages[::-1]))
-                last_content_item = last_user_message["content"][-1]
-                last_content_item["cache_control"] = {
-                    "type": "ephemeral",
-                    "ttl": "1h" if prompt_caching == PromptCaching.ENHANCE else "5m",
-                }
-            except StopIteration:
-                pass
 
         # Stream generate
         partial_tool_call = {}

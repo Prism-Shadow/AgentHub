@@ -28,6 +28,7 @@ import {
   UniConfig,
   UniEvent,
   UniMessage,
+  PromptCaching,
   UsageMetadata,
 } from "../types";
 
@@ -128,6 +129,13 @@ export class GPT5_4Client extends LLMClient {
 
     if (config.tool_choice !== undefined) {
       openaiConfig.tool_choice = this._convertToolChoice(config.tool_choice);
+    }
+
+    if (
+      config.prompt_caching !== undefined &&
+      config.prompt_caching !== PromptCaching.ENABLE
+    ) {
+      throw new Error("prompt_caching must be ENABLE for GPT-5.4.");
     }
 
     return openaiConfig;

@@ -4,6 +4,10 @@ Control how many tokens Claude uses when responding with the effort parameter, t
 
 ---
 
+<Note>
+This feature is eligible for [Zero Data Retention (ZDR)](/docs/en/build-with-claude/api-and-data-retention). When your organization has a ZDR arrangement, data sent through this feature is not stored after the API response is returned.
+</Note>
+
 The effort parameter allows you to control how eager Claude is about spending tokens when responding to requests. This gives you the ability to trade off between response thoroughness and token efficiency, all with a single model. The effort parameter is generally available on all supported models with no beta header required.
 
 <Note>
@@ -75,7 +79,7 @@ curl https://api.anthropic.com/v1/messages \
     }'
 ```
 
-```python Python
+```python Python hidelines={1..2}
 import anthropic
 
 client = anthropic.Anthropic()
@@ -95,7 +99,7 @@ response = client.messages.create(
 print(response.content[0].text)
 ```
 
-```typescript TypeScript hidelines={1..4}
+```typescript TypeScript hidelines={1..2}
 import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic();
@@ -149,6 +153,104 @@ class Program
 }
 ```
 
+```go Go hidelines={1..11,-1}
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/anthropics/anthropic-sdk-go"
+)
+
+func main() {
+	client := anthropic.NewClient()
+
+	response, err := client.Messages.New(context.TODO(), anthropic.MessageNewParams{
+		Model:     anthropic.ModelClaudeOpus4_6,
+		MaxTokens: 4096,
+		Messages: []anthropic.MessageParam{
+			anthropic.NewUserMessage(anthropic.NewTextBlock("Analyze the trade-offs between microservices and monolithic architectures")),
+		},
+		OutputConfig: anthropic.OutputConfigParam{
+			Effort: anthropic.OutputConfigEffortMedium,
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(response.Content[0].Text)
+}
+```
+
+```java Java hidelines={1..5,7..9,-2..}
+import com.anthropic.client.AnthropicClient;
+import com.anthropic.client.okhttp.AnthropicOkHttpClient;
+import com.anthropic.models.messages.MessageCreateParams;
+import com.anthropic.models.messages.Message;
+import com.anthropic.models.messages.Model;
+import com.anthropic.models.messages.OutputConfig;
+
+public class Main {
+    public static void main(String[] args) {
+        AnthropicClient client = AnthropicOkHttpClient.fromEnv();
+
+        MessageCreateParams params = MessageCreateParams.builder()
+            .model(Model.CLAUDE_OPUS_4_6)
+            .maxTokens(4096L)
+            .addUserMessage("Analyze the trade-offs between microservices and monolithic architectures")
+            .outputConfig(OutputConfig.builder()
+                .effort(OutputConfig.Effort.MEDIUM)
+                .build())
+            .build();
+
+        Message response = client.messages().create(params);
+        response.content().stream()
+            .flatMap(block -> block.text().stream())
+            .forEach(textBlock -> System.out.println(textBlock.text()));
+    }
+}
+```
+
+```php PHP hidelines={1..4}
+<?php
+
+use Anthropic\Client;
+
+$client = new Client(apiKey: getenv("ANTHROPIC_API_KEY"));
+
+$message = $client->messages->create(
+    maxTokens: 4096,
+    messages: [
+        ['role' => 'user', 'content' => 'Analyze the trade-offs between microservices and monolithic architectures']
+    ],
+    model: 'claude-opus-4-6',
+    outputConfig: ['effort' => 'medium'],
+);
+
+echo $message->content[0]->text;
+```
+
+```ruby Ruby hidelines={1..2}
+require "anthropic"
+
+client = Anthropic::Client.new
+
+message = client.messages.create(
+  model: "claude-opus-4-6",
+  max_tokens: 4096,
+  messages: [
+    { role: "user", content: "Analyze the trade-offs between microservices and monolithic architectures" }
+  ],
+  output_config: {
+    effort: "medium"
+  }
+)
+
+puts message.content.first.text
+```
+
 </CodeGroup>
 
 ## When to adjust the effort parameter
@@ -179,14 +281,14 @@ Higher effort levels may:
 The effort parameter works alongside extended thinking. Its behavior depends on the model:
 
 - **Claude Opus 4.6** uses [adaptive thinking](/docs/en/build-with-claude/adaptive-thinking) (`thinking: {type: "adaptive"}`), where effort is the recommended control for thinking depth. While `budget_tokens` is still accepted on Opus 4.6, it is deprecated and will be removed in a future release. At `high` and `max` effort, Claude almost always thinks deeply. At lower levels, it may skip thinking for simpler problems.
-- **Claude Sonnet 4.6** supports both [adaptive thinking](/docs/en/build-with-claude/adaptive-thinking) (where effort controls thinking depth) and manual thinking with [interleaved mode](/docs/en/build-with-claude/extended-thinking#interleaved-thinking) (`thinking: {type: "enabled", budget_tokens: N}`).
+- **Claude Sonnet 4.6** uses [adaptive thinking](/docs/en/build-with-claude/adaptive-thinking) (where effort controls thinking depth). Manual thinking with [interleaved mode](/docs/en/build-with-claude/extended-thinking#interleaved-thinking) (`thinking: {type: "enabled", budget_tokens: N}`) is still functional but deprecated.
 - **Claude Opus 4.5 and other Claude 4 models** use manual thinking (`thinking: {type: "enabled", budget_tokens: N}`), where effort works alongside the thinking token budget. Set the effort level for your task, then set the thinking token budget based on task complexity.
 
 The effort parameter can be used with or without extended thinking enabled. When used without thinking, it still controls overall token spend for text responses and tool calls.
 
 ## Best practices
 
-1. **Start with high:** Use lower effort levels to trade off performance for token efficiency.
+1. **Set effort explicitly:** The API defaults to `high`, but the right starting point depends on your model and workload.
 2. **Use low for speed-sensitive or simple tasks:** When latency matters or tasks are straightforward, low effort can significantly reduce response times and costs.
 3. **Test your use case:** The impact of effort levels varies by task type. Evaluate performance on your specific use cases before deploying.
 4. **Consider dynamic effort:** Adjust effort based on task complexity. Simple queries may warrant low effort while agentic coding and complex reasoning benefit from high effort.
