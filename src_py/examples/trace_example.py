@@ -42,8 +42,8 @@ def get_weather(location: str) -> str:
 
 async def run_traced_chat():
     """Run conversations with tracing enabled."""
-    # Get model from environment variable, default to gpt-5.2
-    model = os.getenv("MODEL", "gpt-5.2")
+    # Get model from environment variable, default to gpt-5.4
+    model = os.getenv("MODEL", "gpt-5.4")
     print(f"Using model: {model}")
 
     client = AutoLLMClient(model=model)

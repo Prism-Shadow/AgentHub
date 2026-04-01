@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 from abc import ABC, abstractmethod
 from typing import Any, AsyncIterator
 
@@ -84,6 +85,7 @@ class LLMClient(ABC):
         content_items: list[ContentItem] = []
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
+        created_at: int | None = None
 
         for event in events:
             # Merge content_items from all events
@@ -119,12 +121,14 @@ class LLMClient(ABC):
 
             usage_metadata = event.get("usage_metadata")  # usage_metadata is taken from the last event
             finish_reason = event.get("finish_reason")  # finish_reason is taken from the last event
+            created_at = event.get("created_at")  # created_at is taken from the last event
 
         return {
             "role": "assistant",
             "content_items": content_items,
             "usage_metadata": usage_metadata,
             "finish_reason": finish_reason,
+            "created_at": created_at,
         }
 
     @abstractmethod
@@ -167,12 +171,28 @@ class LLMClient(ABC):
         Yields:
             Universal events from the streaming response
         """
+        # Stamp any messages that don't yet have a created_at timestamp
+        for msg in messages:
+            if "created_at" not in msg:
+                msg["created_at"] = int(time.time() * 1000)
+
         last_event: UniEvent | None = None
+        events = []
         async for event in self._streaming_response_internal(messages, config):
+            event["created_at"] = int(time.time() * 1000)
             last_event = event
+            events.append(event)
             yield event
 
         self._validate_last_event(last_event)
+
+        # Save history to file if trace_id is specified
+        if config.get("trace_id") and events:
+            from .integration.tracer import Tracer
+
+            assistant_message = self.concat_uni_events_to_uni_message(events)
+            tracer = Tracer()
+            tracer.save_history(self._model, messages + [assistant_message], config["trace_id"], config)
 
     async def streaming_response_stateful(
         self,
@@ -203,17 +223,11 @@ class LLMClient(ABC):
             yield event
 
         # Only update history after successful inference
+        # temp_messages[-1] is the user message, now stamped with created_at by streaming_response
         if events:
             assistant_message = self.concat_uni_events_to_uni_message(events)
-            self._history.append(message)
+            self._history.append(temp_messages[-1])
             self._history.append(assistant_message)
-
-        # Save history to file if trace_id is specified
-        if config.get("trace_id"):
-            from .integration.tracer import Tracer
-
-            tracer = Tracer()
-            tracer.save_history(self._model, self._history, config["trace_id"], config)
 
     @staticmethod
     def _validate_last_event(last_event: UniEvent | None) -> None:

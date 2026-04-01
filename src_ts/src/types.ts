@@ -106,6 +106,7 @@ export interface UniMessage {
   content_items: ContentItem[];
   usage_metadata?: UsageMetadata | null;
   finish_reason?: FinishReason | null;
+  created_at?: number;
 }
 
 /**
@@ -117,6 +118,7 @@ export interface UniEvent {
   content_items: PartialContentItem[];
   usage_metadata: UsageMetadata | null;
   finish_reason: FinishReason | null;
+  created_at?: number;
 }
 
 /**
