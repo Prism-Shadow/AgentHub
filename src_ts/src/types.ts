@@ -118,8 +118,13 @@ export interface UniEvent {
   content_items: PartialContentItem[];
   usage_metadata: UsageMetadata | null;
   finish_reason: FinishReason | null;
-  created_at?: number;
+  created_at: number;
 }
+
+/**
+ * Internal event type returned by model clients before created_at is stamped.
+ */
+export type RawUniEvent = Omit<UniEvent, "created_at">;
 
 /**
  * Available tool schema.

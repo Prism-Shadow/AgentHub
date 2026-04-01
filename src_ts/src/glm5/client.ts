@@ -27,6 +27,7 @@ import {
   ThinkingLevel,
   ToolChoice,
   UniConfig,
+  RawUniEvent,
   UniEvent,
   UniMessage,
   UsageMetadata,
@@ -217,7 +218,7 @@ export class GLM5Client extends LLMClient {
   /**
    * Transform GLM model output to universal event format.
    */
-  transformModelOutputToUniEvent(modelOutput: ChatCompletionChunk): UniEvent {
+  transformModelOutputToUniEvent(modelOutput: ChatCompletionChunk): RawUniEvent {
     let eventType: EventType | null = null;
     const contentItems: PartialContentItem[] = [];
     let usageMetadata: UsageMetadata | null = null;
@@ -321,7 +322,7 @@ export class GLM5Client extends LLMClient {
   async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
-  }): AsyncGenerator<UniEvent> {
+  }): AsyncGenerator<RawUniEvent> {
     const glmConfig = this.transformUniConfigToModelConfig(options.config);
     const glmMessages = this.transformUniMessageToModelInput(options.messages);
 

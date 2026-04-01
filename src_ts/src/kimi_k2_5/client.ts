@@ -28,6 +28,7 @@ import {
   ThinkingLevel,
   ToolChoice,
   UniConfig,
+  RawUniEvent,
   UniEvent,
   UniMessage,
   UsageMetadata,
@@ -287,7 +288,7 @@ export class KimiK2_5Client extends LLMClient {
   /**
    * Transform Kimi model output to universal event format.
    */
-  transformModelOutputToUniEvent(modelOutput: ChatCompletionChunk): UniEvent {
+  transformModelOutputToUniEvent(modelOutput: ChatCompletionChunk): RawUniEvent {
     let eventType: EventType | null = null;
     const contentItems: PartialContentItem[] = [];
     let usageMetadata: UsageMetadata | null = null;
@@ -391,7 +392,7 @@ export class KimiK2_5Client extends LLMClient {
   async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
-  }): AsyncGenerator<UniEvent> {
+  }): AsyncGenerator<RawUniEvent> {
     const kimiConfig = this.transformUniConfigToModelConfig(options.config);
     const kimiMessages = await this.transformUniMessageToModelInput(
       options.messages,

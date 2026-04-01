@@ -364,21 +364,13 @@ class Tracer:
 
                 <div class="w-52 flex-shrink-0">
                     <div class="sticky top-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4 max-h-[calc(100vh-3rem)] overflow-y-auto">
-                        <h3 class="font-semibold text-sm text-gray-900 mb-1">轮次</h3>
-                        <p class="text-xs text-gray-500 mb-3">共 {{ total_rounds }} 轮</p>
+                        <h3 class="font-semibold text-sm text-gray-900 mb-3">Rounds ({{ total_rounds }})</h3>
                         {% for round_idx in range(total_rounds) %}
                             {% set user_idx = round_idx * 2 %}
-                            {% set asst_idx = round_idx * 2 + 1 %}
-                            <div class="mb-3 pb-3 border-b border-gray-100 last:border-b-0 last:mb-0 last:pb-0">
-                                <a href="#msg-{{ user_idx }}" class="block text-xs font-medium text-gray-700 hover:text-blue-600 mb-1">
-                                    第 {{ round_idx + 1 }} 轮
+                            <div class="mb-1">
+                                <a href="#msg-{{ user_idx }}" class="block text-xs font-medium text-gray-700 hover:text-blue-600">
+                                    Round {{ round_idx + 1 }} / {{ total_rounds }}
                                 </a>
-                                {% if user_idx < history|length and history[user_idx].created_at %}
-                                    <div class="text-xs text-gray-400">👤 {{ history[user_idx].created_at | format_ts }}</div>
-                                {% endif %}
-                                {% if asst_idx < history|length and history[asst_idx].created_at %}
-                                    <div class="text-xs text-gray-400">🤖 {{ history[asst_idx].created_at | format_ts }}</div>
-                                {% endif %}
                             </div>
                         {% endfor %}
                     </div>

@@ -15,6 +15,7 @@
 import {
   ContentItem,
   FinishReason,
+  RawUniEvent,
   UniConfig,
   UniEvent,
   UniMessage,
@@ -61,7 +62,7 @@ export abstract class LLMClient {
    * @returns Universal event object
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  abstract transformModelOutputToUniEvent(modelOutput: any): UniEvent;
+  abstract transformModelOutputToUniEvent(modelOutput: any): RawUniEvent;
 
   /**
    * Concatenate a stream of universal events into a single universal message.
@@ -76,7 +77,7 @@ export abstract class LLMClient {
     const contentItems: ContentItem[] = [];
     let usageMetadata: UsageMetadata | null = null;
     let finishReason: FinishReason | null = null;
-    let createdAt: number | null = null;
+    let createdAt: number | undefined = undefined;
 
     for (const event of events) {
       for (const item of event.content_items) {
@@ -119,17 +120,16 @@ export abstract class LLMClient {
 
       usageMetadata = event.usage_metadata;
       finishReason = event.finish_reason;
-      createdAt = event.created_at ?? null;
+      createdAt = event.created_at;
     }
 
-    const result: UniMessage = {
+    return {
       role: "assistant",
       content_items: contentItems,
       usage_metadata: usageMetadata,
       finish_reason: finishReason,
-      created_at: createdAt ?? undefined,
+      created_at: createdAt,
     };
-    return result;
   }
 
   /**
@@ -144,7 +144,7 @@ export abstract class LLMClient {
   abstract _streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
-  }): AsyncGenerator<UniEvent>;
+  }): AsyncGenerator<RawUniEvent>;
 
   /**
    * Generate content in streaming mode (stateless).
@@ -171,8 +171,8 @@ export abstract class LLMClient {
 
     let lastEvent: UniEvent | null = null;
     const events: UniEvent[] = [];
-    for await (const event of this._streamingResponseInternal(options)) {
-      event.created_at = Date.now();
+    for await (const rawEvent of this._streamingResponseInternal(options)) {
+      const event: UniEvent = { ...rawEvent, created_at: Date.now() };
       lastEvent = event;
       events.push(event);
       yield event;

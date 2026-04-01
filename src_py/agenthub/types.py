@@ -113,7 +113,7 @@ class UniEvent(TypedDict):
     content_items: list[PartialContentItem]
     usage_metadata: UsageMetadata | None
     finish_reason: FinishReason | None
-    created_at: NotRequired[int]
+    created_at: int
 
 
 class ToolSchema(TypedDict):
