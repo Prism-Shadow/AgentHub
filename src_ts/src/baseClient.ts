@@ -76,6 +76,7 @@ export abstract class LLMClient {
     const contentItems: ContentItem[] = [];
     let usageMetadata: UsageMetadata | null = null;
     let finishReason: FinishReason | null = null;
+    let createdAt: number | null = null;
 
     for (const event of events) {
       for (const item of event.content_items) {
@@ -118,14 +119,19 @@ export abstract class LLMClient {
 
       usageMetadata = event.usage_metadata;
       finishReason = event.finish_reason;
+      createdAt = event.created_at ?? null;
     }
 
-    return {
+    const result: UniMessage = {
       role: "assistant",
       content_items: contentItems,
       usage_metadata: usageMetadata,
       finish_reason: finishReason,
     };
+    if (createdAt !== null) {
+      result.created_at = createdAt;
+    }
+    return result;
   }
 
   /**
@@ -158,6 +164,7 @@ export abstract class LLMClient {
   }): AsyncGenerator<UniEvent> {
     let lastEvent: UniEvent | null = null;
     for await (const event of this._streamingResponseInternal(options)) {
+      event.created_at = Date.now();
       lastEvent = event;
       yield event;
     }
@@ -179,7 +186,14 @@ export abstract class LLMClient {
     message: UniMessage;
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
-    const { message, config } = options;
+    let { message } = options;
+    const { config } = options;
+
+    // Stamp input message with current time if not provided
+    if (message.created_at == null) {
+      message = { ...message, created_at: Date.now() };
+    }
+
     const tempMessages = [...this._history, message];
 
     const events: UniEvent[] = [];

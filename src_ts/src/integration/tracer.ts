@@ -243,6 +243,7 @@ export class Tracer {
       configHtml: string,
       historyHtml: string,
       numMessages: number,
+      sidebarHtml: string,
     ) => `
     <!DOCTYPE html>
     <html>
@@ -253,19 +254,26 @@ export class Tracer {
         <script src="https://cdn.tailwindcss.com"></script>
     </head>
     <body class="bg-gray-50 min-h-screen">
-        <div class="max-w-5xl mx-auto p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h1 class="text-3xl font-bold text-gray-900">${filename}</h1>
-                <a href="https://github.com/Prism-Shadow/AgentHub" target="_blank" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">GitHub</a>
+        <div class="flex gap-6 p-6 max-w-7xl mx-auto">
+            <div class="flex-1 min-w-0">
+                <div class="flex justify-between items-center mb-4">
+                    <h1 class="text-3xl font-bold text-gray-900">${filename}</h1>
+                    <a href="https://github.com/Prism-Shadow/AgentHub" target="_blank" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">GitHub</a>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+                    <p class="text-sm text-gray-600"><strong>Path:</strong> ${breadcrumb}</p>
+                </div>
+                <a href="${backUrl}" class="inline-block mb-6 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md border border-gray-300 text-sm transition-colors">
+                    ← Back to Directory
+                </a>
+                ${configHtml}
+                ${historyHtml}
             </div>
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-                <p class="text-sm text-gray-600"><strong>Path:</strong> ${breadcrumb}</p>
+            <div class="w-52 flex-shrink-0">
+                <div class="sticky top-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4 max-h-[calc(100vh-3rem)] overflow-y-auto">
+                    ${sidebarHtml}
+                </div>
             </div>
-            <a href="${backUrl}" class="inline-block mb-6 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md border border-gray-300 text-sm transition-colors">
-                ← Back to Directory
-            </a>
-            ${configHtml}
-            ${historyHtml}
         </div>
         <script>
             function toggleConfig(key) {
@@ -402,7 +410,10 @@ export class Tracer {
                 </div>`
                 : "";
 
-            const historyHtml = (data.history || [])
+            const history: UniMessage[] = data.history || [];
+            const totalRounds = Math.ceil(history.length / 2);
+
+            const historyHtml = history
               .map((msg: UniMessage, idx: number) => {
                 const contentItemsHtml = msg.content_items
                   .map((item) => {
@@ -484,15 +495,23 @@ export class Tracer {
 
                 const roleClass =
                   msg.role === "user" ? "text-blue-600" : "text-green-600";
+                const roundNum = Math.floor(idx / 2) + 1;
+                const timestampHtml = msg.created_at
+                  ? `<span class="text-xs text-gray-400">${this._formatTimestamp(msg.created_at)}</span>`
+                  : "";
                 return `
-                  <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 overflow-hidden">
+                  <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 overflow-hidden" id="msg-${idx}">
                     <div class="bg-gray-50 border-b border-gray-200 p-4 cursor-pointer hover:bg-gray-100 transition-colors" onclick="toggleMessage(${idx})">
                       <div class="flex justify-between items-center">
-                        <div>
+                        <div class="flex items-center gap-3">
                           <span class="font-semibold text-sm uppercase ${roleClass}">${msg.role}</span>
-                          <span class="text-xs text-gray-500 ml-2">• ${msg.content_items.length} item(s)</span>
+                          <span class="text-xs text-gray-500">• ${msg.content_items.length} item(s)</span>
+                          <span class="text-xs text-gray-400">• 第 ${roundNum}/${totalRounds} 轮</span>
                         </div>
-                        <span class="text-gray-400 transform transition-transform" id="icon-${idx}">▶</span>
+                        <div class="flex items-center gap-3">
+                          ${timestampHtml}
+                          <span class="text-gray-400 transform transition-transform" id="icon-${idx}">▶</span>
+                        </div>
                       </div>
                     </div>
                     <div class="p-6 hidden" id="content-${idx}">
@@ -504,13 +523,16 @@ export class Tracer {
               })
               .join("");
 
+            const sidebarHtml = this._buildSidebarHtml(history, totalRounds);
+
             const html = JSON_VIEWER_TEMPLATE(
               path.basename(fullPath),
               breadcrumb,
               backUrl,
               configHtml,
               historyHtml,
-              data.history?.length || 0,
+              history.length,
+              sidebarHtml,
             );
 
             return res.send(html);
@@ -616,6 +638,54 @@ export class Tracer {
     });
 
     return app;
+  }
+
+  /**
+   * Format a Unix timestamp in milliseconds as YYYY-MM-DD HH:MM:SS.
+   *
+   * @param ms - Unix timestamp in milliseconds
+   * @returns Formatted date string
+   */
+  private _formatTimestamp(ms: number): string {
+    const d = new Date(ms);
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+
+  /**
+   * Build the round navigation sidebar HTML.
+   *
+   * @param history - Conversation history
+   * @param totalRounds - Total number of rounds
+   * @returns HTML string for the sidebar
+   */
+  private _buildSidebarHtml(
+    history: UniMessage[],
+    totalRounds: number,
+  ): string {
+    let html = `<h3 class="font-semibold text-sm text-gray-900 mb-1">轮次</h3>
+<p class="text-xs text-gray-500 mb-3">共 ${totalRounds} 轮</p>`;
+
+    for (let roundIdx = 0; roundIdx < totalRounds; roundIdx++) {
+      const userIdx = roundIdx * 2;
+      const asstIdx = roundIdx * 2 + 1;
+      const userMsg = history[userIdx];
+      const asstMsg = history[asstIdx];
+
+      html += `<div class="mb-3 pb-3 border-b border-gray-100 last:border-b-0 last:mb-0 last:pb-0">
+  <a href="#msg-${userIdx}" class="block text-xs font-medium text-gray-700 hover:text-blue-600 mb-1">第 ${roundIdx + 1} 轮</a>`;
+
+      if (userMsg?.created_at) {
+        html += `<div class="text-xs text-gray-400">👤 ${this._formatTimestamp(userMsg.created_at)}</div>`;
+      }
+      if (asstMsg?.created_at) {
+        html += `<div class="text-xs text-gray-400">🤖 ${this._formatTimestamp(asstMsg.created_at)}</div>`;
+      }
+
+      html += `</div>`;
+    }
+
+    return html;
   }
 
   /**

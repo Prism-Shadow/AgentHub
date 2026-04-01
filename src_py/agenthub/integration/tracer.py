@@ -195,6 +195,13 @@ class Tracer:
         app = Flask(__name__)
         app.jinja_env.policies["json.dumps_kwargs"] = {"ensure_ascii": False}
 
+        @app.template_filter("format_ts")
+        def format_ts(ms: int | None) -> str:
+            """Format a Unix timestamp in milliseconds as YYYY-MM-DD HH:MM:SS."""
+            if ms is None:
+                return ""
+            return datetime.fromtimestamp(ms / 1000).strftime("%Y-%m-%d %H:%M:%S")
+
         # HTML template for directory listing
         DIRECTORY_TEMPLATE = """
         <!DOCTYPE html>
@@ -249,102 +256,133 @@ class Tracer:
             <script src="https://cdn.tailwindcss.com"></script>
         </head>
         <body class="bg-gray-50 min-h-screen">
-            <div class="max-w-5xl mx-auto p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h1 class="text-3xl font-bold text-gray-900">{{ filename }}</h1>
-                    <a href="https://github.com/Prism-Shadow/AgentHub" target="_blank" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">GitHub</a>
-                </div>
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-                    <p class="text-sm text-gray-600"><strong>Path:</strong> {{ breadcrumb|safe }}</p>
-                </div>
-                <a href="{{ back_url }}" class="inline-block mb-6 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md border border-gray-300 text-sm transition-colors">
-                    ← Back to Directory
-                </a>
-                {% if config %}
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">Configuration</h2>
-                    {% for key, value in config.items() %}
-                        {% if key != 'trace_id' %}
-                        <div class="py-2 text-sm">
-                            <strong class="text-gray-900">{{ key|e }}:</strong>
-                            {% if key == 'system_prompt' and value is not none %}
-                                <button onclick="toggleConfig('{{ key|e }}')" class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300 transition-colors"><span id="icon-{{ key|e }}" class="transform transition-transform">▶</span> Show</button>
-                                <div id="content-{{ key|e }}" class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap hidden">{{ value|e }}</div>
-                            {% elif key == 'tools' and value is iterable and value is not string %}
-                                <button onclick="toggleConfig('{{ key|e }}')" class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300 transition-colors"><span id="icon-{{ key|e }}" class="transform transition-transform">▶</span> Show</button>
-                                <div id="content-{{ key|e }}" class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap hidden">{{ value|tojson(indent=2)|e }}</div>
-                            {% else %}
-                                <span class="text-gray-600">{{ value|e }}</span>
+            {% set total_rounds = ((history|length) + 1) // 2 %}
+            <div class="flex gap-6 p-6 max-w-7xl mx-auto">
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-center mb-4">
+                        <h1 class="text-3xl font-bold text-gray-900">{{ filename }}</h1>
+                        <a href="https://github.com/Prism-Shadow/AgentHub" target="_blank" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">GitHub</a>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+                        <p class="text-sm text-gray-600"><strong>Path:</strong> {{ breadcrumb|safe }}</p>
+                    </div>
+                    <a href="{{ back_url }}" class="inline-block mb-6 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md border border-gray-300 text-sm transition-colors">
+                        ← Back to Directory
+                    </a>
+                    {% if config %}
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                        <h2 class="text-xl font-semibold text-gray-900 mb-4">Configuration</h2>
+                        {% for key, value in config.items() %}
+                            {% if key != 'trace_id' %}
+                            <div class="py-2 text-sm">
+                                <strong class="text-gray-900">{{ key|e }}:</strong>
+                                {% if key == 'system_prompt' and value is not none %}
+                                    <button onclick="toggleConfig('{{ key|e }}')" class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300 transition-colors"><span id="icon-{{ key|e }}" class="transform transition-transform">▶</span> Show</button>
+                                    <div id="content-{{ key|e }}" class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap hidden">{{ value|e }}</div>
+                                {% elif key == 'tools' and value is iterable and value is not string %}
+                                    <button onclick="toggleConfig('{{ key|e }}')" class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300 transition-colors"><span id="icon-{{ key|e }}" class="transform transition-transform">▶</span> Show</button>
+                                    <div id="content-{{ key|e }}" class="mt-1 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap hidden">{{ value|tojson(indent=2)|e }}</div>
+                                {% else %}
+                                    <span class="text-gray-600">{{ value|e }}</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    {% for msg_idx, message in enumerate(history) %}
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 overflow-hidden" id="msg-{{ msg_idx }}">
+                        <div class="bg-gray-50 border-b border-gray-200 p-4 cursor-pointer hover:bg-gray-100 transition-colors" onclick="toggleMessage({{ msg_idx }})">
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center gap-3">
+                                    <span class="font-semibold text-sm uppercase {% if message.role == 'user' %}text-blue-600{% else %}text-green-600{% endif %}">{{ message.role }}</span>
+                                    <span class="text-xs text-gray-500">• {{ message.content_items|length }} item(s)</span>
+                                    <span class="text-xs text-gray-400">• 第 {{ msg_idx // 2 + 1 }}/{{ total_rounds }} 轮</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    {% if message.created_at %}
+                                    <span class="text-xs text-gray-400">{{ message.created_at | format_ts }}</span>
+                                    {% endif %}
+                                    <span class="text-gray-400 transform transition-transform" id="icon-{{ msg_idx }}">▶</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-6 hidden" id="content-{{ msg_idx }}">
+                            {% for item in message.content_items %}
+                                <div class="mb-4 pb-4 border-b border-gray-100 last:border-b-0 last:mb-0 last:pb-0">
+                                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{{ item.type|e }}</div>
+                                    {% if item.type == 'text' %}
+                                        <div class="bg-gray-50 p-4 rounded-md font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.text|e }}</div>
+                                    {% elif item.type == 'thinking' %}
+                                        <div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.thinking|e }}</div>
+                                    {% elif item.type == 'tool_call' %}
+                                        <div class="bg-yellow-50 p-4 rounded-md border-l-4 border-yellow-500">
+                                            <div class="font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.name|e }}({% for key, value in item.arguments.items() %}{{ key|e }}="{{ value|e }}"{% if not loop.last %}, {% endif %}{% endfor %})</div>
+                                        </div>
+                                    {% elif item.type == 'tool_result' %}
+                                        <div class="bg-green-50 p-4 rounded-md border-l-4 border-green-500">
+                                            <strong class="text-sm text-gray-900">Result:</strong> <span class="text-sm text-gray-700">{{ item.text|e }}</span><br>
+                                            <strong class="text-sm text-gray-900">Call ID:</strong> <span class="text-sm text-gray-700">{{ item.tool_call_id|e }}</span>
+                                            {% if item.images %}
+                                                <div class="mt-2 flex flex-wrap gap-2">
+                                                    {% for image_url in item.images %}
+                                                        <img src="{{ image_url|e }}" class="max-w-xs max-h-48 rounded-md" alt="Tool Result Image">
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    {% elif item.type == 'image_url' %}
+                                        <div class="bg-gray-50 p-4 rounded-md">
+                                            <img src="{{ item.image_url|e }}" class="max-w-xs max-h-48 rounded-md" alt="Preview">
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+
+                            {% if message.usage_metadata or message.finish_reason %}
+                            <div class="mt-4 pt-4 border-t border-gray-200 text-right text-xs text-gray-500">
+                                {% if message.usage_metadata %}
+                                    {% set parts = [] %}
+                                    {% if message.usage_metadata.cached_tokens %}{% set _ = parts.append('Cached: ' ~ message.usage_metadata.cached_tokens ~ ' tokens') %}{% endif %}
+                                    {% if message.usage_metadata.prompt_tokens %}{% set _ = parts.append('Prompt: ' ~ message.usage_metadata.prompt_tokens ~ ' tokens') %}{% endif %}
+                                    {% if message.usage_metadata.thoughts_tokens %}{% set _ = parts.append('Thoughts: ' ~ message.usage_metadata.thoughts_tokens ~ ' tokens') %}{% endif %}
+                                    {% if message.usage_metadata.response_tokens %}{% set _ = parts.append('Response: ' ~ message.usage_metadata.response_tokens ~ ' tokens') %}{% endif %}
+                                    {% set input_tokens = (message.usage_metadata.cached_tokens or 0) + (message.usage_metadata.prompt_tokens or 0) %}
+                                    {% set output_tokens = (message.usage_metadata.thoughts_tokens or 0) + (message.usage_metadata.response_tokens or 0) %}
+                                    {% set total_tokens = input_tokens + output_tokens %}
+                                    {% set _ = parts.append('Total: ' ~ total_tokens ~ ' tokens') %}
+                                    {{ parts|join(' • ') }}
+                                {% endif %}
+                                {% if message.finish_reason %}{% if message.usage_metadata %} • {% endif %}Finish: {{ message.finish_reason|e }}{% endif %}
+                            </div>
                             {% endif %}
                         </div>
-                        {% endif %}
+                    </div>
                     {% endfor %}
                 </div>
-                {% endif %}
 
-                {% for msg_idx, message in enumerate(history) %}
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 overflow-hidden">
-                    <div class="bg-gray-50 border-b border-gray-200 p-4 cursor-pointer hover:bg-gray-100 transition-colors" onclick="toggleMessage({{ msg_idx }})">
-                        <div class="flex justify-between items-center">
-                            <div>
-                                <span class="font-semibold text-sm uppercase {% if message.role == 'user' %}text-blue-600{% else %}text-green-600{% endif %}">{{ message.role }}</span>
-                                <span class="text-xs text-gray-500 ml-2">• {{ message.content_items|length }} item(s)</span>
-                            </div>
-                            <span class="text-gray-400 transform transition-transform" id="icon-{{ msg_idx }}">▶</span>
-                        </div>
-                    </div>
-                    <div class="p-6 hidden" id="content-{{ msg_idx }}">
-                        {% for item in message.content_items %}
-                            <div class="mb-4 pb-4 border-b border-gray-100 last:border-b-0 last:mb-0 last:pb-0">
-                                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{{ item.type|e }}</div>
-                                {% if item.type == 'text' %}
-                                    <div class="bg-gray-50 p-4 rounded-md font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.text|e }}</div>
-                                {% elif item.type == 'thinking' %}
-                                    <div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.thinking|e }}</div>
-                                {% elif item.type == 'tool_call' %}
-                                    <div class="bg-yellow-50 p-4 rounded-md border-l-4 border-yellow-500">
-                                        <div class="font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.name|e }}({% for key, value in item.arguments.items() %}{{ key|e }}="{{ value|e }}"{% if not loop.last %}, {% endif %}{% endfor %})</div>
-                                    </div>
-                                {% elif item.type == 'tool_result' %}
-                                    <div class="bg-green-50 p-4 rounded-md border-l-4 border-green-500">
-                                        <strong class="text-sm text-gray-900">Result:</strong> <span class="text-sm text-gray-700">{{ item.text|e }}</span><br>
-                                        <strong class="text-sm text-gray-900">Call ID:</strong> <span class="text-sm text-gray-700">{{ item.tool_call_id|e }}</span>
-                                        {% if item.images %}
-                                            <div class="mt-2 flex flex-wrap gap-2">
-                                                {% for image_url in item.images %}
-                                                    <img src="{{ image_url|e }}" class="max-w-xs max-h-48 rounded-md" alt="Tool Result Image">
-                                                {% endfor %}
-                                            </div>
-                                        {% endif %}
-                                    </div>
-                                {% elif item.type == 'image_url' %}
-                                    <div class="bg-gray-50 p-4 rounded-md">
-                                        <img src="{{ item.image_url|e }}" class="max-w-xs max-h-48 rounded-md" alt="Preview">
-                                    </div>
+                <div class="w-52 flex-shrink-0">
+                    <div class="sticky top-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4 max-h-[calc(100vh-3rem)] overflow-y-auto">
+                        <h3 class="font-semibold text-sm text-gray-900 mb-1">轮次</h3>
+                        <p class="text-xs text-gray-500 mb-3">共 {{ total_rounds }} 轮</p>
+                        {% for round_idx in range(total_rounds) %}
+                            {% set user_idx = round_idx * 2 %}
+                            {% set asst_idx = round_idx * 2 + 1 %}
+                            <div class="mb-3 pb-3 border-b border-gray-100 last:border-b-0 last:mb-0 last:pb-0">
+                                <a href="#msg-{{ user_idx }}" class="block text-xs font-medium text-gray-700 hover:text-blue-600 mb-1">
+                                    第 {{ round_idx + 1 }} 轮
+                                </a>
+                                {% if user_idx < history|length and history[user_idx].created_at %}
+                                    <div class="text-xs text-gray-400">👤 {{ history[user_idx].created_at | format_ts }}</div>
+                                {% endif %}
+                                {% if asst_idx < history|length and history[asst_idx].created_at %}
+                                    <div class="text-xs text-gray-400">🤖 {{ history[asst_idx].created_at | format_ts }}</div>
                                 {% endif %}
                             </div>
                         {% endfor %}
-
-                        {% if message.usage_metadata or message.finish_reason %}
-                        <div class="mt-4 pt-4 border-t border-gray-200 text-right text-xs text-gray-500">
-                            {% if message.usage_metadata %}
-                                {% set parts = [] %}
-                                {% if message.usage_metadata.cached_tokens %}{% set _ = parts.append('Cached: ' ~ message.usage_metadata.cached_tokens ~ ' tokens') %}{% endif %}
-                                {% if message.usage_metadata.prompt_tokens %}{% set _ = parts.append('Prompt: ' ~ message.usage_metadata.prompt_tokens ~ ' tokens') %}{% endif %}
-                                {% if message.usage_metadata.thoughts_tokens %}{% set _ = parts.append('Thoughts: ' ~ message.usage_metadata.thoughts_tokens ~ ' tokens') %}{% endif %}
-                                {% if message.usage_metadata.response_tokens %}{% set _ = parts.append('Response: ' ~ message.usage_metadata.response_tokens ~ ' tokens') %}{% endif %}
-                                {% set input_tokens = (message.usage_metadata.cached_tokens or 0) + (message.usage_metadata.prompt_tokens or 0) %}
-                                {% set output_tokens = (message.usage_metadata.thoughts_tokens or 0) + (message.usage_metadata.response_tokens or 0) %}
-                                {% set total_tokens = input_tokens + output_tokens %}
-                                {% set _ = parts.append('Total: ' ~ total_tokens ~ ' tokens') %}
-                                {{ parts|join(' • ') }}
-                            {% endif %}
-                            {% if message.finish_reason %}{% if message.usage_metadata %} • {% endif %}Finish: {{ message.finish_reason|e }}{% endif %}
-                        </div>
-                        {% endif %}
                     </div>
                 </div>
-                {% endfor %}
             </div>
             <script>
                 function toggleConfig(key) {

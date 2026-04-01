@@ -14,6 +14,7 @@
 
 from abc import ABC, abstractmethod
 from typing import Any, AsyncIterator
+import time
 
 from .types import ContentItem, FinishReason, UniConfig, UniEvent, UniMessage, UsageMetadata
 
@@ -84,6 +85,7 @@ class LLMClient(ABC):
         content_items: list[ContentItem] = []
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
+        created_at: int | None = None
 
         for event in events:
             # Merge content_items from all events
@@ -119,13 +121,17 @@ class LLMClient(ABC):
 
             usage_metadata = event.get("usage_metadata")  # usage_metadata is taken from the last event
             finish_reason = event.get("finish_reason")  # finish_reason is taken from the last event
+            created_at = event.get("created_at")  # created_at is taken from the last event
 
-        return {
+        result: UniMessage = {
             "role": "assistant",
             "content_items": content_items,
             "usage_metadata": usage_metadata,
             "finish_reason": finish_reason,
         }
+        if created_at is not None:
+            result["created_at"] = created_at
+        return result
 
     @abstractmethod
     async def _streaming_response_internal(
@@ -169,6 +175,7 @@ class LLMClient(ABC):
         """
         last_event: UniEvent | None = None
         async for event in self._streaming_response_internal(messages, config):
+            event["created_at"] = int(time.time() * 1000)
             last_event = event
             yield event
 
@@ -193,6 +200,10 @@ class LLMClient(ABC):
         Yields:
             Universal events from the streaming response
         """
+        # Stamp input message with current time if not provided
+        if "created_at" not in message:
+            message = {**message, "created_at": int(time.time() * 1000)}  # type: ignore[misc]
+
         # Build a temporary messages list for inference without mutating history yet
         temp_messages = self._history + [message]
 
