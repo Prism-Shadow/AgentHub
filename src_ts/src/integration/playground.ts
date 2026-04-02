@@ -339,6 +339,7 @@ export function createChatApp(): Express {
           async function sendMessage() {
               const input = document.getElementById('messageInput');
               const sendButton = document.getElementById('sendButton');
+              const container = document.getElementById('messagesContainer');
               const message = input.value.trim();
 
               if ((!message && selectedImages.length === 0) || isStreaming) return;
@@ -447,6 +448,7 @@ export function createChatApp(): Express {
                                       }
                                   }
 
+                                  container.scrollTop = container.scrollHeight;
                                   if (event.usage_metadata) {
                                       const usage = event.usage_metadata;
                                       const inputTokens = (usage.cached_tokens || 0) + (usage.prompt_tokens || 0);
