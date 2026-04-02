@@ -30,7 +30,7 @@ Switch different LLMs with **zero code changes** and **no performance loss**.
 
 ![AgentHub](.github/images/agenthub.png)
 
-### Built-in Tracer
+### Built-in Observability
 
 Audit LLM executions by adding **a single `trace_id` parameter**, no database required.
 
@@ -386,7 +386,8 @@ Example UniEvent:
     "thoughts_tokens": null,
     "response_tokens": 1
   },
-  "finish_reason": null
+  "finish_reason": null,
+  "created_at": 1694502400000
 }
 ```
 
@@ -428,11 +429,12 @@ async for event in client.streaming_response_stateful(
     print(event)
 ```
 
-```python
-from agenthub.integration.tracer import Tracer
+```bash
+uv run python -m agenthub.integration.tracer --host 127.0.0.1 --port 25750
+```
 
-tracer = Tracer()
-tracer.start_web_server(host="127.0.0.1", port=25750, debug=False)
+```bash
+npm run tracer
 ```
 
 Then you can view the tracing output in the dashboard at `http://localhost:25750/`.
@@ -443,10 +445,12 @@ Then you can view the tracing output in the dashboard at `http://localhost:25750
 
 We provide a LLM playground to help you test your LLMs.
 
-```python
-from agenthub.integration.playground import start_playground_server
+```bash
+uv run python -m agenthub.integration.playground --host 127.0.0.1 --port 25751
+```
 
-start_playground_server(host="127.0.0.1", port=25751, debug=False)
+```bash
+npm run playground
 ```
 
 You can access the playground at `http://localhost:25751/`.
