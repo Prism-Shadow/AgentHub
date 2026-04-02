@@ -430,11 +430,11 @@ async for event in client.streaming_response_stateful(
 ```
 
 ```bash
-uv run python -m agenthub.integration.tracer --host 127.0.0.1 --port 25750
+cd src_py && uv run python -m agenthub.integration.tracer --host 127.0.0.1 --port 25750
 ```
 
 ```bash
-npm run tracer
+cd src_ts && npm run tracer
 ```
 
 Then you can view the tracing output in the dashboard at `http://localhost:25750/`.
@@ -446,11 +446,11 @@ Then you can view the tracing output in the dashboard at `http://localhost:25750
 We provide a LLM playground to help you test your LLMs.
 
 ```bash
-uv run python -m agenthub.integration.playground --host 127.0.0.1 --port 25751
+cd src_py && uv run python -m agenthub.integration.playground --host 127.0.0.1 --port 25751
 ```
 
 ```bash
-npm run playground
+cd src_ts && npm run playground
 ```
 
 You can access the playground at `http://localhost:25751/`.
