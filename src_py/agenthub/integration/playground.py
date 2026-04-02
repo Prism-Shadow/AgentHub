@@ -466,6 +466,7 @@ def create_chat_app() -> Flask:
                                         }
                                     }
 
+                                    container.scrollTop = container.scrollHeight;
                                     if (event.usage_metadata) {
                                         const usage = event.usage_metadata;
                                         const inputTokens = (usage.cached_tokens || 0) + (usage.prompt_tokens || 0);
