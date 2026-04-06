@@ -259,18 +259,18 @@ export class GPT5_4Client extends LLMClient {
           arguments: "",
           tool_call_id: item.call_id,
         });
-      // adding the following thinking item leads to 400 invalid request error, why?
-      // } else if (item.type === "reasoning") {
-      //   eventType = "delta";
-      //   const signature = {
-      //     id: item.id,
-      //     encrypted_content: item.encrypted_content,
-      //   };
-      //   contentItems.push({
-      //     type: "thinking",
-      //     thinking: "",
-      //     signature: JSON.stringify(signature),
-      //   });
+        // adding the following thinking item leads to 400 invalid request error, why?
+        // } else if (item.type === "reasoning") {
+        //   eventType = "delta";
+        //   const signature = {
+        //     id: item.id,
+        //     encrypted_content: item.encrypted_content,
+        //   };
+        //   contentItems.push({
+        //     type: "thinking",
+        //     thinking: "",
+        //     signature: JSON.stringify(signature),
+        //   });
       } else if (item.type === "message") {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const phase = (item as any).phase as string | undefined;
