@@ -685,7 +685,7 @@ export class Tracer {
               (currAssistant.created_at - prevAssistant.created_at) / 1000,
             ),
           );
-          tookHtml = `<span class="text-xs text-gray-400">${diffSec} s</span>`;
+          tookHtml = `<div class="text-xs text-gray-400 mt-0.5">${diffSec} s</div>`;
         }
       }
 

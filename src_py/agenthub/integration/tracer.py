@@ -379,7 +379,7 @@ class Tracer:
                                     {% set curr_ts = history[assistant_idx].created_at %}
                                     {% set prev_ts = history[(round_idx - 1) * 2 + 1].created_at %}
                                     {% if curr_ts and prev_ts %}
-                                    <span class="text-xs text-gray-400">{{ ((curr_ts - prev_ts) // 1000) | abs }} s</span>
+                                    <div class="text-xs text-gray-400 mt-0.5">{{ ((curr_ts - prev_ts) // 1000) | abs }} s</div>
                                     {% endif %}
                                 {% endif %}
                             </div>
