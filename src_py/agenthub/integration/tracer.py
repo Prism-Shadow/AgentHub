@@ -301,6 +301,9 @@ class Tracer:
                                     <span class="text-xs text-gray-400">• Round {{ msg_idx // 2 + 1 }} / {{ total_rounds }}</span>
                                 </div>
                                 <div class="flex items-center gap-3">
+                                    {% if msg_idx > 0 and message.created_at and history[msg_idx - 1].created_at %}
+                                    <span class="text-xs text-gray-400">Took {{ ((message.created_at - history[msg_idx - 1].created_at) // 1000) }} s</span>
+                                    {% endif %}
                                     {% if message.created_at %}
                                     <span class="text-xs text-gray-400">{{ message.created_at | format_ts }}</span>
                                     {% endif %}
@@ -367,10 +370,18 @@ class Tracer:
                         <h3 class="font-semibold text-sm text-gray-900 mb-3">Rounds ({{ total_rounds }})</h3>
                         {% for round_idx in range(total_rounds) %}
                             {% set user_idx = round_idx * 2 %}
+                            {% set assistant_idx = round_idx * 2 + 1 %}
                             <div class="mb-3">
                                 <a href="#msg-{{ user_idx }}" class="block text-xs font-medium text-gray-700 hover:text-blue-600">
                                     Round {{ round_idx + 1 }}
                                 </a>
+                                {% if round_idx > 0 and assistant_idx < history|length and (round_idx - 1) * 2 + 1 < history|length %}
+                                    {% set curr_ts = history[assistant_idx].created_at %}
+                                    {% set prev_ts = history[(round_idx - 1) * 2 + 1].created_at %}
+                                    {% if curr_ts and prev_ts %}
+                                    <span class="text-xs text-gray-400">{{ ((curr_ts - prev_ts) // 1000) }} s</span>
+                                    {% endif %}
+                                {% endif %}
                             </div>
                         {% endfor %}
                     </div>
