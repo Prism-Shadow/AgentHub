@@ -685,12 +685,12 @@ export class Tracer {
               (currAssistant.created_at - prevAssistant.created_at) / 1000,
             ),
           );
-          tookHtml = `<div class="text-xs text-gray-400 mt-0.5">${diffSec} s</div>`;
+          tookHtml = `<span class="text-xs text-gray-400 mt-0.5">(${diffSec} s)</span>`;
         }
       }
 
-      html += `<div class="mb-3">
-  <a href="#msg-${userIdx}" class="block text-xs font-medium text-gray-700 hover:text-blue-600">Round ${roundIdx + 1}</a>
+      html += `<div class="mb-3 flex items-center gap-1">
+  <a href="#msg-${userIdx}" class="text-xs font-medium text-gray-700 hover:text-blue-600">Round ${roundIdx + 1}</a>
   ${tookHtml}
 </div>`;
     }

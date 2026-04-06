@@ -371,15 +371,15 @@ class Tracer:
                         {% for round_idx in range(total_rounds) %}
                             {% set user_idx = round_idx * 2 %}
                             {% set assistant_idx = round_idx * 2 + 1 %}
-                            <div class="mb-3">
-                                <a href="#msg-{{ user_idx }}" class="block text-xs font-medium text-gray-700 hover:text-blue-600">
+                            <div class="mb-3 flex items-center gap-1">
+                                <a href="#msg-{{ user_idx }}" class="text-xs font-medium text-gray-700 hover:text-blue-600">
                                     Round {{ round_idx + 1 }}
                                 </a>
                                 {% if round_idx > 0 and assistant_idx < history|length and (round_idx - 1) * 2 + 1 < history|length %}
                                     {% set curr_ts = history[assistant_idx].created_at %}
                                     {% set prev_ts = history[(round_idx - 1) * 2 + 1].created_at %}
                                     {% if curr_ts and prev_ts %}
-                                    <div class="text-xs text-gray-400 mt-0.5">{{ ((curr_ts - prev_ts) // 1000) | abs }} s</div>
+                                    <span class="text-xs text-gray-400 mt-0.5">({{ ((curr_ts - prev_ts) // 1000) | abs }} s)</span>
                                     {% endif %}
                                 {% endif %}
                             </div>
