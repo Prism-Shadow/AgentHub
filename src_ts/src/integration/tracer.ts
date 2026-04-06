@@ -683,7 +683,7 @@ export class Tracer {
           const diffMs = Math.abs(
             currAssistant.created_at - prevAssistant.created_at,
           );
-          tookHtml = `<span class="text-xs text-gray-400 mt-0.5">(${diffMs} ms)</span>`;
+          tookHtml = `<span class="text-xs text-gray-400">(${diffMs} ms)</span>`;
         }
       }
 
