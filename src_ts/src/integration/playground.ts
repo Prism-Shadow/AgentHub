@@ -172,6 +172,7 @@ export function createChatApp(): Express {
           let isStreaming = false;
           let sessionId = Math.random().toString(36).substring(7);
           let selectedImages = [];
+          let lastMessageTimestamp = null;
 
           function escapeHtml(text) {
               const div = document.createElement('div');
@@ -290,7 +291,7 @@ export function createChatApp(): Express {
               return config;
           }
 
-          function addMessageCard(role, content, metadata = null, images = [], timestamp = null) {
+          function addMessageCard(role, content, metadata = null, images = [], timestamp = null, tookMs = null) {
               const container = document.getElementById('messagesContainer');
 
               if (container.children.length === 1 && container.children[0].className.includes('text-center')) {
@@ -304,7 +305,10 @@ export function createChatApp(): Express {
               let html = \`
                   <div class="flex justify-between items-center mb-3">
                       <span class="font-semibold text-sm uppercase \${isUser ? 'text-blue-600' : 'text-green-600'}">\${role}</span>
-                      <span class="text-xs text-gray-400 msg-timestamp">\${timestamp ? formatTimestamp(timestamp) : ''}</span>
+                      <div class="flex items-center gap-2">
+                          <span class="msg-took text-xs text-gray-400">\${tookMs !== null ? 'Took ' + tookMs + ' ms' : ''}</span>
+                          <span class="text-xs text-gray-400 msg-timestamp">\${timestamp ? formatTimestamp(timestamp) : ''}</span>
+                      </div>
                   </div>
               \`;
 
@@ -353,7 +357,9 @@ export function createChatApp(): Express {
               selectedImages = [];
               updateImagePreview();
 
-              addMessageCard('user', message, null, currentImages, Date.now());
+              const userSendTime = Date.now();
+              const timeSinceLastResponse = lastMessageTimestamp !== null ? userSendTime - lastMessageTimestamp : null;
+              addMessageCard('user', message, null, currentImages, userSendTime, timeSinceLastResponse);
 
               const assistantCard = addMessageCard('assistant', '');
               const contentDiv = assistantCard.querySelector('.message-content');
@@ -483,6 +489,14 @@ export function createChatApp(): Express {
                       }
                   }
 
+                  const endTime = Date.now();
+                  const responseTimeMs = endTime - userSendTime;
+                  lastMessageTimestamp = endTime;
+                  const tookEl = assistantCard.querySelector('.msg-took');
+                  if (tookEl) {
+                      tookEl.textContent = \`Took \${responseTimeMs} ms\`;
+                  }
+
                   if (metadata) {
                       let metadataHtml = '<div class="flex justify-end gap-3 mt-3 pt-3 border-t border-gray-200 text-xs text-gray-500">';
                       const parts = [];
@@ -502,6 +516,7 @@ export function createChatApp(): Express {
               } catch (error) {
                   contentDiv.textContent = \`Error: \${error.message}\`;
                   console.error('Error:', error);
+                  lastMessageTimestamp = Date.now();
               }
 
               isStreaming = false;
@@ -520,6 +535,7 @@ export function createChatApp(): Express {
                       })
                   }).then(() => {
                       sessionId = Math.random().toString(36).substring(7);
+                      lastMessageTimestamp = null;
                       const container = document.getElementById('messagesContainer');
                       container.innerHTML = \`
                           <div class="text-center text-gray-500 py-10">
