@@ -302,7 +302,7 @@ class Tracer:
                                 </div>
                                 <div class="flex items-center gap-3">
                                     {% if msg_idx > 0 and message.created_at and history[msg_idx - 1].created_at %}
-                                    <span class="text-xs text-gray-400">Took {{ ((message.created_at - history[msg_idx - 1].created_at) // 1000) | abs }} s</span>
+                                    <span class="text-xs text-gray-400">Took {{ (message.created_at - history[msg_idx - 1].created_at) | abs }} ms</span>
                                     {% endif %}
                                     {% if message.created_at %}
                                     <span class="text-xs text-gray-400">{{ message.created_at | format_ts }}</span>
@@ -379,7 +379,7 @@ class Tracer:
                                     {% set curr_ts = history[assistant_idx].created_at %}
                                     {% set prev_ts = history[(round_idx - 1) * 2 + 1].created_at %}
                                     {% if curr_ts and prev_ts %}
-                                    <span class="text-xs text-gray-400 mt-0.5">({{ ((curr_ts - prev_ts) // 1000) | abs }} s)</span>
+                                    <span class="text-xs text-gray-400 mt-0.5">({{ (curr_ts - prev_ts) | abs }} ms)</span>
                                     {% endif %}
                                 {% endif %}
                             </div>
