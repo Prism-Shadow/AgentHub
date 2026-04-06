@@ -687,7 +687,7 @@ export class Tracer {
         }
       }
 
-      html += `<div class="mb-3 flex items-center gap-1">
+      html += `<div class="mb-2 flex items-center gap-1">
   <a href="#msg-${userIdx}" class="text-xs font-medium text-gray-700 hover:text-blue-600">Round ${roundIdx + 1}</a>
   ${tookHtml}
 </div>`;

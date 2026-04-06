@@ -371,7 +371,7 @@ class Tracer:
                         {% for round_idx in range(total_rounds) %}
                             {% set user_idx = round_idx * 2 %}
                             {% set assistant_idx = round_idx * 2 + 1 %}
-                            <div class="mb-3 flex items-center gap-1">
+                            <div class="mb-2 flex items-center gap-1">
                                 <a href="#msg-{{ user_idx }}" class="text-xs font-medium text-gray-700 hover:text-blue-600">
                                     Round {{ round_idx + 1 }}
                                 </a>
