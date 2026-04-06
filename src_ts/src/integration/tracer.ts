@@ -502,7 +502,7 @@ export class Tracer {
                 const prevMsg = idx > 0 ? history[idx - 1] : null;
                 const tookHtml =
                   prevMsg && msg.created_at && prevMsg.created_at
-                    ? `<span class="text-xs text-gray-400">Took ${Math.round((msg.created_at - prevMsg.created_at) / 1000)} s</span>`
+                    ? `<span class="text-xs text-gray-400">Took ${Math.abs(Math.round((msg.created_at - prevMsg.created_at) / 1000))} s</span>`
                     : "";
                 return `
                   <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 overflow-hidden" id="msg-${idx}">
@@ -680,8 +680,10 @@ export class Tracer {
         const currAssistant = history[assistantIdx];
         const prevAssistant = history[(roundIdx - 1) * 2 + 1];
         if (currAssistant?.created_at && prevAssistant?.created_at) {
-          const diffSec = Math.round(
-            (currAssistant.created_at - prevAssistant.created_at) / 1000,
+          const diffSec = Math.abs(
+            Math.round(
+              (currAssistant.created_at - prevAssistant.created_at) / 1000,
+            ),
           );
           tookHtml = `<span class="text-xs text-gray-400">${diffSec} s</span>`;
         }
