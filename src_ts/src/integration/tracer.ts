@@ -499,6 +499,11 @@ export class Tracer {
                 const timestampHtml = msg.created_at
                   ? `<span class="text-xs text-gray-400">${this._formatTimestamp(msg.created_at)}</span>`
                   : "";
+                const prevMsg = idx > 0 ? history[idx - 1] : null;
+                const tookHtml =
+                  prevMsg && msg.created_at && prevMsg.created_at
+                    ? `<span class="text-xs text-gray-400">Took ${Math.abs(msg.created_at - prevMsg.created_at)} ms</span>`
+                    : "";
                 return `
                   <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 overflow-hidden" id="msg-${idx}">
                     <div class="bg-gray-50 border-b border-gray-200 p-4 cursor-pointer hover:bg-gray-100 transition-colors" onclick="toggleMessage(${idx})">
@@ -509,6 +514,7 @@ export class Tracer {
                           <span class="text-xs text-gray-400">• Round ${roundNum} / ${totalRounds}</span>
                         </div>
                         <div class="flex items-center gap-3">
+                          ${tookHtml}
                           ${timestampHtml}
                           <span class="text-gray-400 transform transition-transform" id="icon-${idx}">▶</span>
                         </div>
@@ -523,7 +529,7 @@ export class Tracer {
               })
               .join("");
 
-            const sidebarHtml = this._buildSidebarHtml(totalRounds);
+            const sidebarHtml = this._buildSidebarHtml(totalRounds, history);
 
             const html = JSON_VIEWER_TEMPLATE(
               path.basename(fullPath),
@@ -656,16 +662,34 @@ export class Tracer {
    * Build the round navigation sidebar HTML.
    *
    * @param totalRounds - Total number of rounds
+   * @param history - Full message history array
    * @returns HTML string for the sidebar
    */
-  private _buildSidebarHtml(totalRounds: number): string {
+  private _buildSidebarHtml(
+    totalRounds: number,
+    history: UniMessage[],
+  ): string {
     let html = `<h3 class="font-semibold text-sm text-gray-900 mb-3">Rounds (${totalRounds})</h3>`;
 
     for (let roundIdx = 0; roundIdx < totalRounds; roundIdx++) {
       const userIdx = roundIdx * 2;
+      const assistantIdx = roundIdx * 2 + 1;
 
-      html += `<div class="mb-3">
-  <a href="#msg-${userIdx}" class="block text-xs font-medium text-gray-700 hover:text-blue-600">Round ${roundIdx + 1}</a>
+      let tookHtml = "";
+      if (roundIdx > 0) {
+        const currAssistant = history[assistantIdx];
+        const prevAssistant = history[(roundIdx - 1) * 2 + 1];
+        if (currAssistant?.created_at && prevAssistant?.created_at) {
+          const diffMs = Math.abs(
+            currAssistant.created_at - prevAssistant.created_at,
+          );
+          tookHtml = `<span class="text-xs text-gray-400">(${diffMs} ms)</span>`;
+        }
+      }
+
+      html += `<div class="mb-2 flex items-center gap-1">
+  <a href="#msg-${userIdx}" class="text-xs font-medium text-gray-700 hover:text-blue-600">Round ${roundIdx + 1}</a>
+  ${tookHtml}
 </div>`;
     }
 
