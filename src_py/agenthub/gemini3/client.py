@@ -46,7 +46,7 @@ class Gemini3Client(LLMClient):
         """Initialize Gemini 3 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("GEMINI_API_KEY")
-        base_url = base_url or os.getenv("GEMINI_BASE_URL")
+        base_url = base_url or os.getenv("GEMINI_BASE_URL") or "https://generativelanguage.googleapis.com"
         http_options = {"base_url": base_url} if base_url else None
         if api_key and api_key.startswith("{"):
             service_account_info = json.loads(api_key)
@@ -129,6 +129,12 @@ class Gemini3Client(LLMClient):
 
         if config.get("temperature") is not None:
             config_params["temperature"] = config["temperature"]
+
+        if config.get("response_modalities") is not None:
+            config_params["response_modalities"] = config["response_modalities"]
+
+        if config.get("image_config") is not None:
+            config_params["image_config"] = types.ImageConfig(**config["image_config"])
 
         thinking_summary = config.get("thinking_summary")
         thinking_level = config.get("thinking_level")
@@ -235,6 +241,14 @@ class Gemini3Client(LLMClient):
                 elif part.text is not None and part.thought:
                     content_items.append(
                         {"type": "thinking", "thinking": part.text, "signature": part.thought_signature}
+                    )
+                elif part.inline_data is not None:
+                    content_items.append(
+                        {
+                            "type": "inline_image",
+                            "data": part.inline_data.data,
+                            "mime_type": part.inline_data.mime_type,
+                        }
                     )
                 elif part.text is not None:
                     content_items.append({"type": "text", "text": part.text, "signature": part.thought_signature})

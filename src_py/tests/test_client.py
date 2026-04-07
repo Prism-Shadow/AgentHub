@@ -18,6 +18,7 @@ import mimetypes
 import os
 from contextlib import nullcontext
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
 
 import httpx
@@ -27,6 +28,7 @@ from agenthub import AutoLLMClient, ThinkingLevel
 
 
 IMAGE = "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg"
+CAT_IMAGE_PATH = Path(__file__).resolve().parent.parent / "examples" / "cat.jpg"
 
 
 @dataclass
@@ -41,9 +43,11 @@ class Model:
 
 
 AVAILABLE_MODELS: list[Model] = []
+GEN_IMAGE_MODELS: list[Model] = []
 
 if os.getenv("GEMINI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="gemini-3-flash-preview"))
+    GEN_IMAGE_MODELS.append(Model(name="gemini-3.1-flash-image-preview"))
 
 if os.getenv("ANTHROPIC_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="claude-sonnet-4-6"))
@@ -76,6 +80,7 @@ if os.getenv("BEDROCK_API_KEY"):
 
 if os.getenv("VERTEX_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="gemini-3-flash-preview", provider="vertex"))
+    GEN_IMAGE_MODELS.append(Model(name="gemini-3.1-flash-image-preview", provider="vertex"))
 
 
 async def _create_client(model: Model) -> AutoLLMClient:
@@ -132,6 +137,50 @@ async def _check_event_integrity(event: dict) -> None:
             assert event["usage_metadata"]["thoughts_tokens"] >= 0
         if event["usage_metadata"]["response_tokens"] is not None:
             assert event["usage_metadata"]["response_tokens"] >= 0
+
+
+def _file_to_data_uri(path: Path) -> str:
+    """Convert a local image file to a data URI."""
+    mime_type, _ = mimetypes.guess_type(path.name)
+    encoded = base64.b64encode(path.read_bytes()).decode("utf-8")
+    return f"data:{mime_type or 'image/jpeg'};base64,{encoded}"
+
+
+def _collect_inline_images(events: list[dict]) -> list[dict]:
+    """Collect inline image items from streamed events."""
+    images = []
+    for event in events:
+        for item in event["content_items"]:
+            if item["type"] == "inline_image":
+                images.append(item)
+    return images
+
+
+def _inline_image_item_as_image(item: dict):
+    """Convert an inline_image content item back to a Gemini Part image."""
+    gemini_types = pytest.importorskip("google.genai.types")
+    part = gemini_types.Part.from_bytes(data=item["data"], mime_type=item["mime_type"])
+    return part.as_image()
+
+
+def _skip_if_image_model_unavailable(exc: Exception, model: Model) -> None:
+    """Skip image tests when the preview image model or endpoint is unavailable."""
+    current: Exception | None = exc
+    while current is not None:
+        if isinstance(current, (httpx.ConnectError, httpx.TimeoutException)):
+            pytest.skip(f"Image endpoint unavailable for {model}: {exc}")
+        current = current.__cause__ if isinstance(current.__cause__, Exception) else None
+
+    message = str(exc).lower()
+    skip_markers = [
+        "404 not found",
+        "not found",
+        "model not found",
+        "not supported",
+        "unsupported",
+    ]
+    if any(marker in message for marker in skip_markers):
+        pytest.skip(f"Image model unavailable for {model}: {exc}")
 
 
 @pytest.mark.asyncio
@@ -505,6 +554,85 @@ async def test_tool_result_with_image(model: Model):
                 text += item["text"]
 
     assert ("flower" in text.lower()) or ("narcissus" in text.lower())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", GEN_IMAGE_MODELS, ids=[str(model) for model in GEN_IMAGE_MODELS])
+async def test_image_generation(model: Model):
+    """Test streamed text-to-image generation."""
+    client = await _create_client(model)
+    config = {
+        "response_modalities": ["TEXT", "IMAGE"],
+        "image_config": {"aspect_ratio": "16:9", "image_size": "1K"},
+    }
+    messages = [
+        {
+            "role": "user",
+            "content_items": [
+                {
+                    "type": "text",
+                    "text": "Generate a watercolor postcard of a moonlit city skyline with a small boat on a river.",
+                }
+            ],
+        }
+    ]
+
+    events = []
+    try:
+        async for event in client.streaming_response(messages=messages, config=config):
+            await _check_event_integrity(event)
+            events.append(event)
+    except Exception as exc:
+        _skip_if_image_model_unavailable(exc, model)
+        raise
+
+    inline_images = _collect_inline_images(events)
+    assert inline_images, f"No inline images returned by {model.name}"
+    assert any(item["mime_type"].startswith("image/") for item in inline_images)
+    assert all(isinstance(item["data"], bytes) and item["data"] for item in inline_images)
+    assert all(_inline_image_item_as_image(item) is not None for item in inline_images)
+    assert events[-1]["finish_reason"] == "stop"
+    assert events[-1]["usage_metadata"] is not None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", GEN_IMAGE_MODELS, ids=[str(model) for model in GEN_IMAGE_MODELS])
+async def test_image_editing(model: Model):
+    """Test streamed image editing with a local reference image."""
+    client = await _create_client(model)
+    config = {
+        "response_modalities": ["TEXT", "IMAGE"],
+        "image_config": {"aspect_ratio": "1:1", "image_size": "1K"},
+    }
+    messages = [
+        {
+            "role": "user",
+            "content_items": [
+                {
+                    "type": "text",
+                    "text": "Edit this cat into a cozy watercolor illustration with a blue scarf and rainy window.",
+                },
+                {"type": "image_url", "image_url": _file_to_data_uri(CAT_IMAGE_PATH)},
+            ],
+        }
+    ]
+
+    events = []
+    try:
+        async for event in client.streaming_response(messages=messages, config=config):
+            await _check_event_integrity(event)
+            events.append(event)
+    except Exception as exc:
+        _skip_if_image_model_unavailable(exc, model)
+        raise
+
+    inline_images = _collect_inline_images(events)
+    assert inline_images, f"No edited inline images returned by {model.name}"
+    assert any(item["mime_type"].startswith("image/") for item in inline_images)
+    assert all(isinstance(item["data"], bytes) and item["data"] for item in inline_images)
+    assert all(_inline_image_item_as_image(item) is not None for item in inline_images)
+    assert events[-1]["finish_reason"] == "stop"
+    assert events[-1]["usage_metadata"] is not None
 
 
 if __name__ == "__main__":

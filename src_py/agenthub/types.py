@@ -52,6 +52,12 @@ class ImageContentItem(TypedDict):
     image_url: str
 
 
+class InlineImageContentItem(TypedDict):
+    type: Literal["inline_image"]
+    data: bytes
+    mime_type: str
+
+
 class ThinkingContentItem(TypedDict):
     type: Literal["thinking"]
     thinking: str
@@ -81,7 +87,14 @@ class ToolResultContentItem(TypedDict):
     tool_call_id: str
 
 
-ContentItem = TextContentItem | ImageContentItem | ThinkingContentItem | ToolCallContentItem | ToolResultContentItem
+ContentItem = (
+    TextContentItem
+    | ImageContentItem
+    | InlineImageContentItem
+    | ThinkingContentItem
+    | ToolCallContentItem
+    | ToolResultContentItem
+)
 
 PartialContentItem = ContentItem | PartialToolCallContentItem
 
@@ -124,11 +137,23 @@ class ToolSchema(TypedDict):
     parameters: NotRequired[dict[str, Any]]
 
 
+ResponseModality = Literal["TEXT", "IMAGE"]
+
+
+class ImageConfig(TypedDict):
+    """Image generation configuration for models that support image output."""
+
+    aspect_ratio: NotRequired[str]
+    image_size: NotRequired[str]
+
+
 class UniConfig(TypedDict):
     """Universal configuration format for LLM requests."""
 
     max_tokens: NotRequired[int]
     temperature: NotRequired[float]
+    response_modalities: NotRequired[list[ResponseModality]]
+    image_config: NotRequired[ImageConfig]
     tools: NotRequired[list[ToolSchema]]
     thinking_summary: NotRequired[bool]
     thinking_level: NotRequired[ThinkingLevel]
