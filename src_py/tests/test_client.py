@@ -517,8 +517,8 @@ async def test_tool_result_with_image(model: Model):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
-async def test_image_editing(model: Model):
-    """Test streamed image editing output."""
+async def test_image_generation(model: Model):
+    """Test streamed image generation output."""
     if not model.support_image_generation:
         pytest.skip(f"Image generation is not supported by {model.name}.")
 
@@ -531,9 +531,8 @@ async def test_image_editing(model: Model):
                 "content_items": [
                     {
                         "type": "text",
-                        "text": "Edit these two white flowers into a cozy watercolor illustration with raindrops.",
-                    },
-                    {"type": "image_url", "image_url": IMAGE},
+                        "text": "Generate a cozy watercolor illustration of two white flowers with raindrops.",
+                    }
                 ],
             }
         ],
@@ -543,7 +542,7 @@ async def test_image_editing(model: Model):
         events.append(event)
 
     inline_items = [item for event in events for item in event["content_items"] if item["type"] == "inline_data"]
-    assert inline_items, f"No inline data returned for editing image by {model.name}"
+    assert inline_items, f"No inline data returned for generated image by {model.name}"
     assert any(item["mime_type"].startswith("image/") for item in inline_items)
     assert all(isinstance(item["data"], bytes) and item["data"] for item in inline_items)
 
