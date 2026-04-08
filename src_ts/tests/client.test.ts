@@ -23,33 +23,23 @@ interface Model {
   name: string;
   supportVision: boolean;
   supportTemperature: boolean;
-  supportImageGeneration: boolean;
-  supportThinkingLevel?: boolean;
-  supportToolResultWithImage?: boolean;
-  requireForcedToolChoice?: boolean;
   provider: "official" | "siliconflow" | "openrouter" | "bedrock" | "vertex";
 }
 
 const AVAILABLE_MODELS: Model[] = [];
+const IMAGE_GENERATION_MODELS: Model[] = [];
 
 if (process.env.GEMINI_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "gemini-3-flash-preview",
     supportVision: true,
     supportTemperature: true,
-    supportImageGeneration: false,
-    supportThinkingLevel: true,
-    supportToolResultWithImage: true,
     provider: "official",
   });
-  AVAILABLE_MODELS.push({
+  IMAGE_GENERATION_MODELS.push({
     name: "gemini-3.1-flash-image-preview",
     supportVision: true,
     supportTemperature: true,
-    supportImageGeneration: true,
-    supportThinkingLevel: false,
-    supportToolResultWithImage: false,
-    requireForcedToolChoice: true,
     provider: "official",
   });
 }
@@ -59,7 +49,6 @@ if (process.env.ANTHROPIC_API_KEY) {
     name: "claude-sonnet-4-6",
     supportVision: true,
     supportTemperature: true,
-    supportImageGeneration: false,
     provider: "official",
   });
 }
@@ -69,7 +58,6 @@ if (process.env.OPENAI_API_KEY) {
     name: "gpt-5.4",
     supportVision: true,
     supportTemperature: false,
-    supportImageGeneration: false,
     provider: "official",
   });
 }
@@ -79,7 +67,6 @@ if (process.env.ZAI_API_KEY) {
     name: "glm-5",
     supportVision: false,
     supportTemperature: true,
-    supportImageGeneration: false,
     provider: "official",
   });
 }
@@ -89,7 +76,6 @@ if (process.env.MOONSHOT_API_KEY) {
     name: "kimi-k2.5",
     supportVision: true,
     supportTemperature: false,
-    supportImageGeneration: false,
     provider: "official",
   });
 }
@@ -101,21 +87,18 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     name: "z-ai/glm-5",
     supportVision: false,
     supportTemperature: true,
-    supportImageGeneration: false,
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
     name: "qwen/qwen3-30b-a3b-thinking-2507",
     supportVision: false,
     supportTemperature: true,
-    supportImageGeneration: false,
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
     name: "moonshotai/kimi-k2.5",
     supportVision: true,
     supportTemperature: false,
-    supportImageGeneration: false,
     provider: "openrouter",
   });
 }
@@ -125,21 +108,18 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
     name: "Pro/zai-org/GLM-5",
     supportVision: false,
     supportTemperature: true,
-    supportImageGeneration: false,
     provider: "siliconflow",
   });
   AVAILABLE_MODELS.push({
     name: "Qwen/Qwen3-8B",
     supportVision: false,
     supportTemperature: true,
-    supportImageGeneration: false,
     provider: "siliconflow",
   });
   AVAILABLE_MODELS.push({
     name: "Pro/moonshotai/Kimi-K2.5",
     supportVision: true,
     supportTemperature: false,
-    supportImageGeneration: false,
     provider: "siliconflow",
   });
 }
@@ -149,7 +129,6 @@ if (process.env.BEDROCK_API_KEY) {
     name: "global.anthropic.claude-sonnet-4-6",
     supportVision: true,
     supportTemperature: true,
-    supportImageGeneration: false,
     provider: "bedrock",
   });
 }
@@ -159,19 +138,12 @@ if (process.env.VERTEX_API_KEY) {
     name: "gemini-3-flash-preview",
     supportVision: true,
     supportTemperature: true,
-    supportImageGeneration: false,
-    supportThinkingLevel: true,
-    supportToolResultWithImage: true,
     provider: "vertex",
   });
-  AVAILABLE_MODELS.push({
+  IMAGE_GENERATION_MODELS.push({
     name: "gemini-3.1-flash-image-preview",
     supportVision: true,
     supportTemperature: true,
-    supportImageGeneration: true,
-    supportThinkingLevel: false,
-    supportToolResultWithImage: false,
-    requireForcedToolChoice: true,
     provider: "vertex",
   });
 }
@@ -199,7 +171,6 @@ function createClient(model: Model): AutoLLMClient {
 
   return new AutoLLMClient({ model: model.name, apiKey, baseUrl });
 }
-
 function checkEventIntegrity(event: UniEvent): void {
   expect(event).toHaveProperty("role");
   expect(event).toHaveProperty("event_type");
@@ -292,12 +263,8 @@ if (AVAILABLE_MODELS.length > 0) {
         const config: UniConfig = {
           max_tokens: 8192,
           temperature: 0.7,
-          ...(model.supportThinkingLevel === false
-            ? {}
-            : {
-                thinking_summary: true,
-                thinking_level: ThinkingLevel.LOW,
-              }),
+          thinking_summary: true,
+          thinking_level: ThinkingLevel.LOW,
         };
 
         if (!model.supportTemperature) {
@@ -647,7 +614,7 @@ if (AVAILABLE_MODELS.length > 0) {
       }, 60000);
 
       test("should handle tool result with image", async () => {
-        if (!model.supportVision || model.supportToolResultWithImage === false) {
+        if (!model.supportVision) {
           return;
         }
 
@@ -668,12 +635,7 @@ if (AVAILABLE_MODELS.length > 0) {
           },
         };
 
-        const config: UniConfig = {
-          tools: [imageTool],
-          ...(model.requireForcedToolChoice
-            ? { tool_choice: [imageTool.name] }
-            : {}),
-        };
+        const config: UniConfig = { tools: [imageTool] };
         let toolCallId: string | undefined;
         let toolName: string | undefined;
 
@@ -682,10 +644,7 @@ if (AVAILABLE_MODELS.length > 0) {
           content_items: [
             {
               type: "text",
-              text:
-                model.requireForcedToolChoice
-                  ? "Call the get_image tool first. Do not answer directly before receiving the tool result."
-                  : "Get me a random image and describe it briefly.",
+              text: "Get me a random image and describe it briefly.",
             },
           ],
         };
@@ -734,49 +693,54 @@ if (AVAILABLE_MODELS.length > 0) {
             text.toLowerCase().includes("narcissus"),
         ).toBe(true);
       }, 60000);
-
-      test("should handle image generation", async () => {
-        if (!model.supportImageGeneration) {
-          return;
-        }
-
-        const client = createClient(model);
-        const config: UniConfig = {
-          image_config: { aspect_ratio: "1:1", image_size: "1K" },
-        };
-        const messages: UniMessage[] = [
-          {
-            role: "user",
-            content_items: [
-              {
-                type: "text",
-                text: "Generate a cozy watercolor illustration of two white flowers with raindrops.",
-              },
-            ],
-          },
-        ];
-
-        const inlineItems: { data: Buffer; mime_type: string }[] = [];
-        for await (const event of client.streamingResponse({
-          messages,
-          config,
-        })) {
-          checkEventIntegrity(event);
-          for (const item of event.content_items) {
-            if (item.type === "inline_data") {
-              inlineItems.push(item);
-            }
-          }
-        }
-
-        expect(inlineItems.length).toBeGreaterThan(0);
-        expect(
-          inlineItems.some((item) => item.mime_type.startsWith("image/")),
-        ).toBe(true);
-        expect(inlineItems.every((item) => item.data.length > 0)).toBe(true);
-      }, 60000);
     },
   );
+}
+
+if (IMAGE_GENERATION_MODELS.length > 0) {
+  describe.each(
+    IMAGE_GENERATION_MODELS.map((m): [string, Model] => [
+      `${m.name}:${m.provider}`,
+      m,
+    ]),
+  )("Image generation tests for %s", (_name, model: Model) => {
+    test("should handle image generation", async () => {
+      const client = createClient(model);
+      const config: UniConfig = {
+        image_config: { aspect_ratio: "1:1", image_size: "1K" },
+      };
+      const messages: UniMessage[] = [
+        {
+          role: "user",
+          content_items: [
+            {
+              type: "text",
+              text: "Generate a cozy watercolor illustration of two white flowers with raindrops.",
+            },
+          ],
+        },
+      ];
+
+      const inlineItems: { data: Buffer; mime_type: string }[] = [];
+      for await (const event of client.streamingResponse({
+        messages,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "inline_data") {
+            inlineItems.push(item);
+          }
+        }
+      }
+
+      expect(inlineItems.length).toBeGreaterThan(0);
+      expect(
+        inlineItems.some((item) => item.mime_type.startsWith("image/")),
+      ).toBe(true);
+      expect(inlineItems.every((item) => item.data.length > 0)).toBe(true);
+    }, 60000);
+  });
 }
 
 test("should reject unknown model", () => {
