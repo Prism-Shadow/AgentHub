@@ -21,7 +21,6 @@ to inspect in the terminal.
 """
 
 import asyncio
-import copy
 import os
 from io import BytesIO
 from pathlib import Path
@@ -47,7 +46,7 @@ def without_binary_data(obj: Any) -> Any:
             return [_replace_bytes(child) for child in value]
         return value
 
-    return _replace_bytes(copy.deepcopy(obj))
+    return _replace_bytes(obj)
 
 
 async def main() -> None:
