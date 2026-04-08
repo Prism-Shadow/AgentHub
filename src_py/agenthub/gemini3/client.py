@@ -46,7 +46,7 @@ class Gemini3Client(LLMClient):
         """Initialize Gemini 3 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("GEMINI_API_KEY")
-        base_url = base_url or os.getenv("GEMINI_BASE_URL") or "https://generativelanguage.googleapis.com"
+        base_url = base_url or os.getenv("GEMINI_BASE_URL")
         http_options = {"base_url": base_url} if base_url else None
         if api_key and api_key.startswith("{"):
             service_account_info = json.loads(api_key)
@@ -130,9 +130,6 @@ class Gemini3Client(LLMClient):
         if config.get("temperature") is not None:
             config_params["temperature"] = config["temperature"]
 
-        if config.get("response_modalities") is not None:
-            config_params["response_modalities"] = config["response_modalities"]
-
         if config.get("image_config") is not None:
             config_params["image_config"] = types.ImageConfig(**config["image_config"])
 
@@ -176,6 +173,8 @@ class Gemini3Client(LLMClient):
                     image_url = item["image_url"]
                     image_data = await self._get_image_bytes_and_mime_type(image_url)
                     parts.append(types.Part.from_bytes(**image_data))
+                elif item["type"] == "inline_data":
+                    parts.append(types.Part.from_bytes(data=item["data"], mime_type=item["mime_type"]))
                 elif item["type"] == "thinking":
                     parts.append(
                         types.Part(text=item["thinking"], thought=True, thought_signature=item.get("signature"))
@@ -245,7 +244,7 @@ class Gemini3Client(LLMClient):
                 elif part.inline_data is not None:
                     content_items.append(
                         {
-                            "type": "inline_image",
+                            "type": "inline_data",
                             "data": part.inline_data.data,
                             "mime_type": part.inline_data.mime_type,
                         }

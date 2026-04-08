@@ -52,8 +52,8 @@ class ImageContentItem(TypedDict):
     image_url: str
 
 
-class InlineImageContentItem(TypedDict):
-    type: Literal["inline_image"]
+class InlineDataContentItem(TypedDict):
+    type: Literal["inline_data"]
     data: bytes
     mime_type: str
 
@@ -90,7 +90,7 @@ class ToolResultContentItem(TypedDict):
 ContentItem = (
     TextContentItem
     | ImageContentItem
-    | InlineImageContentItem
+    | InlineDataContentItem
     | ThinkingContentItem
     | ToolCallContentItem
     | ToolResultContentItem
@@ -137,9 +137,6 @@ class ToolSchema(TypedDict):
     parameters: NotRequired[dict[str, Any]]
 
 
-ResponseModality = Literal["TEXT", "IMAGE"]
-
-
 class ImageConfig(TypedDict):
     """Image generation configuration for models that support image output."""
 
@@ -152,7 +149,6 @@ class UniConfig(TypedDict):
 
     max_tokens: NotRequired[int]
     temperature: NotRequired[float]
-    response_modalities: NotRequired[list[ResponseModality]]
     image_config: NotRequired[ImageConfig]
     tools: NotRequired[list[ToolSchema]]
     thinking_summary: NotRequired[bool]
