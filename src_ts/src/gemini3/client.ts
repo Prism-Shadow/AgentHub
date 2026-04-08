@@ -16,6 +16,7 @@ import {
   GoogleGenAI,
   Content,
   GenerateContentConfig,
+  ImageConfig as GeminiImageConfig,
   Part,
   FunctionCall,
   ThinkingConfig,
@@ -191,6 +192,13 @@ export class Gemini3Client extends LLMClient {
       configParams.temperature = config.temperature;
     }
 
+    if (config.image_config !== undefined) {
+      configParams.imageConfig = {
+        aspectRatio: config.image_config.aspect_ratio,
+        imageSize: config.image_config.image_size,
+      } as GeminiImageConfig;
+    }
+
     const thinkingSummary = config.thinking_summary;
     const thinkingLevel = config.thinking_level;
     if (thinkingSummary !== undefined || thinkingLevel !== undefined) {
@@ -252,6 +260,13 @@ export class Gemini3Client extends LLMClient {
             inlineData: {
               mimeType: imageData.mimeType,
               data: imageData.data.toString("base64"),
+            },
+          } as Part);
+        } else if (item.type === "inline_data") {
+          parts.push({
+            inlineData: {
+              mimeType: item.mime_type,
+              data: item.data.toString("base64"),
             },
           } as Part);
         } else if (item.type === "thinking") {
@@ -335,6 +350,12 @@ export class Gemini3Client extends LLMClient {
             arguments: part.functionCall.args || {},
             tool_call_id: part.functionCall.name || "",
             signature: part.thoughtSignature as string | undefined,
+          });
+        } else if (part.inlineData) {
+          contentItems.push({
+            type: "inline_data",
+            data: Buffer.from(part.inlineData.data || "", "base64"),
+            mime_type: part.inlineData.mimeType || "application/octet-stream",
           });
         } else if (part.text !== undefined && part.thought) {
           contentItems.push({

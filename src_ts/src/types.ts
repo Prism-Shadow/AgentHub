@@ -49,6 +49,12 @@ export interface ImageContentItem {
   image_url: string;
 }
 
+export interface InlineDataContentItem {
+  type: "inline_data";
+  data: Buffer;
+  mime_type: string;
+}
+
 export interface ThinkingContentItem {
   type: "thinking";
   thinking: string;
@@ -82,6 +88,7 @@ export interface ToolResultContentItem {
 export type ContentItem =
   | TextContentItem
   | ImageContentItem
+  | InlineDataContentItem
   | ThinkingContentItem
   | ToolCallContentItem
   | ToolResultContentItem;
@@ -132,11 +139,20 @@ export interface ToolSchema {
 }
 
 /**
+ * Image generation configuration for models that support image output.
+ */
+export interface ImageConfig {
+  aspect_ratio?: string;
+  image_size?: string;
+}
+
+/**
  * Universal configuration format for LLM requests.
  */
 export interface UniConfig {
   max_tokens?: number;
   temperature?: number;
+  image_config?: ImageConfig;
   tools?: ToolSchema[];
   thinking_summary?: boolean;
   thinking_level?: ThinkingLevel;
