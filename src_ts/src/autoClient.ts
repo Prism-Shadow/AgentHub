@@ -176,6 +176,8 @@ export class AutoLLMClient extends LLMClient {
 
   /**
    * Set history in the underlying client.
+   *
+   * @param history - List of universal message objects to set as history
    */
   setHistory(history: UniMessage[]): void {
     this._client.setHistory(history);

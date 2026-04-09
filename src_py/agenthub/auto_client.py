@@ -128,5 +128,9 @@ class AutoLLMClient(LLMClient):
         return self._client.get_history()
 
     def set_history(self, history: list[UniMessage]) -> None:
-        """Set history in the underlying client."""
+        """Set history in the underlying client.
+
+        Args:
+            history: List of universal message dictionaries to set as history
+        """
         self._client.set_history(history)
