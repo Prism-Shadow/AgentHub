@@ -173,4 +173,11 @@ export class AutoLLMClient extends LLMClient {
   getHistory(): UniMessage[] {
     return this._client.getHistory();
   }
+
+  /**
+   * Set history in the underlying client.
+   */
+  setHistory(history: UniMessage[]): void {
+    this._client.setHistory(history);
+  }
 }
