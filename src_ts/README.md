@@ -21,7 +21,7 @@ import { AutoLLMClient } from "@prismshadow/agenthub";
 process.env.OPENAI_API_KEY = "your-openai-api-key";
 
 async function main() {
-  const client = new AutoLLMClient({ model: "gpt-5.2" });
+  const client = new AutoLLMClient({ model: "gpt-5.4" });
 
   for await (const event of client.streamingResponseStateful({
     message: {
@@ -37,6 +37,19 @@ async function main() {
 main().catch(console.error);
 ```
 
+### History Management
+
+```typescript
+// Get current history
+const history = client.getHistory();
+
+// Clear all history
+client.clearHistory();
+
+// Replace history with a saved copy
+client.setHistory(history);
+```
+
 ### Tracer Usage
 
 Save and browse conversation history with a web interface:
@@ -48,7 +61,7 @@ import { Tracer } from "@prismshadow/agenthub/integration/tracer";
 const tracer = new Tracer("./cache");
 
 // Save conversation history
-const model = "gpt-5.2";
+const model = "gpt-5.4";
 const history = [
   { role: "user", content_items: [{ type: "text", text: "Hello!" }] },
   { role: "assistant", content_items: [{ type: "text", text: "Hi there!" }] },

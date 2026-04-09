@@ -23,10 +23,10 @@ Create a client by specifying the model name:
 from agenthub import AutoLLMClient
 
 # Initialize with model name
-client = AutoLLMClient(model="gpt-5.2")
+client = AutoLLMClient(model="gpt-5.4")
 
 # Optionally specify API key (if not using environment variables)
-client = AutoLLMClient(model="gpt-5.2", api_key="your-openai-api-key")
+client = AutoLLMClient(model="gpt-5.4", api_key="your-openai-api-key")
 ```
 
 The client automatically selects the appropriate client based on the model name.
@@ -42,7 +42,7 @@ import asyncio
 from agenthub import AutoLLMClient
 
 async def main():
-    client = AutoLLMClient(model="gpt-5.2")
+    client = AutoLLMClient(model="gpt-5.4")
 
     async for event in client.streaming_response(
         messages=[
@@ -67,7 +67,7 @@ import asyncio
 from agenthub import AutoLLMClient
 
 async def main():
-    client = AutoLLMClient(model="gpt-5.2")
+    client = AutoLLMClient(model="gpt-5.4")
 
     # First message
     async for event in client.streaming_response_stateful(
@@ -118,6 +118,21 @@ client.clear_history()
 assert len(client.get_history()) == 0
 ```
 
+### set_history
+
+Replace the conversation history with a copy of the provided list:
+
+```python
+# Save current history
+saved_history = client.get_history()
+
+# ... do other things, then restore
+client.set_history(saved_history)
+
+# Verify history was replaced
+assert len(client.get_history()) == len(saved_history)
+```
+
 ## Tool Calling
 
 When using tools, you must handle `tool_call_id` correctly:
@@ -148,7 +163,7 @@ async def main():
         }
     }
 
-    client = AutoLLMClient(model="gpt-5.2")
+    client = AutoLLMClient(model="gpt-5.4")
     config = {"tools": [weather_function]}
 
     # User asks about weather
@@ -255,7 +270,7 @@ AgentHub provides a built-in `Tracer` to save and browse conversation history. W
 ```python
 from agenthub import AutoLLMClient
 
-client = AutoLLMClient(model="gpt-5.2")
+client = AutoLLMClient(model="gpt-5.4")
 
 # Add trace_id to config
 config = {"trace_id": "agent1/conversation_001"}
