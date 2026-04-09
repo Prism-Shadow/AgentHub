@@ -126,3 +126,7 @@ class AutoLLMClient(LLMClient):
     def get_history(self) -> list[UniMessage]:
         """Get history from the underlying client."""
         return self._client.get_history()
+
+    def set_history(self, history: list[UniMessage]) -> None:
+        """Set history in the underlying client."""
+        self._client.set_history(history)

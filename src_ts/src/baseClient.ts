@@ -268,4 +268,13 @@ export abstract class LLMClient {
   getHistory(): UniMessage[] {
     return [...this._history];
   }
+
+  /**
+   * Replace the message history with a copy of the provided history.
+   *
+   * @param history - List of universal message objects to set as the new history
+   */
+  setHistory(history: UniMessage[]): void {
+    this._history = [...history];
+  }
 }
