@@ -336,6 +336,21 @@ if (AVAILABLE_MODELS.length > 0) {
         expect(client.getHistory().length).toBe(0);
       }, 60000);
 
+      test("should set history", () => {
+        const client = createClient(model);
+        const newHistory: UniMessage[] = [
+          { role: "user", content_items: [{ type: "text", text: "Hi" }] },
+          { role: "assistant", content_items: [{ type: "text", text: "Hello!" }] },
+        ];
+
+        client.setHistory(newHistory);
+        expect(client.getHistory()).toEqual(newHistory);
+
+        // Mutating the original array must not affect the stored history
+        newHistory.splice(0);
+        expect(client.getHistory().length).toBe(2);
+      });
+
       test("should concatenate events to message", async () => {
         const client = createClient(model);
         const messages: UniMessage[] = [

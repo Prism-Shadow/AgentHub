@@ -220,6 +220,24 @@ async def test_clear_history(model: Model):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
+async def test_set_history(model: Model):
+    """Test setting conversation history."""
+    client = await _create_client(model)
+    new_history: list = [
+        {"role": "user", "content_items": [{"type": "text", "text": "Hi"}]},
+        {"role": "assistant", "content_items": [{"type": "text", "text": "Hello!"}]},
+    ]
+
+    client.set_history(new_history)
+    assert client.get_history() == new_history
+
+    # Mutating the original list must not affect the stored history
+    new_history.clear()
+    assert len(client.get_history()) == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_concat_uni_events_to_uni_message(model: Model):
     """Test concatenation of events into a single message."""
     client = await _create_client(model)

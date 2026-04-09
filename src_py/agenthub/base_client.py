@@ -258,3 +258,11 @@ class LLMClient(ABC):
     def get_history(self) -> list[UniMessage]:
         """Get the current message history."""
         return self._history.copy()
+
+    def set_history(self, history: list[UniMessage]) -> None:
+        """Replace the message history with a copy of the provided history.
+
+        Args:
+            history: List of universal message dictionaries to set as the new history
+        """
+        self._history = list(history)
