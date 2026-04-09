@@ -91,6 +91,7 @@ See [src_ts/README.md](src_ts/README.md) for comprehensive usage examples and AP
 - `(async) streaming_response_stateful(message, config)`: Streams the response of LLMs in a stateful manner.
 - `clear_history()`: Clears the history of the stateful LLM client.
 - `get_history()`: Returns the history of the stateful LLM client.
+- `set_history(history)`: Replaces the history of the stateful LLM client with a copy of the provided list.
 
 ## Basic Usage
 
