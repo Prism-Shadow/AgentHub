@@ -463,15 +463,21 @@ def create_chat_app() -> Flask:
                     let fullToolArgs = '';
                     let metadata = null;
                     let lastCreatedAt = null;
+                    let buffer = '';
 
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
 
                         const chunk = decoder.decode(value);
-                        console.log(chunk);
+                        if (chunk.startsWith('data: ')) buffer = '';
+                        buffer += chunk;
+                        if (!buffer.endsWith('\\n\\n')) continue;
 
-                        const lines = chunk.split('\\n');
+                        console.log('Raw buffer======');
+                        console.log(buffer);
+
+                        const lines = buffer.split('\\n');
 
                         for (const line of lines) {
                             if (line.startsWith('data: ')) {
@@ -518,10 +524,13 @@ def create_chat_app() -> Flask:
                                             toolResultDiv.innerHTML = `<strong class="text-sm">✅ Tool Result:</strong><br><div class="mt-1 text-xs whitespace-pre-wrap">${escapeHtml(item.text)}</div>`;
                                             contentDiv.appendChild(toolResultDiv);
                                         } else if (item.type === 'inline_data') {
-                                            const imageDiv = document.createElement('div');
-                                            imageDiv.className = 'mb-3';
-                                            imageDiv.innerHTML = `<img src="data:${item.mime_type || 'image/png'};base64,${item.data}" class="max-w-xs rounded border border-gray-300">`;
-                                            contentDiv.appendChild(imageDiv);
+                                            if (item.thought) continue;
+                                            else {
+                                                const imageDiv = document.createElement('div');
+                                                imageDiv.className = 'mb-3';
+                                                imageDiv.innerHTML = `<img src="data:${item.mime_type || 'image/png'};base64,${item.data}" class="max-w-xs rounded border border-gray-300">`;
+                                                contentDiv.appendChild(imageDiv);
+                                            }
                                         }
                                     }
 
