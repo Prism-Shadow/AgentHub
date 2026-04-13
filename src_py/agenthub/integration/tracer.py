@@ -70,6 +70,37 @@ class Tracer:
             return [self._serialize_for_json(item) for item in obj]
         return obj
 
+    def _format_inline_data_summary(self, item: dict[str, Any]) -> str:
+        """
+        Format inline_data metadata without emitting raw payloads.
+
+        Args:
+            item: inline_data content item
+
+        Returns:
+            Human-readable summary of the inline payload
+        """
+        mime_type = item.get("mime_type") or "application/octet-stream"
+        data = item.get("data")
+
+        if isinstance(data, str):
+            byte_count = len(base64.b64decode(data.encode("utf-8")))
+        else:
+            byte_count = len(data) if data else 0
+
+        # Convert bytes to KBs and MBs
+        kb_count = byte_count / 1024
+        mb_count = byte_count / (1024 * 1024)
+
+        label = ""
+        label += "Thinking " if item.get("thought") else ""
+        label += "Inline Image" if mime_type.startswith("image/") else "Inline Data"
+
+        if kb_count < 1000:
+            return f"{label}: {mime_type} ({kb_count:.2f} KB)"
+        else:
+            return f"{label}: {mime_type} ({mb_count:.2f} MB)"
+
     def save_history(self, model: str, history: list[UniMessage], file_id: str, config: dict[str, Any]) -> None:
         """
         Save conversation history to files.
@@ -142,6 +173,8 @@ class Tracer:
                     lines.append(f"Thinking: {item['thinking']}")
                 elif item["type"] == "image_url":
                     lines.append(f"Image URL: {item['image_url']}")
+                elif item["type"] == "inline_data":
+                    lines.append(self._format_inline_data_summary(item))
                 elif item["type"] == "tool_call":
                     lines.append(f"Tool Call: {item['name']}")
                     lines.append(f"  Arguments: {json.dumps(item['arguments'], indent=2, ensure_ascii=False)}")
@@ -201,6 +234,22 @@ class Tracer:
             if ms is None:
                 return ""
             return datetime.fromtimestamp(ms / 1000).strftime("%Y-%m-%d %H:%M:%S")
+
+        @app.template_filter("inline_data_url")
+        def inline_data_url(item: dict[str, Any]) -> str:
+            """Build a data URL for inline_data content."""
+            mime_type = item.get("mime_type") or "application/octet-stream"
+            data = item.get("data") or ""
+            if isinstance(data, bytes):
+                encoded = base64.b64encode(data).decode("utf-8")
+            else:
+                encoded = data
+            return f"data:{mime_type};base64,{encoded}"
+
+        @app.template_filter("inline_data_summary")
+        def inline_data_summary(item: dict[str, Any]) -> str:
+            """Render a concise inline_data summary."""
+            return self._format_inline_data_summary(item)
 
         # HTML template for directory listing
         DIRECTORY_TEMPLATE = """
@@ -338,6 +387,17 @@ class Tracer:
                                     {% elif item.type == 'image_url' %}
                                         <div class="bg-gray-50 p-4 rounded-md">
                                             <img src="{{ item.image_url|e }}" class="max-w-xs max-h-48 rounded-md" alt="Preview">
+                                        </div>
+                                    {% elif item.type == 'inline_data' %}
+                                        <div class="{% if item.thought %}bg-blue-50 border-blue-500{% else %}bg-purple-50 border-purple-500{% endif %} p-4 rounded-md border-l-4">
+                                            <div class="text-xs {% if item.thought %}text-blue-700{% else %}text-purple-700{% endif %} mb-2">{{ item|inline_data_summary }}</div>
+                                            {% if item.mime_type and item.mime_type.startswith('image/') %}
+                                                <img src="{{ item|inline_data_url|e }}" class="max-w-xs max-h-48 rounded-md" alt="Inline Image">
+                                            {% else %}
+                                                <div class="font-mono text-sm whitespace-pre-wrap text-gray-800">
+                                                    {{ item|inline_data_summary }}
+                                                </div>
+                                            {% endif %}
                                         </div>
                                     {% endif %}
                                 </div>
