@@ -56,6 +56,8 @@ class InlineDataContentItem(TypedDict):
     type: Literal["inline_data"]
     data: bytes
     mime_type: str
+    thought: NotRequired[bool]
+    signature: NotRequired[str | bytes]
 
 
 class ThinkingContentItem(TypedDict):

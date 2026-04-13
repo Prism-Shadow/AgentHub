@@ -28,7 +28,7 @@ from typing import Any
 
 from PIL import Image
 
-from agenthub import AutoLLMClient
+from agenthub import AutoLLMClient, ThinkingLevel
 
 
 CAT_IMAGE_URL = "https://images.unsplash.com/photo-1519052537078-e6302a4968d4?auto=format&fit=crop&w=800&q=80"
@@ -67,8 +67,11 @@ async def main() -> None:
         # "aspect_ratio": "1:1","1:4","1:8","2:3","3:2","3:4","4:1","4:3","4:5","5:4","8:1","9:16","16:9","21:9"
         # "image_size": "512", "1K", "2K", "4K"
         "image_config": {"aspect_ratio": "16:9", "image_size": "1K"},
+        "thinking_summary": True,
+        "thinking_level": ThinkingLevel.HIGH,
     }
 
+    i = 0
     async for event in client.streaming_response(
         messages=[
             {
@@ -87,9 +90,10 @@ async def main() -> None:
             if item["type"] == "text":
                 print(f"Text: {item['text']}")
             elif item["type"] == "inline_data":
+                i += 1
                 image = Image.open(BytesIO(item["data"]))
                 output_format = image.format or "PNG"
-                output_path = Path.cwd() / f"generated_image.{output_format.lower()}"
+                output_path = Path.cwd() / f"generated_image_{i}.{output_format.lower()}"
                 image.save(output_path, format=output_format)
                 print(f"Saved image chunk to: {output_path}")
 

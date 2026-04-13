@@ -175,10 +175,16 @@ class Gemini3Client(LLMClient):
                     parts.append(types.Part.from_bytes(**image_data))
                 elif item["type"] == "inline_data":
                     parts.append(types.Part.from_bytes(data=item["data"], mime_type=item["mime_type"]))
+                    if item.get("signature") is not None:
+                        parts[-1].thought_signature = item.get("signature")
+                    elif item.get("thought") is not None:
+                        parts[-1].thought = item.get("thought")
                 elif item["type"] == "thinking":
                     parts.append(
-                        types.Part(text=item["thinking"], thought=True, thought_signature=item.get("signature"))
+                        types.Part(text=item["thinking"], thought=True)
                     )
+                    if item.get("signature") is not None:
+                        parts[-1].thought_signature = item.get("signature")
                 elif item["type"] == "tool_call":
                     function_call = types.FunctionCall(name=item["name"], args=item["arguments"])
                     parts.append(types.Part(function_call=function_call, thought_signature=item.get("signature")))
@@ -239,8 +245,10 @@ class Gemini3Client(LLMClient):
                     )
                 elif part.text is not None and part.thought:
                     content_items.append(
-                        {"type": "thinking", "thinking": part.text, "signature": part.thought_signature}
+                        {"type": "thinking", "thinking": part.text}
                     )
+                    if part.thought_signature is not None:
+                        content_items[-1]["signature"] = part.thought_signature
                 elif part.inline_data is not None:
                     content_items.append(
                         {
@@ -249,6 +257,10 @@ class Gemini3Client(LLMClient):
                             "mime_type": part.inline_data.mime_type,
                         }
                     )
+                    if part.thought_signature is not None:
+                        content_items[-1]["signature"] = part.thought_signature
+                    elif part.thought is not None:
+                        content_items[-1]["thought"] = part.thought
                 elif part.text is not None:
                     content_items.append({"type": "text", "text": part.text, "signature": part.thought_signature})
                 else:
