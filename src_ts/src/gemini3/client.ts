@@ -263,12 +263,18 @@ export class Gemini3Client extends LLMClient {
             },
           } as Part);
         } else if (item.type === "inline_data") {
-          parts.push({
+          const part = {
             inlineData: {
               mimeType: item.mime_type,
               data: item.data.toString("base64"),
             },
-          } as Part);
+          } as Part;
+          if (item.signature !== undefined) {
+            part.thoughtSignature = item.signature;
+          } else if (item.thought !== undefined) {
+            part.thought = item.thought;
+          }
+          parts.push(part);
         } else if (item.type === "thinking") {
           parts.push({
             text: item.thinking,
@@ -352,11 +358,17 @@ export class Gemini3Client extends LLMClient {
             signature: part.thoughtSignature as string | undefined,
           });
         } else if (part.inlineData) {
-          contentItems.push({
+          const contentItem: PartialContentItem = {
             type: "inline_data",
             data: Buffer.from(part.inlineData.data || "", "base64"),
             mime_type: part.inlineData.mimeType || "application/octet-stream",
-          });
+          };
+          if (part.thoughtSignature !== undefined) {
+            contentItem.signature = part.thoughtSignature as string | undefined;
+          } else if (part.thought !== undefined) {
+            contentItem.thought = part.thought;
+          }
+          contentItems.push(contentItem);
         } else if (part.text !== undefined && part.thought) {
           contentItems.push({
             type: "thinking",

@@ -474,9 +474,6 @@ def create_chat_app() -> Flask:
                         buffer += chunk;
                         if (!buffer.endsWith('\\n\\n')) continue;
 
-                        console.log('Raw buffer======');
-                        console.log(buffer);
-
                         const lines = buffer.split('\\n');
 
                         for (const line of lines) {

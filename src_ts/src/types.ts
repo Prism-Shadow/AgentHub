@@ -53,6 +53,8 @@ export interface InlineDataContentItem {
   type: "inline_data";
   data: Buffer;
   mime_type: string;
+  thought?: boolean;
+  signature?: string;
 }
 
 export interface ThinkingContentItem {
