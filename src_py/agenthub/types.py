@@ -64,10 +64,12 @@ class ThinkingContentItem(TypedDict):
     thinking: str
     signature: NotRequired[str | bytes]
 
+
 class InlineThinkingContentItem(TypedDict):
     type: Literal["inline_thinking"]
     data: bytes
     mime_type: str
+
 
 class ToolCallContentItem(TypedDict):
     type: Literal["tool_call"]
