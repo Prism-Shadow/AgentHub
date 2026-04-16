@@ -56,13 +56,13 @@ class InlineDataContentItem(TypedDict):
     type: Literal["inline_data"]
     data: bytes
     mime_type: str
-    thought: NotRequired[bool]
     signature: NotRequired[str | bytes]
 
 
 class ThinkingContentItem(TypedDict):
     type: Literal["thinking"]
-    thinking: str
+    thinking: NotRequired[str | None]
+    inline_data: NotRequired[InlineDataContentItem]
     signature: NotRequired[str | bytes]
 
 
@@ -93,12 +93,11 @@ ContentItem = (
     TextContentItem
     | ImageContentItem
     | InlineDataContentItem
-    | ThinkingContentItem
     | ToolCallContentItem
     | ToolResultContentItem
 )
 
-PartialContentItem = ContentItem | PartialToolCallContentItem
+PartialContentItem = ContentItem | ThinkingContentItem | PartialToolCallContentItem
 
 
 class UsageMetadata(TypedDict):

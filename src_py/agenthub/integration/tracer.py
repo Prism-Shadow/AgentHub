@@ -70,7 +70,7 @@ class Tracer:
             return [self._serialize_for_json(item) for item in obj]
         return obj
 
-    def _format_inline_data_summary(self, item: dict[str, Any]) -> str:
+    def _format_inline_data_summary(self, item: dict[str, Any], *, is_thinking: bool = False) -> str:
         """
         Format inline_data metadata without emitting raw payloads.
 
@@ -92,8 +92,7 @@ class Tracer:
         kb_count = byte_count / 1024
         mb_count = byte_count / (1024 * 1024)
 
-        label = ""
-        label += "Thinking " if item.get("thought") else ""
+        label = "Thinking " if is_thinking else ""
         label += "Inline Image" if mime_type.startswith("image/") else "Inline Data"
 
         if kb_count < 1000:
@@ -170,7 +169,10 @@ class Tracer:
                 if item["type"] == "text":
                     lines.append(f"Text: {item['text']}")
                 elif item["type"] == "thinking":
-                    lines.append(f"Thinking: {item['thinking']}")
+                    if item.get("thinking"):
+                        lines.append(f"Thinking: {item['thinking']}")
+                    if item.get("inline_data") is not None:
+                        lines.append(self._format_inline_data_summary(item["inline_data"], is_thinking=True))
                 elif item["type"] == "image_url":
                     lines.append(f"Image URL: {item['image_url']}")
                 elif item["type"] == "inline_data":
@@ -367,7 +369,23 @@ class Tracer:
                                     {% if item.type == 'text' %}
                                         <div class="bg-gray-50 p-4 rounded-md font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.text|e }}</div>
                                     {% elif item.type == 'thinking' %}
-                                        <div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.thinking|e }}</div>
+                                        <div class="space-y-3">
+                                            {% if item.thinking %}
+                                                <div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.thinking|e }}</div>
+                                            {% endif %}
+                                            {% if item.inline_data %}
+                                                <div class="bg-blue-50 border-blue-500 p-4 rounded-md border-l-4">
+                                                    <div class="text-xs text-blue-700 mb-2">{{ item.inline_data|inline_data_summary }}</div>
+                                                    {% if item.inline_data.mime_type and item.inline_data.mime_type.startswith('image/') %}
+                                                        <img src="{{ item.inline_data|inline_data_url|e }}" class="max-w-xs max-h-48 rounded-md" alt="Thinking Inline Image">
+                                                    {% else %}
+                                                        <div class="font-mono text-sm whitespace-pre-wrap text-gray-800">
+                                                            {{ item.inline_data|inline_data_summary }}
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
                                     {% elif item.type == 'tool_call' %}
                                         <div class="bg-yellow-50 p-4 rounded-md border-l-4 border-yellow-500">
                                             <div class="font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.name|e }}({% for key, value in item.arguments.items() %}{{ key|e }}="{{ value|e }}"{% if not loop.last %}, {% endif %}{% endfor %})</div>
@@ -389,8 +407,8 @@ class Tracer:
                                             <img src="{{ item.image_url|e }}" class="max-w-xs max-h-48 rounded-md" alt="Preview">
                                         </div>
                                     {% elif item.type == 'inline_data' %}
-                                        <div class="{% if item.thought %}bg-blue-50 border-blue-500{% else %}bg-purple-50 border-purple-500{% endif %} p-4 rounded-md border-l-4">
-                                            <div class="text-xs {% if item.thought %}text-blue-700{% else %}text-purple-700{% endif %} mb-2">{{ item|inline_data_summary }}</div>
+                                        <div class="bg-purple-50 border-purple-500 p-4 rounded-md border-l-4">
+                                            <div class="text-xs text-purple-700 mb-2">{{ item|inline_data_summary }}</div>
                                             {% if item.mime_type and item.mime_type.startswith('image/') %}
                                                 <img src="{{ item|inline_data_url|e }}" class="max-w-xs max-h-48 rounded-md" alt="Inline Image">
                                             {% else %}
