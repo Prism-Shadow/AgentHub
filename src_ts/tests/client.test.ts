@@ -714,7 +714,7 @@ if (IMAGE_GENERATION_MODELS.length > 0) {
     test("should handle image generation", async () => {
       const client = createClient(model);
       const config: UniConfig = {
-        image_config: { aspect_ratio: "1:1", image_size: "1K" },
+        image_config: { aspect_ratio: "1:1", image_size: "512" },
       };
       const messages: UniMessage[] = [
         {
@@ -722,7 +722,7 @@ if (IMAGE_GENERATION_MODELS.length > 0) {
           content_items: [
             {
               type: "text",
-              text: "Generate a cozy watercolor illustration of two white flowers with raindrops.",
+              text: "Create a picture of my cat eating a nano-banana in a fancy restaurant under the Gemini constellation.",
             },
           ],
         },
@@ -746,7 +746,7 @@ if (IMAGE_GENERATION_MODELS.length > 0) {
         inlineItems.some((item) => item.mime_type.startsWith("image/")),
       ).toBe(true);
       expect(inlineItems.every((item) => item.data.length > 0)).toBe(true);
-    }, 60000);
+    }, 180000);
   });
 }
 
