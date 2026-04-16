@@ -171,8 +171,8 @@ class Tracer:
                 elif item["type"] == "thinking":
                     if item.get("thinking"):
                         lines.append(f"Thinking: {item['thinking']}")
-                    if item.get("inline_data") is not None:
-                        lines.append(self._format_inline_data_summary(item["inline_data"], is_thinking=True))
+                elif item["type"] == "inline_thinking":
+                    lines.append(self._format_inline_data_summary(item, is_thinking=True))
                 elif item["type"] == "image_url":
                     lines.append(f"Image URL: {item['image_url']}")
                 elif item["type"] == "inline_data":
@@ -252,6 +252,11 @@ class Tracer:
         def inline_data_summary(item: dict[str, Any]) -> str:
             """Render a concise inline_data summary."""
             return self._format_inline_data_summary(item)
+
+        @app.template_filter("inline_thinking_summary")
+        def inline_thinking_summary(item: dict[str, Any]) -> str:
+            """Render a concise inline_thinking summary."""
+            return self._format_inline_data_summary(item, is_thinking=True)
 
         # HTML template for directory listing
         DIRECTORY_TEMPLATE = """
@@ -373,16 +378,15 @@ class Tracer:
                                             {% if item.thinking %}
                                                 <div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.thinking|e }}</div>
                                             {% endif %}
-                                            {% if item.inline_data %}
-                                                <div class="bg-blue-50 border-blue-500 p-4 rounded-md border-l-4">
-                                                    <div class="text-xs text-blue-700 mb-2">{{ item.inline_data|inline_data_summary }}</div>
-                                                    {% if item.inline_data.mime_type and item.inline_data.mime_type.startswith('image/') %}
-                                                        <img src="{{ item.inline_data|inline_data_url|e }}" class="max-w-xs max-h-48 rounded-md" alt="Thinking Inline Image">
-                                                    {% else %}
-                                                        <div class="font-mono text-sm whitespace-pre-wrap text-gray-800">
-                                                            {{ item.inline_data|inline_data_summary }}
-                                                        </div>
-                                                    {% endif %}
+                                        </div>
+                                    {% elif item.type == 'inline_thinking' %}
+                                        <div class="bg-blue-50 border-blue-500 p-4 rounded-md border-l-4">
+                                            <div class="text-xs text-blue-700 mb-2">{{ item|inline_thinking_summary }}</div>
+                                            {% if item.mime_type and item.mime_type.startswith('image/') %}
+                                                <img src="{{ item|inline_data_url|e }}" class="max-w-xs max-h-48 rounded-md" alt="Thinking Inline Image">
+                                            {% else %}
+                                                <div class="font-mono text-sm whitespace-pre-wrap text-gray-800">
+                                                    {{ item|inline_thinking_summary }}
                                                 </div>
                                             {% endif %}
                                         </div>

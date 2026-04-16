@@ -16,7 +16,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any, AsyncIterator
 
-from .types import ContentItem, FinishReason, UniConfig, UniEvent, UniMessage, UsageMetadata
+from .types import FinishReason, PartialContentItem, UniConfig, UniEvent, UniMessage, UsageMetadata
 
 
 class LLMClient(ABC):
@@ -82,7 +82,7 @@ class LLMClient(ABC):
         Returns:
             Complete universal message dictionary
         """
-        content_items: list[ContentItem] = []
+        content_items: list[PartialContentItem] = []
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
         created_at: int | None = None
@@ -106,16 +106,12 @@ class LLMClient(ABC):
                     if (
                         content_items
                         and content_items[-1]["type"] == "thinking"
-                        and content_items[-1].get("thinking")
-                        and item.get("thinking")  # only merge thinking text
                         and content_items[-1].get("signature") is None  # no signature yet
                     ):
                         content_items[-1]["thinking"] += item["thinking"]
                         if "signature" in item:  # finish the current item if signature is not None
                             content_items[-1]["signature"] = item["signature"]
-                    elif (
-                        item.get("thinking") or item.get("inline_data") or item.get("signature")
-                    ):  # omit empty thinking items
+                    elif item["thinking"] or item.get("signature"):  # omit empty thinking items
                         content_items.append(item.copy())
                 elif item["type"] == "partial_tool_call":
                     # Skip partial_tool_call items - they should already be converted to tool_call

@@ -13,9 +13,8 @@
 // limitations under the License.
 
 import {
-  ContentItem,
   FinishReason,
-  ThinkingContentItem,
+  PartialContentItem,
   UniConfig,
   UniEvent,
   UniMessage,
@@ -74,7 +73,7 @@ export abstract class LLMClient {
    * @returns Complete universal message object
    */
   concatUniEventsToUniMessage(events: UniEvent[]): UniMessage {
-    const contentItems: (ContentItem | ThinkingContentItem)[] = [];
+    const contentItems: PartialContentItem[] = [];
     let usageMetadata: UsageMetadata | null = null;
     let finishReason: FinishReason | null = null;
     let createdAt: number | undefined = undefined;
@@ -102,15 +101,13 @@ export abstract class LLMClient {
           if (
             lastItem &&
             lastItem.type === "thinking" &&
-            lastItem.thinking &&
-            item.thinking &&
             lastItem.signature == null
           ) {
             lastItem.thinking += item.thinking;
             if (item.signature) {
               lastItem.signature = item.signature;
             }
-          } else if (item.thinking || item.inline_data || item.signature) {
+          } else if (item.thinking || item.signature) {
             contentItems.push({ ...item });
           }
         } else if (item.type === "partial_tool_call") {

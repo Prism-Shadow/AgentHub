@@ -151,27 +151,6 @@ export class Gemini3Client extends LLMClient {
   }
 
   /**
-   * Create a Gemini Part from universal inline data.
-   */
-  private _createInlineDataPart(
-    item: { data: Buffer; mime_type: string },
-    thought?: boolean,
-    thoughtSignature?: string,
-  ): Part {
-    const part: Part = {
-      inlineData: {
-        mimeType: item.mime_type,
-        data: item.data.toString("base64"),
-      },
-      thought: thought,
-    } as Part;
-    if (thoughtSignature !== undefined) {
-      part.thoughtSignature = thoughtSignature;
-    }
-    return part;
-  }
-
-  /**
    * Convert ToolChoice to Gemini's tool config.
    */
   private _convertToolChoice(
@@ -284,21 +263,32 @@ export class Gemini3Client extends LLMClient {
             },
           } as Part);
         } else if (item.type === "inline_data") {
-          parts.push(
-            this._createInlineDataPart(item, undefined, item.signature),
-          );
-        } else if (item.type === "thinking") {
-          if (item.thinking !== undefined) {
-            parts.push({
-              text: item.thinking,
-              thought: true,
-            } as Part);
-          } else if (item.inline_data !== undefined) {
-            parts.push(this._createInlineDataPart(item.inline_data, true));
+          const part: Part = {
+            inlineData: {
+              mimeType: item.mime_type,
+              data: item.data.toString("base64"),
+            },
+          } as Part;
+          if (item.signature !== undefined) {
+            part.thoughtSignature = item.signature;
           }
+          parts.push(part);
+        } else if (item.type === "thinking") {
+          parts.push({
+            text: item.thinking,
+            thought: true,
+          } as Part);
           if (item.signature !== undefined && parts.length > 0) {
             parts[parts.length - 1].thoughtSignature = item.signature;
           }
+        } else if (item.type === "inline_thinking") {
+          parts.push({
+            inlineData: {
+              mimeType: item.mime_type,
+              data: item.data.toString("base64"),
+            },
+            thought: true,
+          } as Part);
         } else if (item.type === "tool_call") {
           const functionCall: FunctionCall = {
             name: item.name,
@@ -375,25 +365,27 @@ export class Gemini3Client extends LLMClient {
             tool_call_id: part.functionCall.name || "",
             signature: part.thoughtSignature as string | undefined,
           });
-        } else if (part.thought) {
+        } else if (part.thought && part.text !== undefined) {
           const thinkingItem: PartialContentItem = {
             type: "thinking",
+            thinking: part.text,
           };
-          if (part.text !== undefined) {
-            thinkingItem.thinking = part.text;
-          } else if (part.inlineData) {
-            thinkingItem.inline_data = {
-              type: "inline_data",
-              data: Buffer.from(part.inlineData.data || "", "base64"),
-              mime_type: part.inlineData.mimeType || "application/octet-stream",
-            };
-          }
           if (part.thoughtSignature !== undefined) {
             thinkingItem.signature = part.thoughtSignature as
               | string
               | undefined;
           }
           contentItems.push(thinkingItem);
+        } else if (
+          part.thought &&
+          part.inlineData &&
+          part.thoughtSignature === undefined
+        ) {
+          contentItems.push({
+            type: "inline_thinking",
+            data: Buffer.from(part.inlineData.data || "", "base64"),
+            mime_type: part.inlineData.mimeType || "application/octet-stream",
+          });
         } else if (part.inlineData) {
           const contentItem: PartialContentItem = {
             type: "inline_data",

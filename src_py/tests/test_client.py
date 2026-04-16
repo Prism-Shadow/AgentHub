@@ -120,10 +120,11 @@ async def _check_event_integrity(event: dict) -> None:
             assert isinstance(item["data"], bytes) and item["data"]
             assert item["mime_type"]
         elif item["type"] == "thinking":
-            assert item.get("thinking") is not None or item.get("inline_data") is not None
-            if item.get("inline_data") is not None:
-                assert isinstance(item["inline_data"]["data"], bytes) and item["inline_data"]["data"]
-                assert item["inline_data"]["mime_type"]
+            assert "thinking" in item
+            assert isinstance(item["thinking"], str)
+        elif item["type"] == "inline_thinking":
+            assert isinstance(item["data"], bytes) and item["data"]
+            assert item["mime_type"]
         elif item["type"] == "tool_call" or item["type"] == "partial_tool_call":
             assert "name" in item
             assert "arguments" in item

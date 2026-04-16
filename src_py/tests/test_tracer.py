@@ -137,6 +137,7 @@ def test_format_history_with_different_content_types(temp_cache_dir):
             "role": "assistant",
             "content_items": [
                 {"type": "thinking", "thinking": "Let me analyze..."},
+                {"type": "inline_thinking", "data": b"abc", "mime_type": "image/png"},
                 {"type": "text", "text": "This is a flower."},
             ],
         },
@@ -156,6 +157,7 @@ def test_format_history_with_different_content_types(temp_cache_dir):
     assert "What's in this image?" in content
     assert "Thinking:" in content
     assert "Let me analyze..." in content
+    assert "Thinking Inline Image: image/png" in content
     assert "This is a flower." in content
     assert "Tool Result" in content
     assert "Temperature is 20C" in content

@@ -61,10 +61,13 @@ class InlineDataContentItem(TypedDict):
 
 class ThinkingContentItem(TypedDict):
     type: Literal["thinking"]
-    thinking: NotRequired[str | None]
-    inline_data: NotRequired[InlineDataContentItem]
+    thinking: str
     signature: NotRequired[str | bytes]
 
+class InlineThinkingContentItem(TypedDict):
+    type: Literal["inline_thinking"]
+    data: bytes
+    mime_type: str
 
 class ToolCallContentItem(TypedDict):
     type: Literal["tool_call"]
@@ -90,8 +93,9 @@ class ToolResultContentItem(TypedDict):
 
 
 ContentItem = TextContentItem | ImageContentItem | InlineDataContentItem | ToolCallContentItem | ToolResultContentItem
+ThinkingItem = ThinkingContentItem | InlineThinkingContentItem
 
-PartialContentItem = ContentItem | ThinkingContentItem | PartialToolCallContentItem
+PartialContentItem = ContentItem | ThinkingItem | PartialToolCallContentItem
 
 
 class UsageMetadata(TypedDict):

@@ -58,9 +58,14 @@ export interface InlineDataContentItem {
 
 export interface ThinkingContentItem {
   type: "thinking";
-  thinking?: string;
-  inline_data?: InlineDataContentItem;
+  thinking: string;
   signature?: string;
+}
+
+export interface InlineThinkingContentItem {
+  type: "inline_thinking";
+  data: Buffer;
+  mime_type: string;
 }
 
 export interface ToolCallContentItem {
@@ -94,9 +99,11 @@ export type ContentItem =
   | ToolCallContentItem
   | ToolResultContentItem;
 
+export type ThinkingItem = ThinkingContentItem | InlineThinkingContentItem;
+
 export type PartialContentItem =
   | ContentItem
-  | ThinkingContentItem
+  | ThinkingItem
   | PartialToolCallContentItem;
 
 /**

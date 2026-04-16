@@ -505,12 +505,11 @@ def create_chat_app() -> Flask:
                                                     const textContainer = contentDiv.querySelector('.text-content');
                                                     contentDiv.insertBefore(thinkingContainer, textContainer || contentDiv.firstChild);
                                                 }
-                                            thinkingContainer.textContent = `💭 ${fullThinking}`;
+                                                thinkingContainer.textContent = `💭 ${fullThinking}`;
                                             }
-                                            else if (item.inline_data) {
-                                                // Ignore thinking inline data
-                                                continue;
-                                            }
+                                        } else if (item.type === 'inline_thinking') {
+                                            // Ignore thinking inline data
+                                            continue;
                                         } else if (item.type === 'partial_tool_call') {
                                             fullToolName += item.name || '';
                                             fullToolArgs += item.arguments || '';

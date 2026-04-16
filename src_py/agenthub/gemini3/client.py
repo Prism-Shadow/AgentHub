@@ -17,7 +17,7 @@ import json
 import mimetypes
 import os
 import re
-from typing import Any, AsyncIterator
+from typing import AsyncIterator
 
 import httpx
 from google import genai
@@ -110,22 +110,6 @@ class Gemini3Client(LLMClient):
         elif tool_choice == "required":
             return types.FunctionCallingConfig(mode="ANY")
 
-    def _create_inline_data_part(
-        self,
-        item: dict[str, Any],
-        *,
-        thought: bool | None = None,
-        thought_signature: str | bytes | None = None,
-    ) -> types.Part:
-        """Create a Gemini Part from universal inline data."""
-        part = types.Part(
-            inline_data=types.Blob(data=item["data"], mime_type=item["mime_type"]),
-            thought=thought,
-        )
-        if thought_signature is not None:
-            part.thought_signature = thought_signature
-        return part
-
     def transform_uni_config_to_model_config(self, config: UniConfig) -> types.GenerateContentConfig | None:
         """
         Transform universal configuration to Gemini-specific configuration.
@@ -190,14 +174,23 @@ class Gemini3Client(LLMClient):
                     image_data = await self._get_image_bytes_and_mime_type(image_url)
                     parts.append(types.Part.from_bytes(**image_data))
                 elif item["type"] == "inline_data":
-                    parts.append(self._create_inline_data_part(item, thought_signature=item.get("signature")))
+                    part = types.Part(
+                        inline_data=types.Blob(data=item["data"], mime_type=item["mime_type"]),
+                    )
+                    if item.get("signature") is not None:
+                        part.thought_signature = item["signature"]
+                    parts.append(part)
                 elif item["type"] == "thinking":
-                    if item.get("thinking") is not None:
-                        parts.append(types.Part(text=item.get("thinking"), thought=True))
-                    elif item.get("inline_data") is not None:
-                        parts.append(self._create_inline_data_part(item.get("inline_data"), thought=True))
+                    parts.append(types.Part(text=item["thinking"], thought=True))
                     if item.get("signature") is not None and parts:
                         parts[-1].thought_signature = item.get("signature")
+                elif item["type"] == "inline_thinking":
+                    parts.append(
+                        types.Part(
+                            inline_data=types.Blob(data=item["data"], mime_type=item["mime_type"]),
+                            thought=True,
+                        )
+                    )
                 elif item["type"] == "tool_call":
                     function_call = types.FunctionCall(name=item["name"], args=item["arguments"])
                     parts.append(types.Part(function_call=function_call, thought_signature=item.get("signature")))
@@ -256,19 +249,19 @@ class Gemini3Client(LLMClient):
                             "signature": part.thought_signature,
                         }
                     )
-                elif part.thought:
-                    thinking_item: PartialContentItem = {"type": "thinking"}
-                    if part.text is not None:
-                        thinking_item["thinking"] = part.text
-                    elif part.inline_data is not None:
-                        thinking_item["inline_data"] = {
-                            "type": "inline_data",
-                            "data": part.inline_data.data,
-                            "mime_type": part.inline_data.mime_type,
-                        }
+                elif part.thought and part.text is not None:
+                    thinking_item: PartialContentItem = {"type": "thinking", "thinking": part.text}
                     if part.thought_signature is not None:
                         thinking_item["signature"] = part.thought_signature
                     content_items.append(thinking_item)
+                elif part.thought and part.inline_data is not None and part.thought_signature is None:
+                    content_items.append(
+                        {
+                            "type": "inline_thinking",
+                            "data": part.inline_data.data,
+                            "mime_type": part.inline_data.mime_type,
+                        }
+                    )
                 elif part.inline_data is not None:
                     content_items.append(
                         {
