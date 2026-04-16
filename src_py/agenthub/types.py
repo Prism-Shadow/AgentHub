@@ -89,13 +89,7 @@ class ToolResultContentItem(TypedDict):
     tool_call_id: str
 
 
-ContentItem = (
-    TextContentItem
-    | ImageContentItem
-    | InlineDataContentItem
-    | ToolCallContentItem
-    | ToolResultContentItem
-)
+ContentItem = TextContentItem | ImageContentItem | InlineDataContentItem | ToolCallContentItem | ToolResultContentItem
 
 PartialContentItem = ContentItem | ThinkingContentItem | PartialToolCallContentItem
 
@@ -113,7 +107,7 @@ class UniMessage(TypedDict):
     """Universal message format for LLM communication."""
 
     role: Role
-    content_items: list[ContentItem]
+    content_items: list[PartialContentItem]
     usage_metadata: NotRequired[UsageMetadata | None]
     finish_reason: NotRequired[FinishReason | None]
     created_at: NotRequired[int]

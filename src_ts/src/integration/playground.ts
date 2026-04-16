@@ -476,16 +476,21 @@ export function createChatApp(): Express {
                                           }
                                           textContainer.textContent = fullResponse;
                                       } else if (item.type === 'thinking') {
-                                          fullThinking += item.thinking;
-                                          let thinkingContainer = contentDiv.querySelector('.thinking-content');
-                                          if (!thinkingContainer) {
-                                              thinkingContainer = document.createElement('div');
-                                              thinkingContainer.className = 'thinking-content bg-blue-50 p-3 rounded-md border-l-4 border-blue-500 mb-2 italic';
-                                              // Always insert thinking before any text content so it appears on top
-                                              const textContainer = contentDiv.querySelector('.text-content');
-                                              contentDiv.insertBefore(thinkingContainer, textContainer || contentDiv.firstChild);
+                                          if (item.thinking) {
+                                              fullThinking += item.thinking;
+                                              let thinkingContainer = contentDiv.querySelector('.thinking-content');
+                                              if (!thinkingContainer) {
+                                                  thinkingContainer = document.createElement('div');
+                                                  thinkingContainer.className = 'thinking-content bg-blue-50 p-3 rounded-md border-l-4 border-blue-500 mb-2 italic';
+                                                  // Always insert thinking before any text content so it appears on top
+                                                  const textContainer = contentDiv.querySelector('.text-content');
+                                                  contentDiv.insertBefore(thinkingContainer, textContainer || contentDiv.firstChild);
+                                              }
+                                              thinkingContainer.textContent = \`💭 \${fullThinking}\`;
+                                          } else if (item.inline_data) {
+                                              // Ignore thinking inline data
+                                              continue;
                                           }
-                                          thinkingContainer.textContent = \`💭 \${fullThinking}\`;
                                       } else if (item.type === 'partial_tool_call') {
                                           fullToolName += item.name || '';
                                           fullToolArgs += item.arguments || '';
@@ -502,13 +507,10 @@ export function createChatApp(): Express {
                                           toolResultDiv.innerHTML = \`<strong class="text-sm">✅ Tool Result:</strong><br><div class="mt-1 text-xs whitespace-pre-wrap">\${escapeHtml(item.text)}</div>\`;
                                           contentDiv.appendChild(toolResultDiv);
                                       } else if (item.type === 'inline_data') {
-                                          if (item.thought) continue;
-                                          else {
-                                              const imageDiv = document.createElement('div');
-                                              imageDiv.className = 'mb-3';
-                                              imageDiv.innerHTML = \`<img src="data:\${item.mime_type || 'image/png'};base64,\${item.data}" class="max-w-xs rounded border border-gray-300">\`;
-                                              contentDiv.appendChild(imageDiv);
-                                          }
+                                          const imageDiv = document.createElement('div');
+                                          imageDiv.className = 'mb-3';
+                                          imageDiv.innerHTML = \`<img src="data:\${item.mime_type || 'image/png'};base64,\${item.data}" class="max-w-xs rounded border border-gray-300">\`;
+                                          contentDiv.appendChild(imageDiv);
                                       }
                                   }
 

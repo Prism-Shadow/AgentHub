@@ -151,6 +151,27 @@ export class Gemini3Client extends LLMClient {
   }
 
   /**
+   * Create a Gemini Part from universal inline data.
+   */
+  private _createInlineDataPart(
+    item: { data: Buffer; mime_type: string },
+    thought?: boolean,
+    thoughtSignature?: string,
+  ): Part {
+    const part: Part = {
+      inlineData: {
+        mimeType: item.mime_type,
+        data: item.data.toString("base64"),
+      },
+      thought: thought,
+    } as Part;
+    if (thoughtSignature !== undefined) {
+      part.thoughtSignature = thoughtSignature;
+    }
+    return part;
+  }
+
+  /**
    * Convert ToolChoice to Gemini's tool config.
    */
   private _convertToolChoice(
@@ -263,24 +284,21 @@ export class Gemini3Client extends LLMClient {
             },
           } as Part);
         } else if (item.type === "inline_data") {
-          const part = {
-            inlineData: {
-              mimeType: item.mime_type,
-              data: item.data.toString("base64"),
-            },
-          } as Part;
-          if (item.signature !== undefined) {
-            part.thoughtSignature = item.signature;
-          } else if (item.thought !== undefined) {
-            part.thought = item.thought;
-          }
-          parts.push(part);
+          parts.push(
+            this._createInlineDataPart(item, undefined, item.signature),
+          );
         } else if (item.type === "thinking") {
-          parts.push({
-            text: item.thinking,
-            thought: true,
-            thoughtSignature: item.signature as string | undefined,
-          } as Part);
+          if (item.thinking !== undefined) {
+            parts.push({
+              text: item.thinking,
+              thought: true,
+            } as Part);
+          } else if (item.inline_data !== undefined) {
+            parts.push(this._createInlineDataPart(item.inline_data, true));
+          }
+          if (item.signature !== undefined && parts.length > 0) {
+            parts[parts.length - 1].thoughtSignature = item.signature;
+          }
         } else if (item.type === "tool_call") {
           const functionCall: FunctionCall = {
             name: item.name,
@@ -357,6 +375,25 @@ export class Gemini3Client extends LLMClient {
             tool_call_id: part.functionCall.name || "",
             signature: part.thoughtSignature as string | undefined,
           });
+        } else if (part.thought) {
+          const thinkingItem: PartialContentItem = {
+            type: "thinking",
+          };
+          if (part.text !== undefined) {
+            thinkingItem.thinking = part.text;
+          } else if (part.inlineData) {
+            thinkingItem.inline_data = {
+              type: "inline_data",
+              data: Buffer.from(part.inlineData.data || "", "base64"),
+              mime_type: part.inlineData.mimeType || "application/octet-stream",
+            };
+          }
+          if (part.thoughtSignature !== undefined) {
+            thinkingItem.signature = part.thoughtSignature as
+              | string
+              | undefined;
+          }
+          contentItems.push(thinkingItem);
         } else if (part.inlineData) {
           const contentItem: PartialContentItem = {
             type: "inline_data",
@@ -364,17 +401,10 @@ export class Gemini3Client extends LLMClient {
             mime_type: part.inlineData.mimeType || "application/octet-stream",
           };
           if (part.thoughtSignature !== undefined) {
-            contentItem.signature = part.thoughtSignature as string | undefined;
-          } else if (part.thought !== undefined) {
-            contentItem.thought = part.thought;
+            (contentItem as { signature?: string }).signature =
+              part.thoughtSignature as string | undefined;
           }
           contentItems.push(contentItem);
-        } else if (part.text !== undefined && part.thought) {
-          contentItems.push({
-            type: "thinking",
-            thinking: part.text,
-            signature: part.thoughtSignature as string | undefined,
-          });
         } else if (part.text !== undefined) {
           contentItems.push({
             type: "text",

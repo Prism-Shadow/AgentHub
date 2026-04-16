@@ -193,7 +193,14 @@ function checkEventIntegrity(event: UniEvent): void {
       expect(item.data.length).toBeGreaterThan(0);
       expect(item.mime_type).toBeTruthy();
     } else if (item.type === "thinking") {
-      expect(item).toHaveProperty("thinking");
+      expect(
+        item.thinking !== undefined || item.inline_data !== undefined,
+      ).toBe(true);
+      if (item.inline_data) {
+        expect(Buffer.isBuffer(item.inline_data.data)).toBe(true);
+        expect(item.inline_data.data.length).toBeGreaterThan(0);
+        expect(item.inline_data.mime_type).toBeTruthy();
+      }
     } else if (item.type === "tool_call" || item.type === "partial_tool_call") {
       expect(item).toHaveProperty("name");
       expect(item).toHaveProperty("arguments");

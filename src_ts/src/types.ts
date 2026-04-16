@@ -53,13 +53,13 @@ export interface InlineDataContentItem {
   type: "inline_data";
   data: Buffer;
   mime_type: string;
-  thought?: boolean;
   signature?: string;
 }
 
 export interface ThinkingContentItem {
   type: "thinking";
-  thinking: string;
+  thinking?: string;
+  inline_data?: InlineDataContentItem;
   signature?: string;
 }
 
@@ -91,11 +91,13 @@ export type ContentItem =
   | TextContentItem
   | ImageContentItem
   | InlineDataContentItem
-  | ThinkingContentItem
   | ToolCallContentItem
   | ToolResultContentItem;
 
-export type PartialContentItem = ContentItem | PartialToolCallContentItem;
+export type PartialContentItem =
+  | ContentItem
+  | ThinkingContentItem
+  | PartialToolCallContentItem;
 
 /**
  * Usage metadata for model response.
@@ -112,7 +114,7 @@ export interface UsageMetadata {
  */
 export interface UniMessage {
   role: Role;
-  content_items: ContentItem[];
+  content_items: PartialContentItem[];
   usage_metadata?: UsageMetadata | null;
   finish_reason?: FinishReason | null;
   created_at?: number;

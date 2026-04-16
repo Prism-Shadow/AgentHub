@@ -85,11 +85,13 @@ export class Tracer {
    * @param item - inline_data content item
    * @returns Human-readable summary of the inline payload
    */
-  private _formatInlineDataSummary(item: {
-    mime_type?: string;
-    data?: Buffer | string;
-    thought?: boolean;
-  }): string {
+  private _formatInlineDataSummary(
+    item: {
+      mime_type?: string;
+      data?: Buffer | string;
+    },
+    isThinking?: boolean,
+  ): string {
     const mimeType = item.mime_type || "application/octet-stream";
     const data = item.data;
 
@@ -103,8 +105,7 @@ export class Tracer {
     const kbCount = byteCount / 1024;
     const mbCount = byteCount / (1024 * 1024);
 
-    let label = "";
-    label += item.thought ? "Thinking " : "";
+    let label = isThinking ? "Thinking " : "";
     label += mimeType.startsWith("image/") ? "Inline Image" : "Inline Data";
 
     if (kbCount < 1000) {
@@ -126,7 +127,7 @@ export class Tracer {
     const mimeType = item.mime_type || "application/octet-stream";
     const data = Buffer.isBuffer(item.data)
       ? item.data.toString("base64")
-      : (item.data || "");
+      : item.data || "";
     return `data:${mimeType};base64,${data}`;
   }
 
@@ -202,7 +203,12 @@ export class Tracer {
         if (item.type === "text") {
           lines.push(`Text: ${item.text}`);
         } else if (item.type === "thinking") {
-          lines.push(`Thinking: ${item.thinking}`);
+          if (item.thinking) {
+            lines.push(`Thinking: ${item.thinking}`);
+          }
+          if (item.inline_data) {
+            lines.push(this._formatInlineDataSummary(item.inline_data, true));
+          }
         } else if (item.type === "image_url") {
           lines.push(`Image URL: ${item.image_url}`);
         } else if (item.type === "inline_data") {
@@ -474,7 +480,25 @@ export class Tracer {
                     if (item.type === "text") {
                       itemHtml += `<div class="bg-gray-50 p-4 rounded-md font-mono text-sm whitespace-pre-wrap text-gray-800">${this._escapeHtml(item.text)}</div>`;
                     } else if (item.type === "thinking") {
-                      itemHtml += `<div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 font-mono text-sm whitespace-pre-wrap text-gray-800">${this._escapeHtml(item.thinking)}</div>`;
+                      let thinkingHtml = `<div class="space-y-3">`;
+                      if (item.thinking) {
+                        thinkingHtml += `<div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 font-mono text-sm whitespace-pre-wrap text-gray-800">${this._escapeHtml(item.thinking)}</div>`;
+                      }
+                      if (item.inline_data) {
+                        const summary = this._formatInlineDataSummary(
+                          item.inline_data,
+                          true,
+                        );
+                        thinkingHtml += `<div class="bg-blue-50 border-blue-500 p-4 rounded-md border-l-4"><div class="text-xs text-blue-700 mb-2">${this._escapeHtml(summary)}</div>`;
+                        if (item.inline_data.mime_type?.startsWith("image/")) {
+                          thinkingHtml += `<img src="${this._escapeHtml(this._inlineDataUrl(item.inline_data))}" class="max-w-xs max-h-48 rounded-md" alt="Thinking Inline Image">`;
+                        } else {
+                          thinkingHtml += `<div class="font-mono text-sm whitespace-pre-wrap text-gray-800">${this._escapeHtml(summary)}</div>`;
+                        }
+                        thinkingHtml += `</div>`;
+                      }
+                      thinkingHtml += `</div>`;
+                      itemHtml += thinkingHtml;
                     } else if (item.type === "tool_call") {
                       const entries = Object.entries(item.arguments);
                       let args = "";
@@ -501,13 +525,7 @@ export class Tracer {
                       itemHtml += `<div class="bg-gray-50 p-4 rounded-md"><img src="${this._escapeHtml(item.image_url)}" class="max-w-xs max-h-48 rounded-md" alt="Preview"></div>`;
                     } else if (item.type === "inline_data") {
                       const summary = this._formatInlineDataSummary(item);
-                      const wrapperClass = item.thought
-                        ? "bg-blue-50 border-blue-500"
-                        : "bg-purple-50 border-purple-500";
-                      const textClass = item.thought
-                        ? "text-blue-700"
-                        : "text-purple-700";
-                      itemHtml += `<div class="${wrapperClass} p-4 rounded-md border-l-4"><div class="text-xs ${textClass} mb-2">${this._escapeHtml(summary)}</div>`;
+                      itemHtml += `<div class="bg-purple-50 border-purple-500 p-4 rounded-md border-l-4"><div class="text-xs text-purple-700 mb-2">${this._escapeHtml(summary)}</div>`;
                       if (item.mime_type?.startsWith("image/")) {
                         itemHtml += `<img src="${this._escapeHtml(this._inlineDataUrl(item))}" class="max-w-xs max-h-48 rounded-md" alt="Inline Image">`;
                       } else {

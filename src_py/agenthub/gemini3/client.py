@@ -195,9 +195,7 @@ class Gemini3Client(LLMClient):
                     if item.get("thinking") is not None:
                         parts.append(types.Part(text=item.get("thinking"), thought=True))
                     elif item.get("inline_data") is not None:
-                        parts.append(
-                            self._create_inline_data_part(item.get("inline_data"), thought=True)
-                        )
+                        parts.append(self._create_inline_data_part(item.get("inline_data"), thought=True))
                     if item.get("signature") is not None and parts:
                         parts[-1].thought_signature = item.get("signature")
                 elif item["type"] == "tool_call":
