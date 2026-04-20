@@ -13,8 +13,8 @@
 // limitations under the License.
 
 import {
-  ContentItem,
   FinishReason,
+  PartialContentItem,
   UniConfig,
   UniEvent,
   UniMessage,
@@ -73,7 +73,7 @@ export abstract class LLMClient {
    * @returns Complete universal message object
    */
   concatUniEventsToUniMessage(events: UniEvent[]): UniMessage {
-    const contentItems: ContentItem[] = [];
+    const contentItems: PartialContentItem[] = [];
     let usageMetadata: UsageMetadata | null = null;
     let finishReason: FinishReason | null = null;
     let createdAt: number | undefined = undefined;

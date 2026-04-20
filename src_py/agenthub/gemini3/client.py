@@ -130,6 +130,9 @@ class Gemini3Client(LLMClient):
         if config.get("temperature") is not None:
             config_params["temperature"] = config["temperature"]
 
+        if config.get("image_config") is not None:
+            config_params["image_config"] = types.ImageConfig(**config["image_config"])
+
         thinking_summary = config.get("thinking_summary")
         thinking_level = config.get("thinking_level")
         if thinking_summary is not None or thinking_level is not None:
@@ -170,9 +173,23 @@ class Gemini3Client(LLMClient):
                     image_url = item["image_url"]
                     image_data = await self._get_image_bytes_and_mime_type(image_url)
                     parts.append(types.Part.from_bytes(**image_data))
+                elif item["type"] == "inline_data":
+                    part = types.Part(
+                        inline_data=types.Blob(data=item["data"], mime_type=item["mime_type"]),
+                    )
+                    if item.get("signature") is not None:
+                        part.thought_signature = item["signature"]
+                    parts.append(part)
                 elif item["type"] == "thinking":
+                    parts.append(types.Part(text=item["thinking"], thought=True))
+                    if item.get("signature") is not None and parts:
+                        parts[-1].thought_signature = item.get("signature")
+                elif item["type"] == "inline_thinking":
                     parts.append(
-                        types.Part(text=item["thinking"], thought=True, thought_signature=item.get("signature"))
+                        types.Part(
+                            inline_data=types.Blob(data=item["data"], mime_type=item["mime_type"]),
+                            thought=True,
+                        )
                     )
                 elif item["type"] == "tool_call":
                     function_call = types.FunctionCall(name=item["name"], args=item["arguments"])
@@ -232,10 +249,29 @@ class Gemini3Client(LLMClient):
                             "signature": part.thought_signature,
                         }
                     )
-                elif part.text is not None and part.thought:
+                elif part.thought and part.text is not None:
+                    thinking_item: PartialContentItem = {"type": "thinking", "thinking": part.text}
+                    if part.thought_signature is not None:
+                        thinking_item["signature"] = part.thought_signature
+                    content_items.append(thinking_item)
+                elif part.thought and part.inline_data is not None and part.thought_signature is None:
                     content_items.append(
-                        {"type": "thinking", "thinking": part.text, "signature": part.thought_signature}
+                        {
+                            "type": "inline_thinking",
+                            "data": part.inline_data.data,
+                            "mime_type": part.inline_data.mime_type,
+                        }
                     )
+                elif part.inline_data is not None:
+                    content_items.append(
+                        {
+                            "type": "inline_data",
+                            "data": part.inline_data.data,
+                            "mime_type": part.inline_data.mime_type,
+                        }
+                    )
+                    if part.thought_signature is not None:
+                        content_items[-1]["signature"] = part.thought_signature
                 elif part.text is not None:
                     content_items.append({"type": "text", "text": part.text, "signature": part.thought_signature})
                 else:

@@ -16,7 +16,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any, AsyncIterator
 
-from .types import ContentItem, FinishReason, UniConfig, UniEvent, UniMessage, UsageMetadata
+from .types import FinishReason, PartialContentItem, UniConfig, UniEvent, UniMessage, UsageMetadata
 
 
 class LLMClient(ABC):
@@ -82,7 +82,7 @@ class LLMClient(ABC):
         Returns:
             Complete universal message dictionary
         """
-        content_items: list[ContentItem] = []
+        content_items: list[PartialContentItem] = []
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
         created_at: int | None = None

@@ -34,6 +34,7 @@ class Model:
     name: str
     support_vision: bool = True
     support_temperature: bool = True
+    support_image_generation: bool = False
     provider: Literal["official", "siliconflow", "openrouter", "bedrock", "vertex"] = "official"
 
     def __repr__(self) -> str:
@@ -44,6 +45,7 @@ AVAILABLE_MODELS: list[Model] = []
 
 if os.getenv("GEMINI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="gemini-3-flash-preview"))
+    AVAILABLE_MODELS.append(Model(name="gemini-3.1-flash-image-preview", support_image_generation=True))
 
 if os.getenv("ANTHROPIC_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="claude-sonnet-4-6"))
@@ -76,6 +78,9 @@ if os.getenv("BEDROCK_API_KEY"):
 
 if os.getenv("VERTEX_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="gemini-3-flash-preview", provider="vertex"))
+    AVAILABLE_MODELS.append(
+        Model(name="gemini-3.1-flash-image-preview", provider="vertex", support_image_generation=True)
+    )
 
 
 async def _create_client(model: Model) -> AutoLLMClient:
@@ -111,8 +116,15 @@ async def _check_event_integrity(event: dict) -> None:
     for item in event["content_items"]:
         if item["type"] == "text":
             assert "text" in item
+        elif item["type"] == "inline_data":
+            assert isinstance(item["data"], bytes) and item["data"]
+            assert item["mime_type"]
         elif item["type"] == "thinking":
             assert "thinking" in item
+            assert isinstance(item["thinking"], str)
+        elif item["type"] == "inline_thinking":
+            assert isinstance(item["data"], bytes) and item["data"]
+            assert item["mime_type"]
         elif item["type"] == "tool_call" or item["type"] == "partial_tool_call":
             assert "name" in item
             assert "arguments" in item
@@ -505,6 +517,38 @@ async def test_tool_result_with_image(model: Model):
                 text += item["text"]
 
     assert ("flower" in text.lower()) or ("narcissus" in text.lower())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
+async def test_image_generation(model: Model):
+    """Test streamed image generation output."""
+    if not model.support_image_generation:
+        pytest.skip(f"Image generation is not supported by {model.name}.")
+
+    client = await _create_client(model)
+    events = []
+    async for event in client.streaming_response(
+        messages=[
+            {
+                "role": "user",
+                "content_items": [
+                    {
+                        "type": "text",
+                        "text": "Generate a cozy watercolor illustration of two white flowers with raindrops.",
+                    }
+                ],
+            }
+        ],
+        config={"image_config": {"aspect_ratio": "1:1", "image_size": "1K"}},
+    ):
+        await _check_event_integrity(event)
+        events.append(event)
+
+    inline_items = [item for event in events for item in event["content_items"] if item["type"] == "inline_data"]
+    assert inline_items, f"No inline data returned for generated image by {model.name}"
+    assert any(item["mime_type"].startswith("image/") for item in inline_items)
+    assert all(isinstance(item["data"], bytes) and item["data"] for item in inline_items)
 
 
 if __name__ == "__main__":

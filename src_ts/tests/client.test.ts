@@ -14,6 +14,7 @@
 
 import { AutoLLMClient } from "../src/autoClient";
 import { ThinkingLevel, UniMessage, UniConfig, UniEvent } from "../src/types";
+import { expect, describe, test } from "@jest/globals";
 
 const IMAGE =
   "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg";
@@ -26,10 +27,17 @@ interface Model {
 }
 
 const AVAILABLE_MODELS: Model[] = [];
+const IMAGE_GENERATION_MODELS: Model[] = [];
 
 if (process.env.GEMINI_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "gemini-3-flash-preview",
+    supportVision: true,
+    supportTemperature: true,
+    provider: "official",
+  });
+  IMAGE_GENERATION_MODELS.push({
+    name: "gemini-3.1-flash-image-preview",
     supportVision: true,
     supportTemperature: true,
     provider: "official",
@@ -132,6 +140,12 @@ if (process.env.VERTEX_API_KEY) {
     supportTemperature: true,
     provider: "vertex",
   });
+  IMAGE_GENERATION_MODELS.push({
+    name: "gemini-3.1-flash-image-preview",
+    supportVision: true,
+    supportTemperature: true,
+    provider: "vertex",
+  });
 }
 
 function createClient(model: Model): AutoLLMClient {
@@ -157,7 +171,6 @@ function createClient(model: Model): AutoLLMClient {
 
   return new AutoLLMClient({ model: model.name, apiKey, baseUrl });
 }
-
 function checkEventIntegrity(event: UniEvent): void {
   expect(event).toHaveProperty("role");
   expect(event).toHaveProperty("event_type");
@@ -175,8 +188,16 @@ function checkEventIntegrity(event: UniEvent): void {
   for (const item of event.content_items) {
     if (item.type === "text") {
       expect(item).toHaveProperty("text");
+    } else if (item.type === "inline_data") {
+      expect(Buffer.isBuffer(item.data)).toBe(true);
+      expect(item.data.length).toBeGreaterThan(0);
+      expect(item.mime_type).toBeTruthy();
     } else if (item.type === "thinking") {
-      expect(item).toHaveProperty("thinking");
+      expect(typeof item.thinking).toBe("string");
+    } else if (item.type === "inline_thinking") {
+      expect(Buffer.isBuffer(item.data)).toBe(true);
+      expect(item.data.length).toBeGreaterThan(0);
+      expect(item.mime_type).toBeTruthy();
     } else if (item.type === "tool_call" || item.type === "partial_tool_call") {
       expect(item).toHaveProperty("name");
       expect(item).toHaveProperty("arguments");
@@ -206,7 +227,7 @@ function checkEventIntegrity(event: UniEvent): void {
 }
 
 if (AVAILABLE_MODELS.length > 0) {
-  describe.each(AVAILABLE_MODELS.map((m) => [m.name + ":" + m.provider, m]))(
+  describe.each(AVAILABLE_MODELS.map((m): [string, Model] => [`${m.name}:${m.provider}`, m]))(
     "Client tests for %s",
     (_name, model: Model) => {
       test("should stream basic response", async () => {
@@ -678,6 +699,52 @@ if (AVAILABLE_MODELS.length > 0) {
       }, 60000);
     },
   );
+}
+
+if (IMAGE_GENERATION_MODELS.length > 0) {
+  describe.each(
+    IMAGE_GENERATION_MODELS.map((m): [string, Model] => [
+      `${m.name}:${m.provider}`,
+      m,
+    ]),
+  )("Image generation tests for %s", (_name, model: Model) => {
+    test("should handle image generation", async () => {
+      const client = createClient(model);
+      const config: UniConfig = {
+        image_config: { aspect_ratio: "1:1", image_size: "512" },
+      };
+      const messages: UniMessage[] = [
+        {
+          role: "user",
+          content_items: [
+            {
+              type: "text",
+              text: "Create a picture of my cat eating a nano-banana in a fancy restaurant under the Gemini constellation.",
+            },
+          ],
+        },
+      ];
+
+      const inlineItems: { data: Buffer; mime_type: string }[] = [];
+      for await (const event of client.streamingResponse({
+        messages,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "inline_data") {
+            inlineItems.push(item);
+          }
+        }
+      }
+
+      expect(inlineItems.length).toBeGreaterThan(0);
+      expect(
+        inlineItems.some((item) => item.mime_type.startsWith("image/")),
+      ).toBe(true);
+      expect(inlineItems.every((item) => item.data.length > 0)).toBe(true);
+    }, 180000);
+  });
 }
 
 test("should reject unknown model", () => {

@@ -49,10 +49,23 @@ export interface ImageContentItem {
   image_url: string;
 }
 
+export interface InlineDataContentItem {
+  type: "inline_data";
+  data: Buffer;
+  mime_type: string;
+  signature?: string;
+}
+
 export interface ThinkingContentItem {
   type: "thinking";
   thinking: string;
   signature?: string;
+}
+
+export interface InlineThinkingContentItem {
+  type: "inline_thinking";
+  data: Buffer;
+  mime_type: string;
 }
 
 export interface ToolCallContentItem {
@@ -82,11 +95,16 @@ export interface ToolResultContentItem {
 export type ContentItem =
   | TextContentItem
   | ImageContentItem
-  | ThinkingContentItem
+  | InlineDataContentItem
   | ToolCallContentItem
   | ToolResultContentItem;
 
-export type PartialContentItem = ContentItem | PartialToolCallContentItem;
+export type ThinkingItem = ThinkingContentItem | InlineThinkingContentItem;
+
+export type PartialContentItem =
+  | ContentItem
+  | ThinkingItem
+  | PartialToolCallContentItem;
 
 /**
  * Usage metadata for model response.
@@ -103,7 +121,7 @@ export interface UsageMetadata {
  */
 export interface UniMessage {
   role: Role;
-  content_items: ContentItem[];
+  content_items: PartialContentItem[];
   usage_metadata?: UsageMetadata | null;
   finish_reason?: FinishReason | null;
   created_at?: number;
@@ -132,11 +150,20 @@ export interface ToolSchema {
 }
 
 /**
+ * Image generation configuration for models that support image output.
+ */
+export interface ImageConfig {
+  aspect_ratio?: string;
+  image_size?: string;
+}
+
+/**
  * Universal configuration format for LLM requests.
  */
 export interface UniConfig {
   max_tokens?: number;
   temperature?: number;
+  image_config?: ImageConfig;
   tools?: ToolSchema[];
   thinking_summary?: boolean;
   thinking_level?: ThinkingLevel;

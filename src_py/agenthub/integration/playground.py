@@ -112,6 +112,7 @@ def create_chat_app() -> Flask:
                     <datalist id="modelList">
                         <option value="gpt-5.4">GPT 5.4</option>
                         <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+                        <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash Image</option>
                         <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
                         <option value="kimi-k2.5">Kimi K2.5</option>
                         <option value="glm-5">GLM 5</option>
@@ -165,6 +166,38 @@ def create_chat_app() -> Flask:
                 <div class="flex flex-col">
                     <label class="text-sm font-semibold text-gray-900 mb-1" for="traceIdInput">Trace ID</label>
                     <input type="text" id="traceIdInput" placeholder="e.g., session_001" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="flex flex-col">
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="aspectRatioSelect">Image Aspect Ratio</label>
+                    <select id="aspectRatioSelect" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Unspecified</option>
+                        <option value="1:1">1:1</option>
+                        <option value="1:4">1:4</option>
+                        <option value="1:8">1:8</option>
+                        <option value="2:3">2:3</option>
+                        <option value="3:2">3:2</option>
+                        <option value="3:4">3:4</option>
+                        <option value="4:1">4:1</option>
+                        <option value="4:3">4:3</option>
+                        <option value="4:5">4:5</option>
+                        <option value="5:4">5:4</option>
+                        <option value="8:1">8:1</option>
+                        <option value="9:16">9:16</option>
+                        <option value="16:9">16:9</option>
+                        <option value="21:9">21:9</option>
+                    </select>
+                </div>
+                <div class="flex flex-col">
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="imageSizeSelect">Image Size</label>
+                    <select id="imageSizeSelect" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Unspecified</option>
+                        <option value="512">512</option>
+                        <option value="1K">1K</option>
+                        <option value="2K">2K</option>
+                        <option value="4K">4K</option>
+                    </select>
                 </div>
             </div>
         </div>
@@ -307,6 +340,18 @@ def create_chat_app() -> Flask:
                     config.trace_id = traceId;
                 }
 
+                const aspectRatio = document.getElementById('aspectRatioSelect').value;
+                const imageSize = document.getElementById('imageSizeSelect').value;
+                if (aspectRatio || imageSize) {
+                    config.image_config = {};
+                    if (aspectRatio) {
+                        config.image_config.aspect_ratio = aspectRatio;
+                    }
+                    if (imageSize) {
+                        config.image_config.image_size = imageSize;
+                    }
+                }
+
                 return config;
             }
 
@@ -418,13 +463,18 @@ def create_chat_app() -> Flask:
                     let fullToolArgs = '';
                     let metadata = null;
                     let lastCreatedAt = null;
+                    let buffer = '';
 
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
 
                         const chunk = decoder.decode(value);
-                        const lines = chunk.split('\\n');
+                        if (chunk.startsWith('data: ')) buffer = '';
+                        buffer += chunk;
+                        if (!buffer.endsWith('\\n\\n')) continue;
+
+                        const lines = buffer.split('\\n');
 
                         for (const line of lines) {
                             if (line.startsWith('data: ')) {
@@ -445,16 +495,21 @@ def create_chat_app() -> Flask:
                                             }
                                             textContainer.textContent = fullResponse;
                                         } else if (item.type === 'thinking') {
-                                            fullThinking += item.thinking;
-                                            let thinkingContainer = contentDiv.querySelector('.thinking-content');
-                                            if (!thinkingContainer) {
-                                                thinkingContainer = document.createElement('div');
-                                                thinkingContainer.className = 'thinking-content bg-blue-50 p-3 rounded-md border-l-4 border-blue-500 mb-2 italic';
-                                                // Always insert thinking before any text content so it appears on top
-                                                const textContainer = contentDiv.querySelector('.text-content');
-                                                contentDiv.insertBefore(thinkingContainer, textContainer || contentDiv.firstChild);
+                                            if (item.thinking) {
+                                                fullThinking += item.thinking;
+                                                let thinkingContainer = contentDiv.querySelector('.thinking-content');
+                                                if (!thinkingContainer) {
+                                                    thinkingContainer = document.createElement('div');
+                                                    thinkingContainer.className = 'thinking-content bg-blue-50 p-3 rounded-md border-l-4 border-blue-500 mb-2 italic';
+                                                    // Always insert thinking before any text content so it appears on top
+                                                    const textContainer = contentDiv.querySelector('.text-content');
+                                                    contentDiv.insertBefore(thinkingContainer, textContainer || contentDiv.firstChild);
+                                                }
+                                                thinkingContainer.textContent = `💭 ${fullThinking}`;
                                             }
-                                            thinkingContainer.textContent = `💭 ${fullThinking}`;
+                                        } else if (item.type === 'inline_thinking') {
+                                            // Ignore thinking inline data
+                                            continue;
                                         } else if (item.type === 'partial_tool_call') {
                                             fullToolName += item.name || '';
                                             fullToolArgs += item.arguments || '';
@@ -470,6 +525,11 @@ def create_chat_app() -> Flask:
                                             toolResultDiv.className = 'bg-green-50 p-3 rounded-md border-l-4 border-green-500 mb-2';
                                             toolResultDiv.innerHTML = `<strong class="text-sm">✅ Tool Result:</strong><br><div class="mt-1 text-xs whitespace-pre-wrap">${escapeHtml(item.text)}</div>`;
                                             contentDiv.appendChild(toolResultDiv);
+                                        } else if (item.type === 'inline_data') {
+                                            const imageDiv = document.createElement('div');
+                                            imageDiv.className = 'mb-3';
+                                            imageDiv.innerHTML = `<img src="data:${item.mime_type || 'image/png'};base64,${item.data}" class="max-w-xs rounded border border-gray-300">`;
+                                            contentDiv.appendChild(imageDiv);
                                         }
                                     }
 

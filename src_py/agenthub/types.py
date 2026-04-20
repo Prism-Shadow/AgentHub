@@ -52,10 +52,23 @@ class ImageContentItem(TypedDict):
     image_url: str
 
 
+class InlineDataContentItem(TypedDict):
+    type: Literal["inline_data"]
+    data: bytes
+    mime_type: str
+    signature: NotRequired[str | bytes]
+
+
 class ThinkingContentItem(TypedDict):
     type: Literal["thinking"]
     thinking: str
     signature: NotRequired[str | bytes]
+
+
+class InlineThinkingContentItem(TypedDict):
+    type: Literal["inline_thinking"]
+    data: bytes
+    mime_type: str
 
 
 class ToolCallContentItem(TypedDict):
@@ -81,9 +94,10 @@ class ToolResultContentItem(TypedDict):
     tool_call_id: str
 
 
-ContentItem = TextContentItem | ImageContentItem | ThinkingContentItem | ToolCallContentItem | ToolResultContentItem
+ContentItem = TextContentItem | ImageContentItem | InlineDataContentItem | ToolCallContentItem | ToolResultContentItem
+ThinkingItem = ThinkingContentItem | InlineThinkingContentItem
 
-PartialContentItem = ContentItem | PartialToolCallContentItem
+PartialContentItem = ContentItem | ThinkingItem | PartialToolCallContentItem
 
 
 class UsageMetadata(TypedDict):
@@ -99,7 +113,7 @@ class UniMessage(TypedDict):
     """Universal message format for LLM communication."""
 
     role: Role
-    content_items: list[ContentItem]
+    content_items: list[PartialContentItem]
     usage_metadata: NotRequired[UsageMetadata | None]
     finish_reason: NotRequired[FinishReason | None]
     created_at: NotRequired[int]
@@ -124,11 +138,19 @@ class ToolSchema(TypedDict):
     parameters: NotRequired[dict[str, Any]]
 
 
+class ImageConfig(TypedDict):
+    """Image generation configuration for models that support image output."""
+
+    aspect_ratio: NotRequired[str]
+    image_size: NotRequired[str]
+
+
 class UniConfig(TypedDict):
     """Universal configuration format for LLM requests."""
 
     max_tokens: NotRequired[int]
     temperature: NotRequired[float]
+    image_config: NotRequired[ImageConfig]
     tools: NotRequired[list[ToolSchema]]
     thinking_summary: NotRequired[bool]
     thinking_level: NotRequired[ThinkingLevel]
