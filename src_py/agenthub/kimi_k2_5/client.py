@@ -243,9 +243,9 @@ class KimiK2_5Client(LLMClient):
                     content_items.append(
                         {
                             "type": "partial_tool_call",
-                            "name": tool_call.function.name,
-                            "arguments": tool_call.function.arguments,
-                            "tool_call_id": tool_call.id,
+                            "name": tool_call.function.name or "",
+                            "arguments": tool_call.function.arguments or "",
+                            "tool_call_id": tool_call.id or "",
                         }
                     )
 

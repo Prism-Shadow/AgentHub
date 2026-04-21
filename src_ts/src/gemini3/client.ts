@@ -263,24 +263,19 @@ export class Gemini3Client extends LLMClient {
             },
           } as Part);
         } else if (item.type === "inline_data") {
-          const part: Part = {
+          parts.push({
             inlineData: {
               mimeType: item.mime_type,
               data: item.data.toString("base64"),
             },
-          } as Part;
-          if (item.signature !== undefined) {
-            part.thoughtSignature = item.signature;
-          }
-          parts.push(part);
+            thoughtSignature: item.signature as string | undefined,
+          } as Part);
         } else if (item.type === "thinking") {
           parts.push({
             text: item.thinking,
             thought: true,
+            thoughtSignature: item.signature as string | undefined,
           } as Part);
-          if (item.signature !== undefined && parts.length > 0) {
-            parts[parts.length - 1].thoughtSignature = item.signature;
-          }
         } else if (item.type === "inline_thinking") {
           parts.push({
             inlineData: {
@@ -288,6 +283,7 @@ export class Gemini3Client extends LLMClient {
               data: item.data.toString("base64"),
             },
             thought: true,
+            thoughtSignature: item.signature as string | undefined,
           } as Part);
         } else if (item.type === "tool_call") {
           const functionCall: FunctionCall = {
@@ -365,38 +361,28 @@ export class Gemini3Client extends LLMClient {
             tool_call_id: part.functionCall.name || "",
             signature: part.thoughtSignature as string | undefined,
           });
-        } else if (part.thought && part.text !== undefined) {
-          const thinkingItem: PartialContentItem = {
-            type: "thinking",
-            thinking: part.text,
-          };
-          if (part.thoughtSignature !== undefined) {
-            thinkingItem.signature = part.thoughtSignature as
-              | string
-              | undefined;
+        } else if (part.thought) {
+          if (part.text !== undefined) {
+            contentItems.push({
+              type: "thinking",
+              thinking: part.text,
+              signature: part.thoughtSignature as string | undefined,
+            });
+          } else if (part.inlineData) {
+            contentItems.push({
+              type: "inline_thinking",
+              data: Buffer.from(part.inlineData.data || "", "base64"),
+              mime_type: part.inlineData.mimeType || "application/octet-stream",
+              signature: part.thoughtSignature as string | undefined,
+            });
           }
-          contentItems.push(thinkingItem);
-        } else if (
-          part.thought &&
-          part.inlineData &&
-          part.thoughtSignature === undefined
-        ) {
-          contentItems.push({
-            type: "inline_thinking",
-            data: Buffer.from(part.inlineData.data || "", "base64"),
-            mime_type: part.inlineData.mimeType || "application/octet-stream",
-          });
         } else if (part.inlineData) {
-          const contentItem: PartialContentItem = {
+          contentItems.push({
             type: "inline_data",
             data: Buffer.from(part.inlineData.data || "", "base64"),
             mime_type: part.inlineData.mimeType || "application/octet-stream",
-          };
-          if (part.thoughtSignature !== undefined) {
-            (contentItem as { signature?: string }).signature =
-              part.thoughtSignature as string | undefined;
-          }
-          contentItems.push(contentItem);
+            signature: part.thoughtSignature as string | undefined,
+          });
         } else if (part.text !== undefined) {
           contentItems.push({
             type: "text",
