@@ -407,12 +407,11 @@ export function createChatApp(): Express {
                       if (done) break;
 
                       const chunk = decoder.decode(value);
-                      if (chunk.startsWith('data: ')) buffer = '';
                       buffer += chunk;
                       if (!buffer.endsWith('\\n\\n')) continue;
 
                       const lines = buffer.split('\\n');
-
+                      buffer = '';
                       for (const line of lines) {
                           if (line.startsWith('data: ')) {
                               const data = line.slice(6);
