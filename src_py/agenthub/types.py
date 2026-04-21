@@ -38,6 +38,8 @@ ToolChoice = Literal["auto", "required", "none"] | list[str]
 Role = Literal["user", "assistant"]
 EventType = Literal["start", "delta", "stop", "unused"]
 FinishReason = Literal["stop", "length", "tool_call", "unknown"]
+AspectRatio = Literal["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"]
+ImageSize = Literal["1K", "2K"]
 
 
 class TextContentItem(TypedDict):
@@ -69,6 +71,7 @@ class InlineThinkingContentItem(TypedDict):
     type: Literal["inline_thinking"]
     data: bytes
     mime_type: str
+    signature: NotRequired[str | bytes]
 
 
 class ToolCallContentItem(TypedDict):
@@ -94,10 +97,17 @@ class ToolResultContentItem(TypedDict):
     tool_call_id: str
 
 
-ContentItem = TextContentItem | ImageContentItem | InlineDataContentItem | ToolCallContentItem | ToolResultContentItem
-ThinkingItem = ThinkingContentItem | InlineThinkingContentItem
+ContentItem = (
+    TextContentItem
+    | ImageContentItem
+    | InlineDataContentItem
+    | ThinkingContentItem
+    | InlineThinkingContentItem
+    | ToolCallContentItem
+    | ToolResultContentItem
+)
 
-PartialContentItem = ContentItem | ThinkingItem | PartialToolCallContentItem
+PartialContentItem = ContentItem | PartialToolCallContentItem
 
 
 class UsageMetadata(TypedDict):
@@ -113,7 +123,7 @@ class UniMessage(TypedDict):
     """Universal message format for LLM communication."""
 
     role: Role
-    content_items: list[PartialContentItem]
+    content_items: list[ContentItem]
     usage_metadata: NotRequired[UsageMetadata | None]
     finish_reason: NotRequired[FinishReason | None]
     created_at: NotRequired[int]
@@ -141,8 +151,8 @@ class ToolSchema(TypedDict):
 class ImageConfig(TypedDict):
     """Image generation configuration for models that support image output."""
 
-    aspect_ratio: NotRequired[str]
-    image_size: NotRequired[str]
+    aspect_ratio: NotRequired[AspectRatio]
+    image_size: NotRequired[ImageSize]
 
 
 class UniConfig(TypedDict):
@@ -150,11 +160,11 @@ class UniConfig(TypedDict):
 
     max_tokens: NotRequired[int]
     temperature: NotRequired[float]
-    image_config: NotRequired[ImageConfig]
     tools: NotRequired[list[ToolSchema]]
     thinking_summary: NotRequired[bool]
     thinking_level: NotRequired[ThinkingLevel]
     tool_choice: NotRequired[ToolChoice]
     system_prompt: NotRequired[str]
     prompt_caching: NotRequired[PromptCaching]
+    image_config: NotRequired[ImageConfig]
     trace_id: NotRequired[str]

@@ -169,8 +169,7 @@ class Tracer:
                 if item["type"] == "text":
                     lines.append(f"Text: {item['text']}")
                 elif item["type"] == "thinking":
-                    if item.get("thinking"):
-                        lines.append(f"Thinking: {item['thinking']}")
+                    lines.append(f"Thinking: {item['thinking']}")
                 elif item["type"] == "inline_thinking":
                     lines.append(self._format_inline_data_summary(item, is_thinking=True))
                 elif item["type"] == "image_url":
@@ -374,11 +373,7 @@ class Tracer:
                                     {% if item.type == 'text' %}
                                         <div class="bg-gray-50 p-4 rounded-md font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.text|e }}</div>
                                     {% elif item.type == 'thinking' %}
-                                        <div class="space-y-3">
-                                            {% if item.thinking %}
-                                                <div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.thinking|e }}</div>
-                                            {% endif %}
-                                        </div>
+                                        <div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item.thinking|e }}</div>
                                     {% elif item.type == 'inline_thinking' %}
                                         <div class="bg-blue-50 border-blue-500 p-4 rounded-md border-l-4">
                                             <div class="text-xs text-blue-700 mb-2">{{ item|inline_thinking_summary }}</div>

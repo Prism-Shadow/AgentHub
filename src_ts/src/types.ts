@@ -35,6 +35,16 @@ export type ToolChoice = ("auto" | "required" | "none") | string[];
 export type Role = "user" | "assistant";
 export type EventType = "start" | "delta" | "stop" | "unused";
 export type FinishReason = "stop" | "length" | "tool_call" | "unknown";
+export type AspectRatio =
+  | "1:1"
+  | "2:3"
+  | "3:2"
+  | "3:4"
+  | "4:3"
+  | "9:16"
+  | "16:9"
+  | "21:9";
+export type ImageSize = "1K" | "2K";
 
 export interface TextContentItem {
   type: "text";
@@ -66,6 +76,7 @@ export interface InlineThinkingContentItem {
   type: "inline_thinking";
   data: Buffer;
   mime_type: string;
+  signature?: string;
 }
 
 export interface ToolCallContentItem {
@@ -96,15 +107,12 @@ export type ContentItem =
   | TextContentItem
   | ImageContentItem
   | InlineDataContentItem
+  | ThinkingContentItem
+  | InlineThinkingContentItem
   | ToolCallContentItem
   | ToolResultContentItem;
 
-export type ThinkingItem = ThinkingContentItem | InlineThinkingContentItem;
-
-export type PartialContentItem =
-  | ContentItem
-  | ThinkingItem
-  | PartialToolCallContentItem;
+export type PartialContentItem = ContentItem | PartialToolCallContentItem;
 
 /**
  * Usage metadata for model response.
@@ -121,7 +129,7 @@ export interface UsageMetadata {
  */
 export interface UniMessage {
   role: Role;
-  content_items: PartialContentItem[];
+  content_items: ContentItem[];
   usage_metadata?: UsageMetadata | null;
   finish_reason?: FinishReason | null;
   created_at?: number;
@@ -153,8 +161,8 @@ export interface ToolSchema {
  * Image generation configuration for models that support image output.
  */
 export interface ImageConfig {
-  aspect_ratio?: string;
-  image_size?: string;
+  aspect_ratio?: AspectRatio;
+  image_size?: ImageSize;
 }
 
 /**
@@ -163,12 +171,12 @@ export interface ImageConfig {
 export interface UniConfig {
   max_tokens?: number;
   temperature?: number;
-  image_config?: ImageConfig;
   tools?: ToolSchema[];
   thinking_summary?: boolean;
   thinking_level?: ThinkingLevel;
   tool_choice?: ToolChoice;
   system_prompt?: string;
   prompt_caching?: PromptCaching;
+  image_config?: ImageConfig;
   trace_id?: string;
 }

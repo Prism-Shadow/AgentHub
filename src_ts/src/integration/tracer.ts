@@ -203,9 +203,7 @@ export class Tracer {
         if (item.type === "text") {
           lines.push(`Text: ${item.text}`);
         } else if (item.type === "thinking") {
-          if (item.thinking) {
-            lines.push(`Thinking: ${item.thinking}`);
-          }
+          lines.push(`Thinking: ${item.thinking}`);
         } else if (item.type === "inline_thinking") {
           lines.push(this._formatInlineDataSummary(item, true));
         } else if (item.type === "image_url") {
@@ -479,12 +477,7 @@ export class Tracer {
                     if (item.type === "text") {
                       itemHtml += `<div class="bg-gray-50 p-4 rounded-md font-mono text-sm whitespace-pre-wrap text-gray-800">${this._escapeHtml(item.text)}</div>`;
                     } else if (item.type === "thinking") {
-                      let thinkingHtml = `<div class="space-y-3">`;
-                      if (item.thinking) {
-                        thinkingHtml += `<div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 font-mono text-sm whitespace-pre-wrap text-gray-800">${this._escapeHtml(item.thinking)}</div>`;
-                      }
-                      thinkingHtml += `</div>`;
-                      itemHtml += thinkingHtml;
+                      itemHtml += `<div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 font-mono text-sm whitespace-pre-wrap text-gray-800">${this._escapeHtml(item.thinking)}</div>`;
                     } else if (item.type === "inline_thinking") {
                       const summary = this._formatInlineDataSummary(item, true);
                       itemHtml += `<div class="bg-blue-50 border-blue-500 p-4 rounded-md border-l-4"><div class="text-xs text-blue-700 mb-2">${this._escapeHtml(summary)}</div>`;

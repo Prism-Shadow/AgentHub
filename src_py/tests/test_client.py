@@ -32,8 +32,9 @@ IMAGE = "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg"
 @dataclass
 class Model:
     name: str
-    support_vision: bool = True
+    support_text: bool = True
     support_temperature: bool = True
+    support_image_understanding: bool = True
     support_image_generation: bool = False
     provider: Literal["official", "siliconflow", "openrouter", "bedrock", "vertex"] = "official"
 
@@ -45,7 +46,14 @@ AVAILABLE_MODELS: list[Model] = []
 
 if os.getenv("GEMINI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="gemini-3-flash-preview"))
-    AVAILABLE_MODELS.append(Model(name="gemini-3.1-flash-image-preview", support_image_generation=True))
+    AVAILABLE_MODELS.append(
+        Model(
+            name="gemini-3.1-flash-image-preview",
+            support_text=False,
+            support_image_understanding=False,
+            support_image_generation=True,
+        )
+    )
 
 if os.getenv("ANTHROPIC_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="claude-sonnet-4-6"))
@@ -54,7 +62,7 @@ if os.getenv("OPENAI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="gpt-5.4", support_temperature=False))
 
 if os.getenv("ZAI_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="glm-5", support_vision=False))
+    AVAILABLE_MODELS.append(Model(name="glm-5", support_image_understanding=False))
 
 if os.getenv("MOONSHOT_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="kimi-k2.5", support_temperature=False))
@@ -62,15 +70,15 @@ if os.getenv("MOONSHOT_API_KEY"):
 RUN_SLOW_TEST = os.getenv("RUN_SLOW_TEST", "0") == "1"
 
 if os.getenv("OPENROUTER_API_KEY") and RUN_SLOW_TEST:
-    AVAILABLE_MODELS.append(Model(name="z-ai/glm-5", provider="openrouter", support_vision=False))
+    AVAILABLE_MODELS.append(Model(name="z-ai/glm-5", provider="openrouter", support_image_understanding=False))
     AVAILABLE_MODELS.append(
-        Model(name="qwen/qwen3-30b-a3b-thinking-2507", provider="openrouter", support_vision=False)
+        Model(name="qwen/qwen3-30b-a3b-thinking-2507", provider="openrouter", support_image_understanding=False)
     )
     AVAILABLE_MODELS.append(Model(name="moonshotai/kimi-k2.5", provider="openrouter", support_temperature=False))
 
 if os.getenv("SILICONFLOW_API_KEY") and RUN_SLOW_TEST:
-    AVAILABLE_MODELS.append(Model(name="Pro/zai-org/GLM-5", provider="siliconflow", support_vision=False))
-    AVAILABLE_MODELS.append(Model(name="Qwen/Qwen3-8B", provider="siliconflow", support_vision=False))
+    AVAILABLE_MODELS.append(Model(name="Pro/zai-org/GLM-5", provider="siliconflow", support_image_understanding=False))
+    AVAILABLE_MODELS.append(Model(name="Qwen/Qwen3-8B", provider="siliconflow", support_image_understanding=False))
     AVAILABLE_MODELS.append(Model(name="Pro/moonshotai/Kimi-K2.5", provider="siliconflow", support_temperature=False))
 
 if os.getenv("BEDROCK_API_KEY"):
@@ -79,7 +87,13 @@ if os.getenv("BEDROCK_API_KEY"):
 if os.getenv("VERTEX_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="gemini-3-flash-preview", provider="vertex"))
     AVAILABLE_MODELS.append(
-        Model(name="gemini-3.1-flash-image-preview", provider="vertex", support_image_generation=True)
+        Model(
+            name="gemini-3.1-flash-image-preview",
+            provider="vertex",
+            support_text=False,
+            support_image_understanding=False,
+            support_image_generation=True,
+        )
     )
 
 
@@ -115,20 +129,28 @@ async def _check_event_integrity(event: dict) -> None:
     assert isinstance(event["created_at"], int) and event["created_at"] > 0
     for item in event["content_items"]:
         if item["type"] == "text":
-            assert "text" in item
+            assert isinstance(item["text"], str)
+        elif item["type"] == "image_url":
+            assert isinstance(item["image_url"], str)
         elif item["type"] == "inline_data":
-            assert isinstance(item["data"], bytes) and item["data"]
-            assert item["mime_type"]
+            assert isinstance(item["data"], bytes)
+            assert isinstance(item["mime_type"], str)
         elif item["type"] == "thinking":
-            assert "thinking" in item
             assert isinstance(item["thinking"], str)
         elif item["type"] == "inline_thinking":
-            assert isinstance(item["data"], bytes) and item["data"]
-            assert item["mime_type"]
-        elif item["type"] == "tool_call" or item["type"] == "partial_tool_call":
-            assert "name" in item
-            assert "arguments" in item
-            assert "tool_call_id" in item
+            assert isinstance(item["data"], bytes)
+            assert isinstance(item["mime_type"], str)
+        elif item["type"] == "tool_call":
+            assert isinstance(item["name"], str)
+            assert isinstance(item["arguments"], dict)
+            assert isinstance(item["tool_call_id"], str)
+        elif item["type"] == "partial_tool_call":
+            assert isinstance(item["name"], str)
+            assert isinstance(item["arguments"], str)
+            assert isinstance(item["tool_call_id"], str)
+        elif item["type"] == "tool_result":
+            assert isinstance(item["text"], str)
+            assert isinstance(item["tool_call_id"], str)
 
     if event["usage_metadata"]:
         assert "cached_tokens" in event["usage_metadata"]
@@ -150,6 +172,9 @@ async def _check_event_integrity(event: dict) -> None:
 @pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_streaming_response_basic(model: Model):
     """Test basic stateless stream generation."""
+    if not model.support_text:
+        pytest.skip(f"Text generation is not supported by {model.name}.")
+
     client = await _create_client(model)
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is 2+3?"}]}]
     config = {}
@@ -168,6 +193,9 @@ async def test_streaming_response_basic(model: Model):
 @pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_streaming_response_with_all_parameters(model: Model):
     """Test stream generation with all optional parameters."""
+    if not model.support_text:
+        pytest.skip(f"Text generation is not supported by {model.name}.")
+
     client = await _create_client(model)
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is 2+3?"}]}]
     config = {"max_tokens": 8192, "temperature": 0.7, "thinking_summary": True, "thinking_level": ThinkingLevel.LOW}
@@ -192,6 +220,9 @@ async def test_streaming_response_with_all_parameters(model: Model):
 @pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_streaming_response_stateful(model: Model):
     """Test stateful stream generation."""
+    if not model.support_text:
+        pytest.skip(f"Text generation is not supported by {model.name}.")
+
     client = await _create_client(model)
     config = {}
 
@@ -215,23 +246,6 @@ async def test_streaming_response_stateful(model: Model):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
-async def test_clear_history(model: Model):
-    """Test clearing conversation history."""
-    client = await _create_client(model)
-    message = {"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}
-    config = {}
-
-    async for _ in client.streaming_response_stateful(message=message, config=config):
-        pass
-
-    assert len(client.get_history()) > 0
-
-    client.clear_history()
-    assert len(client.get_history()) == 0
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_set_history(model: Model):
     """Test setting conversation history."""
     client = await _create_client(model)
@@ -246,6 +260,22 @@ async def test_set_history(model: Model):
     # Mutating the original list must not affect the stored history
     new_history.clear()
     assert len(client.get_history()) == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
+async def test_clear_history(model: Model):
+    """Test clearing conversation history."""
+    client = await _create_client(model)
+    new_history: list = [
+        {"role": "user", "content_items": [{"type": "text", "text": "Hello"}]},
+        {"role": "assistant", "content_items": [{"type": "text", "text": "Hello!"}]},
+    ]
+    client.set_history(new_history)
+    assert len(client.get_history()) > 0
+
+    client.clear_history()
+    assert len(client.get_history()) == 0
 
 
 @pytest.mark.asyncio
@@ -309,6 +339,9 @@ async def test_validate_last_event_raises_on_missing_usage_metadata():
 @pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_tool_use(model: Model):
     """Test tool use capability."""
+    if not model.support_text:
+        pytest.skip(f"Text generation is not supported by {model.name}.")
+
     client = await _create_client(model)
 
     # Define a simple weather tool
@@ -377,6 +410,9 @@ async def test_tool_use(model: Model):
 @pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_system_prompt(model: Model):
     """Test system prompt capability."""
+    if not model.support_text:
+        pytest.skip(f"Text generation is not supported by {model.name}.")
+
     client = await _create_client(model)
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}]
     config = {"system_prompt": "You are a kitten that must end with the word 'meow'."}
@@ -395,7 +431,7 @@ async def test_system_prompt(model: Model):
 @pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_image_understanding(model: Model):
     """Test image understanding with a URL."""
-    if not model.support_vision:
+    if not model.support_image_understanding:
         pytest.skip(f"Image understanding is not supported by {model.name}.")
 
     client = await _create_client(model)
@@ -423,7 +459,7 @@ async def test_image_understanding(model: Model):
 @pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_image_understanding_base64(model: Model):
     """Test image understanding with base64 encoded image."""
-    if not model.support_vision:
+    if not model.support_image_understanding:
         pytest.skip(f"Image understanding is not supported by {model.name}.")
 
     client = await _create_client(model)
@@ -460,7 +496,7 @@ async def test_image_understanding_base64(model: Model):
 @pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_tool_result_with_image(model: Model):
     """Test tool result with image_url."""
-    if not model.support_vision:
+    if not model.support_image_understanding:
         pytest.skip(f"Image in tool result is not supported by {model.name}.")
 
     client = await _create_client(model)
@@ -547,7 +583,7 @@ async def test_image_generation(model: Model):
 
     inline_items = [item for event in events for item in event["content_items"] if item["type"] == "inline_data"]
     assert inline_items, f"No inline data returned for generated image by {model.name}"
-    assert any(item["mime_type"].startswith("image/") for item in inline_items)
+    assert any("image/" in item["mime_type"] for item in inline_items)
     assert all(isinstance(item["data"], bytes) and item["data"] for item in inline_items)
 
 

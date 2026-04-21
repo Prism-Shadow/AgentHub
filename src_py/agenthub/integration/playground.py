@@ -168,38 +168,6 @@ def create_chat_app() -> Flask:
                     <input type="text" id="traceIdInput" placeholder="e.g., session_001" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="flex flex-col">
-                    <label class="text-sm font-semibold text-gray-900 mb-1" for="aspectRatioSelect">Image Aspect Ratio</label>
-                    <select id="aspectRatioSelect" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Unspecified</option>
-                        <option value="1:1">1:1</option>
-                        <option value="1:4">1:4</option>
-                        <option value="1:8">1:8</option>
-                        <option value="2:3">2:3</option>
-                        <option value="3:2">3:2</option>
-                        <option value="3:4">3:4</option>
-                        <option value="4:1">4:1</option>
-                        <option value="4:3">4:3</option>
-                        <option value="4:5">4:5</option>
-                        <option value="5:4">5:4</option>
-                        <option value="8:1">8:1</option>
-                        <option value="9:16">9:16</option>
-                        <option value="16:9">16:9</option>
-                        <option value="21:9">21:9</option>
-                    </select>
-                </div>
-                <div class="flex flex-col">
-                    <label class="text-sm font-semibold text-gray-900 mb-1" for="imageSizeSelect">Image Size</label>
-                    <select id="imageSizeSelect" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Unspecified</option>
-                        <option value="512">512</option>
-                        <option value="1K">1K</option>
-                        <option value="2K">2K</option>
-                        <option value="4K">4K</option>
-                    </select>
-                </div>
-            </div>
         </div>
 
         <div class="flex-1 overflow-y-auto px-6 py-6" id="messagesContainer">
@@ -338,18 +306,6 @@ def create_chat_app() -> Flask:
                 const traceId = document.getElementById('traceIdInput').value.trim();
                 if (traceId) {
                     config.trace_id = traceId;
-                }
-
-                const aspectRatio = document.getElementById('aspectRatioSelect').value;
-                const imageSize = document.getElementById('imageSizeSelect').value;
-                if (aspectRatio || imageSize) {
-                    config.image_config = {};
-                    if (aspectRatio) {
-                        config.image_config.aspect_ratio = aspectRatio;
-                    }
-                    if (imageSize) {
-                        config.image_config.image_size = imageSize;
-                    }
                 }
 
                 return config;
@@ -495,18 +451,16 @@ def create_chat_app() -> Flask:
                                             }
                                             textContainer.textContent = fullResponse;
                                         } else if (item.type === 'thinking') {
-                                            if (item.thinking) {
-                                                fullThinking += item.thinking;
-                                                let thinkingContainer = contentDiv.querySelector('.thinking-content');
-                                                if (!thinkingContainer) {
-                                                    thinkingContainer = document.createElement('div');
-                                                    thinkingContainer.className = 'thinking-content bg-blue-50 p-3 rounded-md border-l-4 border-blue-500 mb-2 italic';
-                                                    // Always insert thinking before any text content so it appears on top
-                                                    const textContainer = contentDiv.querySelector('.text-content');
-                                                    contentDiv.insertBefore(thinkingContainer, textContainer || contentDiv.firstChild);
-                                                }
-                                                thinkingContainer.textContent = `💭 ${fullThinking}`;
+                                            fullThinking += item.thinking;
+                                            let thinkingContainer = contentDiv.querySelector('.thinking-content');
+                                            if (!thinkingContainer) {
+                                                thinkingContainer = document.createElement('div');
+                                                thinkingContainer.className = 'thinking-content bg-blue-50 p-3 rounded-md border-l-4 border-blue-500 mb-2 italic';
+                                                // Always insert thinking before any text content so it appears on top
+                                                const textContainer = contentDiv.querySelector('.text-content');
+                                                contentDiv.insertBefore(thinkingContainer, textContainer || contentDiv.firstChild);
                                             }
+                                            thinkingContainer.textContent = `💭 ${fullThinking}`;
                                         } else if (item.type === 'inline_thinking') {
                                             // Ignore thinking inline data
                                             continue;

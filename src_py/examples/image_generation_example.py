@@ -24,7 +24,6 @@ import asyncio
 import os
 from io import BytesIO
 from pathlib import Path
-from typing import Any
 
 from PIL import Image
 
@@ -32,21 +31,6 @@ from agenthub import AutoLLMClient, ThinkingLevel
 
 
 CAT_IMAGE_URL = "https://images.unsplash.com/photo-1519052537078-e6302a4968d4?auto=format&fit=crop&w=800&q=80"
-
-
-def without_binary_data(obj: Any) -> Any:
-    """Return a copy of an object with bytes values redacted."""
-
-    def _replace_bytes(value: Any) -> Any:
-        if isinstance(value, bytes):
-            return b"hidden_binary_data"
-        if isinstance(value, dict):
-            return {key: _replace_bytes(child) for key, child in value.items()}
-        if isinstance(value, list):
-            return [_replace_bytes(child) for child in value]
-        return value
-
-    return _replace_bytes(obj)
 
 
 async def main() -> None:
@@ -64,8 +48,6 @@ async def main() -> None:
     print("Assistant:")
 
     config = {
-        # "aspect_ratio": "1:1","1:4","1:8","2:3","3:2","3:4","4:1","4:3","4:5","5:4","8:1","9:16","16:9","21:9"
-        # "image_size": "512", "1K", "2K", "4K"
         "image_config": {"aspect_ratio": "16:9", "image_size": "1K"},
         "thinking_summary": True,
         "thinking_level": ThinkingLevel.HIGH,
@@ -85,7 +67,6 @@ async def main() -> None:
         ],
         config=config,
     ):
-        print(without_binary_data(event))
         for item in event["content_items"]:
             if item["type"] == "text":
                 print(f"Text: {item['text']}")

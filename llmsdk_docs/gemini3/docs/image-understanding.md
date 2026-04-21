@@ -1,5 +1,13 @@
-Gemini models are built to be multimodal from the ground up, unlocking a wide range of image processing and computer vision tasks including but not limited to image captioning, classification, and visual question answering without having to train specialized ML models.
-| **Tip:** In addition to their general multimodal capabilities, Gemini models (2.0 and newer) offer **improved accuracy** for specific use cases like [object detection](https://ai.google.dev/gemini-api/docs/image-understanding#object-detection) and [segmentation](https://ai.google.dev/gemini-api/docs/image-understanding#segmentation), through additional training. See the [Capabilities](https://ai.google.dev/gemini-api/docs/image-understanding#capabilities) section for more details.
+# Image understanding
+
+Gemini models are built to be multimodal from the ground up, unlocking a wide
+range of image processing and computer vision tasks including but not limited to
+image captioning, classification, and visual question answering without having
+to train specialized ML models.
+
+In addition to their general multimodal capabilities, Gemini models offer
+**enhanced accuracy** for specific use cases like [object detection](https://ai.google.dev/gemini-api/docs/image-understanding#object-detection) and [segmentation](https://ai.google.dev/gemini-api/docs/image-understanding#segmentation), through additional
+training.
 
 ## Passing images to Gemini
 
@@ -15,7 +23,7 @@ request to `generateContent`. You can provide image data as Base64 encoded
 strings or by reading local files directly (depending on the language).
 
 The following example shows how to read an image from a local file and pass
-it to `generateContent` API for processing.  
+it to `generateContent` API for processing.
 
 ### Python
 
@@ -116,7 +124,7 @@ it to `generateContent` API for processing.
     }' 2> /dev/null
 
 You can also fetch an image from a URL, convert it to bytes, and pass it to
-`generateContent` as shown in the following examples.  
+`generateContent` as shown in the following examples.
 
 ### Python
 
@@ -250,14 +258,15 @@ You can also fetch an image from a URL, convert it to bytes, and pass it to
           }]
         }' 2> /dev/null
 
-| **Note:** Inline image data limits your total request size (text prompts, system instructions, and inline bytes) to 20MB. For larger requests, [upload image files](https://ai.google.dev/gemini-api/docs/image-understanding#upload-image) using the File API. Files API is also more efficient for scenarios that use the same image repeatedly.
+> [!NOTE]
+> **Note:** Inline image data limits your total request size (text prompts, system instructions, and inline bytes) to 20MB. For larger requests, [upload image files](https://ai.google.dev/gemini-api/docs/image-understanding#upload-image) using the File API. Files API is also more efficient for scenarios that use the same image repeatedly.
 
 ### Uploading images using the File API
 
 For large files or to be able to use the same image file repeatedly, use the
 Files API. The following code uploads an image file and then uses the file in a
 call to `generateContent`. See the [Files API guide](https://ai.google.dev/gemini-api/docs/files) for
-more information and examples.  
+more information and examples.
 
 ### Python
 
@@ -398,7 +407,7 @@ more information and examples.
 
 You can provide multiple images in a single prompt by including multiple image
 `Part` objects in the `contents` array. These can be a mix of inline data
-(local files or URLs) and File API references.  
+(local files or URLs) and File API references.
 
 ### Python
 
@@ -577,10 +586,10 @@ You can provide multiple images in a single prompt by including multiple image
 
 ## Object detection
 
-From Gemini 2.0 onwards, models are further trained to detect objects in an
+Models are trained to detect objects in an
 image and get their bounding box coordinates. The coordinates, relative to image
 dimensions, scale to \[0, 1000\]. You need to descale these coordinates based on
-your original image size.  
+your original image size.
 
 ### Python
 
@@ -617,7 +626,8 @@ your original image size.
     print("Image size: ", width, height)
     print("Bounding boxes:", converted_bounding_boxes)
 
-| **Note:** The model also supports generating bounding boxes based on custom instructions, such as: "Show bounding boxes of all green objects in this image". It also support custom labels like "label the items with the allergens they can contain".
+> [!NOTE]
+> **Note:** The model also supports generating bounding boxes based on custom instructions, such as: "Show bounding boxes of all green objects in this image". It also support custom labels like "label the items with the allergens they can contain".
 
 For more examples, check following notebooks in the [Gemini Cookbook](https://github.com/google-gemini/cookbook):
 
@@ -636,7 +646,9 @@ the object, and finally the segmentation mask inside the bounding box, as base64
 encoded png that is a probability map with values between 0 and 255.
 The mask needs to be resized to match the bounding box dimensions, then
 binarized at your confidence threshold (127 for the midpoint).
-**Note:** For better results, disable [thinking](https://ai.google.dev/gemini-api/docs/thinking) by setting the thinking budget to 0. See code sample below for an example.  
+
+> [!NOTE]
+> **Note:** For better results, disable [thinking](https://ai.google.dev/gemini-api/docs/thinking) by setting the thinking budget to 0. See code sample below for an example.
 
 ### Python
 
@@ -770,23 +782,19 @@ visual question and answering, image classification, object detection and segmen
 
 Gemini can reduce the need to use specialized ML models depending on your quality and performance requirements.
 
-Some later model versions are specifically trained improve accuracy of specialized tasks in addition to generic capabilities:
-
-- **Gemini 2.0 models** are further trained to support enhanced [object detection](https://ai.google.dev/gemini-api/docs/image-understanding#object-detection).
-
-- **Gemini 2.5 models** are further trained to support enhanced [segmentation](https://ai.google.dev/gemini-api/docs/image-understanding#segmentation) in addition to [object detection](https://ai.google.dev/gemini-api/docs/image-understanding#object-detection).
+The latest model versions are specifically trained improve accuracy of
+specialized tasks in addition to generic capabilities, like enhanced
+[object detection](https://ai.google.dev/gemini-api/docs/image-understanding#object-detection) and [segmentation](https://ai.google.dev/gemini-api/docs/image-understanding#segmentation).
 
 ## Limitations and key technical information
 
 ### File limit
 
-Gemini 2.5 Pro/Flash, 2.0 Flash, 1.5 Pro, and 1.5 Flash support a
-maximum of 3,600 image files per request.
+Gemini models support a maximum of 3,600 image files per request.
 
 ### Token calculation
 
-- **Gemini 1.5 Flash and Gemini 1.5 Pro**: 258 tokens if both dimensions \<= 384 pixels. Larger images are tiled (min tile 256px, max 768px, resized to 768x768), with each tile costing 258 tokens.
-- **Gemini 2.0 Flash and Gemini 2.5 Flash/Pro**: 258 tokens if both dimensions \<= 384 pixels. Larger images are tiled into 768x768 pixel tiles, each costing 258 tokens.
+- 258 tokens if both dimensions \<= 384 pixels. Larger images are tiled into 768x768 pixel tiles, each costing 258 tokens.
 
 A rough formula for calculating the number of tiles is as follows:
 
