@@ -245,18 +245,18 @@ class Gemini3Client(LLMClient):
                     )
                 elif part.thought:
                     if part.text is not None:
-                        content_item = {"type": "thinking", "thinking": part.text}
+                        content_items.append(
+                            {"type": "thinking", "thinking": part.text, "signature": part.thought_signature}
+                        )
                     elif part.inline_data is not None:
-                        content_item = {
-                            "type": "inline_thinking",
-                            "data": part.inline_data.data,
-                            "mime_type": part.inline_data.mime_type,
-                        }
-
-                    if part.thought_signature is not None:
-                        content_item["signature"] = part.thought_signature
-
-                    content_items.append(content_item)
+                        content_items.append(
+                            {
+                                "type": "inline_thinking",
+                                "data": part.inline_data.data,
+                                "mime_type": part.inline_data.mime_type,
+                                "signature": part.thought_signature,
+                            }
+                        )
                 elif part.inline_data is not None:
                     content_items.append(
                         {
