@@ -17,11 +17,15 @@ import {
   Content,
   GenerateContentConfig,
   ImageConfig as GeminiImageConfig,
+  MultiSpeakerVoiceConfig,
   Part,
+  PrebuiltVoiceConfig,
   FunctionCall,
   ThinkingConfig,
   ThinkingLevel as GeminiThinkingLevel,
   FunctionCallingConfig,
+  SpeakerVoiceConfig,
+  SpeechConfig,
   Tool,
   ToolConfig,
   GenerateContentResponse,
@@ -29,6 +33,7 @@ import {
   FunctionResponsePart,
   FunctionResponseBlob,
   FunctionResponse,
+  VoiceConfig,
 } from "@google/genai";
 import * as path from "path";
 import { LLMClient } from "../baseClient";
@@ -197,6 +202,49 @@ export class Gemini3Client extends LLMClient {
         aspectRatio: config.image_config.aspect_ratio,
         imageSize: config.image_config.image_size,
       } as GeminiImageConfig;
+    }
+
+    if (config.tts_config !== undefined) {
+      const speakerVoices = config.tts_config.speaker_voices || [];
+      if (![1, 2].includes(speakerVoices.length)) {
+        throw new Error(
+          "tts_config.speaker_voices must contain 1 or 2 entries.",
+        );
+      }
+
+      configParams.responseModalities = ["AUDIO"];
+      if (speakerVoices.length === 1) {
+        configParams.speechConfig = {
+          voiceConfig: {
+            prebuiltVoiceConfig: {
+              voiceName: speakerVoices[0].voice,
+            } as PrebuiltVoiceConfig,
+          } as VoiceConfig,
+        } as SpeechConfig;
+      } else {
+        const speakerVoiceConfigs = speakerVoices.map((speakerConfig) => {
+          if (!speakerConfig.speaker) {
+            throw new Error(
+              "speaker is required when tts_config.speaker_voices has 2 entries.",
+            );
+          }
+
+          return {
+            speaker: speakerConfig.speaker,
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName: speakerConfig.voice,
+              } as PrebuiltVoiceConfig,
+            } as VoiceConfig,
+          } as SpeakerVoiceConfig;
+        });
+
+        configParams.speechConfig = {
+          multiSpeakerVoiceConfig: {
+            speakerVoiceConfigs,
+          } as MultiSpeakerVoiceConfig,
+        } as SpeechConfig;
+      }
     }
 
     const thinkingSummary = config.thinking_summary;
@@ -435,6 +483,17 @@ export class Gemini3Client extends LLMClient {
     messages: UniMessage[];
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
+    if (options.config.tts_config !== undefined) {
+      const invalidItem = options.messages
+        .flatMap((message) => message.content_items)
+        .find((item) => item.type !== "text");
+      if (invalidItem) {
+        throw new Error(
+          `Gemini TTS only supports text input, got content item type=${JSON.stringify(invalidItem.type)}.`,
+        );
+      }
+    }
+
     const geminiConfig = this.transformUniConfigToModelConfig(options.config);
     const contents = await this.transformUniMessageToModelInput(
       options.messages,

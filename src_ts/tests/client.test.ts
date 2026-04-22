@@ -25,6 +25,7 @@ interface Model {
   supportTemperature: boolean;
   supportImageUnderstanding: boolean;
   supportImageGeneration: boolean;
+  supportAudioGeneration: boolean;
   provider: "official" | "siliconflow" | "openrouter" | "bedrock" | "vertex";
 }
 
@@ -37,6 +38,7 @@ if (process.env.GEMINI_API_KEY) {
     supportTemperature: true,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
+    supportAudioGeneration: false,
     provider: "official",
   });
 
@@ -46,6 +48,17 @@ if (process.env.GEMINI_API_KEY) {
     supportTemperature: false,
     supportImageUnderstanding: false,
     supportImageGeneration: true,
+    supportAudioGeneration: false,
+    provider: "official",
+  });
+
+  AVAILABLE_MODELS.push({
+    name: "gemini-3.1-flash-tts-preview",
+    supportTextGeneration: false,
+    supportTemperature: true,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
+    supportAudioGeneration: true,
     provider: "official",
   });
 }
@@ -57,6 +70,7 @@ if (process.env.ANTHROPIC_API_KEY) {
     supportTemperature: true,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
+    supportAudioGeneration: false,
     provider: "official",
   });
 }
@@ -68,6 +82,7 @@ if (process.env.OPENAI_API_KEY) {
     supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
+    supportAudioGeneration: false,
     provider: "official",
   });
 }
@@ -79,6 +94,7 @@ if (process.env.ZAI_API_KEY) {
     supportTemperature: true,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
+    supportAudioGeneration: false,
     provider: "official",
   });
 }
@@ -90,6 +106,7 @@ if (process.env.MOONSHOT_API_KEY) {
     supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
+    supportAudioGeneration: false,
     provider: "official",
   });
 }
@@ -103,6 +120,7 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     supportTemperature: true,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
+    supportAudioGeneration: false,
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
@@ -111,6 +129,7 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     supportTemperature: true,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
+    supportAudioGeneration: false,
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
@@ -119,6 +138,7 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
+    supportAudioGeneration: false,
     provider: "openrouter",
   });
 }
@@ -130,6 +150,7 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
     supportTemperature: true,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
+    supportAudioGeneration: false,
     provider: "siliconflow",
   });
   AVAILABLE_MODELS.push({
@@ -138,6 +159,7 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
     supportTemperature: true,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
+    supportAudioGeneration: false,
     provider: "siliconflow",
   });
   AVAILABLE_MODELS.push({
@@ -146,6 +168,7 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
     supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
+    supportAudioGeneration: false,
     provider: "siliconflow",
   });
 }
@@ -157,6 +180,7 @@ if (process.env.BEDROCK_API_KEY) {
     supportTemperature: true,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
+    supportAudioGeneration: false,
     provider: "bedrock",
   });
 }
@@ -168,6 +192,7 @@ if (process.env.VERTEX_API_KEY) {
     supportTemperature: true,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
+    supportAudioGeneration: false,
     provider: "vertex",
   });
 
@@ -177,6 +202,17 @@ if (process.env.VERTEX_API_KEY) {
     supportTemperature: false,
     supportImageUnderstanding: false,
     supportImageGeneration: true,
+    supportAudioGeneration: false,
+    provider: "vertex",
+  });
+
+  AVAILABLE_MODELS.push({
+    name: "gemini-3.1-flash-tts-preview",
+    supportTextGeneration: false,
+    supportTemperature: true,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
+    supportAudioGeneration: true,
     provider: "vertex",
   });
 }
@@ -426,6 +462,10 @@ if (AVAILABLE_MODELS.length > 0) {
     });
 
     test("should concatenate events to message", async () => {
+      if (!model.supportTextGeneration) {
+        return;
+      }
+
       const client = createClient(model);
       const messages: UniMessage[] = [
         {
@@ -793,6 +833,53 @@ if (AVAILABLE_MODELS.length > 0) {
       expect(inlineItems.length).toBeGreaterThan(0);
       expect(
         inlineItems.some((item) => item.mime_type.startsWith("image/")),
+      ).toBe(true);
+      expect(inlineItems.every((item) => item.data.length > 0)).toBe(true);
+    }, 180000);
+
+    test("should handle tts generation", async () => {
+      if (!model.supportAudioGeneration) {
+        return;
+      }
+
+      const client = createClient(model);
+      const config: UniConfig = {
+        tts_config: {
+          speaker_voices: [{ voice: "Kore" }],
+        },
+      };
+      const messages: UniMessage[] = [
+        {
+          role: "user",
+          content_items: [
+            {
+              type: "text",
+              text: "Say cheerfully: Have a wonderful day!",
+            },
+          ],
+        },
+      ];
+
+      const inlineItems: { data: Buffer; mime_type: string }[] = [];
+      for await (const event of client.streamingResponse({
+        messages,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "inline_data") {
+            inlineItems.push(item);
+          }
+        }
+      }
+
+      expect(inlineItems.length).toBeGreaterThan(0);
+      expect(
+        inlineItems.some(
+          (item) =>
+            item.mime_type.startsWith("audio/") ||
+            item.mime_type === "application/octet-stream",
+        ),
       ).toBe(true);
       expect(inlineItems.every((item) => item.data.length > 0)).toBe(true);
     }, 180000);
