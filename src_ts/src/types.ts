@@ -35,6 +35,16 @@ export type ToolChoice = ("auto" | "required" | "none") | string[];
 export type Role = "user" | "assistant";
 export type EventType = "start" | "delta" | "stop" | "unused";
 export type FinishReason = "stop" | "length" | "tool_call" | "unknown";
+export type AspectRatio =
+  | "1:1"
+  | "2:3"
+  | "3:2"
+  | "3:4"
+  | "4:3"
+  | "9:16"
+  | "16:9"
+  | "21:9";
+export type ImageSize = "1K" | "2K";
 
 export interface TextContentItem {
   type: "text";
@@ -49,9 +59,23 @@ export interface ImageContentItem {
   image_url: string;
 }
 
+export interface InlineDataContentItem {
+  type: "inline_data";
+  data: Buffer;
+  mime_type: string;
+  signature?: string;
+}
+
 export interface ThinkingContentItem {
   type: "thinking";
   thinking: string;
+  signature?: string;
+}
+
+export interface InlineThinkingContentItem {
+  type: "inline_thinking";
+  data: Buffer;
+  mime_type: string;
   signature?: string;
 }
 
@@ -82,7 +106,9 @@ export interface ToolResultContentItem {
 export type ContentItem =
   | TextContentItem
   | ImageContentItem
+  | InlineDataContentItem
   | ThinkingContentItem
+  | InlineThinkingContentItem
   | ToolCallContentItem
   | ToolResultContentItem;
 
@@ -132,6 +158,14 @@ export interface ToolSchema {
 }
 
 /**
+ * Image generation configuration for models that support image output.
+ */
+export interface ImageConfig {
+  aspect_ratio?: AspectRatio;
+  image_size?: ImageSize;
+}
+
+/**
  * Universal configuration format for LLM requests.
  */
 export interface UniConfig {
@@ -143,5 +177,6 @@ export interface UniConfig {
   tool_choice?: ToolChoice;
   system_prompt?: string;
   prompt_caching?: PromptCaching;
+  image_config?: ImageConfig;
   trace_id?: string;
 }

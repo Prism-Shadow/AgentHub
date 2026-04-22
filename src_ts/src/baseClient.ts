@@ -13,8 +13,8 @@
 // limitations under the License.
 
 import {
-  ContentItem,
   FinishReason,
+  ContentItem,
   UniConfig,
   UniEvent,
   UniMessage,

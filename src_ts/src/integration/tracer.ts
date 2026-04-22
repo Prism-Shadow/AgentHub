@@ -80,6 +80,58 @@ export class Tracer {
   }
 
   /**
+   * Format inline_data metadata without emitting raw payloads.
+   *
+   * @param item - inline_data content item
+   * @returns Human-readable summary of the inline payload
+   */
+  private _formatInlineDataSummary(
+    item: {
+      mime_type?: string;
+      data?: Buffer | string;
+    },
+    isThinking?: boolean,
+  ): string {
+    const mimeType = item.mime_type || "application/octet-stream";
+    const data = item.data;
+
+    let byteCount = 0;
+    if (typeof data === "string") {
+      byteCount = Buffer.from(data, "base64").length;
+    } else if (Buffer.isBuffer(data)) {
+      byteCount = data.length;
+    }
+
+    const kbCount = byteCount / 1024;
+    const mbCount = byteCount / (1024 * 1024);
+
+    let label = isThinking ? "Thinking " : "";
+    label += mimeType.startsWith("image/") ? "Inline Image" : "Inline Data";
+
+    if (kbCount < 1000) {
+      return `${label}: ${mimeType} (${kbCount.toFixed(2)} KB)`;
+    }
+    return `${label}: ${mimeType} (${mbCount.toFixed(2)} MB)`;
+  }
+
+  /**
+   * Build a data URL for inline_data content.
+   *
+   * @param item - inline_data content item
+   * @returns Data URL string
+   */
+  private _inlineDataUrl(item: {
+    mime_type?: string;
+    data?: Buffer | string;
+  }): string {
+    const mimeType = item.mime_type || "application/octet-stream";
+    const data = Buffer.isBuffer(item.data)
+      ? item.data.toString("base64")
+      : item.data || "";
+    return `data:${mimeType};base64,${data}`;
+  }
+
+  /**
    * Save conversation history to files.
    *
    * @param history - List of UniMessage objects representing the conversation
@@ -152,8 +204,12 @@ export class Tracer {
           lines.push(`Text: ${item.text}`);
         } else if (item.type === "thinking") {
           lines.push(`Thinking: ${item.thinking}`);
+        } else if (item.type === "inline_thinking") {
+          lines.push(this._formatInlineDataSummary(item, true));
         } else if (item.type === "image_url") {
           lines.push(`Image URL: ${item.image_url}`);
+        } else if (item.type === "inline_data") {
+          lines.push(this._formatInlineDataSummary(item));
         } else if (item.type === "tool_call") {
           lines.push(`Tool Call: ${item.name}`);
           lines.push(`  Arguments: ${JSON.stringify(item.arguments, null, 2)}`);
@@ -422,6 +478,15 @@ export class Tracer {
                       itemHtml += `<div class="bg-gray-50 p-4 rounded-md font-mono text-sm whitespace-pre-wrap text-gray-800">${this._escapeHtml(item.text)}</div>`;
                     } else if (item.type === "thinking") {
                       itemHtml += `<div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 font-mono text-sm whitespace-pre-wrap text-gray-800">${this._escapeHtml(item.thinking)}</div>`;
+                    } else if (item.type === "inline_thinking") {
+                      const summary = this._formatInlineDataSummary(item, true);
+                      itemHtml += `<div class="bg-blue-50 border-blue-500 p-4 rounded-md border-l-4"><div class="text-xs text-blue-700 mb-2">${this._escapeHtml(summary)}</div>`;
+                      if (item.mime_type?.startsWith("image/")) {
+                        itemHtml += `<img src="${this._escapeHtml(this._inlineDataUrl(item))}" class="max-w-xs max-h-48 rounded-md" alt="Thinking Inline Image">`;
+                      } else {
+                        itemHtml += `<div class="font-mono text-sm whitespace-pre-wrap text-gray-800">${this._escapeHtml(summary)}</div>`;
+                      }
+                      itemHtml += `</div>`;
                     } else if (item.type === "tool_call") {
                       const entries = Object.entries(item.arguments);
                       let args = "";
@@ -446,6 +511,15 @@ export class Tracer {
                       itemHtml += resultHtml;
                     } else if (item.type === "image_url") {
                       itemHtml += `<div class="bg-gray-50 p-4 rounded-md"><img src="${this._escapeHtml(item.image_url)}" class="max-w-xs max-h-48 rounded-md" alt="Preview"></div>`;
+                    } else if (item.type === "inline_data") {
+                      const summary = this._formatInlineDataSummary(item);
+                      itemHtml += `<div class="bg-purple-50 border-purple-500 p-4 rounded-md border-l-4"><div class="text-xs text-purple-700 mb-2">${this._escapeHtml(summary)}</div>`;
+                      if (item.mime_type?.startsWith("image/")) {
+                        itemHtml += `<img src="${this._escapeHtml(this._inlineDataUrl(item))}" class="max-w-xs max-h-48 rounded-md" alt="Inline Image">`;
+                      } else {
+                        itemHtml += `<div class="font-mono text-sm whitespace-pre-wrap text-gray-800">${this._escapeHtml(summary)}</div>`;
+                      }
+                      itemHtml += `</div>`;
                     }
                     itemHtml += "</div>";
                     return itemHtml;

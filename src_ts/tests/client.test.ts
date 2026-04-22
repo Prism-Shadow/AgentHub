@@ -14,14 +14,17 @@
 
 import { AutoLLMClient } from "../src/autoClient";
 import { ThinkingLevel, UniMessage, UniConfig, UniEvent } from "../src/types";
+import { expect, describe, test } from "@jest/globals";
 
 const IMAGE =
   "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg";
 
 interface Model {
   name: string;
-  supportVision: boolean;
+  supportTextGeneration: boolean;
   supportTemperature: boolean;
+  supportImageUnderstanding: boolean;
+  supportImageGeneration: boolean;
   provider: "official" | "siliconflow" | "openrouter" | "bedrock" | "vertex";
 }
 
@@ -30,8 +33,19 @@ const AVAILABLE_MODELS: Model[] = [];
 if (process.env.GEMINI_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "gemini-3-flash-preview",
-    supportVision: true,
+    supportTextGeneration: true,
     supportTemperature: true,
+    supportImageUnderstanding: true,
+    supportImageGeneration: false,
+    provider: "official",
+  });
+
+  AVAILABLE_MODELS.push({
+    name: "gemini-3.1-flash-image-preview",
+    supportTextGeneration: false,
+    supportTemperature: false,
+    supportImageUnderstanding: false,
+    supportImageGeneration: true,
     provider: "official",
   });
 }
@@ -39,8 +53,10 @@ if (process.env.GEMINI_API_KEY) {
 if (process.env.ANTHROPIC_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "claude-sonnet-4-6",
-    supportVision: true,
+    supportTextGeneration: true,
     supportTemperature: true,
+    supportImageUnderstanding: true,
+    supportImageGeneration: false,
     provider: "official",
   });
 }
@@ -48,8 +64,10 @@ if (process.env.ANTHROPIC_API_KEY) {
 if (process.env.OPENAI_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "gpt-5.4",
-    supportVision: true,
+    supportTextGeneration: true,
     supportTemperature: false,
+    supportImageUnderstanding: true,
+    supportImageGeneration: false,
     provider: "official",
   });
 }
@@ -57,8 +75,10 @@ if (process.env.OPENAI_API_KEY) {
 if (process.env.ZAI_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "glm-5",
-    supportVision: false,
+    supportTextGeneration: true,
     supportTemperature: true,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
     provider: "official",
   });
 }
@@ -66,8 +86,10 @@ if (process.env.ZAI_API_KEY) {
 if (process.env.MOONSHOT_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "kimi-k2.5",
-    supportVision: true,
+    supportTextGeneration: true,
     supportTemperature: false,
+    supportImageUnderstanding: true,
+    supportImageGeneration: false,
     provider: "official",
   });
 }
@@ -77,20 +99,26 @@ const RUN_SLOW_TEST = process.env.RUN_SLOW_TEST === "1";
 if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
     name: "z-ai/glm-5",
-    supportVision: false,
+    supportTextGeneration: true,
     supportTemperature: true,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
     name: "qwen/qwen3-30b-a3b-thinking-2507",
-    supportVision: false,
+    supportTextGeneration: true,
     supportTemperature: true,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
     name: "moonshotai/kimi-k2.5",
-    supportVision: true,
+    supportTextGeneration: true,
     supportTemperature: false,
+    supportImageUnderstanding: true,
+    supportImageGeneration: false,
     provider: "openrouter",
   });
 }
@@ -98,20 +126,26 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
 if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
     name: "Pro/zai-org/GLM-5",
-    supportVision: false,
+    supportTextGeneration: true,
     supportTemperature: true,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
     provider: "siliconflow",
   });
   AVAILABLE_MODELS.push({
     name: "Qwen/Qwen3-8B",
-    supportVision: false,
+    supportTextGeneration: true,
     supportTemperature: true,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
     provider: "siliconflow",
   });
   AVAILABLE_MODELS.push({
     name: "Pro/moonshotai/Kimi-K2.5",
-    supportVision: true,
+    supportTextGeneration: true,
     supportTemperature: false,
+    supportImageUnderstanding: true,
+    supportImageGeneration: false,
     provider: "siliconflow",
   });
 }
@@ -119,8 +153,10 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
 if (process.env.BEDROCK_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "global.anthropic.claude-sonnet-4-6",
-    supportVision: true,
+    supportTextGeneration: true,
     supportTemperature: true,
+    supportImageUnderstanding: true,
+    supportImageGeneration: false,
     provider: "bedrock",
   });
 }
@@ -128,8 +164,19 @@ if (process.env.BEDROCK_API_KEY) {
 if (process.env.VERTEX_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "gemini-3-flash-preview",
-    supportVision: true,
+    supportTextGeneration: true,
     supportTemperature: true,
+    supportImageUnderstanding: true,
+    supportImageGeneration: false,
+    provider: "vertex",
+  });
+
+  AVAILABLE_MODELS.push({
+    name: "gemini-3.1-flash-image-preview",
+    supportTextGeneration: false,
+    supportTemperature: false,
+    supportImageUnderstanding: false,
+    supportImageGeneration: true,
     provider: "vertex",
   });
 }
@@ -157,7 +204,6 @@ function createClient(model: Model): AutoLLMClient {
 
   return new AutoLLMClient({ model: model.name, apiKey, baseUrl });
 }
-
 function checkEventIntegrity(event: UniEvent): void {
   expect(event).toHaveProperty("role");
   expect(event).toHaveProperty("event_type");
@@ -174,13 +220,30 @@ function checkEventIntegrity(event: UniEvent): void {
 
   for (const item of event.content_items) {
     if (item.type === "text") {
-      expect(item).toHaveProperty("text");
+      expect(typeof item.text).toBe("string");
+    } else if (item.type === "image_url") {
+      expect(typeof item.image_url).toBe("string");
+    } else if (item.type === "inline_data") {
+      expect(Buffer.isBuffer(item.data)).toBe(true);
+      expect(item.data.length).toBeGreaterThan(0);
+      expect(typeof item.mime_type).toBe("string");
     } else if (item.type === "thinking") {
-      expect(item).toHaveProperty("thinking");
-    } else if (item.type === "tool_call" || item.type === "partial_tool_call") {
-      expect(item).toHaveProperty("name");
-      expect(item).toHaveProperty("arguments");
-      expect(item).toHaveProperty("tool_call_id");
+      expect(typeof item.thinking).toBe("string");
+    } else if (item.type === "inline_thinking") {
+      expect(Buffer.isBuffer(item.data)).toBe(true);
+      expect(item.data.length).toBeGreaterThan(0);
+      expect(typeof item.mime_type).toBe("string");
+    } else if (item.type === "tool_call") {
+      expect(typeof item.name).toBe("string");
+      expect(typeof item.arguments).toBe("object");
+      expect(typeof item.tool_call_id).toBe("string");
+    } else if (item.type === "partial_tool_call") {
+      expect(typeof item.name).toBe("string");
+      expect(typeof item.arguments).toBe("string");
+      expect(typeof item.tool_call_id).toBe("string");
+    } else if (item.type === "tool_result") {
+      expect(typeof item.text).toBe("string");
+      expect(typeof item.tool_call_id).toBe("string");
     }
   }
 
@@ -206,19 +269,69 @@ function checkEventIntegrity(event: UniEvent): void {
 }
 
 if (AVAILABLE_MODELS.length > 0) {
-  describe.each(AVAILABLE_MODELS.map((m) => [m.name + ":" + m.provider, m]))(
-    "Client tests for %s",
-    (_name, model: Model) => {
-      test("should stream basic response", async () => {
-        const client = createClient(model);
-        const messages: UniMessage[] = [
-          {
-            role: "user",
-            content_items: [{ type: "text", text: "What is 2+3?" }],
-          },
-        ];
-        const config: UniConfig = {};
+  describe.each(
+    AVAILABLE_MODELS.map((m): [string, Model] => [
+      `${m.name}:${m.provider}`,
+      m,
+    ]),
+  )("Client tests for %s", (_name, model: Model) => {
+    test("should stream basic response", async () => {
+      if (!model.supportTextGeneration) {
+        return;
+      }
+      const client = createClient(model);
+      const messages: UniMessage[] = [
+        {
+          role: "user",
+          content_items: [{ type: "text", text: "What is 2+3?" }],
+        },
+      ];
+      const config: UniConfig = {};
 
+      let text = "";
+      for await (const event of client.streamingResponse({
+        messages,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
+          }
+        }
+      }
+
+      expect(text).toContain("5");
+    }, 60000);
+
+    test("should stream response with all parameters", async () => {
+      if (!model.supportTextGeneration) {
+        return;
+      }
+      const client = createClient(model);
+      const messages: UniMessage[] = [
+        {
+          role: "user",
+          content_items: [{ type: "text", text: "What is 2+3?" }],
+        },
+      ];
+      const config: UniConfig = {
+        max_tokens: 8192,
+        temperature: 0.7,
+        thinking_summary: true,
+        thinking_level: ThinkingLevel.LOW,
+      };
+
+      if (!model.supportTemperature) {
+        await expect(async () => {
+          for await (const _ of client.streamingResponse({
+            messages,
+            config,
+          })) {
+            // This should throw before we get here
+          }
+        }).rejects.toThrow("not support");
+      } else {
         let text = "";
         for await (const event of client.streamingResponse({
           messages,
@@ -233,451 +346,457 @@ if (AVAILABLE_MODELS.length > 0) {
         }
 
         expect(text).toContain("5");
-      }, 60000);
+      }
+    }, 60000);
 
-      test("should stream response with all parameters", async () => {
-        const client = createClient(model);
-        const messages: UniMessage[] = [
-          {
-            role: "user",
-            content_items: [{ type: "text", text: "What is 2+3?" }],
-          },
-        ];
-        const config: UniConfig = {
-          max_tokens: 8192,
-          temperature: 0.7,
-          thinking_summary: true,
-          thinking_level: ThinkingLevel.LOW,
-        };
+    test("should handle stateful streaming", async () => {
+      if (!model.supportTextGeneration) {
+        return;
+      }
+      const client = createClient(model);
+      const config: UniConfig = {};
 
-        if (!model.supportTemperature) {
-          await expect(async () => {
-            for await (const _ of client.streamingResponse({
-              messages,
-              config,
-            })) {
-              // This should throw before we get here
-            }
-          }).rejects.toThrow("not support");
-        } else {
-          let text = "";
-          for await (const event of client.streamingResponse({
-            messages,
-            config,
-          })) {
-            checkEventIntegrity(event);
-            for (const item of event.content_items) {
-              if (item.type === "text") {
-                text += item.text;
-              }
-            }
-          }
+      const message1: UniMessage = {
+        role: "user",
+        content_items: [{ type: "text", text: "My name is Alice" }],
+      };
+      for await (const event of client.streamingResponseStateful({
+        message: message1,
+        config,
+      })) {
+        checkEventIntegrity(event);
+      }
 
-          expect(text).toContain("5");
-        }
-      }, 60000);
+      expect(client.getHistory().length).toBe(2);
 
-      test("should handle stateful streaming", async () => {
-        const client = createClient(model);
-        const config: UniConfig = {};
-
-        const message1: UniMessage = {
-          role: "user",
-          content_items: [{ type: "text", text: "My name is Alice" }],
-        };
-        for await (const event of client.streamingResponseStateful({
-          message: message1,
-          config,
-        })) {
-          checkEventIntegrity(event);
-        }
-
-        expect(client.getHistory().length).toBe(2);
-
-        const message2: UniMessage = {
-          role: "user",
-          content_items: [{ type: "text", text: "What is my name?" }],
-        };
-        let text = "";
-        for await (const event of client.streamingResponseStateful({
-          message: message2,
-          config,
-        })) {
-          checkEventIntegrity(event);
-          for (const item of event.content_items) {
-            if (item.type === "text") {
-              text += item.text;
-            }
+      const message2: UniMessage = {
+        role: "user",
+        content_items: [{ type: "text", text: "What is my name?" }],
+      };
+      let text = "";
+      for await (const event of client.streamingResponseStateful({
+        message: message2,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
           }
         }
+      }
 
-        expect(text.toLowerCase()).toContain("alice");
-        expect(client.getHistory().length).toBe(4);
-      }, 60000);
+      expect(text.toLowerCase()).toContain("alice");
+      expect(client.getHistory().length).toBe(4);
+    }, 60000);
 
-      test("should clear history", async () => {
-        const client = createClient(model);
-        const message: UniMessage = {
-          role: "user",
-          content_items: [{ type: "text", text: "Hello" }],
-        };
-        const config: UniConfig = {};
+    test("should set history", () => {
+      const client = createClient(model);
+      const newHistory: UniMessage[] = [
+        { role: "user", content_items: [{ type: "text", text: "Hi" }] },
+        {
+          role: "assistant",
+          content_items: [{ type: "text", text: "Hello!" }],
+        },
+      ];
 
-        for await (const _ of client.streamingResponseStateful({
-          message,
-          config,
-        })) {
-          // consume the stream
-        }
+      client.setHistory(newHistory);
+      expect(client.getHistory()).toEqual(newHistory);
 
-        expect(client.getHistory().length).toBeGreaterThan(0);
+      // Mutating the original array must not affect the stored history
+      newHistory.splice(0);
+      expect(client.getHistory().length).toBe(2);
+    });
 
-        client.clearHistory();
-        expect(client.getHistory().length).toBe(0);
-      }, 60000);
+    test("should clear history", async () => {
+      const client = createClient(model);
+      const newHistory: UniMessage[] = [
+        { role: "user", content_items: [{ type: "text", text: "Hi" }] },
+        {
+          role: "assistant",
+          content_items: [{ type: "text", text: "Hello!" }],
+        },
+      ];
 
-      test("should set history", () => {
-        const client = createClient(model);
-        const newHistory: UniMessage[] = [
-          { role: "user", content_items: [{ type: "text", text: "Hi" }] },
-          { role: "assistant", content_items: [{ type: "text", text: "Hello!" }] },
-        ];
+      client.setHistory(newHistory);
+      expect(client.getHistory()).toEqual(newHistory);
 
-        client.setHistory(newHistory);
-        expect(client.getHistory()).toEqual(newHistory);
+      client.clearHistory();
+      expect(client.getHistory().length).toBe(0);
+    });
 
-        // Mutating the original array must not affect the stored history
-        newHistory.splice(0);
-        expect(client.getHistory().length).toBe(2);
-      });
-
-      test("should concatenate events to message", async () => {
-        const client = createClient(model);
-        const messages: UniMessage[] = [
-          {
-            role: "user",
-            content_items: [
-              {
-                type: "text",
-                text: "Say 'The quick brown fox jumps over the lazy dog.'",
-              },
-            ],
-          },
-        ];
-        const config: UniConfig = {};
-
-        const events: UniEvent[] = [];
-        let text = "";
-        for await (const event of client.streamingResponse({
-          messages,
-          config,
-        })) {
-          events.push(event);
-          for (const item of event.content_items) {
-            if (item.type === "text") {
-              text += item.text;
-            }
-          }
-        }
-
-        const message = client.concatUniEventsToUniMessage(events);
-        expect(message.role).toBe("assistant");
-        const allText = message.content_items
-          .filter((item) => item.type === "text")
-          .map((item) => (item as { type: "text"; text: string }).text)
-          .join("");
-        expect(allText).toBe(text);
-      }, 60000);
-
-      test("should handle tool use", async () => {
-        const client = createClient(model);
-
-        const weatherTool = {
-          name: "get_weather",
-          description: "Get the current weather in a given location",
-          parameters: {
-            type: "object",
-            properties: {
-              location: {
-                type: "string",
-                description: "The city name, e.g. San Francisco",
-              },
-            },
-            required: ["location"],
-          },
-        };
-
-        const config: UniConfig = { tools: [weatherTool] };
-        let toolCallId: string | undefined;
-        const partialToolCallData: {
-          name?: string;
-          arguments?: string;
-          tool_call_id?: string;
-        } = {};
-        let toolName: string | undefined;
-        let toolArguments: Record<string, unknown> | undefined;
-
-        const message1: UniMessage = {
-          role: "user",
-          content_items: [
-            { type: "text", text: "What is the weather in San Francisco?" },
-          ],
-        };
-        for await (const event of client.streamingResponseStateful({
-          message: message1,
-          config,
-        })) {
-          checkEventIntegrity(event);
-          for (const item of event.content_items) {
-            if (item.type === "partial_tool_call") {
-              if (!partialToolCallData.name) {
-                partialToolCallData.name = item.name;
-                partialToolCallData.arguments = item.arguments;
-                partialToolCallData.tool_call_id = item.tool_call_id;
-              } else {
-                partialToolCallData.arguments += item.arguments;
-              }
-            } else if (item.type === "tool_call") {
-              toolName = item.name;
-              toolArguments = item.arguments;
-              toolCallId = item.tool_call_id;
-            }
-          }
-        }
-
-        expect(toolName).toBe(weatherTool.name);
-        expect(toolArguments).toHaveProperty("location");
-        expect(toolCallId).toBeDefined();
-        expect(partialToolCallData.name).toBe(toolName);
-        expect(partialToolCallData.tool_call_id).toBe(toolCallId);
-        if (partialToolCallData.arguments && toolArguments) {
-          expect(JSON.parse(partialToolCallData.arguments)).toEqual(
-            toolArguments,
-          );
-        }
-
-        const message2: UniMessage = {
-          role: "user",
-          content_items: [
-            {
-              type: "tool_result",
-              text: "It's 20 degrees in San Francisco.",
-              tool_call_id: toolCallId || "",
-            },
-          ],
-        };
-        let text = "";
-        for await (const event of client.streamingResponseStateful({
-          message: message2,
-          config,
-        })) {
-          checkEventIntegrity(event);
-          for (const item of event.content_items) {
-            if (item.type === "text") {
-              text += item.text;
-            }
-          }
-        }
-
-        expect(text).toContain("20");
-      }, 60000);
-
-      test("should handle system prompt", async () => {
-        const client = createClient(model);
-        const messages: UniMessage[] = [
-          {
-            role: "user",
-            content_items: [{ type: "text", text: "Hello" }],
-          },
-        ];
-        const config: UniConfig = {
-          system_prompt: "You are a kitten that must end with the word 'meow'.",
-        };
-
-        let text = "";
-        for await (const event of client.streamingResponse({
-          messages,
-          config,
-        })) {
-          checkEventIntegrity(event);
-          for (const item of event.content_items) {
-            if (item.type === "text") {
-              text += item.text;
-            }
-          }
-        }
-
-        expect(text.toLowerCase()).toContain("meow");
-      }, 60000);
-
-      test("should handle image understanding", async () => {
-        if (!model.supportVision) {
-          return;
-        }
-
-        const client = createClient(model);
-        const config: UniConfig = {};
-        const messages: UniMessage[] = [
-          {
-            role: "user",
-            content_items: [
-              {
-                type: "text",
-                text: "What's in this image? Describe it briefly.",
-              },
-              { type: "image_url", image_url: IMAGE },
-            ],
-          },
-        ];
-
-        let text = "";
-        for await (const event of client.streamingResponse({
-          messages,
-          config,
-        })) {
-          checkEventIntegrity(event);
-          for (const item of event.content_items) {
-            if (item.type === "text") {
-              text += item.text;
-            }
-          }
-        }
-
-        expect(
-          text.toLowerCase().includes("flower") ||
-            text.toLowerCase().includes("narcissus"),
-        ).toBe(true);
-      }, 60000);
-
-      test("should handle base64 encoded image understanding", async () => {
-        if (!model.supportVision) {
-          return;
-        }
-
-        const client = createClient(model);
-        const config: UniConfig = {};
-
-        const mimeType = "image/jpeg";
-        const response = await fetch(IMAGE);
-        const imageBuffer = await response.arrayBuffer();
-        const base64Image = Buffer.from(imageBuffer).toString("base64");
-
-        const dataUri = `data:${mimeType};base64,${base64Image}`;
-
-        const messages: UniMessage[] = [
-          {
-            role: "user",
-            content_items: [
-              {
-                type: "text",
-                text: "What's in this image? Describe it briefly.",
-              },
-              { type: "image_url", image_url: dataUri },
-            ],
-          },
-        ];
-
-        let text = "";
-        for await (const event of client.streamingResponse({
-          messages,
-          config,
-        })) {
-          checkEventIntegrity(event);
-          for (const item of event.content_items) {
-            if (item.type === "text") {
-              text += item.text;
-            }
-          }
-        }
-
-        expect(
-          text.toLowerCase().includes("flower") ||
-            text.toLowerCase().includes("narcissus"),
-        ).toBe(true);
-      }, 60000);
-
-      test("should handle tool result with image", async () => {
-        if (!model.supportVision) {
-          return;
-        }
-
-        const client = createClient(model);
-
-        const imageTool = {
-          name: "get_image",
-          description: "Get an image URL",
-          parameters: {
-            type: "object",
-            properties: {
-              seed: {
-                type: "integer",
-                description: "The random seed to retrieve the image.",
-              },
-            },
-            required: ["seed"],
-          },
-        };
-
-        const config: UniConfig = { tools: [imageTool] };
-        let toolCallId: string | undefined;
-        let toolName: string | undefined;
-
-        const message1: UniMessage = {
+    test("should concatenate events to message", async () => {
+      const client = createClient(model);
+      const messages: UniMessage[] = [
+        {
           role: "user",
           content_items: [
             {
               type: "text",
-              text: "Get me a random image and describe it briefly.",
+              text: "Say 'The quick brown fox jumps over the lazy dog.'",
             },
           ],
-        };
-        for await (const event of client.streamingResponseStateful({
-          message: message1,
-          config,
-        })) {
-          checkEventIntegrity(event);
-          for (const item of event.content_items) {
-            if (item.type === "tool_call") {
-              toolName = item.name;
-              toolCallId = item.tool_call_id;
-            }
+        },
+      ];
+      const config: UniConfig = {};
+
+      const events: UniEvent[] = [];
+      let text = "";
+      for await (const event of client.streamingResponse({
+        messages,
+        config,
+      })) {
+        events.push(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
           }
         }
+      }
 
-        expect(toolName).toBe(imageTool.name);
-        expect(toolCallId).toBeDefined();
+      const message = client.concatUniEventsToUniMessage(events);
+      expect(message.role).toBe("assistant");
+      const allText = message.content_items
+        .filter((item) => item.type === "text")
+        .map((item) => (item as { type: "text"; text: string }).text)
+        .join("");
+      expect(allText).toBe(text);
+    }, 60000);
 
-        const message2: UniMessage = {
+    test("should handle tool use", async () => {
+      if (!model.supportTextGeneration) {
+        return;
+      }
+      const client = createClient(model);
+
+      const weatherTool = {
+        name: "get_weather",
+        description: "Get the current weather in a given location",
+        parameters: {
+          type: "object",
+          properties: {
+            location: {
+              type: "string",
+              description: "The city name, e.g. San Francisco",
+            },
+          },
+          required: ["location"],
+        },
+      };
+
+      const config: UniConfig = { tools: [weatherTool] };
+      let toolCallId: string | undefined;
+      const partialToolCallData: {
+        name?: string;
+        arguments?: string;
+        tool_call_id?: string;
+      } = {};
+      let toolName: string | undefined;
+      let toolArguments: Record<string, unknown> | undefined;
+
+      const message1: UniMessage = {
+        role: "user",
+        content_items: [
+          { type: "text", text: "What is the weather in San Francisco?" },
+        ],
+      };
+      for await (const event of client.streamingResponseStateful({
+        message: message1,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "partial_tool_call") {
+            if (!partialToolCallData.name) {
+              partialToolCallData.name = item.name;
+              partialToolCallData.arguments = item.arguments;
+              partialToolCallData.tool_call_id = item.tool_call_id;
+            } else {
+              partialToolCallData.arguments += item.arguments;
+            }
+          } else if (item.type === "tool_call") {
+            toolName = item.name;
+            toolArguments = item.arguments;
+            toolCallId = item.tool_call_id;
+          }
+        }
+      }
+
+      expect(toolName).toBe(weatherTool.name);
+      expect(toolArguments).toHaveProperty("location");
+      expect(toolCallId).toBeDefined();
+      expect(partialToolCallData.name).toBe(toolName);
+      expect(partialToolCallData.tool_call_id).toBe(toolCallId);
+      if (partialToolCallData.arguments && toolArguments) {
+        expect(JSON.parse(partialToolCallData.arguments)).toEqual(
+          toolArguments,
+        );
+      }
+
+      const message2: UniMessage = {
+        role: "user",
+        content_items: [
+          {
+            type: "tool_result",
+            text: "It's 20 degrees in San Francisco.",
+            tool_call_id: toolCallId || "",
+          },
+        ],
+      };
+      let text = "";
+      for await (const event of client.streamingResponseStateful({
+        message: message2,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
+          }
+        }
+      }
+
+      expect(text).toContain("20");
+    }, 60000);
+
+    test("should handle system prompt", async () => {
+      if (!model.supportTextGeneration) {
+        return;
+      }
+      const client = createClient(model);
+      const messages: UniMessage[] = [
+        {
+          role: "user",
+          content_items: [{ type: "text", text: "Hello" }],
+        },
+      ];
+      const config: UniConfig = {
+        system_prompt: "You are a kitten that must end with the word 'meow'.",
+      };
+
+      let text = "";
+      for await (const event of client.streamingResponse({
+        messages,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
+          }
+        }
+      }
+
+      expect(text.toLowerCase()).toContain("meow");
+    }, 60000);
+
+    test("should handle image understanding", async () => {
+      if (!model.supportImageUnderstanding) {
+        return;
+      }
+
+      const client = createClient(model);
+      const config: UniConfig = {};
+      const messages: UniMessage[] = [
+        {
           role: "user",
           content_items: [
             {
-              type: "tool_result",
-              text: "Here is the result image:",
-              images: [IMAGE],
-              tool_call_id: toolCallId || "",
+              type: "text",
+              text: "What's in this image? Describe it briefly.",
             },
+            { type: "image_url", image_url: IMAGE },
           ],
-        };
-        let text = "";
-        for await (const event of client.streamingResponseStateful({
-          message: message2,
-          config,
-        })) {
-          checkEventIntegrity(event);
-          for (const item of event.content_items) {
-            if (item.type === "text") {
-              text += item.text;
-            }
+        },
+      ];
+
+      let text = "";
+      for await (const event of client.streamingResponse({
+        messages,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
           }
         }
+      }
 
-        expect(
-          text.toLowerCase().includes("flower") ||
-            text.toLowerCase().includes("narcissus"),
-        ).toBe(true);
-      }, 60000);
-    },
-  );
+      expect(
+        text.toLowerCase().includes("flower") ||
+          text.toLowerCase().includes("narcissus"),
+      ).toBe(true);
+    }, 60000);
+
+    test("should handle base64 encoded image understanding", async () => {
+      if (!model.supportImageUnderstanding) {
+        return;
+      }
+
+      const client = createClient(model);
+      const config: UniConfig = {};
+
+      const mimeType = "image/jpeg";
+      const response = await fetch(IMAGE);
+      const imageBuffer = await response.arrayBuffer();
+      const base64Image = Buffer.from(imageBuffer).toString("base64");
+
+      const dataUri = `data:${mimeType};base64,${base64Image}`;
+
+      const messages: UniMessage[] = [
+        {
+          role: "user",
+          content_items: [
+            {
+              type: "text",
+              text: "What's in this image? Describe it briefly.",
+            },
+            { type: "image_url", image_url: dataUri },
+          ],
+        },
+      ];
+
+      let text = "";
+      for await (const event of client.streamingResponse({
+        messages,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
+          }
+        }
+      }
+
+      expect(
+        text.toLowerCase().includes("flower") ||
+          text.toLowerCase().includes("narcissus"),
+      ).toBe(true);
+    }, 60000);
+
+    test("should handle tool result with image", async () => {
+      if (!model.supportImageUnderstanding) {
+        return;
+      }
+
+      const client = createClient(model);
+
+      const imageTool = {
+        name: "get_image",
+        description: "Get an image URL",
+        parameters: {
+          type: "object",
+          properties: {
+            seed: {
+              type: "integer",
+              description: "The random seed to retrieve the image.",
+            },
+          },
+          required: ["seed"],
+        },
+      };
+
+      const config: UniConfig = { tools: [imageTool] };
+      let toolCallId: string | undefined;
+      let toolName: string | undefined;
+
+      const message1: UniMessage = {
+        role: "user",
+        content_items: [
+          {
+            type: "text",
+            text: "Get me a random image and describe it briefly.",
+          },
+        ],
+      };
+      for await (const event of client.streamingResponseStateful({
+        message: message1,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "tool_call") {
+            toolName = item.name;
+            toolCallId = item.tool_call_id;
+          }
+        }
+      }
+
+      expect(toolName).toBe(imageTool.name);
+      expect(toolCallId).toBeDefined();
+
+      const message2: UniMessage = {
+        role: "user",
+        content_items: [
+          {
+            type: "tool_result",
+            text: "Here is the result image:",
+            images: [IMAGE],
+            tool_call_id: toolCallId || "",
+          },
+        ],
+      };
+      let text = "";
+      for await (const event of client.streamingResponseStateful({
+        message: message2,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
+          }
+        }
+      }
+
+      expect(
+        text.toLowerCase().includes("flower") ||
+          text.toLowerCase().includes("narcissus"),
+      ).toBe(true);
+    }, 60000);
+
+    test("should handle image generation", async () => {
+      if (!model.supportImageGeneration) {
+        return;
+      }
+      const client = createClient(model);
+      const config: UniConfig = {
+        image_config: { aspect_ratio: "1:1", image_size: "1K" },
+      };
+      const messages: UniMessage[] = [
+        {
+          role: "user",
+          content_items: [
+            {
+              type: "text",
+              text: "Generate a cozy watercolor illustration of two white flowers with raindrops.",
+            },
+          ],
+        },
+      ];
+
+      const inlineItems: { data: Buffer; mime_type: string }[] = [];
+      for await (const event of client.streamingResponse({
+        messages,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "inline_data") {
+            inlineItems.push(item);
+          }
+        }
+      }
+
+      expect(inlineItems.length).toBeGreaterThan(0);
+      expect(
+        inlineItems.some((item) => item.mime_type.startsWith("image/")),
+      ).toBe(true);
+      expect(inlineItems.every((item) => item.data.length > 0)).toBe(true);
+    }, 180000);
+  });
 }
 
 test("should reject unknown model", () => {

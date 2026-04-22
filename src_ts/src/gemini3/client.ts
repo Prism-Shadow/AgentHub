@@ -16,6 +16,7 @@ import {
   GoogleGenAI,
   Content,
   GenerateContentConfig,
+  ImageConfig as GeminiImageConfig,
   Part,
   FunctionCall,
   ThinkingConfig,
@@ -191,6 +192,13 @@ export class Gemini3Client extends LLMClient {
       configParams.temperature = config.temperature;
     }
 
+    if (config.image_config !== undefined) {
+      configParams.imageConfig = {
+        aspectRatio: config.image_config.aspect_ratio,
+        imageSize: config.image_config.image_size,
+      } as GeminiImageConfig;
+    }
+
     const thinkingSummary = config.thinking_summary;
     const thinkingLevel = config.thinking_level;
     if (thinkingSummary !== undefined || thinkingLevel !== undefined) {
@@ -254,9 +262,26 @@ export class Gemini3Client extends LLMClient {
               data: imageData.data.toString("base64"),
             },
           } as Part);
+        } else if (item.type === "inline_data") {
+          parts.push({
+            inlineData: {
+              mimeType: item.mime_type,
+              data: item.data.toString("base64"),
+            },
+            thoughtSignature: item.signature as string | undefined,
+          } as Part);
         } else if (item.type === "thinking") {
           parts.push({
             text: item.thinking,
+            thought: true,
+            thoughtSignature: item.signature as string | undefined,
+          } as Part);
+        } else if (item.type === "inline_thinking") {
+          parts.push({
+            inlineData: {
+              mimeType: item.mime_type,
+              data: item.data.toString("base64"),
+            },
             thought: true,
             thoughtSignature: item.signature as string | undefined,
           } as Part);
@@ -336,10 +361,26 @@ export class Gemini3Client extends LLMClient {
             tool_call_id: part.functionCall.name || "",
             signature: part.thoughtSignature as string | undefined,
           });
-        } else if (part.text !== undefined && part.thought) {
+        } else if (part.thought) {
+          if (part.text !== undefined) {
+            contentItems.push({
+              type: "thinking",
+              thinking: part.text,
+              signature: part.thoughtSignature as string | undefined,
+            });
+          } else if (part.inlineData) {
+            contentItems.push({
+              type: "inline_thinking",
+              data: Buffer.from(part.inlineData.data || "", "base64"),
+              mime_type: part.inlineData.mimeType || "application/octet-stream",
+              signature: part.thoughtSignature as string | undefined,
+            });
+          }
+        } else if (part.inlineData) {
           contentItems.push({
-            type: "thinking",
-            thinking: part.text,
+            type: "inline_data",
+            data: Buffer.from(part.inlineData.data || "", "base64"),
+            mime_type: part.inlineData.mimeType || "application/octet-stream",
             signature: part.thoughtSignature as string | undefined,
           });
         } else if (part.text !== undefined) {

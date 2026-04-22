@@ -93,6 +93,7 @@ export function createChatApp(): Express {
                   <datalist id="modelList">
                       <option value="gpt-5.4">GPT 5.4</option>
                       <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+                      <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash Image</option>
                       <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
                       <option value="kimi-k2.5">Kimi K2.5</option>
                       <option value="glm-5">GLM 5</option>
@@ -399,14 +400,18 @@ export function createChatApp(): Express {
                   let fullToolArgs = '';
                   let metadata = null;
                   let lastCreatedAt = null;
+                  let buffer = '';
 
                   while (true) {
                       const { done, value } = await reader.read();
                       if (done) break;
 
                       const chunk = decoder.decode(value);
-                      const lines = chunk.split('\\n');
+                      buffer += chunk;
+                      if (!buffer.endsWith('\\n\\n')) continue;
 
+                      const lines = buffer.split('\\n');
+                      buffer = '';
                       for (const line of lines) {
                           if (line.startsWith('data: ')) {
                               const data = line.slice(6);
@@ -429,13 +434,16 @@ export function createChatApp(): Express {
                                           fullThinking += item.thinking;
                                           let thinkingContainer = contentDiv.querySelector('.thinking-content');
                                           if (!thinkingContainer) {
-                                              thinkingContainer = document.createElement('div');
-                                              thinkingContainer.className = 'thinking-content bg-blue-50 p-3 rounded-md border-l-4 border-blue-500 mb-2 italic';
-                                              // Always insert thinking before any text content so it appears on top
-                                              const textContainer = contentDiv.querySelector('.text-content');
-                                              contentDiv.insertBefore(thinkingContainer, textContainer || contentDiv.firstChild);
+                                            thinkingContainer = document.createElement('div');
+                                            thinkingContainer.className = 'thinking-content bg-blue-50 p-3 rounded-md border-l-4 border-blue-500 mb-2 italic';
+                                            // Always insert thinking before any text content so it appears on top
+                                            const textContainer = contentDiv.querySelector('.text-content');
+                                            contentDiv.insertBefore(thinkingContainer, textContainer || contentDiv.firstChild);
                                           }
                                           thinkingContainer.textContent = \`💭 \${fullThinking}\`;
+                                      } else if (item.type === 'inline_thinking') {
+                                          // Ignore thinking inline data
+                                          continue;
                                       } else if (item.type === 'partial_tool_call') {
                                           fullToolName += item.name || '';
                                           fullToolArgs += item.arguments || '';
@@ -451,6 +459,11 @@ export function createChatApp(): Express {
                                           toolResultDiv.className = 'bg-green-50 p-3 rounded-md border-l-4 border-green-500 mb-2';
                                           toolResultDiv.innerHTML = \`<strong class="text-sm">✅ Tool Result:</strong><br><div class="mt-1 text-xs whitespace-pre-wrap">\${escapeHtml(item.text)}</div>\`;
                                           contentDiv.appendChild(toolResultDiv);
+                                      } else if (item.type === 'inline_data') {
+                                          const imageDiv = document.createElement('div');
+                                          imageDiv.className = 'mb-3';
+                                          imageDiv.innerHTML = \`<img src="data:\${item.mime_type || 'image/png'};base64,\${item.data}" class="max-w-xs rounded border border-gray-300">\`;
+                                          contentDiv.appendChild(imageDiv);
                                       }
                                   }
 
