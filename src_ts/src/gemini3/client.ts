@@ -205,32 +205,25 @@ export class Gemini3Client extends LLMClient {
     }
 
     const isTtsModel = this._model.toLowerCase().includes("tts");
-    if (isTtsModel || config.tts_config !== undefined) {
-      const ttsConfig = config.tts_config ?? {
-        speaker_voices: [{ voice: "Kore" }],
-      };
-      const speakerVoices = ttsConfig.speaker_voices || [];
-      if (![1, 2].includes(speakerVoices.length)) {
-        throw new Error(
-          "tts_config.speaker_voices must contain 1 or 2 entries.",
-        );
+    if (isTtsModel) {
+      const ttsConfig = config.tts_config ?? [{ voice: "Kore" }];
+      if (![1, 2].includes(ttsConfig.length)) {
+        throw new Error("tts_config must contain 1 or 2 entries.");
       }
 
       configParams.responseModalities = ["AUDIO"];
-      if (speakerVoices.length === 1) {
+      if (ttsConfig.length === 1) {
         configParams.speechConfig = {
           voiceConfig: {
             prebuiltVoiceConfig: {
-              voiceName: speakerVoices[0].voice,
+              voiceName: ttsConfig[0].voice,
             } as PrebuiltVoiceConfig,
           } as VoiceConfig,
         } as SpeechConfig;
       } else {
-        const speakerVoiceConfigs = speakerVoices.map((speakerConfig) => {
+        const speakerVoiceConfigs = ttsConfig.map((speakerConfig) => {
           if (!speakerConfig.speaker) {
-            throw new Error(
-              "speaker is required when tts_config.speaker_voices has 2 entries.",
-            );
+            throw new Error("speaker is required when tts_config has 2 entries.");
           }
 
           return {
@@ -487,10 +480,7 @@ export class Gemini3Client extends LLMClient {
     messages: UniMessage[];
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
-    if (
-      this._model.toLowerCase().includes("tts") ||
-      options.config.tts_config !== undefined
-    ) {
+    if (this._model.toLowerCase().includes("tts")) {
       const invalidItem = options.messages
         .flatMap((message) => message.content_items)
         .find((item) => item.type !== "text");

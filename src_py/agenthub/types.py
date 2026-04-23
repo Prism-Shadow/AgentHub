@@ -155,17 +155,11 @@ class ImageConfig(TypedDict):
     image_size: NotRequired[ImageSize]
 
 
-class TTSSpeakerConfig(TypedDict):
+class SpeakerConfig(TypedDict):
     """Speaker and voice assignment for TTS."""
 
     voice: str
     speaker: NotRequired[str]
-
-
-class TTSConfig(TypedDict):
-    """Unified TTS configuration."""
-
-    speaker_voices: list[TTSSpeakerConfig]
 
 
 class UniConfig(TypedDict):
@@ -180,5 +174,5 @@ class UniConfig(TypedDict):
     system_prompt: NotRequired[str]
     prompt_caching: NotRequired[PromptCaching]
     image_config: NotRequired[ImageConfig]
-    tts_config: NotRequired[TTSConfig]
+    tts_config: NotRequired[list[SpeakerConfig]]
     trace_id: NotRequired[str]

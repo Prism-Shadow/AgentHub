@@ -67,7 +67,7 @@ async def main():
     audio_chunks: list[bytes] = []
     async for event in client.streaming_response(
         messages=[{"role": "user", "content_items": [{"type": "text", "text": prompt}]}],
-        config={"tts_config": {"speaker_voices": [{"voice": "Kore"}]}},
+        config={"tts_config": [{"voice": "Kore"}]},
     ):
         for item in event["content_items"]:
             if item["type"] == "inline_data":

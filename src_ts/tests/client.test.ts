@@ -844,9 +844,7 @@ if (AVAILABLE_MODELS.length > 0) {
 
       const client = createClient(model);
       const config: UniConfig = {
-        tts_config: {
-          speaker_voices: [{ voice: "Kore" }],
-        },
+        tts_config: [{ voice: "Kore" }],
       };
       const messages: UniMessage[] = [
         {

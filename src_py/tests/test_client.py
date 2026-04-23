@@ -611,7 +611,7 @@ async def test_tts_generation_single_speaker(model: Model):
                 ],
             }
         ],
-        config={"tts_config": {"speaker_voices": [{"voice": "Kore"}]}},
+        config={"tts_config": [{"voice": "Kore"}]},
     ):
         await _check_event_integrity(event)
         events.append(event)

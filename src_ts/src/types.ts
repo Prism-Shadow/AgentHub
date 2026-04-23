@@ -168,16 +168,9 @@ export interface ImageConfig {
 /**
  * Speaker and voice assignment for TTS.
  */
-export interface TTSSpeakerConfig {
+export interface SpeakerConfig {
   voice: string;
   speaker?: string;
-}
-
-/**
- * Unified TTS configuration.
- */
-export interface TTSConfig {
-  speaker_voices: TTSSpeakerConfig[];
 }
 
 /**
@@ -193,6 +186,6 @@ export interface UniConfig {
   system_prompt?: string;
   prompt_caching?: PromptCaching;
   image_config?: ImageConfig;
-  tts_config?: TTSConfig;
+  tts_config?: SpeakerConfig[];
   trace_id?: string;
 }
