@@ -133,7 +133,10 @@ class Gemini3Client(LLMClient):
         if config.get("image_config") is not None:
             config_params["image_config"] = types.ImageConfig(**config["image_config"])
 
-        if (tts_config := config.get("tts_config")) is not None:
+        tts_config = config.get("tts_config")
+        if tts_config is not None or "tts" in self._model.lower():
+            if tts_config is None:
+                tts_config = {"speaker_voices": [{"voice": "Kore"}]}
             speaker_voices = tts_config.get("speaker_voices", [])
             if len(speaker_voices) not in (1, 2):
                 raise ValueError("tts_config.speaker_voices must contain 1 or 2 entries.")
@@ -339,7 +342,7 @@ class Gemini3Client(LLMClient):
         # Use unified config conversion
         gemini_config = self.transform_uni_config_to_model_config(config)
 
-        if config.get("tts_config") is not None:
+        if "tts" in self._model.lower() or config.get("tts_config") is not None:
             invalid_item = next(
                 (item for message in messages for item in message["content_items"] if item["type"] != "text"),
                 None,

@@ -204,8 +204,12 @@ export class Gemini3Client extends LLMClient {
       } as GeminiImageConfig;
     }
 
-    if (config.tts_config !== undefined) {
-      const speakerVoices = config.tts_config.speaker_voices || [];
+    const isTtsModel = this._model.toLowerCase().includes("tts");
+    if (isTtsModel || config.tts_config !== undefined) {
+      const ttsConfig = config.tts_config ?? {
+        speaker_voices: [{ voice: "Kore" }],
+      };
+      const speakerVoices = ttsConfig.speaker_voices || [];
       if (![1, 2].includes(speakerVoices.length)) {
         throw new Error(
           "tts_config.speaker_voices must contain 1 or 2 entries.",
@@ -483,7 +487,10 @@ export class Gemini3Client extends LLMClient {
     messages: UniMessage[];
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
-    if (options.config.tts_config !== undefined) {
+    if (
+      this._model.toLowerCase().includes("tts") ||
+      options.config.tts_config !== undefined
+    ) {
       const invalidItem = options.messages
         .flatMap((message) => message.content_items)
         .find((item) => item.type !== "text");
