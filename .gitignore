@@ -357,4 +357,5 @@ vite.config.ts.timestamp-*
 
 # Conversation monitor cache
 cache/
-generated_image_*
+generated_image*
+generated_audio*

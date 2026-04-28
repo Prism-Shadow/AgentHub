@@ -20,8 +20,10 @@ and serve them via a web interface for real-time monitoring.
 """
 
 import base64
+import io
 import json
 import os
+import wave
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -70,6 +72,59 @@ class Tracer:
             return [self._serialize_for_json(item) for item in obj]
         return obj
 
+    @staticmethod
+    def _is_browser_playable_audio_mime_type(mime_type: str | None) -> bool:
+        """Return whether browsers can usually play this MIME type directly."""
+        return (mime_type or "").lower() in {
+            "audio/wav",
+            "audio/x-wav",
+            "audio/mpeg",
+            "audio/mp3",
+            "audio/ogg",
+            "audio/webm",
+            "audio/flac",
+            "audio/aac",
+            "audio/mp4",
+        }
+
+    @staticmethod
+    def _decode_inline_data(item: dict[str, Any]) -> bytes:
+        """Decode inline_data payloads from bytes or base64 text."""
+        data = item.get("data") or b""
+        if isinstance(data, str):
+            return base64.b64decode(data.encode("utf-8"))
+        return data
+
+    def _build_wave_bytes_from_pcm(self, item: dict[str, Any]) -> bytes:
+        """Wrap raw PCM bytes in a WAV header using Gemini TTS defaults."""
+        pcm_bytes = self._decode_inline_data(item)
+        buffer = io.BytesIO()
+        with wave.open(buffer, "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(24000)
+            wav_file.writeframes(pcm_bytes)
+        return buffer.getvalue()
+
+    def _build_inline_data_url(self, item: dict[str, Any]) -> str:
+        """Build a browser-friendly data URL for inline_data content."""
+        mime_type = item.get("mime_type") or "application/octet-stream"
+        raw_bytes = self._decode_inline_data(item)
+
+        if mime_type.startswith("image/"):
+            encoded = base64.b64encode(raw_bytes).decode("utf-8")
+            return f"data:{mime_type};base64,{encoded}"
+
+        if mime_type.startswith("audio/"):
+            if not self._is_browser_playable_audio_mime_type(mime_type):
+                mime_type = "audio/wav"
+                raw_bytes = self._build_wave_bytes_from_pcm(item)
+            encoded = base64.b64encode(raw_bytes).decode("utf-8")
+            return f"data:{mime_type};base64,{encoded}"
+
+        encoded = base64.b64encode(raw_bytes).decode("utf-8")
+        return f"data:{mime_type};base64,{encoded}"
+
     def _format_inline_data_summary(self, item: dict[str, Any], *, is_thinking: bool = False) -> str:
         """
         Format inline_data metadata without emitting raw payloads.
@@ -93,7 +148,12 @@ class Tracer:
         mb_count = byte_count / (1024 * 1024)
 
         label = "Thinking " if is_thinking else ""
-        label += "Inline Image" if mime_type.startswith("image/") else "Inline Data"
+        if mime_type.startswith("image/"):
+            label += "Inline Image"
+        elif mime_type.startswith("audio/"):
+            label += "Inline Audio"
+        else:
+            label += "Inline Data"
 
         if kb_count < 1000:
             return f"{label}: {mime_type} ({kb_count:.2f} KB)"
@@ -239,13 +299,7 @@ class Tracer:
         @app.template_filter("inline_data_url")
         def inline_data_url(item: dict[str, Any]) -> str:
             """Build a data URL for inline_data content."""
-            mime_type = item.get("mime_type") or "application/octet-stream"
-            data = item.get("data") or ""
-            if isinstance(data, bytes):
-                encoded = base64.b64encode(data).decode("utf-8")
-            else:
-                encoded = data
-            return f"data:{mime_type};base64,{encoded}"
+            return self._build_inline_data_url(item)
 
         @app.template_filter("inline_data_summary")
         def inline_data_summary(item: dict[str, Any]) -> str:
@@ -410,6 +464,10 @@ class Tracer:
                                             <div class="text-xs text-purple-700 mb-2">{{ item|inline_data_summary }}</div>
                                             {% if item.mime_type and item.mime_type.startswith('image/') %}
                                                 <img src="{{ item|inline_data_url|e }}" class="max-w-xs max-h-48 rounded-md" alt="Inline Image">
+                                            {% elif item.mime_type and item.mime_type.startswith('audio/') %}
+                                                <audio controls preload="metadata" class="max-w-xs">
+                                                    <source src="{{ item|inline_data_url|e }}">
+                                                </audio>
                                             {% else %}
                                                 <div class="font-mono text-sm whitespace-pre-wrap text-gray-800">
                                                     {{ item|inline_data_summary }}

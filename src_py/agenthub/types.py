@@ -155,6 +155,13 @@ class ImageConfig(TypedDict):
     image_size: NotRequired[ImageSize]
 
 
+class SpeakerConfig(TypedDict):
+    """Speaker and voice assignment for TTS."""
+
+    voice: str
+    speaker: NotRequired[str]
+
+
 class UniConfig(TypedDict):
     """Universal configuration format for LLM requests."""
 
@@ -167,4 +174,5 @@ class UniConfig(TypedDict):
     system_prompt: NotRequired[str]
     prompt_caching: NotRequired[PromptCaching]
     image_config: NotRequired[ImageConfig]
+    tts_config: NotRequired[list[SpeakerConfig]]
     trace_id: NotRequired[str]

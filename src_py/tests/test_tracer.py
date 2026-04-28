@@ -142,6 +142,10 @@ def test_format_history_with_different_content_types(temp_cache_dir):
             ],
         },
         {
+            "role": "assistant",
+            "content_items": [{"type": "inline_data", "data": b"\x00\x01\x02\x03", "mime_type": "audio/pcm"}],
+        },
+        {
             "role": "user",
             "content_items": [{"type": "tool_result", "text": "Temperature is 20C", "tool_call_id": "call_123"}],
         },
@@ -159,6 +163,7 @@ def test_format_history_with_different_content_types(temp_cache_dir):
     assert "Let me analyze..." in content
     assert "Thinking Inline Image: image/png" in content
     assert "This is a flower." in content
+    assert "Inline Audio: audio/pcm" in content
     assert "Tool Result" in content
     assert "Temperature is 20C" in content
 

@@ -80,6 +80,71 @@ export class Tracer {
   }
 
   /**
+   * Return whether browsers can usually play this MIME type directly.
+   *
+   * @param mimeType - MIME type to inspect
+   * @returns Whether the browser can typically play the audio type
+   */
+  private _isBrowserPlayableAudioMimeType(mimeType?: string): boolean {
+    return new Set([
+      "audio/wav",
+      "audio/x-wav",
+      "audio/mpeg",
+      "audio/mp3",
+      "audio/ogg",
+      "audio/webm",
+      "audio/flac",
+      "audio/aac",
+      "audio/mp4",
+    ]).has((mimeType || "").toLowerCase());
+  }
+
+  /**
+   * Decode an inline_data payload to raw bytes.
+   *
+   * @param item - inline_data content item
+   * @returns Raw payload bytes
+   */
+  private _decodeInlineData(item: { data?: Buffer | string }): Buffer {
+    if (typeof item.data === "string") {
+      return Buffer.from(item.data, "base64");
+    }
+    return item.data || Buffer.alloc(0);
+  }
+
+  /**
+   * Wrap raw PCM bytes in a WAV header using Gemini TTS defaults.
+   *
+   * @param item - inline_data content item
+   * @returns WAV bytes
+   */
+  private _buildWaveBytesFromPcm(item: { data?: Buffer | string }): Buffer {
+    const pcmBytes = this._decodeInlineData(item);
+    const channels = 1;
+    const sampleRate = 24000;
+    const bitsPerSample = 16;
+    const byteRate = (sampleRate * channels * bitsPerSample) / 8;
+    const blockAlign = (channels * bitsPerSample) / 8;
+    const header = Buffer.alloc(44);
+
+    header.write("RIFF", 0, "ascii");
+    header.writeUInt32LE(36 + pcmBytes.length, 4);
+    header.write("WAVE", 8, "ascii");
+    header.write("fmt ", 12, "ascii");
+    header.writeUInt32LE(16, 16);
+    header.writeUInt16LE(1, 20);
+    header.writeUInt16LE(channels, 22);
+    header.writeUInt32LE(sampleRate, 24);
+    header.writeUInt32LE(byteRate, 28);
+    header.writeUInt16LE(blockAlign, 32);
+    header.writeUInt16LE(bitsPerSample, 34);
+    header.write("data", 36, "ascii");
+    header.writeUInt32LE(pcmBytes.length, 40);
+
+    return Buffer.concat([header, pcmBytes]);
+  }
+
+  /**
    * Format inline_data metadata without emitting raw payloads.
    *
    * @param item - inline_data content item
@@ -106,7 +171,13 @@ export class Tracer {
     const mbCount = byteCount / (1024 * 1024);
 
     let label = isThinking ? "Thinking " : "";
-    label += mimeType.startsWith("image/") ? "Inline Image" : "Inline Data";
+    if (mimeType.startsWith("image/")) {
+      label += "Inline Image";
+    } else if (mimeType.startsWith("audio/")) {
+      label += "Inline Audio";
+    } else {
+      label += "Inline Data";
+    }
 
     if (kbCount < 1000) {
       return `${label}: ${mimeType} (${kbCount.toFixed(2)} KB)`;
@@ -125,10 +196,42 @@ export class Tracer {
     data?: Buffer | string;
   }): string {
     const mimeType = item.mime_type || "application/octet-stream";
-    const data = Buffer.isBuffer(item.data)
-      ? item.data.toString("base64")
-      : item.data || "";
-    return `data:${mimeType};base64,${data}`;
+    let rawBytes = this._decodeInlineData(item);
+    let normalizedMimeType = mimeType;
+
+    if (mimeType.startsWith("audio/")) {
+      if (!this._isBrowserPlayableAudioMimeType(mimeType)) {
+        normalizedMimeType = "audio/wav";
+        rawBytes = this._buildWaveBytesFromPcm(item);
+      }
+      return `data:${normalizedMimeType};base64,${rawBytes.toString("base64")}`;
+    }
+
+    return `data:${normalizedMimeType};base64,${rawBytes.toString("base64")}`;
+  }
+
+  /**
+   * Return whether inline_data should be rendered as audio.
+   *
+   * @param item - inline_data content item
+   * @returns Whether the payload is audio
+   */
+  private _inlineDataIsAudio(item: { mime_type?: string }): boolean {
+    return (item.mime_type || "").toLowerCase().startsWith("audio/");
+  }
+
+  /**
+   * Return the browser-facing audio MIME type after any WAV fallback.
+   *
+   * @param item - inline_data content item
+   * @returns Playable audio MIME type
+   */
+  private _inlineDataAudioType(item: { mime_type?: string }): string {
+    const mimeType = item.mime_type || "application/octet-stream";
+    if (this._isBrowserPlayableAudioMimeType(mimeType)) {
+      return mimeType;
+    }
+    return "audio/wav";
   }
 
   /**
@@ -516,6 +619,8 @@ export class Tracer {
                       itemHtml += `<div class="bg-purple-50 border-purple-500 p-4 rounded-md border-l-4"><div class="text-xs text-purple-700 mb-2">${this._escapeHtml(summary)}</div>`;
                       if (item.mime_type?.startsWith("image/")) {
                         itemHtml += `<img src="${this._escapeHtml(this._inlineDataUrl(item))}" class="max-w-xs max-h-48 rounded-md" alt="Inline Image">`;
+                      } else if (this._inlineDataIsAudio(item)) {
+                        itemHtml += `<audio controls preload="metadata" class="max-w-xs"><source src="${this._escapeHtml(this._inlineDataUrl(item))}" type="${this._escapeHtml(this._inlineDataAudioType(item))}"></audio>`;
                       } else {
                         itemHtml += `<div class="font-mono text-sm whitespace-pre-wrap text-gray-800">${this._escapeHtml(summary)}</div>`;
                       }
