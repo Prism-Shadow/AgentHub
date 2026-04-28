@@ -1,6 +1,6 @@
-# GPT-5.4 SDK Documentation
+# GPT-5.5 SDK Documentation
 
-This directory contains comprehensive documentation and examples for using OpenAI's GPT-5.4 API.
+This directory contains comprehensive documentation and examples for using OpenAI's GPT-5.5 API.
 
 ## Quick Start
 
@@ -9,7 +9,7 @@ This directory contains comprehensive documentation and examples for using OpenA
 
 ## Documentation
 
-The `docs/` folder contains detailed guides on various GPT-5.4 features:
+The `docs/` folder contains detailed guides on various GPT-5.5 features:
 
 - [function-calling.md](./docs/function-calling.md) - Function calling and tool use
 - [images-vision.md](./docs/images-vision.md) - Image and vision capabilities

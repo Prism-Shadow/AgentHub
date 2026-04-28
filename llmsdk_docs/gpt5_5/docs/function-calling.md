@@ -2,7 +2,7 @@
 
 **Function calling** (also known as **tool calling**) provides a powerful and flexible way for OpenAI models to interface with external systems and access data outside their training data. This guide shows how you can connect a model to data and actions provided by your application. We'll show how to use function tools (defined by a JSON schema) and custom tools which work with free form text inputs and outputs.
 
-If your application has many functions or large schemas, you can pair function calling with [tool search](https://developers.openai.com/api/docs/guides/tools-tool-search) to defer rarely used tools and load them only when the model needs them. Only `gpt-5.4` and later models support `tool_search`.
+If your application has many functions or large schemas, you can pair function calling with [tool search](https://developers.openai.com/api/docs/guides/tools-tool-search) to defer rarely used tools and load them only when the model needs them. Only `gpt-5.5` and later models support `tool_search`.
 
 ## How it works
 
@@ -116,15 +116,14 @@ for item in response.output:
     if item.type == "function_call":
         if item.name == "get_horoscope":
             # 3. Execute the function logic for get_horoscope
-            horoscope = get_horoscope(json.loads(item.arguments))
+            sign = json.loads(item.arguments)["sign"]
+            horoscope = get_horoscope(sign)
 
             # 4. Provide function call results to the model
             input_list.append({
                 "type": "function_call_output",
                 "call_id": item.call_id,
-                "output": json.dumps({
-                  "horoscope": horoscope
-                })
+                "output": horoscope,
             })
 
 print("Final input:")
@@ -140,11 +139,12 @@ response = client.responses.create(
 # 5. The model should be able to give a response!
 print("Final output:")
 print(response.model_dump_json(indent=2))
-print("\\n" + response.output_text)
+print("\n" + response.output_text)
 ```
 
 ```javascript
 import OpenAI from "openai";
+
 const openai = new OpenAI();
 
 // 1. Define a list of callable tools for the model
@@ -162,12 +162,14 @@ const tools = [
         },
       },
       required: ["sign"],
+      additionalProperties: false,
     },
+    strict: true,
   },
 ];
 
 function getHoroscope(sign) {
-  return sign + " Next Tuesday you will befriend a baby otter.";
+  return `${sign}: Next Tuesday you will befriend a baby otter.`;
 }
 
 // Create a running input list we will add to over time
@@ -182,22 +184,25 @@ let response = await openai.responses.create({
   input,
 });
 
-response.output.forEach((item) => {
-  if (item.type == "function_call") {
-    if (item.name == "get_horoscope"):
-      // 3. Execute the function logic for get_horoscope
-      const horoscope = get_horoscope(JSON.parse(item.arguments))
+// Preserve model output for the next turn
+input.push(...response.output);
 
-      // 4. Provide function call results to the model
-      input_list.push({
-          type: "function_call_output",
-          call_id: item.call_id,
-          output: json.dumps({
-            horoscope
-          })
-      })
+for (const item of response.output) {
+  if (item.type !== "function_call") continue;
+
+  if (item.name === "get_horoscope") {
+    // 3. Execute the function logic for get_horoscope
+    const { sign } = JSON.parse(item.arguments);
+    const horoscope = getHoroscope(sign);
+
+    // 4. Provide function call results to the model
+    input.push({
+      type: "function_call_output",
+      call_id: item.call_id,
+      output: horoscope,
+    });
   }
-});
+}
 
 console.log("Final input:");
 console.log(JSON.stringify(input, null, 2));
@@ -211,12 +216,13 @@ response = await openai.responses.create({
 
 // 5. The model should be able to give a response!
 console.log("Final output:");
-console.log(JSON.stringify(response.output, null, 2));
+console.log(response.output_text);
+
 ```
 
 
 
-Note that for reasoning models like GPT-5 or o4-mini, any reasoning items
+  Note that for reasoning models like GPT-5 or o4-mini, any reasoning items
   returned in model responses with tool calls must also be passed back with tool
   call outputs.
 
@@ -304,7 +310,7 @@ Use namespaces to group related tools by domain, such as `crm`, `billing`, or `s
 
 ## Tool search
 
-If you need to give the model access to a large ecosystem of tools, you can defer loading some or all of those tools with `tool_search`. The `tool_search` tool lets the model search for relevant tools, add them to the model context, and then use them. Only `gpt-5.4` and later models support it. Read the [tool search guide](https://developers.openai.com/api/docs/guides/tools-tool-search) to learn more.
+If you need to give the model access to a large ecosystem of tools, you can defer loading some or all of those tools with `tool_search`. The `tool_search` tool lets the model search for relevant tools, add them to the model context, and then use them. Only `gpt-5.5` and later models support it. Read the [tool search guide](https://developers.openai.com/api/docs/guides/tools-tool-search) to learn more.
 
 
 
@@ -423,6 +429,15 @@ Under the hood, strict mode works by leveraging our [structured outputs](https:/
 
 You can denote optional fields by adding `null` as a `type` option (see example below).
 
+If you send `strict: true` and your schema does not meet the requirements above,
+the request will be rejected with details about the missing constraints. If you
+omit `strict`, the default depends on the API: Responses requests will
+normalize your schema into strict mode (for example, by setting
+`additionalProperties: false` and marking all fields as required), which can
+make previously optional fields mandatory, while Chat Completions requests
+remain non-strict by default. To opt out of strict mode in Responses and keep
+non-strict, best-effort function calling, explicitly set `strict: false`.
+
 
 
 
@@ -495,47 +510,6 @@ Custom tools work in much the same way as JSON schema-driven function tools. But
 
 The following code sample shows creating a custom tool that expects to receive a string of text containing Python code as a response.
 
-Custom tool calling example
-
-```python
-from openai import OpenAI
-
-client = OpenAI()
-
-response = client.responses.create(
-    model="gpt-5",
-    input="Use the code_exec tool to print hello world to the console.",
-    tools=[
-        {
-            "type": "custom",
-            "name": "code_exec",
-            "description": "Executes arbitrary Python code.",
-        }
-    ]
-)
-print(response.output)
-```
-
-```javascript
-import OpenAI from "openai";
-const client = new OpenAI();
-
-const response = await client.responses.create({
-  model: "gpt-5",
-  input: "Use the code_exec tool to print hello world to the console.",
-  tools: [
-    {
-      type: "custom",
-      name: "code_exec",
-      description: "Executes arbitrary Python code.",
-    },
-  ],
-});
-
-console.log(response.output);
-```
-
-
 Just as before, the `output` array will contain a tool call generated by the model. Except this time, the tool call input is given as plain text.
 
 ```json
@@ -572,32 +546,14 @@ from openai import OpenAI
 
 client = OpenAI()
 
-grammar = """
-start: expr
-expr: term (SP ADD SP term)* -> add
-| term
-term: factor (SP MUL SP factor)* -> mul
-| factor
-factor: INT
-SP: " "
-ADD: "+"
-MUL: "*"
-%import common.INT
-"""
-
 response = client.responses.create(
     model="gpt-5",
-    input="Use the math_exp tool to add four plus four.",
+    input="Use the code_exec tool to print hello world to the console.",
     tools=[
         {
             "type": "custom",
-            "name": "math_exp",
-            "description": "Creates valid mathematical expressions",
-            "format": {
-                "type": "grammar",
-                "syntax": "lark",
-                "definition": grammar,
-            },
+            "name": "code_exec",
+            "description": "Executes arbitrary Python code.",
         }
     ]
 )
@@ -608,32 +564,14 @@ print(response.output)
 import OpenAI from "openai";
 const client = new OpenAI();
 
-const grammar = \`
-start: expr
-expr: term (SP ADD SP term)* -> add
-| term
-term: factor (SP MUL SP factor)* -> mul
-| factor
-factor: INT
-SP: " "
-ADD: "+"
-MUL: "*"
-%import common.INT
-\`;
-
 const response = await client.responses.create({
   model: "gpt-5",
-  input: "Use the math_exp tool to add four plus four.",
+  input: "Use the code_exec tool to print hello world to the console.",
   tools: [
     {
       type: "custom",
-      name: "math_exp",
-      description: "Creates valid mathematical expressions",
-      format: {
-        type: "grammar",
-        syntax: "lark",
-        definition: grammar,
-      },
+      name: "code_exec",
+      description: "Executes arbitrary Python code.",
     },
   ],
 });
@@ -757,7 +695,7 @@ from openai import OpenAI
 
 client = OpenAI()
 
-grammar = r"^(?P<month>January|February|March|April|May|June|July|August|September|October|November|December)\\s+(?P<day>\\d{1,2})(?:st|nd|rd|th)?\\s+(?P<year>\\d{4})\\s+at\\s+(?P<hour>0?[1-9]|1[0-2])(?P<ampm>AM|PM)$"
+grammar = r"^(?P<month>January|February|March|April|May|June|July|August|September|October|November|December)\s+(?P<day>\d{1,2})(?:st|nd|rd|th)?\s+(?P<year>\d{4})\s+at\s+(?P<hour>0?[1-9]|1[0-2])(?P<ampm>AM|PM)$"
 
 response = client.responses.create(
     model="gpt-5",
@@ -782,7 +720,7 @@ print(response.output)
 import OpenAI from "openai";
 const client = new OpenAI();
 
-const grammar = "^(?P<month>January|February|March|April|May|June|July|August|September|October|November|December)\\s+(?P<day>\\d{1,2})(?:st|nd|rd|th)?\\s+(?P<year>\\d{4})\\s+at\\s+(?P<hour>0?[1-9]|1[0-2])(?P<ampm>AM|PM)$";
+const grammar = "^(?P<month>January|February|March|April|May|June|July|August|September|October|November|December)\s+(?P<day>\d{1,2})(?:st|nd|rd|th)?\s+(?P<year>\d{4})\s+at\s+(?P<hour>0?[1-9]|1[0-2])(?P<ampm>AM|PM)$";
 
 const response = await client.responses.create({
   model: "gpt-5",

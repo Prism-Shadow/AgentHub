@@ -21,7 +21,7 @@ import { AutoLLMClient } from "@prismshadow/agenthub";
 process.env.OPENAI_API_KEY = "your-openai-api-key";
 
 async function main() {
-  const client = new AutoLLMClient({ model: "gpt-5.4" });
+  const client = new AutoLLMClient({ model: "gpt-5.5" });
 
   for await (const event of client.streamingResponseStateful({
     message: {
@@ -61,7 +61,7 @@ import { Tracer } from "@prismshadow/agenthub/integration/tracer";
 const tracer = new Tracer("./cache");
 
 // Save conversation history
-const model = "gpt-5.4";
+const model = "gpt-5.5";
 const history = [
   { role: "user", content_items: [{ type: "text", text: "Hello!" }] },
   { role: "assistant", content_items: [{ type: "text", text: "Hi there!" }] },

@@ -10,7 +10,7 @@ If you know what you want to build, find your use case below to get started. If 
 
 ### A tour of image-related use cases
 
-Recent language models can process image inputs and analyze them — a capability known as **vision**. With `gpt-image-1`, they can both analyze visual inputs and create images.
+Recent language models can process image inputs and analyze them—a capability known as **vision**. GPT Image models can use text and image inputs to create new images or edit existing ones.
 
 The OpenAI API offers several endpoints to process images as input or generate them as output, enabling you to build powerful multimodal applications.
 
@@ -26,10 +26,7 @@ To learn more about the input and output modalities supported by our models, ref
 
 You can generate or edit images using the Image API or the Responses API.
 
-Our latest image generation model, `gpt-image-1`, is a natively multimodal large language model.
-It can understand text and images and leverage its broad world knowledge to generate images with better instruction following and contextual awareness.
-
-In contrast, we also offer specialized image generation models - DALL·E 2 and 3 - which don't have the same inherent understanding of the world as GPT Image.
+The state-of-the-art image generation model, `gpt-image-2`, can understand text and images and use broad world knowledge to generate images with strong instruction following and contextual awareness.
 
 
 
@@ -89,7 +86,7 @@ You can learn more about image generation in our [Image
 
 ### Using world knowledge for image generation
 
-The difference between DALL·E models and GPT Image is that a natively multimodal language model can use its visual understanding of the world to generate lifelike images including real-life details without a reference.
+GPT Image models can use visual understanding of the world to generate lifelike images including real-life details without a reference.
 
 For example, if you prompt GPT Image to generate an image of a glass cabinet with the most popular semi-precious stones, the model knows enough to select gemstones like amethyst, rose quartz, jade, etc, and depict them in a realistic way.
 
@@ -430,8 +427,8 @@ Input images must meet the following requirements to be used in the API.
   <tr>
     <td>Size limits</td>
     <td>
-      - Up to 50 MB total payload size per request - Up to 500 individual image
-      inputs per request
+      - Up to 512 MB total payload size per request - Up to 1500 individual
+      image inputs per request
     </td>
   </tr>
   <tr>
@@ -445,7 +442,7 @@ Input images must meet the following requirements to be used in the API.
 
 ### Choose an image detail level
 
-The `detail` parameter tells the model what level of detail to use when processing and understanding the image (`low`, `high`, `original`, or `auto` to let the model decide). If you skip the parameter, the model will use `auto`. This behavior is the same in both the Responses API and the Chat Completions API.
+The `detail` parameter tells the model what level of detail to use when processing and understanding the image (`low`, `high`, `original`, or `auto`). If you skip the parameter, the model will use `auto`. This behavior is the same in both the Responses API and the Chat Completions API. On `gpt-5.5`, `auto` and the default omitted behavior are equivalent to `original`.
 
 
 
@@ -454,12 +451,12 @@ The `detail` parameter tells the model what level of detail to use when processi
 
 | Detail level | Best for                                                                                                                                       |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `"low"`      | Fast, low-cost understanding when fine visual detail is not important. The model receives a low-resolution 512px x 512px version of the image. |
-| `"high"`     | Standard high-fidelity image understanding.                                                                                                    |
-| `"original"` | Large, dense, spatially sensitive, or computer-use images. Available on `gpt-5.4` and future models.                                           |
-| `"auto"`     | Let the model choose the detail level.                                                                                                         |
+| `low`        | Fast, low-cost understanding when fine visual detail is not important. The model receives a low-resolution 512px x 512px version of the image. |
+| `high`       | Standard high-fidelity image understanding.                                                                                                    |
+| `original`   | Large, dense, spatially sensitive, or computer-use images. Available on `gpt-5.5` and future models.                                           |
+| `auto`       | Automatic detail selection. On `gpt-5.5`, `auto` and the omitted/default behavior are equivalent to `original`.                                |
 
-For computer use, localization, and click-accuracy use cases on `gpt-5.4` and future models, we recommend `"detail": "original"`. See the [Computer use guide](https://developers.openai.com/api/docs/guides/tools-computer-use) for more detail.
+For computer use, localization, and click-accuracy use cases on `gpt-5.5` and future models, we recommend `"detail": "original"`. See the [Computer use guide](https://developers.openai.com/api/docs/guides/tools-computer-use) for more detail.
 
 Read more about how models resize images in the [Model sizing
   behavior](#model-sizing-behavior) section, and about token costs in the
@@ -477,7 +474,7 @@ Different models use different resizing rules before image tokenization:
   </tr>
   <tr>
     <td>
-      <code>gpt-5.4</code> and future models
+      <code>gpt-5.5</code>
     </td>
     <td>
       <code>low</code>, <code>high</code>, <code>original</code>,
@@ -488,12 +485,34 @@ Different models use different resizing rules before image tokenization:
       dimension. <code>original</code> allows up to 10,000 patches or a
       6000-pixel maximum dimension. If either limit is exceeded, we resize the
       image while preserving aspect ratio to fit within the lesser of those two
-      constraints for the selected detail level. [Full resizing details
+      constraints for the selected detail level. <code>auto</code> and omitted
+      <code>detail</code> use the same sizing behavior as
+      <code>original</code>. [Full resizing details
       below.](#patch-based-image-tokenization)
     </td>
   </tr>
   <tr>
     <td>
+      <code>gpt-5.5</code>
+    </td>
+    <td>
+      <code>low</code>, <code>high</code>, <code>original</code>,
+      <code>auto</code>
+    </td>
+    <td>
+      <code>high</code> allows up to 2,500 patches or a 2048-pixel maximum
+      dimension. <code>original</code> allows up to 10,000 patches or a
+      6000-pixel maximum dimension. If either limit is exceeded, we resize the
+      image while preserving aspect ratio to fit within the lesser of those two
+      constraints for the selected detail level. <code>auto</code> and omitted
+      <code>detail</code> use the same sizing behavior as
+      <code>high</code>.[Full resizing details
+      below.](#patch-based-image-tokenization)
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <code>gpt-5.5-mini</code>, <code>gpt-5.5-nano</code>,
       <code>gpt-5-mini</code>, <code>gpt-5-nano</code>, <code>gpt-5.2</code>,
       <code>gpt-5.3-codex</code>, <code>gpt-5-codex-mini</code>,
       <code>gpt-5.1-codex-mini</code>, <code>gpt-5.2-codex</code>,
@@ -563,6 +582,8 @@ D. Apply a multiplier based on the model to get the total tokens:
 
 | Model           | Multiplier |
 | --------------- | ---------- |
+| `gpt-5.5-mini`  | 1.62       |
+| `gpt-5.5-nano`  | 2.46       |
 | `gpt-5-mini`    | 1.62       |
 | `gpt-5-nano`    | 2.46       |
 | `gpt-4.1-mini*` | 1.62       |

@@ -63,7 +63,7 @@ if (process.env.ANTHROPIC_API_KEY) {
 
 if (process.env.OPENAI_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "gpt-5.4",
+    name: "gpt-5.5",
     supportTextGeneration: true,
     supportTemperature: false,
     supportImageUnderstanding: true,

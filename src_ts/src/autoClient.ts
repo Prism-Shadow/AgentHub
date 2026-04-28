@@ -15,7 +15,7 @@
 import { LLMClient } from "./baseClient";
 import { Gemini3Client } from "./gemini3";
 import { Claude4_6Client } from "./claude4_6";
-import { GPT5_4Client } from "./gpt5_4";
+import { GPT5_5Client } from "./gpt5_5";
 import { GLM5Client } from "./glm5";
 import { KimiK2_5Client } from "./kimi_k2_5";
 import { Qwen3Client } from "./qwen3";
@@ -75,8 +75,11 @@ export class AutoLLMClient extends LLMClient {
       return new Gemini3Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("claude") && clientType.includes("4-6")) {
       return new Claude4_6Client({ model, apiKey, baseUrl });
-    } else if (clientType.includes("gpt-5.4")) {
-      return new GPT5_4Client({ model, apiKey, baseUrl });
+    } else if (
+      clientType.includes("gpt-5.4") ||
+      clientType.includes("gpt-5.5")
+    ) {
+      return new GPT5_5Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("glm-5")) {
       return new GLM5Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("kimi-k2.5")) {
@@ -86,7 +89,7 @@ export class AutoLLMClient extends LLMClient {
     } else {
       throw new Error(
         `${clientType} is not supported. ` +
-          "Supported client types: gemini-3, claude-4-6, gpt-5.4, glm-5, kimi-k2.5, qwen3.",
+          "Supported client types: gemini-3, claude-4-6, gpt-5.4, gpt-5.5, glm-5, kimi-k2.5, qwen3.",
       );
     }
   }

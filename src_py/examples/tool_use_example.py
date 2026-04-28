@@ -43,8 +43,8 @@ async def main():
     print("Tool Calling Example")
     print("=" * 60)
 
-    # Get model from environment variable, default to gpt-5.4
-    model = os.getenv("MODEL", "gpt-5.4")
+    # Get model from environment variable, default to gpt-5.5
+    model = os.getenv("MODEL", "gpt-5.5")
     print(f"Using model: {model}")
 
     # Define the function declaration for the model
