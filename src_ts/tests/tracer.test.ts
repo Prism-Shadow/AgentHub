@@ -266,4 +266,97 @@ describe("Tracer", () => {
 
     expect(txtContent).toContain("Inline Audio: audio/pcm");
   });
+
+  test("should sort directory listing by name", async () => {
+    const tracer = new Tracer(tempCacheDir);
+    const model = "fake-model";
+    const history: UniMessage[] = [
+      { role: "user", content_items: [{ type: "text", text: "Test" }] },
+    ];
+    const config = {};
+
+    tracer.saveHistory(model, history, "zebra/conv", config);
+    tracer.saveHistory(model, history, "apple/conv", config);
+    tracer.saveHistory(model, history, "mango/conv", config);
+
+    const app = tracer.createWebApp();
+    const supertest = await import("supertest");
+    const response = await supertest.default(app).get("/?sort=name");
+
+    expect(response.status).toBe(200);
+    const html = response.text;
+
+    const posApple = html.indexOf("apple");
+    const posMango = html.indexOf("mango");
+    const posZebra = html.indexOf("zebra");
+    expect(posApple).toBeGreaterThan(-1);
+    expect(posMango).toBeGreaterThan(-1);
+    expect(posZebra).toBeGreaterThan(-1);
+    expect(posApple).toBeLessThan(posMango);
+    expect(posMango).toBeLessThan(posZebra);
+
+    expect(html).toContain("sort=name");
+    expect(html).toContain("sort=mtime");
+  });
+
+  test("should sort directory listing by mtime", async () => {
+    const tracer = new Tracer(tempCacheDir);
+    const model = "fake-model";
+    const history: UniMessage[] = [
+      { role: "user", content_items: [{ type: "text", text: "Test" }] },
+    ];
+    const config = {};
+
+    tracer.saveHistory(model, history, "alpha/conv", config);
+    tracer.saveHistory(model, history, "beta/conv", config);
+    tracer.saveHistory(model, history, "gamma/conv", config);
+
+    // Explicitly set directory mtimes for deterministic ordering
+    const alphaDir = path.join(tempCacheDir, "alpha");
+    const betaDir = path.join(tempCacheDir, "beta");
+    const gammaDir = path.join(tempCacheDir, "gamma");
+    fs.utimesSync(alphaDir, new Date(1000000), new Date(1000000));
+    fs.utimesSync(betaDir, new Date(2000000), new Date(2000000));
+    fs.utimesSync(gammaDir, new Date(3000000), new Date(3000000));
+
+    const app = tracer.createWebApp();
+    const supertest = await import("supertest");
+    const response = await supertest.default(app).get("/?sort=mtime");
+
+    expect(response.status).toBe(200);
+    const html = response.text;
+
+    const posGamma = html.indexOf("gamma");
+    const posAlpha = html.indexOf("alpha");
+    expect(posGamma).toBeGreaterThan(-1);
+    expect(posAlpha).toBeGreaterThan(-1);
+    // Most recently modified (gamma, mtime=3000000ms) should appear before oldest (alpha, mtime=1000000ms)
+    expect(posGamma).toBeLessThan(posAlpha);
+
+    expect(html).toContain("sort=name");
+    expect(html).toContain("sort=mtime");
+  });
+
+  test("should default to name sort when no sort param provided", async () => {
+    const tracer = new Tracer(tempCacheDir);
+    const model = "fake-model";
+    const history: UniMessage[] = [
+      { role: "user", content_items: [{ type: "text", text: "Test" }] },
+    ];
+    const config = {};
+
+    tracer.saveHistory(model, history, "zebra/conv", config);
+    tracer.saveHistory(model, history, "apple/conv", config);
+
+    const app = tracer.createWebApp();
+    const supertest = await import("supertest");
+    const response = await supertest.default(app).get("/");
+
+    expect(response.status).toBe(200);
+    const html = response.text;
+
+    const posApple = html.indexOf("apple");
+    const posZebra = html.indexOf("zebra");
+    expect(posApple).toBeLessThan(posZebra);
+  });
 });

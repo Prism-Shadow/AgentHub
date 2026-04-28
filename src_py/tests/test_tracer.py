@@ -330,3 +330,91 @@ def test_format_config_with_system_and_tools(temp_cache_dir):
     assert "tools:" in txt_content
     assert "get_weather" in txt_content
     assert "parameters" in txt_content
+
+
+def test_web_app_sort_by_name(temp_cache_dir):
+    """Test directory listing sorted by name."""
+    tracer = Tracer(cache_dir=temp_cache_dir)
+
+    model = "fake-model"
+    history = [{"role": "user", "content_items": [{"type": "text", "text": "Test"}]}]
+    config = {}
+    tracer.save_history(model, history, "zebra/conv", config)
+    tracer.save_history(model, history, "apple/conv", config)
+    tracer.save_history(model, history, "mango/conv", config)
+
+    app = tracer.create_web_app()
+
+    with app.test_client() as client:
+        response = client.get("/?sort=name")
+        assert response.status_code == 200
+        html = response.data.decode()
+
+        # Dirs should appear alphabetically: apple, mango, zebra
+        pos_apple = html.index("apple")
+        pos_mango = html.index("mango")
+        pos_zebra = html.index("zebra")
+        assert pos_apple < pos_mango < pos_zebra
+
+        # Sort controls should be present
+        assert "sort=name" in html
+        assert "sort=mtime" in html
+
+
+def test_web_app_sort_by_mtime(temp_cache_dir):
+    """Test directory listing sorted by modification time (most recent first)."""
+    tracer = Tracer(cache_dir=temp_cache_dir)
+
+    model = "fake-model"
+    history = [{"role": "user", "content_items": [{"type": "text", "text": "Test"}]}]
+    config = {}
+
+    tracer.save_history(model, history, "alpha/conv", config)
+    tracer.save_history(model, history, "beta/conv", config)
+    tracer.save_history(model, history, "gamma/conv", config)
+
+    # Explicitly set directory mtimes so the order is deterministic
+    alpha_dir = Path(temp_cache_dir) / "alpha"
+    beta_dir = Path(temp_cache_dir) / "beta"
+    gamma_dir = Path(temp_cache_dir) / "gamma"
+    os.utime(alpha_dir, (1000, 1000))
+    os.utime(beta_dir, (2000, 2000))
+    os.utime(gamma_dir, (3000, 3000))
+
+    app = tracer.create_web_app()
+
+    with app.test_client() as client:
+        response = client.get("/?sort=mtime")
+        assert response.status_code == 200
+        html = response.data.decode()
+
+        # Most recently modified directory (gamma, mtime=3000) should appear before alpha (mtime=1000)
+        pos_gamma = html.index("gamma")
+        pos_alpha = html.index("alpha")
+        assert pos_gamma < pos_alpha
+
+        # Sort controls should be present
+        assert "sort=name" in html
+        assert "sort=mtime" in html
+
+
+def test_web_app_sort_default_is_name(temp_cache_dir):
+    """Test that the default sort order is by name."""
+    tracer = Tracer(cache_dir=temp_cache_dir)
+
+    model = "fake-model"
+    history = [{"role": "user", "content_items": [{"type": "text", "text": "Test"}]}]
+    config = {}
+    tracer.save_history(model, history, "zebra/conv", config)
+    tracer.save_history(model, history, "apple/conv", config)
+
+    app = tracer.create_web_app()
+
+    with app.test_client() as client:
+        response = client.get("/")
+        assert response.status_code == 200
+        html = response.data.decode()
+
+        pos_apple = html.index("apple")
+        pos_zebra = html.index("zebra")
+        assert pos_apple < pos_zebra
