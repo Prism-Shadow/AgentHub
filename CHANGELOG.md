@@ -1,8 +1,8 @@
 # Changelog
 
-- [2026-04-28] Update the default OpenAI GPT model from GPT-5.4 to GPT-5.5.
+- [2026-04-28] Gemini 3.1 Flash TTS model is supported. Switch to GPT-5.5.
 
-- [2026-04-22] Gemini 3.1 flash image model (Nano Banana 2) is supported.
+- [2026-04-22] Gemini 3.1 Flash Image (Nano Banana 2) model is supported.
 
 - [2026-04-02] Switch to automatic caching for Claude 4.6 (but not for bedrock yet). Add message timestamp and round index to the tracer tool.
 

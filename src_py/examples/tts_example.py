@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Example demonstrating Gemini single-speaker TTS generation.
+Example demonstrating speech generation.
 
 This example sends a text-only prompt with transcript tags such as [excitedly],
 collects the returned audio chunks, and saves the final output as a WAV file.
@@ -27,22 +27,10 @@ from pathlib import Path
 from agenthub import AutoLLMClient
 
 
-def save_wav_file(
-    filename: Path, pcm_data: bytes, channels: int = 1, rate: int = 24000, sample_width: int = 2
-) -> None:
-    """Save raw PCM bytes as a WAV file using Gemini TTS defaults."""
-
-    with wave.open(str(filename), "wb") as wav_file:
-        wav_file.setnchannels(channels)
-        wav_file.setsampwidth(sample_width)
-        wav_file.setframerate(rate)
-        wav_file.writeframes(pcm_data)
-
-
 async def main():
-    """Example of single-speaker Gemini TTS generation."""
+    """Example of speech generation."""
     print("=" * 60)
-    print("Gemini TTS Example")
+    print("Speech Generation Example")
     print("=" * 60)
 
     # Get model from environment variable, default to gemini-3.1-flash-tts-preview
@@ -54,15 +42,12 @@ async def main():
 
 ### TRANSCRIPT
 [excitedly] Welcome to AgentHub! We just added Gemini text-to-speech support.
-[warmly] This demo saves the generated audio as a WAV file so you can play it back right away.
+[very slow] This demo saves the generated audio as a WAV file so you can play it back right away.
 [whispers] And yes, prompt tags like this can shape the performance.
 """
-    output_path = Path.cwd() / "generated_audio.wav"
 
-    print("User:")
-    print(prompt)
+    print(f"User: {prompt}")
     print("Assistant:")
-    print(f"Saving output to: {output_path}")
 
     audio_chunks: list[bytes] = []
     async for event in client.streaming_response(
@@ -76,9 +61,14 @@ async def main():
     if not audio_chunks:
         raise RuntimeError("No audio data was returned by the model.")
 
-    save_wav_file(output_path, b"".join(audio_chunks))
-    print(f"Saved WAV file to: {output_path}")
+    output_path = Path.cwd() / "generated_audio.wav"
+    with wave.open(str(output_path), "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(24000)
+        wav_file.writeframes(b"".join(audio_chunks))
 
+    print(f"Saved WAV file to: {output_path}")
     print("\n" + "=" * 60)
     print("Gemini TTS complete!")
     print("=" * 60)
