@@ -29,7 +29,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from flask import Flask, Response, render_template_string
+from flask import Flask, Response, render_template_string, request
 
 from ..types import UniMessage
 
@@ -330,6 +330,11 @@ class Tracer:
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
                     <p class="text-sm text-gray-600"><strong>Path:</strong> {{ breadcrumb|safe }}</p>
                 </div>
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="text-xs text-gray-500">Sort by:</span>
+                    <a href="{{ sort_name_url }}" class="px-3 py-1 text-xs rounded border transition-colors {% if current_sort == 'name' %}bg-blue-600 text-white border-blue-600{% else %}bg-white text-gray-700 border-gray-300 hover:bg-gray-50{% endif %}">Name</a>
+                    <a href="{{ sort_mtime_url }}" class="px-3 py-1 text-xs rounded border transition-colors {% if current_sort == 'mtime' %}bg-blue-600 text-white border-blue-600{% else %}bg-white text-gray-700 border-gray-300 hover:bg-gray-50{% endif %}">Modified Time</a>
+                </div>
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     {% if items %}
                         {% for item in items %}
@@ -339,9 +344,14 @@ class Tracer:
                                         <span class="mr-2">{% if item.is_dir %}📁{% else %}📄{% endif %}</span>
                                         <span class="text-sm">{{ item.name }}</span>
                                     </span>
-                                    {% if item.size %}
-                                    <span class="text-xs text-gray-500">{{ item.size }}</span>
-                                    {% endif %}
+                                    <span class="flex items-center gap-4">
+                                        {% if item.size %}
+                                        <span class="text-xs text-gray-500">{{ item.size }}</span>
+                                        {% endif %}
+                                        {% if item.mtime %}
+                                        <span class="text-xs text-gray-400">{{ item.mtime }}</span>
+                                        {% endif %}
+                                    </span>
                                 </a>
                             </div>
                         {% endfor %}
@@ -635,22 +645,43 @@ class Tracer:
                     return f"Error reading file: {str(e)}", 500
 
             # If it's a directory, list its contents
+            sort_by = request.args.get("sort", "name")
+            if sort_by not in ("name", "mtime"):
+                sort_by = "name"
+
             items = []
             try:
-                for entry in sorted(full_path.iterdir(), key=lambda x: (not x.is_dir(), x.name)):
-                    # Calculate relative path from cache_dir
+                with os.scandir(full_path) as scanner:
+                    raw_entries = list(scanner)
+
+                # Filter entries that pass the security check first
+                safe_entries: list[tuple[os.DirEntry, Path]] = []
+                for entry in raw_entries:
                     try:
-                        relative_path = entry.resolve().relative_to(self.cache_dir.resolve())
+                        relative_path = Path(entry.path).resolve().relative_to(self.cache_dir.resolve())
+                        safe_entries.append((entry, relative_path))
                     except ValueError:
                         # If relative_to fails, skip this entry for security
                         continue
+
+                # Pre-compute stat for each safe entry exactly once
+                entry_stats = {entry.name: entry.stat() for entry, _ in safe_entries}
+
+                if sort_by == "mtime":
+                    safe_entries.sort(key=lambda x: (not x[0].is_dir(), -entry_stats[x[0].name].st_mtime))
+                else:
+                    safe_entries.sort(key=lambda x: (not x[0].is_dir(), x[0].name))
+
+                for entry, relative_path in safe_entries:
+                    stat = entry_stats[entry.name]
                     item_info: dict[str, Any] = {
                         "name": entry.name,
                         "is_dir": entry.is_dir(),
                         "url": f"/{relative_path}",
+                        "mtime": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
                     }
                     if entry.is_file():
-                        size = entry.stat().st_size
+                        size = stat.st_size
                         if size < 1024:
                             item_info["size"] = f"{size} B"
                         elif size < 1024 * 1024:
@@ -670,7 +701,18 @@ class Tracer:
                     breadcrumb_parts.append(f'<a href="/{path_to_part}">{part}</a>')
             breadcrumb = " / ".join(breadcrumb_parts)
 
-            return render_template_string(DIRECTORY_TEMPLATE, items=items, breadcrumb=breadcrumb)
+            base_url = "/" + subpath if subpath else "/"
+            sort_name_url = base_url + "?sort=name"
+            sort_mtime_url = base_url + "?sort=mtime"
+
+            return render_template_string(
+                DIRECTORY_TEMPLATE,
+                items=items,
+                breadcrumb=breadcrumb,
+                current_sort=sort_by,
+                sort_name_url=sort_name_url,
+                sort_mtime_url=sort_mtime_url,
+            )
 
         return app
 

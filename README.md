@@ -38,14 +38,14 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 
 ## Supported Models
 
-| Model Name     | Vendor                          | Reasoning          | Tool Use           | Image Understanding | Image Generation   | Speech Generation  |
-| -------------- | ------------------------------- | ------------------ | ------------------ | ------------------- | ------------------ | ------------------ |
-| Gemini 3/3.1   | Official/Google Vertex AI       | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :white_check_mark: | :white_check_mark: |
-| Claude 4.6     | Official/Amazon Bedrock         | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :x:                | :x:                |
-| GPT-5.4/5.5    | Official                        | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :x:                | :x:                |
-| Kimi-K2.5      | Official/OpenRouter/SiliconFlow | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :x:                | :x:                |
-| GLM-5          | Official/OpenRouter/SiliconFlow | :white_check_mark: | :white_check_mark: | :x:                 | :x:                | :x:                |
-| Qwen3          | OpenRouter/SiliconFlow/vLLM     | :white_check_mark: | :white_check_mark: | :x:                 | :x:                | :x:                |
+| Model Name     | Vendor                              | Reasoning          | Tool Use           | Image Understanding | Image Generation   | Speech Generation  |
+| -------------- | ----------------------------------- | ------------------ | ------------------ | ------------------- | ------------------ | ------------------ |
+| Gemini 3/3.1   | Official/Google Vertex AI           | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :white_check_mark: | :white_check_mark: |
+| Claude 4.6     | Official/Amazon Bedrock/UModelVerse | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :x:                | :x:                |
+| GPT-5.4/5.5    | Official/UModelVerse                | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :x:                | :x:                |
+| Kimi-K2.5      | Official/OpenRouter/SiliconFlow     | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :x:                | :x:                |
+| GLM-5          | Official/OpenRouter/SiliconFlow     | :white_check_mark: | :white_check_mark: | :x:                 | :x:                | :x:                |
+| Qwen3          | OpenRouter/SiliconFlow/vLLM         | :white_check_mark: | :white_check_mark: | :x:                 | :x:                | :x:                |
 
 ## Installation
 

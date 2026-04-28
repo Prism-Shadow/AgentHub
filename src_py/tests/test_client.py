@@ -37,7 +37,7 @@ class Model:
     support_image_understanding: bool = True
     support_image_generation: bool = False
     support_tts: bool = False
-    provider: Literal["official", "siliconflow", "openrouter", "bedrock", "vertex"] = "official"
+    provider: Literal["official", "bedrock", "vertex", "siliconflow", "openrouter", "modelverse"] = "official"
 
     def __repr__(self) -> str:
         return f"{self.name}:{self.provider}"
@@ -51,6 +51,7 @@ if os.getenv("GEMINI_API_KEY"):
         Model(
             name="gemini-3.1-flash-image-preview",
             support_text=False,
+            support_temperature=False,
             support_image_understanding=False,
             support_image_generation=True,
         )
@@ -59,6 +60,7 @@ if os.getenv("GEMINI_API_KEY"):
         Model(
             name="gemini-3.1-flash-tts-preview",
             support_text=False,
+            support_temperature=False,
             support_image_understanding=False,
             support_tts=True,
         )
@@ -76,6 +78,32 @@ if os.getenv("ZAI_API_KEY"):
 if os.getenv("MOONSHOT_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="kimi-k2.5", support_temperature=False))
 
+if os.getenv("BEDROCK_API_KEY"):
+    AVAILABLE_MODELS.append(Model(name="global.anthropic.claude-sonnet-4-6", provider="bedrock"))
+
+if os.getenv("VERTEX_API_KEY"):
+    AVAILABLE_MODELS.append(Model(name="gemini-3-flash-preview", provider="vertex"))
+    AVAILABLE_MODELS.append(
+        Model(
+            name="gemini-3.1-flash-image-preview",
+            provider="vertex",
+            support_text=False,
+            support_temperature=False,
+            support_image_understanding=False,
+            support_image_generation=True,
+        )
+    )
+    AVAILABLE_MODELS.append(
+        Model(
+            name="gemini-3.1-flash-tts-preview",
+            provider="vertex",
+            support_text=False,
+            support_temperature=False,
+            support_image_understanding=False,
+            support_tts=True,
+        )
+    )
+
 RUN_SLOW_TEST = os.getenv("RUN_SLOW_TEST", "0") == "1"
 
 if os.getenv("OPENROUTER_API_KEY") and RUN_SLOW_TEST:
@@ -90,45 +118,31 @@ if os.getenv("SILICONFLOW_API_KEY") and RUN_SLOW_TEST:
     AVAILABLE_MODELS.append(Model(name="Qwen/Qwen3-8B", provider="siliconflow", support_image_understanding=False))
     AVAILABLE_MODELS.append(Model(name="Pro/moonshotai/Kimi-K2.5", provider="siliconflow", support_temperature=False))
 
-if os.getenv("BEDROCK_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="global.anthropic.claude-sonnet-4-6", provider="bedrock"))
-
-if os.getenv("VERTEX_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="gemini-3-flash-preview", provider="vertex"))
-    AVAILABLE_MODELS.append(
-        Model(
-            name="gemini-3.1-flash-image-preview",
-            provider="vertex",
-            support_text=False,
-            support_image_understanding=False,
-            support_image_generation=True,
-        )
-    )
-    AVAILABLE_MODELS.append(
-        Model(
-            name="gemini-3.1-flash-tts-preview",
-            provider="vertex",
-            support_text=False,
-            support_image_understanding=False,
-            support_tts=True,
-        )
-    )
+if os.getenv("MODELVERSE_API_KEY") and RUN_SLOW_TEST:
+    AVAILABLE_MODELS.append(Model(name="claude-sonnet-4-6", provider="modelverse"))
+    AVAILABLE_MODELS.append(Model(name="gpt-5.5", provider="modelverse", support_temperature=False))
 
 
 async def _create_client(model: Model) -> AutoLLMClient:
     """Create a client for the given model."""
-    if model.provider == "openrouter":
-        api_key = os.getenv("OPENROUTER_API_KEY")
-        base_url = "https://openrouter.ai/api/v1"
-    elif model.provider == "siliconflow":
-        api_key = os.getenv("SILICONFLOW_API_KEY")
-        base_url = "https://api.siliconflow.cn/v1"
-    elif model.provider == "bedrock":
+    if model.provider == "bedrock":
         api_key = os.getenv("BEDROCK_API_KEY")
         base_url = "bedrock://us-east-1"
     elif model.provider == "vertex":
         api_key = os.getenv("VERTEX_API_KEY")
         base_url = None
+    elif model.provider == "openrouter":
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        base_url = "https://openrouter.ai/api/v1"
+    elif model.provider == "siliconflow":
+        api_key = os.getenv("SILICONFLOW_API_KEY")
+        base_url = "https://api.siliconflow.cn/v1"
+    elif model.provider == "modelverse":
+        api_key = os.getenv("MODELVERSE_API_KEY")
+        if model.name.startswith("claude-"):
+            base_url = "https://api.modelverse.cn/"
+        else:
+            base_url = "https://api.modelverse.cn/v1"
     else:
         api_key, base_url = None, None
 

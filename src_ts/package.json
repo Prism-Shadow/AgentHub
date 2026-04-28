@@ -1,6 +1,6 @@
 {
   "name": "@prismshadow/agenthub",
-  "version": "0.3.1-dev.0",
+  "version": "0.3.1",
   "description": "AgentHub is the LLM API Hub for the Agent era, built for high-precision autonomous agents.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -32,10 +32,12 @@
     "@types/express": "^4.17.21",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.0.10",
+    "@types/supertest": "^7.2.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^9.0.0",
     "jest": "^30.2.0",
+    "supertest": "^7.2.2",
     "ts-jest": "^29.4.6",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"

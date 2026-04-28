@@ -369,7 +369,13 @@ export class Tracer {
   createWebApp(): Express {
     const app = express();
 
-    const DIRECTORY_TEMPLATE = (breadcrumb: string, itemsHtml: string) => `
+    const DIRECTORY_TEMPLATE = (
+      breadcrumb: string,
+      itemsHtml: string,
+      currentSort: string,
+      sortNameUrl: string,
+      sortMtimeUrl: string,
+    ) => `
     <!DOCTYPE html>
     <html>
     <head>
@@ -386,6 +392,11 @@ export class Tracer {
             </div>
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
                 <p class="text-sm text-gray-600"><strong>Path:</strong> ${breadcrumb}</p>
+            </div>
+            <div class="flex items-center gap-2 mb-3">
+                <span class="text-xs text-gray-500">Sort by:</span>
+                <a href="${sortNameUrl}" class="px-3 py-1 text-xs rounded border transition-colors ${currentSort === "name" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"}">Name</a>
+                <a href="${sortMtimeUrl}" class="px-3 py-1 text-xs rounded border transition-colors ${currentSort === "mtime" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"}">Modified Time</a>
             </div>
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 ${itemsHtml}
@@ -738,36 +749,52 @@ export class Tracer {
       }
 
       try {
-        const items = fs
-          .readdirSync(fullPath)
-          .sort((a: string, b: string) => {
-            const aIsDir = fs.statSync(path.join(fullPath, a)).isDirectory();
-            const bIsDir = fs.statSync(path.join(fullPath, b)).isDirectory();
-            if (aIsDir !== bIsDir) return aIsDir ? -1 : 1;
-            return a.localeCompare(b);
-          })
-          .map((entry: string) => {
-            const entryPath = path.join(fullPath, entry);
-            const relativePath = path.relative(this.cacheDir, entryPath);
-            const isDir = fs.statSync(entryPath).isDirectory();
-            let size = "";
-            if (!isDir) {
-              const stat = fs.statSync(entryPath);
-              if (stat.size < 1024) {
-                size = `${stat.size} B`;
-              } else if (stat.size < 1024 * 1024) {
-                size = `${(stat.size / 1024).toFixed(1)} KB`;
-              } else {
-                size = `${(stat.size / (1024 * 1024)).toFixed(1)} MB`;
-              }
+        const sortBy = req.query["sort"] === "mtime" ? "mtime" : "name";
+
+        const entries = fs.readdirSync(fullPath, { withFileTypes: true });
+        const entryStats = new Map<string, fs.Stats>();
+        for (const entry of entries) {
+          entryStats.set(
+            entry.name,
+            fs.statSync(path.join(fullPath, entry.name)),
+          );
+        }
+        entries.sort((a: fs.Dirent, b: fs.Dirent) => {
+          const aIsDir = a.isDirectory();
+          const bIsDir = b.isDirectory();
+          if (aIsDir !== bIsDir) return aIsDir ? -1 : 1;
+          if (sortBy === "mtime") {
+            const aMtime = entryStats.get(a.name)!.mtimeMs;
+            const bMtime = entryStats.get(b.name)!.mtimeMs;
+            return bMtime - aMtime;
+          }
+          return a.name.localeCompare(b.name);
+        });
+
+        const items = entries.map((entry: fs.Dirent) => {
+          const entryPath = path.join(fullPath, entry.name);
+          const relativePath = path.relative(this.cacheDir, entryPath);
+          const stat = entryStats.get(entry.name)!;
+          const isDir = stat.isDirectory();
+          let size = "";
+          if (!isDir) {
+            if (stat.size < 1024) {
+              size = `${stat.size} B`;
+            } else if (stat.size < 1024 * 1024) {
+              size = `${(stat.size / 1024).toFixed(1)} KB`;
+            } else {
+              size = `${(stat.size / (1024 * 1024)).toFixed(1)} MB`;
             }
-            return {
-              name: entry,
-              is_dir: isDir,
-              url: "/" + relativePath.replace(/\\/g, "/"),
-              size,
-            };
-          });
+          }
+          const mtime = this._formatTimestamp(stat.mtimeMs);
+          return {
+            name: entry.name,
+            is_dir: isDir,
+            url: "/" + relativePath.replace(/\\/g, "/"),
+            size,
+            mtime,
+          };
+        });
 
         const parts = subpath ? subpath.split("/") : [];
         const breadcrumbParts = [
@@ -785,6 +812,10 @@ export class Tracer {
 
         const breadcrumb = breadcrumbParts.join(" / ");
 
+        const baseUrl = subpath ? "/" + subpath : "/";
+        const sortNameUrl = baseUrl + "?sort=name";
+        const sortMtimeUrl = baseUrl + "?sort=mtime";
+
         const itemsHtml = items.length
           ? items
               .map(
@@ -793,10 +824,14 @@ export class Tracer {
                   url: string;
                   name: string;
                   size: string;
+                  mtime: string;
                 }) => {
                   const icon = item.is_dir ? "📁" : "📄";
                   const sizeHtml = item.size
                     ? `<span class="text-xs text-gray-500">${item.size}</span>`
+                    : "";
+                  const mtimeHtml = item.mtime
+                    ? `<span class="text-xs text-gray-400">${item.mtime}</span>`
                     : "";
                   return `
                   <div class="border-b border-gray-200 last:border-b-0 hover:bg-gray-50 transition-colors">
@@ -805,7 +840,10 @@ export class Tracer {
                         <span class="mr-2">${icon}</span>
                         <span class="text-sm">${item.name}</span>
                       </span>
-                      ${sizeHtml}
+                      <span class="flex items-center gap-4">
+                        ${sizeHtml}
+                        ${mtimeHtml}
+                      </span>
                     </a>
                   </div>
                 `;
@@ -814,7 +852,13 @@ export class Tracer {
               .join("")
           : '<div class="p-8 text-center text-gray-500 italic">No files or directories found.</div>';
 
-        const html = DIRECTORY_TEMPLATE(breadcrumb, itemsHtml);
+        const html = DIRECTORY_TEMPLATE(
+          breadcrumb,
+          itemsHtml,
+          sortBy,
+          sortNameUrl,
+          sortMtimeUrl,
+        );
 
         return res.send(html);
       } catch (error) {
