@@ -749,8 +749,7 @@ export class Tracer {
       }
 
       try {
-        const sortBy =
-          req.query["sort"] === "mtime" ? "mtime" : "name";
+        const sortBy = req.query["sort"] === "mtime" ? "mtime" : "name";
 
         const entries = fs.readdirSync(fullPath);
         entries.sort((a: string, b: string) => {
