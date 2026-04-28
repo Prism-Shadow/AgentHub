@@ -17,11 +17,15 @@ import {
   Content,
   GenerateContentConfig,
   ImageConfig as GeminiImageConfig,
+  MultiSpeakerVoiceConfig,
   Part,
+  PrebuiltVoiceConfig,
   FunctionCall,
   ThinkingConfig,
   ThinkingLevel as GeminiThinkingLevel,
   FunctionCallingConfig,
+  SpeakerVoiceConfig,
+  SpeechConfig,
   Tool,
   ToolConfig,
   GenerateContentResponse,
@@ -29,6 +33,7 @@ import {
   FunctionResponsePart,
   FunctionResponseBlob,
   FunctionResponse,
+  VoiceConfig,
 } from "@google/genai";
 import * as path from "path";
 import { LLMClient } from "../baseClient";
@@ -192,13 +197,6 @@ export class Gemini3Client extends LLMClient {
       configParams.temperature = config.temperature;
     }
 
-    if (config.image_config !== undefined) {
-      configParams.imageConfig = {
-        aspectRatio: config.image_config.aspect_ratio,
-        imageSize: config.image_config.image_size,
-      } as GeminiImageConfig;
-    }
-
     const thinkingSummary = config.thinking_summary;
     const thinkingLevel = config.thinking_level;
     if (thinkingSummary !== undefined || thinkingLevel !== undefined) {
@@ -226,6 +224,55 @@ export class Gemini3Client extends LLMClient {
       config.prompt_caching !== PromptCaching.ENABLE
     ) {
       throw new Error("prompt_caching must be ENABLE for Gemini 3.");
+    }
+
+    if (config.image_config !== undefined) {
+      configParams.imageConfig = {
+        aspectRatio: config.image_config.aspect_ratio,
+        imageSize: config.image_config.image_size,
+      } as GeminiImageConfig;
+    }
+
+    const isTtsModel = this._model.toLowerCase().includes("tts");
+    if (isTtsModel) {
+      configParams.responseModalities = ["AUDIO"];
+      const ttsConfig = config.tts_config ?? [{ voice: "Kore" }];
+      if (![1, 2].includes(ttsConfig.length)) {
+        throw new Error("tts_config must contain 1 or 2 entries.");
+      }
+
+      if (ttsConfig.length === 1) {
+        configParams.speechConfig = {
+          voiceConfig: {
+            prebuiltVoiceConfig: {
+              voiceName: ttsConfig[0].voice,
+            } as PrebuiltVoiceConfig,
+          } as VoiceConfig,
+        } as SpeechConfig;
+      } else {
+        const speakerVoiceConfigs = ttsConfig.map((speakerConfig) => {
+          if (!speakerConfig.speaker) {
+            throw new Error(
+              "speaker is required when tts_config has 2 entries.",
+            );
+          }
+
+          return {
+            speaker: speakerConfig.speaker,
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName: speakerConfig.voice,
+              } as PrebuiltVoiceConfig,
+            } as VoiceConfig,
+          } as SpeakerVoiceConfig;
+        });
+
+        configParams.speechConfig = {
+          multiSpeakerVoiceConfig: {
+            speakerVoiceConfigs,
+          } as MultiSpeakerVoiceConfig,
+        } as SpeechConfig;
+      }
     }
 
     return Object.keys(configParams).length > 0
@@ -435,6 +482,19 @@ export class Gemini3Client extends LLMClient {
     messages: UniMessage[];
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
+    // check if all items are text for tts model
+    const isTtsModel = this._model.toLowerCase().includes("tts");
+    if (isTtsModel) {
+      const invalidItem = options.messages
+        .flatMap((message) => message.content_items)
+        .find((item) => item.type !== "text");
+      if (invalidItem) {
+        throw new Error(
+          `Gemini TTS only supports text input, got content item type=${JSON.stringify(invalidItem.type)}.`,
+        );
+      }
+    }
+
     const geminiConfig = this.transformUniConfigToModelConfig(options.config);
     const contents = await this.transformUniMessageToModelInput(
       options.messages,

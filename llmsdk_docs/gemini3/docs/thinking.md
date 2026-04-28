@@ -1,4 +1,4 @@
-<br />
+# Gemini thinking
 
 The [Gemini 3 and 2.5 series models](https://ai.google.dev/gemini-api/docs/models) use an internal
 "thinking process" that significantly improves their reasoning and multi-step
@@ -13,7 +13,7 @@ Gemini API.
 Initiating a request with a thinking model is similar to any other content
 generation request. The key difference lies in specifying one of the
 [models with thinking support](https://ai.google.dev/gemini-api/docs/thinking#supported-models) in the `model` field, as
-demonstrated in the following [text generation](https://ai.google.dev/gemini-api/docs/text-generation#text-input) example:  
+demonstrated in the following [text generation](https://ai.google.dev/gemini-api/docs/text-generation#text-input) example:
 
 ### Python
 
@@ -106,7 +106,7 @@ request configuration. You can then access the summary by iterating through the
 
 Here's an example demonstrating how to enable and retrieve thought summaries
 without streaming, which returns a single, final thought summary with the
-response:  
+response:
 
 ### Python
 
@@ -211,7 +211,7 @@ response:
     }
 
 And here is an example using thinking with streaming, which returns rolling,
-incremental summaries during generation:  
+incremental summaries during generation:
 
 ### Python
 
@@ -370,25 +370,17 @@ thinking behavior.
 
 The `thinkingLevel` parameter, recommended for Gemini 3 models and onwards,
 lets you control reasoning behavior.
-You can set thinking level to `"low"` or `"high"` for Gemini 3 Pro, and
-`"minimal"`, `"low"`, `"medium"`, and `"high"` for Gemini 3 Flash.
 
-**Gemini 3 Pro and Flash thinking levels:**
+The following table details the `thinkingLevel` settings for each model type:
 
-- `low`: Minimizes latency and cost. Best for simple instruction following, chat, or high-throughput applications
-- `high` (Default, dynamic): Maximizes reasoning depth. The model may take significantly longer to reach a first token, but the output will be more carefully reasoned.
+| Thinking Level | Gemini 3.1 Pro | Gemini 3.1 Flash-Lite | Gemini 3 Flash | Description |
+|---|---|---|---|---|
+| **`minimal`** | Not supported | Supported (Default) | Supported | Matches the "no thinking" setting for most queries. The model may think very minimally for complex coding tasks. Minimizes latency for chat or high throughput applications. Note, `minimal` does not guarantee that thinking is off. |
+| **`low`** | Supported | Supported | Supported | Minimizes latency and cost. Best for simple instruction following, chat, or high-throughput applications. |
+| **`medium`** | Supported | Supported | Supported | Balanced thinking for most tasks. |
+| **`high`** | Supported (Default, Dynamic) | Supported (Dynamic) | Supported (Default, Dynamic) | Maximizes reasoning depth. The model may take significantly longer to reach a first (non thinking) output token, but the output will be more carefully reasoned. |
 
-**Gemini 3 Flash thinking levels**
-
-In addition to the levels above, Gemini 3 Flash also supports the following
-thinking levels that are not currently supported by Gemini 3 Pro:
-
-- `medium`: Balanced thinking for most tasks.
-- `minimal`: Matches the "no thinking" setting for most queries. The model may
-  think very minimally for complex coding tasks. Minimizes latency for chat or
-  high throughput applications.
-
-  | **Note:** `minimal` does not guarantee that thinking is off.
+The following example shows how to set the thinking level.
 
 ### Python
 
@@ -483,8 +475,8 @@ thinking levels that are not currently supported by Gemini 3 Pro:
       }
     }'
 
-You cannot disable thinking for Gemini 3 Pro. Gemini 3 Flash also does not
-support full thinking-off, but the `minimal`
+You cannot disable thinking for Gemini 3.1 Pro. Gemini 3 Flash and Flash-Lite
+also do not support full thinking-off, but the `minimal`
 setting means the model likely will not think (though it still potentially can).
 If you don't specify a thinking level, Gemini will use the Gemini 3 models'
 default dynamic thinking level, `"high"`.
@@ -496,7 +488,9 @@ instead.
 
 The `thinkingBudget` parameter, introduced with the Gemini 2.5 series, guides
 the model on the specific number of thinking tokens to use for reasoning.
-| **Note:** Use the `thinkingLevel` parameter with Gemini 3 models. While `thinkingBudget` is accepted for backwards compatibility, using it with Gemini 3 Pro may result in suboptimal performance.
+
+> [!NOTE]
+> **Note:** Use the `thinkingLevel` parameter with Gemini 3 models. While `thinkingBudget` is accepted for backwards compatibility, using it with Gemini 3 Pro may result in unexpected performance.
 
 The following are `thinkingBudget` configuration details for each model type.
 You can disable thinking by setting `thinkingBudget` to 0.
@@ -511,7 +505,7 @@ complexity of the request.
 | **2.5 Flash Preview** | Dynamic thinking | `0` to `24576` | `thinkingBudget = 0` | `thinkingBudget = -1` (Default) |
 | **2.5 Flash Lite** | Model does not think | `512` to `24576` | `thinkingBudget = 0` | `thinkingBudget = -1` |
 | **2.5 Flash Lite Preview** | Model does not think | `512` to `24576` | `thinkingBudget = 0` | `thinkingBudget = -1` |
-| **Robotics-ER 1.5 Preview** | Dynamic thinking | `0` to `24576` | `thinkingBudget = 0` | `thinkingBudget = -1` (Default) |
+| **Robotics-ER 1.6 Preview** | Dynamic thinking | `0` to `24576` | `thinkingBudget = 0` | `thinkingBudget = -1` (Default) |
 | **2.5 Flash Live Native Audio Preview (09-2025)** | Dynamic thinking | `0` to `24576` | `thinkingBudget = 0` | `thinkingBudget = -1` (Default) |
 
 ### Python
@@ -522,7 +516,7 @@ complexity of the request.
     client = genai.Client()
 
     response = client.models.generate_content(
-        model="gemini-3-flash-preview",
+        model="gemini-2.5-flash",
         contents="Provide a list of 3 famous physicists and their key contributions",
         config=types.GenerateContentConfig(
             thinking_config=types.ThinkingConfig(thinking_budget=1024)
@@ -543,7 +537,7 @@ complexity of the request.
 
     async function main() {
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash",
         contents: "Provide a list of 3 famous physicists and their key contributions",
         config: {
           thinkingConfig: {
@@ -582,7 +576,7 @@ complexity of the request.
       thinkingBudgetVal := int32(1024)
 
       contents := genai.Text("Provide a list of 3 famous physicists and their key contributions")
-      model := "gemini-3-flash-preview"
+      model := "gemini-2.5-flash"
       resp, _ := client.Models.GenerateContent(ctx, model, contents, &genai.GenerateContentConfig{
         ThinkingConfig: &genai.ThinkingConfig{
           ThinkingBudget: &thinkingBudgetVal,
@@ -598,7 +592,7 @@ complexity of the request.
 
 ### REST
 
-    curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent" \
+    curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent" \
     -H "x-goog-api-key: $GEMINI_API_KEY" \
     -H 'Content-Type: application/json' \
     -X POST \
@@ -623,6 +617,9 @@ Depending on the prompt, the model might overflow or underflow the token budget.
 
 ## Thought signatures
 
+> [!IMPORTANT]
+> **Important:** The [Google GenAI SDK](https://ai.google.dev/gemini-api/docs/libraries) automatically handles the return of thought signatures for you. You only need to [manage thought signatures manually](https://ai.google.dev/gemini-api/docs/function-calling#thought-signatures) if you're modifying conversation history or using the REST API.
+
 The Gemini API is stateless, so the model treats every API request independently
 and doesn't have access to thought context from previous turns in multi-turn
 interactions.
@@ -632,18 +629,7 @@ Gemini returns thought signatures, which are encrypted representations of the
 model's internal thought process.
 
 - **Gemini 2.5 models** return thought signatures when thinking is enabled and the request includes [function calling](https://ai.google.dev/gemini-api/docs/function-calling#thinking), specifically [function declarations](https://ai.google.dev/gemini-api/docs/function-calling#step-2).
-- **Gemini 3 models** may return thought signatures for all types of [parts](https://ai.google.dev/api/caching#Part).
-  We recommend you always pass all signatures back as received, but it's
-  *required* for function calling signatures. Read the
-  [Thought Signatures](https://ai.google.dev/gemini-api/docs/thought-signatures) page to
-  learn more.
-
-  | **Note:** Circulation of thought signatures is required even when set to `minimal` for Gemini Flash 3.
-
-The [Google GenAI SDK](https://ai.google.dev/gemini-api/docs/libraries) automatically handles the
-return of thought signatures for you. You only need to
-[manage thought signatures manually](https://ai.google.dev/gemini-api/docs/function-calling#thought-signatures)
-if you're modifying conversation history or using the REST API.
+- **Gemini 3 models** may return thought signatures for all types of [parts](https://ai.google.dev/api/caching#Part). We recommend you always pass all signatures back as received, but it's *required* for function calling signatures. Read the [Thought Signatures](https://ai.google.dev/gemini-api/docs/thought-signatures) page to learn more.
 
 Other usage limitations to consider with function calling include:
 
@@ -653,11 +639,12 @@ Other usage limitations to consider with function calling include:
 
 ## Pricing
 
-| **Note:** **Summaries** are available in the [free and paid tiers](https://ai.google.dev/gemini-api/docs/pricing) of the API. **Thought signatures** will increase the input tokens you are charged when sent back as part of the request.
+> [!NOTE]
+> **Note:** **Summaries** are available in the [free and paid tiers](https://ai.google.dev/gemini-api/docs/pricing) of the API. **Thought signatures** will increase the input tokens you are charged when sent back as part of the request.
 
 When thinking is turned on, response pricing is the sum of output
 tokens and thinking tokens. You can get the total number of generated thinking
-tokens from the `thoughtsTokenCount` field.  
+tokens from the `thoughtsTokenCount` field.
 
 ### Python
 

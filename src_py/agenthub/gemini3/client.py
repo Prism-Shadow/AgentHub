@@ -130,9 +130,6 @@ class Gemini3Client(LLMClient):
         if config.get("temperature") is not None:
             config_params["temperature"] = config["temperature"]
 
-        if config.get("image_config") is not None:
-            config_params["image_config"] = types.ImageConfig(**config["image_config"])
-
         thinking_summary = config.get("thinking_summary")
         thinking_level = config.get("thinking_level")
         if thinking_summary is not None or thinking_level is not None:
@@ -149,6 +146,44 @@ class Gemini3Client(LLMClient):
 
         if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
             raise ValueError("prompt_caching must be ENABLE for Gemini 3.")
+
+        if config.get("image_config") is not None:
+            config_params["image_config"] = types.ImageConfig(**config["image_config"])
+
+        # tts config
+        if "tts" in self._model.lower():
+            config_params["response_modalities"] = ["AUDIO"]
+            tts_config = config.get("tts_config") or [{"voice": "Kore"}]
+            if len(tts_config) not in (1, 2):
+                raise ValueError("tts_config must contain 1 or 2 entries.")
+
+            if len(tts_config) == 1:
+                config_params["speech_config"] = types.SpeechConfig(
+                    voice_config=types.VoiceConfig(
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=tts_config[0]["voice"])
+                    )
+                )
+            else:
+                speaker_voice_configs = []
+                for speaker_config in tts_config:
+                    speaker = speaker_config.get("speaker")
+                    if not speaker:
+                        raise ValueError("speaker is required when tts_config has 2 entries.")
+
+                    speaker_voice_configs.append(
+                        types.SpeakerVoiceConfig(
+                            speaker=speaker,
+                            voice_config=types.VoiceConfig(
+                                prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=speaker_config["voice"])
+                            ),
+                        )
+                    )
+
+                config_params["speech_config"] = types.SpeechConfig(
+                    multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
+                        speaker_voice_configs=speaker_voice_configs
+                    )
+                )
 
         return types.GenerateContentConfig(**config_params) if config_params else None
 
@@ -307,6 +342,15 @@ class Gemini3Client(LLMClient):
         """Stream generate using Gemini SDK with unified conversion methods."""
         # Use unified config conversion
         gemini_config = self.transform_uni_config_to_model_config(config)
+
+        # check if all items are text for tts model
+        if "tts" in self._model.lower():
+            invalid_item = next(
+                (item for message in messages for item in message["content_items"] if item["type"] != "text"),
+                None,
+            )
+            if invalid_item is not None:
+                raise ValueError(f"Gemini TTS only supports text input, got content item type={invalid_item['type']}.")
 
         # Use unified message conversion
         contents = await self.transform_uni_message_to_model_input(messages)
