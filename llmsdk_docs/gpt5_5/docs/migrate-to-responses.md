@@ -77,7 +77,7 @@ The objects you recieve back from these APIs will differ slightly. In Chat Compl
 ### Additional differences
 
 - Responses are stored by default. Chat completions are stored by default for new accounts. To disable storage in either API, set `store: false`.
-- [Reasoning](https://developers.openai.com/api/docs/guides/reasoning) models have a richer experience in the Responses API with [improved tool usage](https://developers.openai.com/api/docs/guides/reasoning#keeping-reasoning-items-in-context).
+- [Reasoning](https://developers.openai.com/api/docs/guides/reasoning) models have a richer experience in the Responses API with [improved tool usage](https://developers.openai.com/api/docs/guides/reasoning#keeping-reasoning-items-in-context). Starting with GPT-5.5, tool calling is not supported in Chat Completions with `reasoning: none`.
 - Structured Outputs API shape is different. Instead of `response_format`, use `text.format` in Responses. Learn more in the [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs) guide.
 - The function-calling API shape is different, both for the function config on the request, and function calls sent back in the response. See the full difference in the [function calling guide](https://developers.openai.com/api/docs/guides/function-calling).
 - The Responses SDK has an `output_text` helper, which the Chat Completions SDK does not have.
@@ -857,7 +857,7 @@ curl https://api.example.com/search \\
 
 ```javascript
 const answer = await client.responses.create({
-    model: 'gpt-5',
+    model: 'gpt-5.5',
     input: 'Who is the current president of France?',
     tools: [{ type: 'web_search' }]
 });
@@ -867,9 +867,9 @@ console.log(answer.output_text);
 
 ```python
 answer = client.responses.create(
-    model="gpt-5",
+    model="gpt-5.5",
     input="Who is the current president of France?",
-    tools=[{"type": "web_search_preview"}]
+    tools=[{"type": "web_search"}]
 )
 
 print(answer.output_text)
@@ -880,7 +880,7 @@ curl https://api.openai.com/v1/responses \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer $OPENAI_API_KEY" \\
   -d '{
-    "model": "gpt-5",
+    "model": "gpt-5.5",
     "input": "Who is the current president of France?",
     "tools": [{"type": "web_search"}]
   }'

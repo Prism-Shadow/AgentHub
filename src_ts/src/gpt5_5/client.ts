@@ -33,14 +33,14 @@ import {
 } from "../types";
 
 /**
- * GPT-5.4-specific LLM client implementation.
+ * GPT-5.5-specific LLM client implementation.
  */
-export class GPT5_4Client extends LLMClient {
+export class GPT5_5Client extends LLMClient {
   protected _model: string;
   private _client: OpenAI;
 
   /**
-   * Initialize GPT-5.4 client with model and API key.
+   * Initialize GPT-5.5 client with model and API key.
    */
   constructor(options: {
     model: string;
@@ -108,7 +108,7 @@ export class GPT5_4Client extends LLMClient {
     }
 
     if (config.temperature !== undefined && config.temperature !== 1.0) {
-      throw new Error("GPT-5.4 does not support setting temperature.");
+      throw new Error("GPT-5.5 does not support setting temperature.");
     }
 
     if (config.thinking_level !== undefined) {
@@ -135,7 +135,7 @@ export class GPT5_4Client extends LLMClient {
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE
     ) {
-      throw new Error("prompt_caching must be ENABLE for GPT-5.4.");
+      throw new Error("prompt_caching must be ENABLE for GPT-5.5.");
     }
 
     return openaiConfig;

@@ -34,11 +34,11 @@ from ..types import (
 )
 
 
-class GPT5_4Client(LLMClient):
-    """GPT-5.4-specific LLM client implementation."""
+class GPT5_5Client(LLMClient):
+    """GPT-5.5-specific LLM client implementation."""
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
-        """Initialize GPT-5.4 client with model and API key."""
+        """Initialize GPT-5.5 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("OPENAI_API_KEY")
         base_url = base_url or os.getenv("OPENAI_BASE_URL")
@@ -87,7 +87,7 @@ class GPT5_4Client(LLMClient):
             openai_config["max_output_tokens"] = config["max_tokens"]
 
         if config.get("temperature") is not None and config["temperature"] != 1.0:
-            raise ValueError("GPT-5.4 does not support setting temperature.")
+            raise ValueError("GPT-5.5 does not support setting temperature.")
 
         if config.get("thinking_level") is not None:
             openai_config["reasoning"] = {"effort": self._convert_thinking_level_to_effort(config["thinking_level"])}
@@ -101,7 +101,7 @@ class GPT5_4Client(LLMClient):
             openai_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
 
         if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
-            raise ValueError("prompt_caching must be ENABLE for GPT-5.4.")
+            raise ValueError("prompt_caching must be ENABLE for GPT-5.5.")
 
         return openai_config
 

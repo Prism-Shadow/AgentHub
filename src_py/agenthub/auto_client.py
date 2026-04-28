@@ -54,10 +54,10 @@ class AutoLLMClient(LLMClient):
             from .claude4_6 import Claude4_6Client
 
             return Claude4_6Client(model=model, api_key=api_key, base_url=base_url)
-        elif "gpt-5.4" in client_type:  # e.g., gpt-5.4
-            from .gpt5_4 import GPT5_4Client
+        elif "gpt-5.5" in client_type:  # e.g., gpt-5.5
+            from .gpt5_5 import GPT5_5Client
 
-            return GPT5_4Client(model=model, api_key=api_key, base_url=base_url)
+            return GPT5_5Client(model=model, api_key=api_key, base_url=base_url)
         elif "glm-5" in client_type:
             from .glm5 import GLM5Client
 
@@ -73,7 +73,7 @@ class AutoLLMClient(LLMClient):
         else:
             raise ValueError(
                 f"{client_type} is not supported. "
-                "Supported client types: gemini-3, claude-4-6, gpt-5.4, glm-5, kimi-k2.5, qwen3."
+                "Supported client types: gemini-3, claude-4-6, gpt-5.5, glm-5, kimi-k2.5, qwen3."
             )
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:

@@ -59,7 +59,7 @@ if os.getenv("ANTHROPIC_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="claude-sonnet-4-6"))
 
 if os.getenv("OPENAI_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="gpt-5.4", support_temperature=False))
+    AVAILABLE_MODELS.append(Model(name="gpt-5.5", support_temperature=False))
 
 if os.getenv("ZAI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="glm-5", support_image_understanding=False))
@@ -590,4 +590,4 @@ async def test_image_generation(model: Model):
 if __name__ == "__main__":
     import asyncio
 
-    asyncio.run(test_tool_use(Model(name=os.getenv("MODEL", "gpt-5.4"))))
+    asyncio.run(test_tool_use(Model(name=os.getenv("MODEL", "gpt-5.5"))))
