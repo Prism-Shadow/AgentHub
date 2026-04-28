@@ -774,8 +774,8 @@ export class Tracer {
         const items = entries.map((entry: fs.Dirent) => {
           const entryPath = path.join(fullPath, entry.name);
           const relativePath = path.relative(this.cacheDir, entryPath);
-          const isDir = entry.isDirectory();
           const stat = entryStats.get(entry.name)!;
+          const isDir = stat.isDirectory();
           let size = "";
           if (!isDir) {
             if (stat.size < 1024) {
