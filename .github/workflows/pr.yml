@@ -4,10 +4,6 @@ on:
   pull_request:
     branches:
       - "main"
-    paths:
-      - "**/*.ts"
-      - "**/package.json"
-      - '.github/workflows/jest.yml'
 
 jobs:
   check:
