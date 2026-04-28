@@ -26,7 +26,13 @@ interface Model {
   supportImageUnderstanding: boolean;
   supportImageGeneration: boolean;
   supportAudioGeneration: boolean;
-  provider: "official" | "siliconflow" | "openrouter" | "bedrock" | "vertex";
+  provider:
+    | "official"
+    | "bedrock"
+    | "vertex"
+    | "siliconflow"
+    | "openrouter"
+    | "modelverse";
 }
 
 const AVAILABLE_MODELS: Model[] = [];
@@ -55,7 +61,7 @@ if (process.env.GEMINI_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "gemini-3.1-flash-tts-preview",
     supportTextGeneration: false,
-    supportTemperature: true,
+    supportTemperature: false,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: true,
@@ -108,6 +114,50 @@ if (process.env.MOONSHOT_API_KEY) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     provider: "official",
+  });
+}
+
+if (process.env.BEDROCK_API_KEY) {
+  AVAILABLE_MODELS.push({
+    name: "global.anthropic.claude-sonnet-4-6",
+    supportTextGeneration: true,
+    supportTemperature: true,
+    supportImageUnderstanding: true,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    provider: "bedrock",
+  });
+}
+
+if (process.env.VERTEX_API_KEY) {
+  AVAILABLE_MODELS.push({
+    name: "gemini-3-flash-preview",
+    supportTextGeneration: true,
+    supportTemperature: true,
+    supportImageUnderstanding: true,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    provider: "vertex",
+  });
+
+  AVAILABLE_MODELS.push({
+    name: "gemini-3.1-flash-image-preview",
+    supportTextGeneration: false,
+    supportTemperature: false,
+    supportImageUnderstanding: false,
+    supportImageGeneration: true,
+    supportAudioGeneration: false,
+    provider: "vertex",
+  });
+
+  AVAILABLE_MODELS.push({
+    name: "gemini-3.1-flash-tts-preview",
+    supportTextGeneration: false,
+    supportTemperature: false,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
+    supportAudioGeneration: true,
+    provider: "vertex",
   });
 }
 
@@ -173,47 +223,24 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
   });
 }
 
-if (process.env.BEDROCK_API_KEY) {
+if (process.env.MODELVERSE_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
-    name: "global.anthropic.claude-sonnet-4-6",
+    name: "claude-sonnet-4-6",
     supportTextGeneration: true,
     supportTemperature: true,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
-    provider: "bedrock",
+    provider: "modelverse",
   });
-}
-
-if (process.env.VERTEX_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "gemini-3-flash-preview",
+    name: "gpt-5.5",
     supportTextGeneration: true,
-    supportTemperature: true,
-    supportImageUnderstanding: true,
-    supportImageGeneration: false,
-    supportAudioGeneration: false,
-    provider: "vertex",
-  });
-
-  AVAILABLE_MODELS.push({
-    name: "gemini-3.1-flash-image-preview",
-    supportTextGeneration: false,
     supportTemperature: false,
-    supportImageUnderstanding: false,
-    supportImageGeneration: true,
-    supportAudioGeneration: false,
-    provider: "vertex",
-  });
-
-  AVAILABLE_MODELS.push({
-    name: "gemini-3.1-flash-tts-preview",
-    supportTextGeneration: false,
-    supportTemperature: true,
-    supportImageUnderstanding: false,
+    supportImageUnderstanding: true,
     supportImageGeneration: false,
-    supportAudioGeneration: true,
-    provider: "vertex",
+    supportAudioGeneration: false,
+    provider: "modelverse",
   });
 }
 
@@ -221,18 +248,25 @@ function createClient(model: Model): AutoLLMClient {
   let apiKey: string | undefined;
   let baseUrl: string | undefined;
 
-  if (model.provider === "openrouter") {
-    apiKey = process.env.OPENROUTER_API_KEY;
-    baseUrl = "https://openrouter.ai/api/v1";
-  } else if (model.provider === "siliconflow") {
-    apiKey = process.env.SILICONFLOW_API_KEY;
-    baseUrl = "https://api.siliconflow.cn/v1";
-  } else if (model.provider === "bedrock") {
+  if (model.provider === "bedrock") {
     apiKey = process.env.BEDROCK_API_KEY;
     baseUrl = "bedrock://us-east-1";
   } else if (model.provider === "vertex") {
     apiKey = process.env.VERTEX_API_KEY;
     baseUrl = undefined;
+  } else if (model.provider === "openrouter") {
+    apiKey = process.env.OPENROUTER_API_KEY;
+    baseUrl = "https://openrouter.ai/api/v1";
+  } else if (model.provider === "siliconflow") {
+    apiKey = process.env.SILICONFLOW_API_KEY;
+    baseUrl = "https://api.siliconflow.cn/v1";
+  } else if (model.provider === "modelverse") {
+    apiKey = process.env.MODELVERSE_API_KEY;
+    if (model.name.startsWith("claude-")) {
+      baseUrl = "https://api.modelverse.cn/";
+    } else {
+      baseUrl = "https://api.modelverse.cn/v1";
+    }
   } else {
     apiKey = undefined;
     baseUrl = undefined;
