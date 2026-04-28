@@ -841,8 +841,8 @@ export class Tracer {
                         <span class="text-sm">${item.name}</span>
                       </span>
                       <span class="flex items-center gap-4">
-                        ${mtimeHtml}
                         ${sizeHtml}
+                        ${mtimeHtml}
                       </span>
                     </a>
                   </div>

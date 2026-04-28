@@ -345,11 +345,11 @@ class Tracer:
                                         <span class="text-sm">{{ item.name }}</span>
                                     </span>
                                     <span class="flex items-center gap-4">
-                                        {% if item.mtime %}
-                                        <span class="text-xs text-gray-400">{{ item.mtime }}</span>
-                                        {% endif %}
                                         {% if item.size %}
                                         <span class="text-xs text-gray-500">{{ item.size }}</span>
+                                        {% endif %}
+                                        {% if item.mtime %}
+                                        <span class="text-xs text-gray-400">{{ item.mtime }}</span>
                                         {% endif %}
                                     </span>
                                 </a>
