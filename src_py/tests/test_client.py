@@ -55,7 +55,14 @@ if os.getenv("GEMINI_API_KEY"):
             support_image_generation=True,
         )
     )
-    AVAILABLE_MODELS.append(Model(name="gemini-3.1-flash-tts-preview", support_tts=True))
+    AVAILABLE_MODELS.append(
+        Model(
+            name="gemini-3.1-flash-tts-preview",
+            support_text=False,
+            support_image_understanding=False,
+            support_tts=True,
+        )
+    )
 
 if os.getenv("ANTHROPIC_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="claude-sonnet-4-6"))
@@ -97,7 +104,15 @@ if os.getenv("VERTEX_API_KEY"):
             support_image_generation=True,
         )
     )
-    AVAILABLE_MODELS.append(Model(name="gemini-3.1-flash-tts-preview", provider="vertex", support_tts=True))
+    AVAILABLE_MODELS.append(
+        Model(
+            name="gemini-3.1-flash-tts-preview",
+            provider="vertex",
+            support_text=False,
+            support_image_understanding=False,
+            support_tts=True,
+        )
+    )
 
 
 async def _create_client(model: Model) -> AutoLLMClient:
