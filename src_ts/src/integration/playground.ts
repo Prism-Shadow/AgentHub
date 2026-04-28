@@ -94,6 +94,7 @@ export function createChatApp(): Express {
                       <option value="gpt-5.5">GPT 5.5</option>
                       <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
                       <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash Image</option>
+                      <option value="gemini-3.1-flash-tts-preview">Gemini 3.1 Flash TTS</option>
                       <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
                       <option value="kimi-k2.5">Kimi K2.5</option>
                       <option value="glm-5">GLM 5</option>
@@ -186,6 +187,69 @@ export function createChatApp(): Express {
               const d = new Date(ms);
               const pad = n => n.toString().padStart(2, '0');
               return \`\${d.getFullYear()}-\${pad(d.getMonth()+1)}-\${pad(d.getDate())} \${pad(d.getHours())}:\${pad(d.getMinutes())}:\${pad(d.getSeconds())}\`;
+          }
+
+          function pcmBase64ToWavDataUrl(pcmBase64, sampleRate = 24000, channels = 1, bitsPerSample = 16) {
+              const binary = atob(pcmBase64);
+              const pcmBytes = new Uint8Array(binary.length);
+              for (let i = 0; i < binary.length; i++) {
+                  pcmBytes[i] = binary.charCodeAt(i);
+              }
+
+              const header = new ArrayBuffer(44);
+              const view = new DataView(header);
+              const byteRate = sampleRate * channels * bitsPerSample / 8;
+              const blockAlign = channels * bitsPerSample / 8;
+
+              const writeString = (offset, value) => {
+                  for (let i = 0; i < value.length; i++) {
+                      view.setUint8(offset + i, value.charCodeAt(i));
+                  }
+              };
+
+              writeString(0, 'RIFF');
+              view.setUint32(4, 36 + pcmBytes.length, true);
+              writeString(8, 'WAVE');
+              writeString(12, 'fmt ');
+              view.setUint32(16, 16, true);
+              view.setUint16(20, 1, true);
+              view.setUint16(22, channels, true);
+              view.setUint32(24, sampleRate, true);
+              view.setUint32(28, byteRate, true);
+              view.setUint16(32, blockAlign, true);
+              view.setUint16(34, bitsPerSample, true);
+              writeString(36, 'data');
+              view.setUint32(40, pcmBytes.length, true);
+
+              const wavBytes = new Uint8Array(44 + pcmBytes.length);
+              wavBytes.set(new Uint8Array(header), 0);
+              wavBytes.set(pcmBytes, 44);
+
+              let wavBinary = '';
+              const chunkSize = 0x8000;
+              for (let i = 0; i < wavBytes.length; i += chunkSize) {
+                  wavBinary += String.fromCharCode(...wavBytes.subarray(i, i + chunkSize));
+              }
+              return \`data:audio/wav;base64,\${btoa(wavBinary)}\`;
+          }
+
+          function renderInlineData(item) {
+              const mimeType = (item.mime_type || '').toLowerCase();
+              if (mimeType.startsWith('image/')) {
+                  return \`<div class="mb-3"><img src="data:\${mimeType || 'image/png'};base64,\${item.data}" class="max-w-xs rounded border border-gray-300"></div>\`;
+              }
+
+              const audioMimeTypes = ['audio/wav', 'audio/x-wav', 'audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/webm', 'audio/flac', 'audio/aac', 'audio/mp4'];
+              const isAudio = !mimeType || mimeType === 'application/octet-stream' || mimeType.startsWith('audio/');
+              if (!isAudio) {
+                  return \`<div class="mb-3 rounded border border-gray-300 bg-gray-50 px-3 py-2 text-xs text-gray-600">Inline data: \${escapeHtml(item.mime_type || 'application/octet-stream')}</div>\`;
+              }
+
+              const playableMimeType = audioMimeTypes.includes(mimeType);
+              const audioSrc = playableMimeType
+                  ? \`data:\${mimeType || 'application/octet-stream'};base64,\${item.data}\`
+                  : pcmBase64ToWavDataUrl(item.data);
+              return \`<div class="mb-3"><audio controls preload="metadata" class="max-w-xs"><source src="\${audioSrc}" type="\${playableMimeType ? mimeType : 'audio/wav'}"></audio></div>\`;
           }
 
           function handleImageSelect(event) {
@@ -460,10 +524,11 @@ export function createChatApp(): Express {
                                           toolResultDiv.innerHTML = \`<strong class="text-sm">✅ Tool Result:</strong><br><div class="mt-1 text-xs whitespace-pre-wrap">\${escapeHtml(item.text)}</div>\`;
                                           contentDiv.appendChild(toolResultDiv);
                                       } else if (item.type === 'inline_data') {
-                                          const imageDiv = document.createElement('div');
-                                          imageDiv.className = 'mb-3';
-                                          imageDiv.innerHTML = \`<img src="data:\${item.mime_type || 'image/png'};base64,\${item.data}" class="max-w-xs rounded border border-gray-300">\`;
-                                          contentDiv.appendChild(imageDiv);
+                                          const inlineDataDiv = document.createElement('div');
+                                          inlineDataDiv.innerHTML = renderInlineData(item);
+                                          if (inlineDataDiv.firstChild) {
+                                              contentDiv.appendChild(inlineDataDiv.firstChild);
+                                          }
                                       }
                                   }
 
@@ -574,6 +639,7 @@ export function createChatApp(): Express {
               this.style.height = 'auto';
               this.style.height = Math.min(this.scrollHeight, 200) + 'px';
           });
+
       </script>
   </body>
   </html>

@@ -233,4 +233,36 @@ describe("Tracer", () => {
     expect(txtContent).toContain("get_weather");
     expect(txtContent).toContain("parameters");
   });
+
+  test("should format audio inline data in history export", () => {
+    const tracer = new Tracer(tempCacheDir);
+
+    const model = "fake-model";
+    const history: UniMessage[] = [
+      {
+        role: "user",
+        content_items: [{ type: "text", text: "Hello" }],
+      },
+      {
+        role: "assistant",
+        content_items: [
+          {
+            type: "inline_data",
+            data: Buffer.from([0x00, 0x01, 0x02, 0x03]),
+            mime_type: "audio/pcm",
+          },
+        ],
+      },
+    ];
+
+    const fileId = "test/audio_inline_data";
+    const config = {};
+
+    tracer.saveHistory(model, history, fileId, config);
+
+    const txtPath = path.join(tempCacheDir, fileId + ".txt");
+    const txtContent = fs.readFileSync(txtPath, "utf-8");
+
+    expect(txtContent).toContain("Inline Audio: audio/pcm");
+  });
 });
