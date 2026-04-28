@@ -16,6 +16,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { Tracer } from "../src/integration/tracer";
 import { UniMessage } from "../src/types";
+import { expect, describe, test, beforeEach, afterEach } from "@jest/globals";
 
 describe("Tracer", () => {
   let tempCacheDir: string;

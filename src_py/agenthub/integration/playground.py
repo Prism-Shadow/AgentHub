@@ -112,11 +112,11 @@ def create_chat_app() -> Flask:
                     <datalist id="modelList">
                         <option value="gpt-5.4">GPT 5.4</option>
                         <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
-                        <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash Image</option>
-                        <option value="gemini-3.1-flash-tts-preview">Gemini 3.1 Flash TTS</option>
                         <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
                         <option value="kimi-k2.5">Kimi K2.5</option>
                         <option value="glm-5">GLM 5</option>
+                        <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash Image (Nano Banana 2)</option>
+                        <option value="gemini-3.1-flash-tts-preview">Gemini 3.1 Flash TTS</option>
                     </datalist>
                 </div>
                 <div class="flex flex-col">

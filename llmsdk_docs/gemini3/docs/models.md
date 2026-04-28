@@ -1,290 +1,207 @@
-<br />
+> [!IMPORTANT]
+> We have updated our [Terms of Service](https://ai.google.dev/gemini-api/terms).
 
-OUR MOST INTELLIGENT MODEL
+*** ** * ** ***
 
-## Gemini 3 Pro
+## Gemini 3
 
+[### Gemini 3.1 Pro
+Advanced intelligence, complex problem-solving skills, and powerful agentic and vibe coding capabilities.
+Preview](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-pro-preview) [### Gemini 3 Flash
+Frontier-class performance rivaling larger models at a fraction of the cost.
+Preview](https://ai.google.dev/gemini-api/docs/models/gemini-3-flash-preview) [### Gemini 3.1 Flash-Lite
+Frontier-class performance rivaling larger models at a fraction of the cost.
+Preview](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-lite-preview) [### Nano Banana 2
+Powerful, high-efficiency image generation and editing, optimized for speed and high-volume use cases.
+Preview](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-image-preview) [### Nano Banana Pro
+State-of-the-art image generation and editing models for highly contextual native image creation.
+Preview](https://ai.google.dev/gemini-api/docs/models/gemini-3-pro-image-preview) [### Gemini 3.1 Flash Live
+High-quality, low-latency Live API model for real-time dialogue and voice-first AI applications.
+New Preview](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-live-preview) [### Gemini 3.1 Flash TTS
+Powerful, low-latency speech generation.
+New Preview](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-tts-preview)
 
-The best model in the world for multimodal understanding, and our most powerful agentic and vibe-coding model yet, delivering richer visuals and deeper interactivity, all built on a foundation of state-of-the-art reasoning.
+> [!WARNING]
+> **Warning:** Gemini 3 Pro Preview is [deprecated](https://ai.google.dev/gemini-api/docs/deprecations) and has been shut down March 9, 2026. Migrate to [Gemini 3.1 Pro Preview](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-pro-preview) to avoid service disruption.
 
-### Expand to learn more
-
-[Try in Google AI Studio](https://aistudio.google.com?model=gemini-3-pro-preview)
-
-#### Model details
-
-### Gemini 3 Pro Preview
-
-| Property | Description |
-|---|---|
-| id_cardModel code | `gemini-3-pro-preview` |
-| saveSupported data types | **Inputs** Text, Image, Video, Audio, and PDF **Output** Text |
-| token_autoToken limits^[\[\*\]](https://ai.google.dev/gemini-api/docs/tokens)^ | **Input token limit** 1,048,576 **Output token limit** 65,536 |
-| handymanCapabilities | **Audio generation** Not supported **Batch API** Supported **Caching** Supported **Code execution** Supported **File search** Supported **Function calling** Supported **Grounding with Google Maps** Not supported **Image generation** Not supported **Live API** Not supported **Search grounding** Supported **Structured outputs** Supported **Thinking** Supported **URL context** Supported |
-| 123Versions | Read the [model version patterns](https://ai.google.dev/gemini-api/docs/models/gemini#model-versions) for more details. - `Preview: gemini-3-pro-preview` |
-| calendar_monthLatest update | November 2025 |
-| cognition_2Knowledge cutoff | January 2025 |
-
-### Gemini 3 Pro Image Preview
-
-| Property | Description |
-|---|---|
-| id_cardModel code | `gemini-3-pro-image-preview` |
-| saveSupported data types | **Inputs** Image and Text **Output** Image and Text |
-| token_autoToken limits^[\[\*\]](https://ai.google.dev/gemini-api/docs/tokens)^ | **Input token limit** 65,536 **Output token limit** 32,768 |
-| handymanCapabilities | **Audio generation** Not supported **Batch API** Supported **Caching** Not supported **Code execution** Not supported **File search** Not supported **Function calling** Not supported **Grounding with Google Maps** Not supported **Image generation** Supported **Live API** Not supported **Search grounding** Supported **Structured outputs** Supported **Thinking** Supported **URL context** Not supported |
-| 123Versions | Read the [model version patterns](https://ai.google.dev/gemini-api/docs/models/gemini#model-versions) for more details. - `Preview: gemini-3-pro-image-preview` |
-| calendar_monthLatest update | November 2025 |
-| cognition_2Knowledge cutoff | January 2025 |
-
-OUR MOST BALANCED MODEL, DESIGNED TO SCALE
-
-## Gemini 3 Flash
-
-
-Our most balanced model built for speed, scale, and frontier intelligence.
-
-### Expand to learn more
-
-[Try in Google AI Studio](https://aistudio.google.com?model=gemini-3-flash-preview)
-
-#### Model details
-
-### Gemini 3 Flash Preview
-
-| Property | Description |
-|---|---|
-| id_cardModel code | `gemini-3-flash-preview` |
-| saveSupported data types | **Inputs** Text, Image, Video, Audio, and PDF **Output** Text |
-| token_autoToken limits^[\[\*\]](https://ai.google.dev/gemini-api/docs/tokens)^ | **Input token limit** 1,048,576 **Output token limit** 65,536 |
-| handymanCapabilities | **Audio generation** Not supported **Batch API** Supported **Caching** Supported **Code execution** Supported **File search** Supported **Function calling** Supported **Grounding with Google Maps** Not supported **Image generation** Not supported **Live API** Not supported **Search grounding** Supported **Structured outputs** Supported **Thinking** Supported **URL context** Supported |
-| 123Versions | Read the [model version patterns](https://ai.google.dev/gemini-api/docs/models/gemini#model-versions) for more details. - `Preview: gemini-3-flash-preview` |
-| calendar_monthLatest update | December 2025 |
-| cognition_2Knowledge cutoff | January 2025 |
-
-FAST AND INTELLIGENT
+*** ** * ** ***
 
 ## Gemini 2.5 Flash
 
+### [Gemini 2.5 Flash](https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash)
 
-Our best model in terms of price-performance, offering well-rounded capabilities. 2.5 Flash is best for large scale processing, low-latency, high volume tasks that require thinking, and agentic use cases.
+Our best price-performance model for low-latency, high-volume tasks that require reasoning.
 
-### Expand to learn more
+### [Nano Banana](https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash-image)
 
-[Try in Google AI Studio](https://aistudio.google.com?model=gemini-2.5-flash)
+State-of-the-art native image generation and editing designed for fast, creative workflows.
 
-#### Model details
+### [Gemini 2.5 Flash Live Preview](https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash-native-audio-preview-12-2025)
 
-### Gemini 2.5 Flash
+Optimized for real-time conversational agents with sub-second native audio streaming.
 
-| Property | Description |
-|---|---|
-| id_cardModel code | `gemini-2.5-flash` |
-| saveSupported data types | **Inputs** Text, images, video, audio **Output** Text |
-| token_autoToken limits^[\[\*\]](https://ai.google.dev/gemini-api/docs/tokens)^ | **Input token limit** 1,048,576 **Output token limit** 65,536 |
-| handymanCapabilities | **Audio generation** Not supported **Batch API** Supported **Caching** Supported **Code execution** Supported **File search** Supported **Function calling** Supported **Grounding with Google Maps** Supported **Image generation** Not supported **Live API** Not supported **Search grounding** Supported **Structured outputs** Supported **Thinking** Supported **URL context** Supported |
-| 123Versions | Read the [model version patterns](https://ai.google.dev/gemini-api/docs/models/gemini#model-versions) for more details. - Stable: `gemini-2.5-flash` |
-| calendar_monthLatest update | June 2025 |
-| cognition_2Knowledge cutoff | January 2025 |
+### [Gemini 2.5 Flash TTS Preview](https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash-preview-tts)
 
-### Gemini 2.5 Flash Preview
+Controllable text-to-speech audio generation with fine control over style and pacing.
 
-| Property | Description |
-|---|---|
-| id_cardModel code | `gemini-2.5-flash-preview-09-2025` |
-| saveSupported data types | **Inputs** Text, images, video, audio **Output** Text |
-| token_autoToken limits^[\[\*\]](https://ai.google.dev/gemini-api/docs/tokens)^ | **Input token limit** 1,048,576 **Output token limit** 65,536 |
-| handymanCapabilities | **Audio generation** Not supported **Batch API** Supported **Caching** Supported **Code execution** Supported **File search** Supported **Function calling** Supported **Grounding with Google Maps** Not supported **Image generation** Not supported **Live API** Not supported **Search grounding** Supported **Structured outputs** Supported **Thinking** Supported **URL Context** Supported |
-| 123Versions | Read the [model version patterns](https://ai.google.dev/gemini-api/docs/models/gemini#model-versions) for more details. - Preview: `gemini-2.5-flash-preview-09-2025` |
-| calendar_monthLatest update | September 2025 |
-| cognition_2Knowledge cutoff | January 2025 |
-
-### Gemini 2.5 Flash Image
-
-| Property | Description |
-|---|---|
-| id_cardModel code | `gemini-2.5-flash-image` |
-| saveSupported data types | **Inputs** Images and text **Output** Images and text |
-| token_autoToken limits^[\[\*\]](https://ai.google.dev/gemini-api/docs/tokens)^ | **Input token limit** 65,536 **Output token limit** 32,768 |
-| handymanCapabilities | **Audio generation** Not supported **Batch API** Supported **Caching** Supported **Code execution** Not Supported **File search** Not Supported **Function calling** Not supported **Grounding with Google Maps** Not supported **Image generation** Supported **Live API** Not Supported **Search grounding** Not Supported **Structured outputs** Supported **Thinking** Not Supported **URL context** Not supported |
-| 123Versions | Read the [model version patterns](https://ai.google.dev/gemini-api/docs/models/gemini#model-versions) for more details. - Stable: `gemini-2.5-flash-image` - Deprecated: `gemini-2.5-flash-image-preview` |
-| calendar_monthLatest update | October 2025 |
-| cognition_2Knowledge cutoff | June 2025 |
-
-### Gemini 2.5 Flash Live
-
-| Property | Description |
-|---|---|
-| id_cardModel code | `gemini-2.5-flash-native-audio-preview-12-2025` |
-| saveSupported data types | **Inputs** Audio, video, text **Output** Audio and text |
-| token_autoToken limits^[\[\*\]](https://ai.google.dev/gemini-api/docs/tokens)^ | **Input token limit** 131,072 **Output token limit** 8,192 |
-| handymanCapabilities | **Audio generation** Supported **Batch API** Not supported **Caching** Not supported **Code execution** Not supported **File search** Not Supported **Function calling** Supported **Grounding with Google Maps** Not supported **Image generation** Not supported **Live API** Supported **Search grounding** Supported **Structured outputs** Not supported **Thinking** Supported **URL context** Not supported |
-| 123Versions | Read the [model version patterns](https://ai.google.dev/gemini-api/docs/models/gemini#model-versions) for more details. - Preview: `gemini-2.5-flash-native-audio-preview-12-2025` - Preview: `gemini-2.5-flash-native-audio-preview-09-2025` |
-| calendar_monthLatest update | September 2025 |
-| cognition_2Knowledge cutoff | January 2025 |
-
-### Gemini 2.5 Flash TTS
-
-| Property | Description |
-|---|---|
-| id_cardModel code | `gemini-2.5-flash-preview-tts` |
-| saveSupported data types | **Inputs** Text **Output** Audio |
-| token_autoToken limits^[\[\*\]](https://ai.google.dev/gemini-api/docs/tokens)^ | **Input token limit** 8,192 **Output token limit** 16,384 |
-| handymanCapabilities | **Audio generation** Supported **Batch API** Supported **Caching** Not supported **Code execution** Not supported **File search** Not Supported **Function calling** Not supported **Grounding with Google Maps** Not supported **Image generation** Not supported **Live API** Not supported **Search grounding** Not supported **Structured outputs** Not supported **Thinking** Not supported **URL context** Not supported |
-| 123Versions | Read the [model version patterns](https://ai.google.dev/gemini-api/docs/models/gemini#model-versions) for more details. - `gemini-2.5-flash-preview-tts` |
-| calendar_monthLatest update | December 2025 |
-
-ULTRA FAST
+*** ** * ** ***
 
 ## Gemini 2.5 Flash-Lite
 
+### [Gemini 2.5 Flash-Lite](https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash-lite)
 
-Our fastest flash model optimized for cost-efficiency and high throughput.
+The fastest and most budget-friendly multimodal model in the 2.5 family.
 
-### Expand to learn more
-
-[Try in Google AI Studio](https://aistudio.google.com?model=gemini-2.5-flash-lite)
-
-#### Model details
-
-### Gemini 2.5 Flash-Lite
-
-| Property | Description |
-|---|---|
-| id_cardModel code | `gemini-2.5-flash-lite` |
-| saveSupported data types | **Inputs** Text, image, video, audio, PDF **Output** Text |
-| token_autoToken limits^[\[\*\]](https://ai.google.dev/gemini-api/docs/tokens)^ | **Input token limit** 1,048,576 **Output token limit** 65,536 |
-| handymanCapabilities | **Audio generation** Not supported **Batch API** Supported **Caching** Supported **Code execution** Supported **File search** Supported **Function calling** Supported **Grounding with Google Maps** Supported **Image generation** Not supported **Live API** Not supported **Search grounding** Supported **Structured outputs** Supported **Thinking** Supported **URL context** Supported |
-| 123Versions | Read the [model version patterns](https://ai.google.dev/gemini-api/docs/models/gemini#model-versions) for more details. - Stable: `gemini-2.5-flash-lite` |
-| calendar_monthLatest update | July 2025 |
-| cognition_2Knowledge cutoff | January 2025 |
-
-### Gemini 2.5 Flash-Lite Preview
-
-| Property | Description |
-|---|---|
-| id_cardModel code | `gemini-2.5-flash-lite-preview-09-2025` |
-| saveSupported data types | **Inputs** Text, image, video, audio, PDF **Output** Text |
-| token_autoToken limits^[\[\*\]](https://ai.google.dev/gemini-api/docs/tokens)^ | **Input token limit** 1,048,576 **Output token limit** 65,536 |
-| handymanCapabilities | **Audio generation** Not supported **Batch API** Supported **Caching** Supported **Code execution** Supported **File search** Supported **Function calling** Supported **Grounding with Google Maps** Not supported **Image generation** Not supported **Live API** Not supported **Search grounding** Supported **Structured outputs** Supported **Thinking** Supported **URL context** Supported |
-| 123Versions | Read the [model version patterns](https://ai.google.dev/gemini-api/docs/models/gemini#model-versions) for more details. - Preview: `gemini-2.5-flash-lite-preview-09-2025` |
-| calendar_monthLatest update | September 2025 |
-| cognition_2Knowledge cutoff | January 2025 |
-
-OUR ADVANCED THINKING MODEL
+*** ** * ** ***
 
 ## Gemini 2.5 Pro
 
+### [Gemini 2.5 Pro](https://ai.google.dev/gemini-api/docs/models/gemini-2.5-pro)
 
-Our state-of-the-art thinking model, capable of reasoning over complex problems in code, math, and STEM, as well as analyzing large datasets, codebases, and documents using long context.
+Our most advanced model for complex tasks, featuring deep reasoning and coding capabilities.
 
-### Expand to learn more
+### [Gemini 2.5 Pro TTS Preview](https://ai.google.dev/gemini-api/docs/models/gemini-2.5-pro-preview-tts)
 
-[Try in Google AI Studio](https://aistudio.google.com?model=gemini-2.5-pro)
+High-fidelity speech synthesis optimized for quality in structured workflows like podcasts and audiobooks.
 
-#### Model details
+*** ** * ** ***
 
-### Gemini 2.5 Pro
+## Audio models
 
-| Property | Description |
-|---|---|
-| id_cardModel code | `gemini-2.5-pro` |
-| saveSupported data types | **Inputs** Audio, images, video, text, and PDF **Output** Text |
-| token_autoToken limits^[\[\*\]](https://ai.google.dev/gemini-api/docs/tokens)^ | **Input token limit** 1,048,576 **Output token limit** 65,536 |
-| handymanCapabilities | **Audio generation** Not supported **Batch API** Supported **Caching** Supported **Code execution** Supported **File search** Supported **Function calling** Supported **Grounding with Google Maps** Supported **Image generation** Not supported **Live API** Not supported **Search grounding** Supported **Structured outputs** Supported **Thinking** Supported **URL context** Supported |
-| 123Versions | Read the [model version patterns](https://ai.google.dev/gemini-api/docs/models/gemini#model-versions) for more details. - `Stable: gemini-2.5-pro` |
-| calendar_monthLatest update | June 2025 |
-| cognition_2Knowledge cutoff | January 2025 |
+*This section contains all audio models, including ones that may already be listed in other sections*
 
-### Gemini 2.5 Pro TTS
+### [Gemini 3.1 Flash Live Preview](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-live-preview)
 
-| Property | Description |
-|---|---|
-| id_cardModel code | `gemini-2.5-pro-preview-tts` |
-| saveSupported data types | **Inputs** Text **Output** Audio |
-| token_autoToken limits^[\[\*\]](https://ai.google.dev/gemini-api/docs/tokens)^ | **Input token limit** 8,192 **Output token limit** 16,384 |
-| handymanCapabilities | **Audio generation** Supported **Batch API** Supported **Caching** Not supported **Code execution** Not supported **File search** Not Supported **Function calling** Not supported **Grounding with Google Maps** Not supported **Image generation** Not supported **Live API** Not supported **Search grounding** Not supported **Structured outputs** Not supported **Thinking** Not supported **URL context** Not supported |
-| 123Versions | Read the [model version patterns](https://ai.google.dev/gemini-api/docs/models/gemini#model-versions) for more details. - `gemini-2.5-pro-preview-tts` |
-| calendar_monthLatest update | December 2025 |
+Our high-quality, low-latency audio-to-audio (A2A) model designed for real-time dialogue and voice-first AI applications.
 
-<br />
+### [Gemini 3.1 Flash TTS Preview](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-tts-preview)
 
-## Previous Gemini models
+Powerful, low-latency speech generation, with natural outputs, steerable prompts, and new expressive audio tags for precise narration control.
 
-OUR SECOND GENERATION WORKHORSE MODEL
+### [Gemini 2.5 Flash Live Preview](https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash-native-audio-preview-12-2025)
 
-## Gemini 2.0 Flash
+Our flagship Live API model for low-latency, bidirectional voice and video agents with native audio reasoning.
 
+### [Gemini 2.5 Flash TTS Preview](https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash-preview-tts)
 
-Our second generation workhorse model, with a 1 million token context window.
+Fast and controllable text-to-speech for low-latency, cost-efficient applications and real-time assistants.
 
-### Expand to learn more
+### [Gemini 2.5 Pro TTS Preview](https://ai.google.dev/gemini-api/docs/models/gemini-2.5-pro-preview-tts)
 
+High-fidelity speech synthesis optimized for quality in structured workflows like podcasts and audiobooks.
 
-Gemini 2.0 Flash delivers next-gen features and improved capabilities,
-including superior speed, native tool use, and a 1M token
-context window.
+*** ** * ** ***
 
-[Try in Google AI Studio](https://aistudio.google.com?model=gemini-2.0-flash)
+## Generative media models
 
-#### Model details
+*This section contains all generative media models, including ones that may already be listed in other sections*
 
-### Gemini 2.0 Flash
+### [Nano Banana 2 Preview](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-image-preview)
 
-| Property | Description |
-|---|---|
-| id_cardModel code | `gemini-2.0-flash` |
-| saveSupported data types | **Inputs** Audio, images, video, and text **Output** Text |
-| token_autoToken limits^[\[\*\]](https://ai.google.dev/gemini-api/docs/tokens)^ | **Input token limit** 1,048,576 **Output token limit** 8,192 |
-| handymanCapabilities | **Audio generation** Not supported **Batch API** Supported **Caching** Supported **Code execution** Supported **File search** Not supported **Function calling** Supported **Grounding with Google Maps** Supported **Image generation** Not supported **Live API** Not supported **Search grounding** Supported **Structured outputs** Supported **Thinking** Experimental **URL context** Not supported |
-| 123Versions | Read the [model version patterns](https://ai.google.dev/gemini-api/docs/models/gemini#model-versions) for more details. - Latest: `gemini-2.0-flash` - Stable: `gemini-2.0-flash-001` - Experimental: `gemini-2.0-flash-exp` |
-| calendar_monthLatest update | February 2025 |
-| cognition_2Knowledge cutoff | August 2024 |
+High-efficiency production-scale visual creation, combining the intelligence of the Gemini 3 series with lightning-fast generation speeds.
 
-### Gemini 2.0 Flash Image
+### [Veo 3.1 Preview](https://ai.google.dev/gemini-api/docs/models/veo-3.1-generate-preview)
 
-| Property | Description |
-|---|---|
-| id_cardModel code | `gemini-2.0-flash-preview-image-generation` |
-| saveSupported data types | **Inputs** Audio, images, video, and text **Output** Text and images |
-| token_autoToken limits^[\[\*\]](https://ai.google.dev/gemini-api/docs/tokens)^ | **Input token limit** 32,768 **Output token limit** 8,192 |
-| handymanCapabilities | **Audio generation** Not supported **Batch API** Supported **Caching** Supported **Code execution** Not Supported **File search** Not supported **Function calling** Not supported **Grounding with Google Maps** Not supported **Image generation** Supported **Live API** Not Supported **Search grounding** Not Supported **Structured outputs** Supported **Thinking** Not Supported **URL context** Not supported |
-| 123Versions | Read the [model version patterns](https://ai.google.dev/gemini-api/docs/models/gemini#model-versions) for more details. - Preview: `gemini-2.0-flash-preview-image-generation` - gemini-2.0-flash-preview-image-generation is not currently supported in a number of countries in Europe, Middle East \& Africa |
-| calendar_monthLatest update | May 2025 |
-| cognition_2Knowledge cutoff | August 2024 |
+State-of-the-art cinematic video generation with advanced creative controls and natively synchronized audio.
 
-OUR SECOND GENERATION FAST MODEL
+### [Nano Banana Pro Preview](https://ai.google.dev/gemini-api/docs/models/gemini-3-pro-image-preview)
 
-## Gemini 2.0 Flash-Lite
+A professional design engine with a reasoning core for studio-quality 4K visuals, complex layouts, and precise text rendering.
 
+### [Veo 3.1 Lite Preview](https://ai.google.dev/gemini-api/docs/models/veo-3.1-lite-generate-preview)
 
-Our second generation small workhorse model, with a 1 million token context window.
+High-efficiency, low-cost, developer-first video generation, editing, and cinematic control from the Veo 3.1 family.
 
-### Expand to learn more
+### [Nano Banana](https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash-image)
 
-A Gemini 2.0 Flash model optimized for cost efficiency and low latency.
+State-of-the-art native image generation and editing designed for fast, creative workflows.
 
-[Try in Google AI Studio](https://aistudio.google.com?model=gemini-2.0-flash-lite)
+### [Imagen 4](https://ai.google.dev/gemini-api/docs/models/imagen)
 
-#### Model details
+Text-to-image model yet, featuring fast and ultra-fast generation and exceptional clarity up to 2K resolution.
 
-| Property | Description |
-|---|---|
-| id_cardModel code | `gemini-2.0-flash-lite` |
-| saveSupported data types | **Inputs** Audio, images, video, and text **Output** Text |
-| token_autoToken limits^[\[\*\]](https://ai.google.dev/gemini-api/docs/tokens)^ | **Input token limit** 1,048,576 **Output token limit** 8,192 |
-| handymanCapabilities | **Audio generation** Not supported **Batch API** Supported **Caching** Supported **Code execution** Not supported **File search** Not supported **Function calling** Supported **Grounding with Google Maps** Not supported **Image generation** Not supported **Live API** Not supported **Search grounding** Not supported **Structured outputs** Supported **Thinking** Not Supported **URL context** Not supported |
-| 123Versions | Read the [model version patterns](https://ai.google.dev/gemini-api/docs/models/gemini#model-versions) for more details. - Latest: `gemini-2.0-flash-lite` - Stable: `gemini-2.0-flash-lite-001` |
-| calendar_monthLatest update | February 2025 |
-| cognition_2Knowledge cutoff | August 2024 |
+*** ** * ** ***
 
-<br />
+## Music generation models
+
+*This section contains all music generation models, including ones that may already be listed in other sections*
+
+### [Lyria 3 Pro Preview](https://ai.google.dev/gemini-api/docs/models/lyria-3-pro-preview)
+
+Our flagship music generation model, optimized for full-length songs with complex structural coherence.
+
+### [Lyria 3 Clip Preview](https://ai.google.dev/gemini-api/docs/models/lyria-3-clip-preview)
+
+Optimized for generating short musical clips, loops, and previews up to 30 seconds.
+
+### [Lyria RealTime Experimental](https://ai.google.dev/gemini-api/docs/models/lyria-realtime-exp)
+
+High-fidelity music generation model providing granular creative control and real-time streaming capabilities.
+
+*** ** * ** ***
+
+## Tool and agent models
+
+### [Computer Use Preview](https://ai.google.dev/gemini-api/docs/models/gemini-2.5-computer-use-preview-10-2025)
+
+A specialized model that can "see" a digital screen and perform UI actions like clicking, typing, and navigating to automate complex browser tasks.
+
+### [Gemini Deep Research Preview](https://ai.google.dev/gemini-api/docs/models/deep-research-preview-04-2026)
+
+An agentic model that autonomously plans and executes multi-step research across hundreds of sources to produce cited, interactive reports.
+
+### [Gemini Deep Research Max Preview](https://ai.google.dev/gemini-api/docs/models/deep-research-max-preview-04-2026)
+
+Maximum comprehensiveness for automated context gathering and synthesis across hundreds of sources.
+
+*** ** * ** ***
+
+## Specialized task models
+
+### [Gemini Embedding 2](https://ai.google.dev/gemini-api/docs/models/gemini-embedding-2)
+
+Our first multimodal embedding model, mapping text, images, video, audio, and PDFs into a unified embedding space for advanced semantic search and RAG systems.
+
+### [Gemini Embedding](https://ai.google.dev/gemini-api/docs/models/gemini-embedding-001)
+
+High-dimensional vector representations for advanced semantic search, text classification, and RAG systems.
+
+### [Gemini Robotics-ER 1.6Preview](https://ai.google.dev/gemini-api/docs/models/gemini-robotics-er-1.6-preview)
+
+Advanced embodied reasoning model that understands physical spaces and plans multi-step tasks for robotic agents with new capabilities like instrument reading, improved spatial and physical reasoning.
+
+### [Gemini Robotics-ER 1.5Preview](https://ai.google.dev/gemini-api/docs/models/gemini-robotics-er-1.5-preview)
+
+Advanced embodied reasoning model that understands physical spaces and plans multi-step tasks for robotic agents.
+
+*** ** * ** ***
+
+## Previous models
+
+> [!WARNING]
+> These models are [deprecated](https://ai.google.dev/gemini-api/docs/deprecations) and will be shut down soon; migrate to newer models to prevent service interruptions.
+
+### [Gemini 2.0 Flash Deprecated](https://ai.google.dev/gemini-api/docs/models/gemini-2.0-flash)
+
+Our second generation workhorse model, with next-gen features and improved capabilities, including superior speed, native tool use, and a 1M token context window.
+
+### [Gemini 2.0 Flash-Lite Deprecated](https://ai.google.dev/gemini-api/docs/models/gemini-2.0-flash-lite)
+
+Our fastest second generation model, optimized for cost efficiency and low latency.
+
+### [Gemini 3 Pro Preview Shut down](https://ai.google.dev/gemini-api/docs/models/gemini-3-pro-preview)
+
+Our state-of-the-art reasoning model, with advanced multimodal understanding.
+
+*** ** * ** ***
 
 ## Model version name patterns
 
 Gemini models are available in either *stable* , *preview* , *latest* , or
 *experimental* versions.
-| **Note:** The following list refers to the model string naming convention as of September, 2025. Models released prior to that may have different naming conventions. Refer to the exact model string if you are using an older model.
+
+> [!NOTE]
+> **Note:** The following list refers to the model string naming convention as of September, 2025. Models released prior to that may have different naming conventions. Refer to the exact model string if you are using an older model.
 
 ### Stable
 

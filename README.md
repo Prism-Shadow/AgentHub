@@ -38,14 +38,14 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 
 ## Supported Models
 
-| Model Name     | Vendor                          | Reasoning          | Tool Use           | Image Understanding | Image Generation   |
-| -------------- | ------------------------------- | ------------------ | ------------------ | ------------------- | ------------------ |
-| Gemini 3/3.1   | Official/Google Vertex AI       | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :white_check_mark: |
-| Claude 4.6     | Official/Amazon Bedrock         | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :x:                |
-| GPT-5.4        | Official                        | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :x:                |
-| Kimi-K2.5      | Official/OpenRouter/SiliconFlow | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :x:                |
-| GLM-5          | Official/OpenRouter/SiliconFlow | :white_check_mark: | :white_check_mark: | :x:                 | :x:                |
-| Qwen3          | OpenRouter/SiliconFlow/vLLM     | :white_check_mark: | :white_check_mark: | :x:                 | :x:                |
+| Model Name     | Vendor                          | Reasoning          | Tool Use           | Image Understanding | Image Generation   | Speech Generation  |
+| -------------- | ------------------------------- | ------------------ | ------------------ | ------------------- | ------------------ | ------------------ |
+| Gemini 3/3.1   | Official/Google Vertex AI       | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :white_check_mark: | :white_check_mark: |
+| Claude 4.6     | Official/Amazon Bedrock         | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :x:                | :x:                |
+| GPT-5.4        | Official                        | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :x:                | :x:                |
+| Kimi-K2.5      | Official/OpenRouter/SiliconFlow | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :x:                | :x:                |
+| GLM-5          | Official/OpenRouter/SiliconFlow | :white_check_mark: | :white_check_mark: | :x:                 | :x:                | :x:                |
+| Qwen3          | OpenRouter/SiliconFlow/vLLM     | :white_check_mark: | :white_check_mark: | :x:                 | :x:                | :x:                |
 
 ## Installation
 
@@ -345,6 +345,8 @@ Example UniConfig:
   "tool_choice": "auto | required | none",
   "system_prompt": "You are a helpful assistant.",
   "prompt_caching": "enable | disable | enhance",
+  "image_config": {"aspect_ratio": "4:3", "image_size": "1K"},
+  "tts_config": [{"voice": "Kore"}],
   "trace_id": null
 }
 ```
@@ -361,7 +363,9 @@ Example UniMessage:
   "content_items": [
     {"type": "text", "text": "How are you doing?"},
     {"type": "image_url", "image_url": "https://example.com/image.jpg"},
+    {"type": "inline_data", "mime_type": "image/jpeg", "data": "base64-encoded-image"},
     {"type": "thinking", "thinking": "I am thinking.", "signature": "0x123456"},
+    {"type": "inline_thinking", "mime_type": "image/jpeg", "data": "base64-encoded-image"},
     {"type": "tool_call", "name": "math", "arguments": {"expression": "2 + 3"}, "tool_call_id": "123"},
     {"type": "tool_result", "text": "2 + 3 = 5", "images": [], "tool_call_id": "123"}
   ]
