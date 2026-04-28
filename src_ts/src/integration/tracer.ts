@@ -751,24 +751,31 @@ export class Tracer {
       try {
         const sortBy = req.query["sort"] === "mtime" ? "mtime" : "name";
 
-        const entries = fs.readdirSync(fullPath);
-        entries.sort((a: string, b: string) => {
-          const aIsDir = fs.statSync(path.join(fullPath, a)).isDirectory();
-          const bIsDir = fs.statSync(path.join(fullPath, b)).isDirectory();
+        const entries = fs.readdirSync(fullPath, { withFileTypes: true });
+        const entryStats = new Map<string, fs.Stats>();
+        for (const entry of entries) {
+          entryStats.set(
+            entry.name,
+            fs.statSync(path.join(fullPath, entry.name)),
+          );
+        }
+        entries.sort((a: fs.Dirent, b: fs.Dirent) => {
+          const aIsDir = a.isDirectory();
+          const bIsDir = b.isDirectory();
           if (aIsDir !== bIsDir) return aIsDir ? -1 : 1;
           if (sortBy === "mtime") {
-            const aMtime = fs.statSync(path.join(fullPath, a)).mtimeMs;
-            const bMtime = fs.statSync(path.join(fullPath, b)).mtimeMs;
+            const aMtime = entryStats.get(a.name)!.mtimeMs;
+            const bMtime = entryStats.get(b.name)!.mtimeMs;
             return bMtime - aMtime;
           }
-          return a.localeCompare(b);
+          return a.name.localeCompare(b.name);
         });
 
-        const items = entries.map((entry: string) => {
-          const entryPath = path.join(fullPath, entry);
+        const items = entries.map((entry: fs.Dirent) => {
+          const entryPath = path.join(fullPath, entry.name);
           const relativePath = path.relative(this.cacheDir, entryPath);
-          const isDir = fs.statSync(entryPath).isDirectory();
-          const stat = fs.statSync(entryPath);
+          const isDir = entry.isDirectory();
+          const stat = entryStats.get(entry.name)!;
           let size = "";
           if (!isDir) {
             if (stat.size < 1024) {
@@ -781,7 +788,7 @@ export class Tracer {
           }
           const mtime = this._formatTimestamp(stat.mtimeMs);
           return {
-            name: entry,
+            name: entry.name,
             is_dir: isDir,
             url: "/" + relativePath.replace(/\\/g, "/"),
             size,
