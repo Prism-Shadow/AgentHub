@@ -89,14 +89,14 @@ AgentHub includes Codex/Claude Code skill files for assistants that need to help
 
 ```text
 skills/
-  use-agenthub-python/
+  agenthub-python/
     SKILL.md
-  use-agenthub-typescript/
+  agenthub-typescript/
     SKILL.md
 ```
 
-- `skills/use-agenthub-python/SKILL.md` guides Python package usage with `agenthub-python`.
-- `skills/use-agenthub-typescript/SKILL.md` guides TypeScript and Node.js package usage with `@prismshadow/agenthub`.
+- `skills/agenthub-python/SKILL.md` guides Python package usage with `agenthub-python`.
+- `skills/agenthub-typescript/SKILL.md` guides TypeScript and Node.js package usage with `@prismshadow/agenthub`.
 
 ## APIs
 
