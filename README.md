@@ -85,7 +85,7 @@ See [src_ts/README.md](src_ts/README.md) for comprehensive usage examples and AP
 
 ## Skills for AI Coding Assistants
 
-AgentHub includes Codex/Claude Code skill files for assistants that need to help users consume the SDK packages:
+AgentHub provides Codex/Claude Code skill files for assistants that need to help users consume the SDK packages:
 
 ```text
 skills/
