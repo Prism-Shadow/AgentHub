@@ -359,3 +359,8 @@ vite.config.ts.timestamp-*
 cache/
 generated_image*
 generated_audio*
+
+# Local AI agent instructions
+AGENTS.md
+AGENTS.override.md
+CLAUDE.md
