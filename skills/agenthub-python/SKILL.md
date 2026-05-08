@@ -383,6 +383,8 @@ async def main():
 asyncio.run(main())
 ```
 
+Tool-call responses must use the exact `tool_call_id` from the originating `tool_call`; do not invent, normalize, or reuse IDs across unrelated tool calls.
+
 ## Tracer Usage
 
 Use Tracer to save AgentHub conversation history and inspect it in a local web UI.
@@ -390,15 +392,31 @@ Use Tracer to save AgentHub conversation history and inspect it in a local web U
 Set `trace_id` in `config` to save trace files:
 
 ```python
+from agenthub import AutoLLMClient
+
+client = AutoLLMClient(model="gpt-5.5")
+
+# Add trace_id to config
 config = {"trace_id": "agent1/conversation_001"}
+
+async for event in client.streaming_response_stateful(
+    message={"role": "user", "content_items": [{"type": "text", "text": "Hello"}]},
+    config=config
+):
+    pass  # Conversation is automatically saved
 ```
 
-Browse traces from Python:
+The default cache directory is `cache`; change it by setting the `AGENTHUB_CACHE_DIR` environment variable. With `trace_id="agent1/conversation_001"`, AgentHub creates:
+
+- `cache/agent1/conversation_001.json`: Structured trace data with the full history and config.
+- `cache/agent1/conversation_001.txt`: Human-readable conversation transcript.
+
+Browse traces from Python using the default cache directory:
 
 ```python
 from agenthub.integration.tracer import Tracer
 
-Tracer("cache").start_web_server(host="127.0.0.1", port=25750)
+Tracer().start_web_server(host="127.0.0.1", port=25750)
 ```
 
 Or start the tracer from the CLI:
@@ -425,10 +443,5 @@ After starting the server, open `http://127.0.0.1:25751` in a browser to chat.
 
 Agent loop rules:
 
-- Send every tool result with the exact `tool_call_id` from its originating `tool_call`. Do not invent, normalize, or reuse IDs across unrelated tool calls.
-- Set a stable `trace_id` in `config` before the first call.
-- Format tool outputs as AgentHub `tool_result` items with `type`, `text`, and `tool_call_id`. Include `images` only when the target model supports image tool results.
-- Continue calling `streaming_response_stateful` until `finish_reason` is `"stop"`. When `finish_reason` is `"tool_call"`, send tool results and call again.
 - Use `streaming_response_stateful` to keep conversation history automatically. Use `streaming_response(messages=...)` only when managing history explicitly.
-- Do not manually append streamed events to `client.get_history()`. The stateful API manages history automatically. Use `get_history`, `set_history`, and `clear_history` only to inspect, replace, or reset state.
-- Preserve `thinking` and `inline_thinking` items. Do not strip `signature` fields from any content item.
+- Do not manually append streamed events to `client.get_history()`.

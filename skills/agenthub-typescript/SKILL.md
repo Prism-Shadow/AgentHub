@@ -385,6 +385,8 @@ async function main(): Promise<void> {
 void main();
 ```
 
+Tool-call responses must use the exact `tool_call_id` from the originating `tool_call`; do not invent, normalize, or reuse IDs across unrelated tool calls.
+
 ## Tracer Usage
 
 Use Tracer to save AgentHub conversation history and inspect it in a local web UI.
@@ -392,22 +394,39 @@ Use Tracer to save AgentHub conversation history and inspect it in a local web U
 Set `trace_id` in `config` to save trace files:
 
 ```typescript
+import { AutoLLMClient } from "@prismshadow/agenthub";
+
+const client = new AutoLLMClient({ model: "gpt-5.5" });
+
+// Add trace_id to config
 const config = { trace_id: "agent1/conversation_001" };
+
+for await (const event of client.streamingResponseStateful({
+  message: {
+    role: "user",
+    content_items: [{ type: "text", text: "Hello" }],
+  },
+  config,
+})) {
+  console.log(event);
+}
 ```
 
-Browse traces from TypeScript:
+The default cache directory is `cache`; change it by setting the `AGENTHUB_CACHE_DIR` environment variable. With `trace_id="agent1/conversation_001"`, AgentHub creates:
+
+- `cache/agent1/conversation_001.json`: Structured trace data with the full history and config.
+- `cache/agent1/conversation_001.txt`: Human-readable conversation transcript.
+
+Browse traces from TypeScript using the default cache directory:
 
 ```typescript
 import { Tracer } from "@prismshadow/agenthub/integration/tracer";
 
-const tracer = new Tracer("./cache");
-const model = "gpt-5.5";
-const history = client.getHistory();
-const config = {};
-
-tracer.saveHistory(model, history, "agent1/conversation_001", config);
+const tracer = new Tracer();
 tracer.startWebServer("127.0.0.1", 25750);
 ```
+
+After starting the server, open `http://127.0.0.1:25750` in a browser to inspect traces.
 
 ## Playground Usage
 
@@ -425,13 +444,7 @@ After starting the server, open `http://127.0.0.1:25751` in a browser to chat.
 
 ## Notes
 
-Agent loop rules:
+Keep these points in mind for agent loops:
 
-- Send every tool result with the exact `tool_call_id` from its originating `tool_call`. Do not invent, normalize, or reuse IDs across unrelated tool calls.
-- Set a stable `trace_id` in `config` before the first call.
-- Format tool outputs as AgentHub `tool_result` items with `type`, `text`, and `tool_call_id`. Include `images` only when the target model supports image tool results.
-- Continue calling `streamingResponseStateful` until `finish_reason` is `"stop"`. When `finish_reason` is `"tool_call"`, send tool results and call again.
 - Use `streamingResponseStateful` to keep conversation history automatically. Use `streamingResponse({ messages })` only when managing history explicitly.
-- Do not manually append streamed events to `client.getHistory()`. The stateful API manages history automatically. Use `getHistory`, `setHistory`, and `clearHistory` only to inspect, replace, or reset state.
-- Preserve `thinking` and `inline_thinking` items. Do not strip `signature` fields from any content item.
-- Calculate token totals with `(value ?? 0)`. Token fields in `usage_metadata` can be `null`.
+- Do not manually append streamed events to `client.getHistory()`.
