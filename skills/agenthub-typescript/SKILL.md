@@ -5,7 +5,7 @@ description: Guidance for using the AgentHub TypeScript SDK (`@prismshadow/agent
 
 # AgentHub TypeScript
 
-This skill provides guidance for using AgentHub's TypeScript SDK (`@prismshadow/agenthub`).
+This skill provides guidance for using AgentHub's TypeScript SDK (`@prismshadow/agenthub`). AgentHub is a unified and precise LLM API hub for autonomous agents, providing a consistent interface across LLMs, reliable multi-step tool-call handling, and lightweight tracing for debugging and auditing executions.
 
 ## Installation
 
@@ -13,19 +13,26 @@ This skill provides guidance for using AgentHub's TypeScript SDK (`@prismshadow/
 npm install @prismshadow/agenthub
 ```
 
-
 ## How to specify models
 
-Choose a model ID from the table, set the API key and base URL for that vendor in environment variables, then create the client with `new AutoLLMClient({ model })`.
+Choose a model ID from the table, set the API key and base URL using the environment variables that the routed TypeScript client reads automatically, then create the client with `new AutoLLMClient({ model: modelId })`. Alternatively, pass them explicitly without relying on environment variables: `new AutoLLMClient({ model: modelId, apiKey: yourApiKey, baseUrl: yourBaseUrl })`.
 
 | Model name | Vendor | Model IDs | API Key | Base URL |
 | --- | --- | --- | --- | --- |
-| Gemini 3 / Gemini 3.1 | Official/Google Vertex AI | `gemini-3-flash-preview`, `gemini-3.1-flash-image-preview`, `gemini-3.1-flash-tts-preview` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
-| Claude 4.6 | Official/Amazon Bedrock/UModelVerse | `claude-sonnet-4-6` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
-| GPT-5.4 / GPT-5.5 |  Official/UModelVerse | `gpt-5.4`, `gpt-5.5` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` |
-| GLM-5 | Official/OpenRouter/SiliconFlow | `glm-5` | `ZAI_API_KEY` | `ZAI_BASE_URL` |
-| Kimi-K2.5 | Official/OpenRouter/SiliconFlow | `kimi-k2.5` | `MOONSHOT_API_KEY` | `MOONSHOT_BASE_URL` |
-| Qwen3 | OpenRouter/SiliconFlow/vLLM | `Qwen3-8B` | `QWEN3_API_KEY` | `QWEN3_BASE_URL` |
+| Gemini 3 / Gemini 3.1 LLM | Official / Google Vertex AI | `gemini-3-flash-preview`, `gemini-3.1-flash-lite`, `gemini-3.1-flash-lite-preview`, `gemini-3.1-pro-preview` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
+| Gemini 3.1 image generation | Official / Google Vertex AI | `gemini-3.1-flash-image-preview`, `gemini-3-pro-image-preview` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
+| Gemini 3.1 TTS | Official / Google Vertex AI | `gemini-3.1-flash-tts-preview` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
+| Claude 4.6 | Official / ModelVerse | `claude-sonnet-4-6` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
+| Claude 4.6 | Amazon Bedrock | `global.anthropic.claude-sonnet-4-6` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
+| GPT-5.4 / GPT-5.5 | Official / ModelVerse | `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano`, `gpt-5.5` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` |
+| GLM-5 | Official | `glm-5` | `ZAI_API_KEY` | `ZAI_BASE_URL` |
+| GLM-5 | OpenRouter | `z-ai/glm-5` | `ZAI_API_KEY` | `ZAI_BASE_URL` |
+| GLM-5 | SiliconFlow | `Pro/zai-org/GLM-5` | `ZAI_API_KEY` | `ZAI_BASE_URL` |
+| Kimi-K2.5 | Official | `kimi-k2.5` | `MOONSHOT_API_KEY` | `MOONSHOT_BASE_URL` |
+| Kimi-K2.5 | OpenRouter | `moonshotai/kimi-k2.5` | `MOONSHOT_API_KEY` | `MOONSHOT_BASE_URL` |
+| Kimi-K2.5 | SiliconFlow | `Pro/moonshotai/Kimi-K2.5` | `MOONSHOT_API_KEY` | `MOONSHOT_BASE_URL` |
+| Qwen3 | OpenRouter | `qwen/qwen3-8b`, `qwen/qwen3-30b-a3b-thinking-2507` | `QWEN3_API_KEY` | `QWEN3_BASE_URL` |
+| Qwen3 | SiliconFlow | `Qwen/Qwen3-8B` | `QWEN3_API_KEY` | `QWEN3_BASE_URL` |
 
 ## Basic Usage
 
@@ -60,13 +67,95 @@ void main();
 
 `AutoLLMClient` is the main class for interacting with the AgentHub SDK. Prefer `streamingResponseStateful` for agent loops.
 
-`AutoLLMClient` provides the following methods:
+After declaring `const client = new AutoLLMClient({ ... })`, you can use the following `AutoLLMClient` methods:
 
-- `(async) streamingResponse({ messages, config })`: Streams the response of LLMs in a stateless manner.
-- `(async) streamingResponseStateful({ message, config })`: Streams the response of LLMs in a stateful manner.
-- `clearHistory()`: Clears the history of the stateful LLM client.
-- `getHistory()`: Returns the history of the stateful LLM client.
-- `setHistory(history)`: Replaces the history of the stateful LLM client with a copy of the provided list.
+```typescript
+/**
+ * Stream one response without using client history.
+ *
+ * Call as `for await (const event of client.streamingResponse({ messages, config }))`.
+ * Provide the complete ordered conversation in `messages`; the client yields
+ * universal stream events and leaves stateful history unchanged.
+ *
+ * Args:
+ *   options.messages: Complete ordered conversation to send for this request.
+ *   options.config: Request options such as tools, temperature, or trace_id.
+ *
+ * Yields:
+ *   UniEvent: Stream event in AgentHub's universal event format.
+ */
+streamingResponse(options: {
+  messages: UniMessage[];
+  config: UniConfig;
+}): AsyncGenerator<UniEvent>;
+```
+
+
+```typescript
+/**
+ * Stream one response while the client manages conversation history.
+ *
+ * Call as `for await (const event of client.streamingResponseStateful({ message, config }))`.
+ * Pass only the next message; the client combines it with stored history and
+ * records the completed turn after a successful response.
+ *
+ * Args:
+ *   options.message: New user or assistant message for the next turn.
+ *   options.config: Request options such as tools, temperature, or trace_id.
+ *
+ * Yields:
+ *   UniEvent: Stream event in AgentHub's universal event format.
+ */
+streamingResponseStateful(options: {
+  message: UniMessage;
+  config: UniConfig;
+}): AsyncGenerator<UniEvent>;
+```
+
+
+```typescript
+/**
+ * Reset the stored stateful conversation history.
+ *
+ * Call as `client.clearHistory()` before starting an unrelated conversation
+ * with the same model client.
+ *
+ * Returns:
+ *   void.
+ */
+clearHistory(): void;
+```
+
+
+```typescript
+/**
+ * Return the current stateful conversation history.
+ *
+ * Call as `const history = client.getHistory()` to inspect or persist messages
+ * accumulated by `streamingResponseStateful`.
+ *
+ * Returns:
+ *   UniMessage[]: Copy of the client's stored conversation list.
+ */
+getHistory(): UniMessage[];
+```
+
+
+```typescript
+/**
+ * Replace the stored stateful conversation history.
+ *
+ * Call as `client.setHistory(history)` when restoring a conversation or
+ * transferring history between clients. Pass a complete ordered message list.
+ *
+ * Args:
+ *   history: Complete ordered conversation to store on the client.
+ *
+ * Returns:
+ *   void.
+ */
+setHistory(history: UniMessage[]): void;
+```
 
 ## Data Model: UniConfig, UniMessage and UniEvent
 
@@ -105,25 +194,25 @@ const config = {
   prompt_caching: PromptCaching.ENABLE,
   image_config: { aspect_ratio: "4:3", image_size: "1K" },
   tts_config: [{ voice: "Kore" }],
-  trace_id: null,
+  trace_id: "agent1/conversation_001",
 };
 ```
 
-All fields are optional.
+All fields of `UniConfig` are optional.
 
 Fields:
 
-- `max_tokens`: Output-token limit.
-- `temperature`: Sampling temperature.
-- `tools`: List of tools available to the model. Each tool has required `name: string` and `description: string`, and optionally `parameters: Record<string, any>` JSON Schema.
-- `thinking_summary`: Indicates whether the model should return its thinking process.
-- `thinking_level`: Reasoning effort level, one of `ThinkingLevel.NONE`, `ThinkingLevel.LOW`, `ThinkingLevel.MEDIUM`, `ThinkingLevel.HIGH`.
-- `tool_choice`: Tool-calling configuration, one of `"auto"`, `"required"`, `"none"`, or a list of allowed tool names (e.g., `["tool_a", "tool_b"]`). Only meaningful when `tools` is provided.
-- `system_prompt`: System instruction.
-- `prompt_caching`: Prompt cache mode, one of `PromptCaching.ENABLE`, `PromptCaching.DISABLE`, `PromptCaching.ENHANCE`.
-- `image_config`: Image-generation configuration, with optional `aspect_ratio: AspectRatio` (one of `"1:1"`, `"2:3"`, `"3:2"`, `"3:4"`, `"4:3"`, `"9:16"`, `"16:9"`, `"21:9"`) and optional `image_size: ImageSize` (one of `"1K"`, `"2K"`).
-- `tts_config`: Speech-generation configuration; each item requires `voice: string`. Include `speaker: string` for multi-speaker speech.
-- `trace_id`: Trace identifier. Saves conversation history under this ID.
+- `max_tokens` (`number`): Output-token limit. Caps generated output length when the provider supports it.
+- `temperature` (`number`): Sampling temperature. Controls randomness when the provider supports it.
+- `tools` (`ToolSchema[]`): List of tools available to the model. Each tool requires `name: string` and `description: string`, and may include `parameters: Record<string, any>` as a JSON Schema object.
+- `thinking_summary` (`boolean`): Indicates whether the model should return its thinking process.
+- `thinking_level` (`ThinkingLevel`): Reasoning effort level, one of `ThinkingLevel.NONE`, `ThinkingLevel.LOW`, `ThinkingLevel.MEDIUM`, or `ThinkingLevel.HIGH`.
+- `tool_choice` (`ToolChoice`): Tool-calling configuration, one of `"auto"`, `"required"`, `"none"`, or a list of allowed tool names such as `["tool_a"]`. Only meaningful when `tools` is provided.
+- `system_prompt` (`string`): System instruction text.
+- `prompt_caching` (`PromptCaching`): Prompt cache mode, one of `PromptCaching.ENABLE`, `PromptCaching.DISABLE`, or `PromptCaching.ENHANCE`.
+- `image_config` (`ImageConfig`): Image-generation configuration with optional `aspect_ratio: AspectRatio` and `image_size: ImageSize`. `AspectRatio` is one of `"1:1"`, `"2:3"`, `"3:2"`, `"3:4"`, `"4:3"`, `"9:16"`, `"16:9"`, or `"21:9"`; `ImageSize` is `"1K"` or `"2K"`.
+- `tts_config` (`SpeakerConfig[]`): Speech-generation configuration. Each item requires `voice: string` and may include `speaker: string`; use one item for single-speaker TTS and two items with `speaker` names for multi-speaker TTS.
+- `trace_id` (`string`): Stable trace identifier. Saves conversation history under this ID for the tracer.
 
 ### UniMessage
 
@@ -133,7 +222,7 @@ Example:
 
 ```typescript
 const message = {
-  role: "user" as const,
+  role: "user",
   content_items: [
     { type: "text", text: "How are you doing?" },
     { type: "image_url", image_url: "https://example.com/image.jpg" },
@@ -148,22 +237,23 @@ const message = {
 
 Fields:
 
-- `role`: Either `"user"` or `"assistant"`.
-- `content_items`: Durable message payload stored in history and trace records. Each item is distinguished by its `type` field. Valid durable types include:
-  - `text`: Plain text content with optional `phase` (message phase label).
-  - `image_url`: External image referenced by URL.
-  - `inline_data`: Inline binary data for images or audio. `data` stores a `Buffer`; `mime_type` describes the media type.
-  - `thinking`: Text reasoning content produced by the model.
-  - `inline_thinking`: Binary reasoning artifact produced during image generation. `data` stores a `Buffer`; `mime_type` describes the media type.
-  - `tool_call`: A complete tool invocation with `name`, `arguments` (JSON object as `Record<string, any>`), and `tool_call_id`.
-  - `tool_result`: Tool execution result with `text`, optional `images` (list of image URLs), and `tool_call_id`.
+- `role` (`Role`): Message author, either `"user"` or `"assistant"`.
+- `content_items` (`ContentItem[]`): Durable message payload stored in history and trace records.
+- `usage_metadata` (`UsageMetadata | null`): Optional token usage for completed assistant messages.
+- `finish_reason` (`FinishReason | null`): Stop reason for a completed assistant message, one of `"stop"`, `"length"`, `"tool_call"`, `"unknown"`, or `null`.
+- `created_at` (`number`): Message creation timestamp in milliseconds since epoch.
 
-  The `text`, `inline_data`, `thinking`, `inline_thinking`, `tool_call`, and `partial_tool_call` items may carry an optional `signature` field (`string` in TypeScript, base64-encoded). Do not strip or modify `signature` fields.
+Durable `content_items` types:
 
-- `usage_metadata`: Token usage statistics.
-- `finish_reason`: Stop reason for a completed assistant message, one of `"stop"`, `"length"`, `"tool_call"`, or `"unknown"`.
-- `created_at`: Timestamp in milliseconds for the message.
+- `text`: Plain text content. Required properties: `type: "text"`, `text: string`. Optional property: `phase: string | null`.
+- `image_url`: External image URL or data URI. Required properties: `type: "image_url"`, `image_url: string`.
+- `inline_data`: Inline binary image or audio content. Required properties: `type: "inline_data"`, `data: Buffer`, `mime_type: string`.
+- `thinking`: Text reasoning content returned by the model. Required properties: `type: "thinking"`, `thinking: string`.
+- `inline_thinking`: Binary reasoning artifact, such as generated-image thinking data. Required properties: `type: "inline_thinking"`, `data: Buffer`, `mime_type: string`.
+- `tool_call`: Complete tool invocation. Required properties: `type: "tool_call"`, `name: string`, `arguments: Record<string, any>`, `tool_call_id: string`.
+- `tool_result`: Tool execution result to send back to the model. Required properties: `type: "tool_result"`, `text: string`, `tool_call_id: string`. Optional property: `images: string[]`.
 
+The `text`, `inline_data`, `thinking`, `inline_thinking`, `tool_call`, and `partial_tool_call` items may carry an optional `signature` field. Do not strip or modify `signature` fields.
 
 ### UniEvent
 
@@ -173,8 +263,8 @@ Example:
 
 ```typescript
 const event = {
-  role: "assistant" as const,
-  event_type: "delta" as const,
+  role: "assistant",
+  event_type: "start",
   content_items: [
     { type: "partial_tool_call", name: "math", arguments: "", tool_call_id: "123" },
   ],
@@ -191,13 +281,16 @@ const event = {
 
 Fields:
 
-- `role`: Either `"user"` or `"assistant"`.
-- `event_type`: Stream lifecycle marker, one of `"start"`, `"delta"`, `"stop"`, `"unused"`.
-- `content_items`: Same as `UniMessage.content_items`, plus the event-only `partial_tool_call` type.
-  - `partial_tool_call`: Streamed tool-call fragment. `name` selects the tool, `arguments` carries partial JSON string content, and `tool_call_id` links the later complete `tool_call`.
-- `usage_metadata`: Stream token accounting.
-- `finish_reason`: Stream stop reason.
-- `created_at`: Event timestamp in milliseconds.
+- `role` (`Role`): Event author, either `"user"` or `"assistant"`.
+- `event_type` (`EventType`): Stream lifecycle marker, including `start`, `stop`, and `unused`. Indicates where the event sits in the stream lifecycle.
+- `content_items` (`PartialContentItem[]`): Stream payload. Same as `UniMessage.content_items`, plus event-only `partial_tool_call`.
+- `usage_metadata` (`UsageMetadata | null`): Stream token accounting, or `null`.
+- `finish_reason` (`FinishReason | null`): Stream stop reason, one of `"stop"`, `"length"`, `"tool_call"`, `"unknown"`, or `null`.
+- `created_at` (`number`): Event creation timestamp in milliseconds since epoch.
+
+Event-only `content_items` type:
+
+- `partial_tool_call`: Streamed tool-call fragment. Required properties: `type: "partial_tool_call"`, `name: string`, `arguments: string`, `tool_call_id: string`. `arguments` carries partial JSON string content, and `tool_call_id` links the later complete `tool_call`.
 
 ## Token Usage Calculation
 
@@ -205,10 +298,10 @@ AgentHub provides token usage information through the `usage_metadata` field in 
 
 `UsageMetadata` contains four fields:
 
-- `cached_tokens`: Cached input tokens.
-- `prompt_tokens`: Non-cached input tokens.
-- `thoughts_tokens`: Chain-of-thought output tokens.
-- `response_tokens`: Non-chain-of-thought output tokens.
+- `cached_tokens` (`number | null`): Cached input tokens.
+- `prompt_tokens` (`number | null`): Non-cached input tokens.
+- `thoughts_tokens` (`number | null`): Chain-of-thought output tokens.
+- `response_tokens` (`number | null`): Non-chain-of-thought output tokens.
 
 Calculate total token usage as:
 
@@ -294,7 +387,7 @@ void main();
 
 ## Tracer Usage
 
-Use Tracer when a web UI for inspecting agent conversation history is needed. Tracer is a local trace viewer for browsing saved AgentHub conversation histories, messages, metadata, and model outputs.
+Use Tracer to save AgentHub conversation history and inspect it in a local web UI.
 
 Set `trace_id` in `config` to save trace files:
 
@@ -318,7 +411,7 @@ tracer.startWebServer("127.0.0.1", 25750);
 
 ## Playground Usage
 
-Use Playground when a manual chat web UI is needed or when chatting with LLMs manually. Playground is a local web UI for trying AgentHub request configuration.
+Use Playground when a manual chat web UI is needed or when chatting with LLMs manually.
 
 Use the playground for manual model checks:
 
