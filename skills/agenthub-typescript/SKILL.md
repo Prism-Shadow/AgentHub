@@ -385,7 +385,6 @@ async function main(): Promise<void> {
 void main();
 ```
 
-Tool-call responses must use the exact `tool_call_id` from the originating `tool_call`; do not invent, normalize, or reuse IDs across unrelated tool calls.
 
 ## Tracer Usage
 
@@ -446,5 +445,5 @@ After starting the server, open `http://127.0.0.1:25751` in a browser to chat.
 
 Keep these points in mind for agent loops:
 
-- Use `streamingResponseStateful` to keep conversation history automatically. Use `streamingResponse({ messages })` only when managing history explicitly.
-- Do not manually append streamed events to `client.getHistory()`.
+- Send every tool result with the exact `tool_call_id` from its originating `tool_call`. Do not invent, normalize, or reuse IDs across unrelated tool calls.
+- Preserve `thinking` and `inline_thinking` items. Do not strip `signature` fields from any content item.
