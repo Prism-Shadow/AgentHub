@@ -115,6 +115,8 @@ def create_chat_app() -> Flask:
                         <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
                         <option value="kimi-k2.5">Kimi K2.5</option>
                         <option value="glm-5">GLM 5</option>
+                        <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
                         <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash Image (Nano Banana 2)</option>
                         <option value="gemini-3.1-flash-tts-preview">Gemini 3.1 Flash TTS</option>
                     </datalist>
