@@ -14,6 +14,7 @@ The `docs/` folder contains focused guides for DeepSeek API features:
 - [multi-round-chat.md](./docs/multi-round-chat.md) - Stateless multi-turn conversation history
 - [json-mode.md](./docs/json-mode.md) - Structured JSON output
 - [tool-calls.md](./docs/tool-calls.md) - Tool calling, thinking-mode tool calls, and strict mode
+- [kv-cache.md](./docs/kv-cache.md) - Default context caching, hit rules, and usage counters
 
 ## Notes
 
