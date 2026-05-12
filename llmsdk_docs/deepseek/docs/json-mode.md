@@ -1,19 +1,21 @@
-# JSON Mode
+# JSON Output
 
-JSON mode asks DeepSeek to return valid JSON strings for structured output use cases.
+In many scenarios, users need the model to output in strict JSON format to achieve structured output, facilitating subsequent parsing.
 
-## Requirements
+DeepSeek provides JSON Output to ensure the model outputs valid JSON strings.
 
-To enable JSON output:
+## Notice
 
-1. Set `response_format` to `{"type": "json_object"}`.
-2. Include the word `json` in the system or user prompt.
-3. Provide an example of the desired JSON shape in the prompt.
-4. Set `max_tokens` high enough to avoid truncating the JSON response.
+To enable JSON Output, users should:
 
-The API may occasionally return empty content in JSON mode. If that happens, adjust the prompt and retry.
+1. Set the `response_format` parameter to `{'type': 'json_object'}`.
+2. Include the word "json" in the system or user prompt, and provide an example of the desired JSON format to guide the model in outputting valid JSON.
+3. Set the `max_tokens` parameter reasonably to prevent the JSON string from being truncated midway.
+4. When using the JSON Output feature, the API may occasionally return empty content. We are actively working on optimizing this issue. You can try modifying the prompt to mitigate such problems.
 
 ## Sample Code
+
+Here is the complete Python code demonstrating the use of JSON Output:
 
 ```python
 import json
@@ -38,25 +40,24 @@ EXAMPLE JSON OUTPUT:
 
 user_prompt = "Which is the longest river in the world? The Nile River."
 
-messages = [
-    {"role": "system", "content": system_prompt},
-    {"role": "user", "content": user_prompt},
-]
-
+messages = [{"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}]
 response = client.chat.completions.create(
     model="deepseek-v4-pro",
     messages=messages,
-    response_format={"type": "json_object"},
+    response_format={
+        'type': 'json_object'
+    }
 )
 
 print(json.loads(response.choices[0].message.content))
 ```
 
-Expected output:
+The model will output:
 
 ```json
 {
-  "question": "Which is the longest river in the world?",
-  "answer": "The Nile River"
+    "question": "Which is the longest river in the world?",
+    "answer": "The Nile River"
 }
 ```
