@@ -1,132 +1,94 @@
 # Context Caching
 
-DeepSeek enables disk-based context caching by default for all users. No code changes are required to benefit from it.
+The DeepSeek API Context Caching on Disk Technology is enabled by default for all users, allowing them to benefit without needing to modify their code.
 
-Each request can build cache prefix units on disk. Later requests with matching prefixes can reuse the cached prefix, which is counted as a cache hit.
+Each user request will trigger the construction of a hard disk cache. If subsequent requests have overlapping prefixes with previous requests, the overlapping part will only be fetched from the cache, which counts as a "cache hit."
 
 ## Cache Persistence and Hit Rules
 
-A request can hit the cache only when its prefix fully matches a persisted cache prefix unit. With Sliding Window Attention, each cached prefix is an independent complete unit; partial matches against an existing unit do not count as hits.
+A cache hit requires that the corresponding prefix has already been "persisted" (written to the disk cache). Due to the Sliding Window Attention mechanism, the storage and matching of cached prefixes differs from before. Each cached prefix is an independent, complete unit. A subsequent request can only hit the cache if it fully matches a cache prefix unit.
 
-DeepSeek persists cache prefix units in three ways:
+### When cache prefixes are persisted:
 
-1. Request-boundary persistence: each request can persist prefix units at the end of the user input and at the end of the model output.
-2. Common-prefix detection: when multiple requests share a common prefix, DeepSeek can persist that common prefix as its own cache prefix unit.
-3. Fixed token intervals: for long inputs or outputs, DeepSeek can create cache prefix units at fixed token intervals so long prefixes can still become cacheable.
+1. Persistence at request boundaries: Each request will produce two cache prefix units at the end position of the user input and the end position of the model output. A subsequent request can hit the cache if it fully matches them.
+2. Common prefix detection persistence: When the system detects a common prefix across multiple requests, it will persist that common prefix as an independent cache prefix unit. A subsequent request can hit the cache if it fully reuses that cache prefix unit.
+3. Persistence at fixed token intervals: For long inputs or long outputs, the system will carve out cache prefix units at fixed token intervals, to avoid long prefixes from being completely uncacheable due to never reaching an end position.
 
-## Example: Multi-round Conversation
+Example 1: A user's first-round request is `A + B`, and the second-round request is `A + B + C`. The second request can fully match the cache prefix unit `A + B`, hitting the cache for `A + B`. See Example 1 below.
 
-First request:
+Example 2: A user's first-round request is `A + B`, and the second-round request is `A + C`. The second request cannot hit the cache, because `A + C` does not fully match the first round's cache prefix unit (`A + B`). However, at this point the system will detect that the two requests share a common prefix `A`, and persist `A` as a cache prefix unit. When a third-round request `A + D` arrives, it can fully match the cache prefix unit `A`, hitting the cache for `A`. See Example 2 below.
 
-```json
-[
-  {
-    "role": "system",
-    "content": "You are a helpful assistant"
-  },
-  {
-    "role": "user",
-    "content": "What is the capital of China?"
-  }
+---
+
+### Example 1: Multi-round Conversation
+
+First Request
+
+```text
+messages: [
+    {"role": "system", "content": "You are a helpful assistant"},
+    {"role": "user", "content": "What is the capital of China?"}
 ]
 ```
 
-Second request:
+Second Request
 
-```json
-[
-  {
-    "role": "system",
-    "content": "You are a helpful assistant"
-  },
-  {
-    "role": "user",
-    "content": "What is the capital of China?"
-  },
-  {
-    "role": "assistant",
-    "content": "The capital of China is Beijing."
-  },
-  {
-    "role": "user",
-    "content": "What is the capital of the United States?"
-  }
+```text
+messages: [
+    {"role": "system", "content": "You are a helpful assistant"},
+    {"role": "user", "content": "What is the capital of China?"},
+    {"role": "assistant", "content": "The capital of China is Beijing."},
+    {"role": "user", "content": "What is the capital of the United States?"}
 ]
 ```
 
-The second request fully reuses the first request as a prefix, so that prefix can count as a cache hit.
+In this example, the second request can fully reuse the cache prefix unit from the first request, which will count as a "cache hit."
 
-## Example: Long Text Q&A
+### Example 2: Long Text Q&A
 
-First request:
+First Request
 
-```json
-[
-  {
-    "role": "system",
-    "content": "You are an experienced financial report analyst..."
-  },
-  {
-    "role": "user",
-    "content": "<financial report content>\n\nPlease summarize the key information of this financial report."
-  }
+```text
+messages: [
+    {"role": "system", "content": "You are an experienced financial report analyst..."}
+    {"role": "user", "content": "<financial report content>\n\nPlease summarize the key information of this financial report."}
 ]
 ```
 
-Second request:
+Second Request
 
-```json
-[
-  {
-    "role": "system",
-    "content": "You are an experienced financial report analyst..."
-  },
-  {
-    "role": "user",
-    "content": "<financial report content>\n\nPlease analyze the profitability of this financial report."
-  }
+```text
+messages: [
+    {"role": "system", "content": "You are an experienced financial report analyst..."}
+    {"role": "user", "content": "<financial report content>\n\nPlease analyze the profitability of this financial report."}
 ]
 ```
 
-Third request:
+Third Request
 
-```json
-[
-  {
-    "role": "system",
-    "content": "You are an experienced financial report analyst..."
-  },
-  {
-    "role": "user",
-    "content": "<financial report content>\n\nPlease analyze the ratio of the company's revenue to expenses."
-  }
+```text
+messages: [
+    {"role": "system", "content": "You are an experienced financial report analyst..."}
+    {"role": "user", "content": "<financial report content>\n\nPlease analyze the ratio of the company's revenue to expenses."}
 ]
 ```
 
-The first two requests do not hit the cache because their full prefixes differ. After both requests complete, DeepSeek can detect and persist the shared `system` message plus the financial report content as a cache prefix unit. The third request can then hit that persisted prefix.
+In the above example, the first two requests will not hit the cache. After the first two requests are completed, the system will identify the `system` message + <financial report content> in the `user` message as a cache prefix unit and persist it. In the third request, since it fully matches the previously persisted cache prefix unit, it can hit the cache.
+
+---
 
 ## Checking Cache Hit Status
 
-DeepSeek includes cache status fields in the response `usage` object:
+In the response from the DeepSeek API, we have added two fields in the `usage` section to reflect the cache hit status of the request:
 
-```json
-{
-  "usage": {
-    "prompt_cache_hit_tokens": 1280,
-    "prompt_cache_miss_tokens": 320
-  }
-}
-```
+1. `prompt_cache_hit_tokens`: The number of tokens in the input of this request that resulted in a cache hit.
+2. `prompt_cache_miss_tokens`: The number of tokens in the input of this request that did not result in a cache hit.
 
-- `prompt_cache_hit_tokens`: input tokens served from cache.
-- `prompt_cache_miss_tokens`: input tokens not served from cache.
+## Hard Disk Cache and Output Randomness
 
-## Output Randomness
+The hard disk cache only matches the prefix part of the user's input. The output is still generated through computation and inference, and it is influenced by parameters such as temperature, introducing randomness.
 
-The disk cache matches only the prefix part of the user input. The model output is still generated through normal inference, so generation parameters such as `temperature` can still affect the output.
+## Additional Notes
 
-## Notes
-
-- Context caching is best effort and does not guarantee a 100% hit rate.
-- Cache construction can take seconds.
-- Unused cache entries are cleared automatically, usually within a few hours to a few days.
+1. The cache system works on a "best-effort" basis and does not guarantee a 100% cache hit rate.
+2. Cache construction takes seconds. Once the cache is no longer in use, it will be automatically cleared, usually within a few hours to a few days.
