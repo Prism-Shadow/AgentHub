@@ -46,6 +46,7 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 | Kimi-K2.5      | Official/OpenRouter/SiliconFlow     | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :x:                | :x:                |
 | GLM-5          | Official/OpenRouter/SiliconFlow     | :white_check_mark: | :white_check_mark: | :x:                 | :x:                | :x:                |
 | Qwen3          | OpenRouter/SiliconFlow/vLLM         | :white_check_mark: | :white_check_mark: | :x:                 | :x:                | :x:                |
+| DeepSeek V4 Pro/Flash | Official                     | :white_check_mark: | :white_check_mark: | :x:                 | :x:                | :x:                |
 
 ## Installation
 
