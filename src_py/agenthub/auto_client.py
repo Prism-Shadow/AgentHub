@@ -16,7 +16,7 @@ import os
 from typing import Any, AsyncIterator
 
 from .base_client import LLMClient
-from .types import UniConfig, UniEvent, UniMessage
+from .types import EmbeddingInputContentItem, EmbeddingResponse, UniConfig, UniEmbeddingConfig, UniEvent, UniMessage
 
 
 class AutoLLMClient(LLMClient):
@@ -46,7 +46,9 @@ class AutoLLMClient(LLMClient):
     ) -> LLMClient:
         """Create the appropriate client for the given model."""
         client_type = client_type or os.getenv("CLIENT_TYPE", model.lower())
-        if "gemini-3-" in client_type or "gemini-3.1-" in client_type:  # e.g., gemini-3-flash-preview
+        if any(
+            prefix in client_type for prefix in ("gemini-3-", "gemini-3.1-", "gemini-embedding")
+        ):  # e.g., gemini-3-flash-preview, gemini-embedding-2
             from .gemini3 import Gemini3Client
 
             return Gemini3Client(model=model, api_key=api_key, base_url=base_url)
@@ -73,7 +75,7 @@ class AutoLLMClient(LLMClient):
         else:
             raise ValueError(
                 f"{client_type} is not supported. "
-                "Supported client types: gemini-3, claude-4-6, gpt-5.4, gpt-5.5, glm-5, kimi-k2.5, qwen3."
+                "Supported client types: gemini-3, claude-4-6, gpt-5.4, gpt-5.5, glm-5, kimi-k2.5, qwen3, gemini-embedding-2."
             )
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:
@@ -87,6 +89,13 @@ class AutoLLMClient(LLMClient):
     def transform_model_output_to_uni_event(self, model_output: Any) -> UniEvent:
         """Delegate to underlying client's transform_model_output_to_uni_event."""
         return self._client.transform_model_output_to_uni_event(model_output)
+
+    async def embed_content(
+        self,
+        inputs: list[EmbeddingInputContentItem],
+        config: UniEmbeddingConfig | None = None,
+    ) -> EmbeddingResponse:
+        return await self._client.embed_content(inputs, config)
 
     async def _streaming_response_internal(
         self,
