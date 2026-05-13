@@ -123,7 +123,7 @@ def create_chat_app() -> Flask:
                 </div>
                 <div class="flex flex-col">
                     <label class="text-sm font-semibold text-gray-900 mb-1" for="temperatureInput">Temperature</label>
-                    <input type="number" id="temperatureInput" min="0" max="2" step="0.1" value="1.0" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <input type="number" id="temperatureInput" min="0" max="2" step="0.1" value="" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 <div class="flex flex-col">
                     <label class="text-sm font-semibold text-gray-900 mb-1" for="maxTokensInput">Max Tokens</label>
@@ -335,9 +335,12 @@ def create_chat_app() -> Flask:
             function getConfig() {
                 const config = {
                     model: document.getElementById('modelSelect').value,
-                    temperature: parseFloat(document.getElementById('temperatureInput').value),
                     max_tokens: parseInt(document.getElementById('maxTokensInput').value)
                 };
+                temperature = document.getElementById('temperatureInput').value
+                if (temperature) {
+                    config.temperature = parseFloat(temperature);
+                }
 
                 const thinkingLevel = document.getElementById('thinkingLevelSelect').value;
                 if (thinkingLevel) {

@@ -175,8 +175,7 @@ class DeepSeekV4Client(LLMClient):
                 message["tool_calls"] = tool_calls
 
             if thinking:
-                message["reasoning_content"] = thinking  # vLLM & siliconflow compatibility
-                message["reasoning"] = thinking  # openrouter compatibility
+                message["reasoning_content"] = thinking
 
             # message may be empty for tool results
             if len(message.keys()) > 1:
