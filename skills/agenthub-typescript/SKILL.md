@@ -33,6 +33,7 @@ Choose a model ID from the table, set the API key and base URL using the environ
 | Kimi-K2.5 | SiliconFlow | `Pro/moonshotai/Kimi-K2.5` | `MOONSHOT_API_KEY` | `MOONSHOT_BASE_URL` |
 | Qwen3 | OpenRouter | `qwen/qwen3-8b`, `qwen/qwen3-30b-a3b-thinking-2507` | `QWEN3_API_KEY` | `QWEN3_BASE_URL` |
 | Qwen3 | SiliconFlow | `Qwen/Qwen3-8B` | `QWEN3_API_KEY` | `QWEN3_BASE_URL` |
+| DeepSeek V4 | Official | `deepseek-v4-pro`, `deepseek-v4-flash` | `DEEPSEEK_API_KEY` | `DEEPSEEK_BASE_URL` |
 
 ## Basic Usage
 
