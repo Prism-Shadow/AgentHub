@@ -98,11 +98,13 @@ export function createChatApp(): Express {
                       <option value="glm-5">GLM 5</option>
                       <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash Image (Nano Banana 2)</option>
                       <option value="gemini-3.1-flash-tts-preview">Gemini 3.1 Flash TTS</option>
+                      <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                      <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
                   </datalist>
               </div>
               <div class="flex flex-col">
                   <label class="text-sm font-semibold text-gray-900 mb-1" for="temperatureInput">Temperature</label>
-                  <input type="number" id="temperatureInput" min="0" max="2" step="0.1" value="1.0" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                  <input type="number" id="temperatureInput" min="0" max="2" step="0.1" value="" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
               </div>
               <div class="flex flex-col">
                   <label class="text-sm font-semibold text-gray-900 mb-1" for="maxTokensInput">Max Tokens</label>
@@ -314,9 +316,12 @@ export function createChatApp(): Express {
           function getConfig() {
               const config = {
                   model: document.getElementById('modelSelect').value,
-                  temperature: parseFloat(document.getElementById('temperatureInput').value),
                   max_tokens: parseInt(document.getElementById('maxTokensInput').value)
               };
+                temperature = document.getElementById('temperatureInput').value
+                if (temperature) {
+                    config.temperature = parseFloat(temperature);
+                }
 
               const thinkingLevel = document.getElementById('thinkingLevelSelect').value;
               if (thinkingLevel) {
