@@ -709,6 +709,30 @@ async def test_embed_content_multimodal(model: Model):
         assert all(isinstance(v, float) for v in item["embedding"])
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
+async def test_embed_content_aggregate(model: Model):
+    """Test aggregated embedding: multiple inputs fused into a single vector."""
+    if not model.support_embedding:
+        pytest.skip(f"Embedding is not supported by {model.name}.")
+
+    client = await _create_client(model)
+
+    result = await client.embed_content(
+        inputs=[
+            {"type": "text", "text": "Hello world"},
+            {"type": "text", "text": "Goodbye world"},
+        ],
+        config={"aggregate": True},
+    )
+
+    assert result["model"] == model.name
+    assert len(result["data"]) == 1
+    item = result["data"][0]
+    assert len(item["embedding"]) > 0
+    assert all(isinstance(v, float) for v in item["embedding"])
+
+
 if __name__ == "__main__":
     import asyncio
 

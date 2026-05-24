@@ -1007,6 +1007,28 @@ if (AVAILABLE_MODELS.length > 0) {
         expect(item.embedding.every((v) => typeof v === "number")).toBe(true);
       }
     }, 60000);
+
+    test("should aggregate multiple inputs into a single embedding", async () => {
+      if (!model.supportEmbedding) {
+        return;
+      }
+
+      const client = createClient(model);
+
+      const result = await client.embedContent(
+        [
+          { type: "text" as const, text: "Hello world" },
+          { type: "text" as const, text: "Goodbye world" },
+        ],
+        { aggregate: true },
+      );
+
+      expect(result.model).toBe(model.name);
+      expect(result.data.length).toBe(1);
+      const item = result.data[0];
+      expect(item.embedding.length).toBeGreaterThan(0);
+      expect(item.embedding.every((v) => typeof v === "number")).toBe(true);
+    }, 60000);
   });
 }
 

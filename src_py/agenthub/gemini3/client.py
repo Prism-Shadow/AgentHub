@@ -363,10 +363,12 @@ class Gemini3Client(LLMClient):
         if config and config.get("dimensions") is not None:
             gemini_config = types.EmbedContentConfig(output_dimensionality=config["dimensions"])
 
-        if len(parts) == 1 and parts[0].text is not None:
-            contents = parts[0].text
+        if config and config.get("aggregate") and len(parts) > 1:
+            # Aggregate multiple input parts and output a single vector
+            contents = types.Content(parts=parts)
         else:
-            contents = parts
+            # Each input part is embedded as a separate vector
+            contents = [types.Content(parts=[p]) for p in parts]
 
         result = await self._client.aio.models.embed_content(
             model=model,

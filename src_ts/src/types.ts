@@ -207,4 +207,5 @@ export interface EmbeddingResponse {
 export interface UniEmbeddingConfig {
   model?: string;
   dimensions?: number;
+  aggregate?: boolean;
 }

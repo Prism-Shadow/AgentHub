@@ -520,13 +520,10 @@ export class Gemini3Client extends LLMClient {
         ? { outputDimensionality: config.dimensions }
         : undefined;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let contents: any;
-    if (parts.length === 1 && parts[0].text != null) {
-      contents = parts[0].text;
-    } else {
-      contents = parts;
-    }
+    const contents: Content[] | Content =
+      config?.aggregate && parts.length > 1
+        ? ({ parts } as Content)
+        : parts.map((p) => ({ parts: [p] } as Content));
 
     const result = await this._client.models.embedContent({
       model,

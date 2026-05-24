@@ -193,3 +193,4 @@ class EmbeddingResponse(TypedDict):
 class UniEmbeddingConfig(TypedDict):
     model: NotRequired[str]
     dimensions: NotRequired[int]
+    aggregate: NotRequired[bool]
