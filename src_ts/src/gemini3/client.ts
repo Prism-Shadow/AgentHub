@@ -34,10 +34,13 @@ import {
   FunctionResponseBlob,
   FunctionResponse,
   VoiceConfig,
+  EmbedContentConfig,
 } from "@google/genai";
 import * as path from "path";
 import { LLMClient } from "../baseClient";
 import {
+  EmbeddingInputContentItem,
+  EmbeddingResponse,
   EventType,
   FinishReason,
   PartialContentItem,
@@ -45,6 +48,7 @@ import {
   ThinkingLevel,
   ToolChoice,
   UniConfig,
+  UniEmbeddingConfig,
   UniEvent,
   UniMessage,
   UsageMetadata,
@@ -472,6 +476,70 @@ export class Gemini3Client extends LLMClient {
       content_items: contentItems,
       usage_metadata: usageMetadata,
       finish_reason: finishReason,
+    };
+  }
+
+  async embedContent(
+    inputs: EmbeddingInputContentItem[],
+    config?: UniEmbeddingConfig,
+  ): Promise<EmbeddingResponse> {
+    const model = config?.model ?? this._model;
+
+    if (!model.toLowerCase().includes("embedding")) {
+      throw new Error(`Model '${model}' is not an embedding model.`);
+    }
+
+    const parts: Part[] = [];
+    for (const item of inputs) {
+      if (item.type === "text") {
+        parts.push({ text: item.text } as Part);
+      } else if (item.type === "image_url") {
+        const imageData = await this._getImageBytesAndMimeType(item.image_url);
+        parts.push({
+          inlineData: {
+            mimeType: imageData.mimeType,
+            data: imageData.data.toString("base64"),
+          },
+        } as Part);
+      } else if (item.type === "inline_data") {
+        parts.push({
+          inlineData: {
+            mimeType: item.mime_type,
+            data: item.data.toString("base64"),
+          },
+        } as Part);
+      } else {
+        throw new Error(
+          `Unknown embedding item type: ${(item as { type: string }).type}`,
+        );
+      }
+    }
+
+    const geminiConfig: EmbedContentConfig | undefined =
+      config?.dimensions != null
+        ? { outputDimensionality: config.dimensions }
+        : undefined;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let contents: any;
+    if (parts.length === 1 && parts[0].text != null) {
+      contents = parts[0].text;
+    } else {
+      contents = parts;
+    }
+
+    const result = await this._client.models.embedContent({
+      model,
+      contents,
+      config: geminiConfig,
+    });
+
+    return {
+      data:
+        result.embeddings?.map((e) => ({
+          embedding: e.values ?? [],
+        })) ?? [],
+      model,
     };
   }
 

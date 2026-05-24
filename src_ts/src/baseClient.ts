@@ -15,7 +15,10 @@
 import {
   FinishReason,
   ContentItem,
+  EmbeddingInputContentItem,
+  EmbeddingResponse,
   UniConfig,
+  UniEmbeddingConfig,
   UniEvent,
   UniMessage,
   UsageMetadata,
@@ -62,6 +65,15 @@ export abstract class LLMClient {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   abstract transformModelOutputToUniEvent(modelOutput: any): UniEvent;
+
+  async embedContent(
+    _inputs: EmbeddingInputContentItem[],
+    _config?: UniEmbeddingConfig,
+  ): Promise<EmbeddingResponse> {
+    throw new Error(
+      `${this.constructor.name} does not support embedding.`,
+    );
+  }
 
   /**
    * Concatenate a stream of universal events into a single universal message.

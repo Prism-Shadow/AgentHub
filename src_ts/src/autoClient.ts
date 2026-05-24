@@ -19,7 +19,14 @@ import { GPT5_5Client } from "./gpt5_5";
 import { GLM5Client } from "./glm5";
 import { KimiK2_5Client } from "./kimi_k2_5";
 import { Qwen3Client } from "./qwen3";
-import { UniConfig, UniEvent, UniMessage } from "./types";
+import {
+  EmbeddingInputContentItem,
+  EmbeddingResponse,
+  UniConfig,
+  UniEmbeddingConfig,
+  UniEvent,
+  UniMessage,
+} from "./types";
 
 /**
  * Auto-routing LLM client that dispatches to appropriate model-specific client.
@@ -70,7 +77,8 @@ export class AutoLLMClient extends LLMClient {
 
     if (
       clientType.includes("gemini-3-") ||
-      clientType.includes("gemini-3.1-")
+      clientType.includes("gemini-3.1-") ||
+      clientType.includes("gemini-embedding")
     ) {
       return new Gemini3Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("claude") && clientType.includes("4-6")) {
@@ -89,7 +97,7 @@ export class AutoLLMClient extends LLMClient {
     } else {
       throw new Error(
         `${clientType} is not supported. ` +
-          "Supported client types: gemini-3, claude-4-6, gpt-5.4, gpt-5.5, glm-5, kimi-k2.5, qwen3.",
+          "Supported client types: gemini-3, claude-4-6, gpt-5.4, gpt-5.5, glm-5, kimi-k2.5, qwen3, gemini-embedding-2.",
       );
     }
   }
@@ -116,6 +124,13 @@ export class AutoLLMClient extends LLMClient {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   transformModelOutputToUniEvent(modelOutput: any): UniEvent {
     return this._client.transformModelOutputToUniEvent(modelOutput);
+  }
+
+  async embedContent(
+    inputs: EmbeddingInputContentItem[],
+    config?: UniEmbeddingConfig,
+  ): Promise<EmbeddingResponse> {
+    return this._client.embedContent(inputs, config);
   }
 
   /**

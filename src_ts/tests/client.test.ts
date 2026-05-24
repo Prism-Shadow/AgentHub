@@ -26,6 +26,8 @@ interface Model {
   supportImageUnderstanding: boolean;
   supportImageGeneration: boolean;
   supportAudioGeneration: boolean;
+  supportEmbedding: boolean;
+  supportImageEmbedding: boolean;
   provider:
     | "official"
     | "bedrock"
@@ -45,6 +47,8 @@ if (process.env.GEMINI_API_KEY) {
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "official",
   });
 
@@ -55,6 +59,8 @@ if (process.env.GEMINI_API_KEY) {
     supportImageUnderstanding: false,
     supportImageGeneration: true,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "official",
   });
 
@@ -65,6 +71,20 @@ if (process.env.GEMINI_API_KEY) {
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: true,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
+    provider: "official",
+  });
+
+  AVAILABLE_MODELS.push({
+    name: "gemini-embedding-2",
+    supportTextGeneration: false,
+    supportTemperature: false,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    supportEmbedding: true,
+    supportImageEmbedding: true,
     provider: "official",
   });
 }
@@ -77,6 +97,8 @@ if (process.env.ANTHROPIC_API_KEY) {
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "official",
   });
 }
@@ -89,6 +111,8 @@ if (process.env.OPENAI_API_KEY) {
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "official",
   });
 }
@@ -101,6 +125,8 @@ if (process.env.ZAI_API_KEY) {
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "official",
   });
 }
@@ -113,6 +139,8 @@ if (process.env.MOONSHOT_API_KEY) {
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "official",
   });
 }
@@ -125,6 +153,8 @@ if (process.env.BEDROCK_API_KEY) {
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "bedrock",
   });
 }
@@ -137,6 +167,8 @@ if (process.env.VERTEX_API_KEY) {
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "vertex",
   });
 
@@ -147,6 +179,8 @@ if (process.env.VERTEX_API_KEY) {
     supportImageUnderstanding: false,
     supportImageGeneration: true,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "vertex",
   });
 
@@ -157,6 +191,8 @@ if (process.env.VERTEX_API_KEY) {
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: true,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "vertex",
   });
 }
@@ -171,6 +207,8 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
@@ -180,6 +218,8 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
@@ -189,6 +229,8 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "openrouter",
   });
 }
@@ -201,6 +243,8 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "siliconflow",
   });
   AVAILABLE_MODELS.push({
@@ -210,6 +254,8 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "siliconflow",
   });
   AVAILABLE_MODELS.push({
@@ -219,6 +265,8 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "siliconflow",
   });
 }
@@ -231,6 +279,8 @@ if (process.env.MODELVERSE_API_KEY && RUN_SLOW_TEST) {
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "modelverse",
   });
   AVAILABLE_MODELS.push({
@@ -240,6 +290,8 @@ if (process.env.MODELVERSE_API_KEY && RUN_SLOW_TEST) {
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "modelverse",
   });
 }
@@ -915,6 +967,46 @@ if (AVAILABLE_MODELS.length > 0) {
       ).toBe(true);
       expect(inlineItems.every((item) => item.data.length > 0)).toBe(true);
     }, 180000);
+
+    test("should embed text content", async () => {
+      if (!model.supportEmbedding) {
+        return;
+      }
+
+      const client = createClient(model);
+      const texts = ["Hello world", "Goodbye world"];
+
+      const result = await client.embedContent(
+        texts.map((t) => ({ type: "text" as const, text: t })),
+        { dimensions: 768 },
+      );
+
+      expect(result.model).toBe(model.name);
+      expect(result.data.length).toBe(2);
+      for (const item of result.data) {
+        expect(item.embedding.length).toBe(768);
+        expect(item.embedding.every((v) => typeof v === "number")).toBe(true);
+      }
+    }, 60000);
+
+    test("should embed multimodal content", async () => {
+      if (!model.supportImageEmbedding) {
+        return;
+      }
+
+      const client = createClient(model);
+
+      const result = await client.embedContent([
+        { type: "image_url" as const, image_url: IMAGE },
+      ]);
+
+      expect(result.model).toBe(model.name);
+      expect(result.data.length).toBe(1);
+      for (const item of result.data) {
+        expect(item.embedding.length).toBeGreaterThan(0);
+        expect(item.embedding.every((v) => typeof v === "number")).toBe(true);
+      }
+    }, 60000);
   });
 }
 
