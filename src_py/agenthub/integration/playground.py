@@ -28,14 +28,18 @@ import threading
 from typing import Any
 
 from flask import Flask, Response, jsonify, render_template_string, request
+from werkzeug.exceptions import RequestEntityTooLarge
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
 from .. import AutoLLMClient
+from .tracer import Tracer
 
 
 # Global event loop and lock for thread-safe async operations
 _event_loop: asyncio.AbstractEventLoop | None = None
 _loop_lock = threading.Lock()
 _session_clients: dict[str, AutoLLMClient] = {}
+_session_client_options: dict[str, tuple[str, str | None, str | None]] = {}
 
 
 def _get_event_loop() -> asyncio.AbstractEventLoop:
@@ -69,6 +73,30 @@ def _serialize_for_json(obj: Any) -> Any:
     return obj
 
 
+def _normalize_optional_string(value: Any) -> str | None:
+    """Return a trimmed string, or None for empty/non-string values."""
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
+
+
+def _get_client_options(config: dict[str, Any]) -> tuple[str, str | None, str | None]:
+    """Extract client construction options from playground config."""
+    model = _normalize_optional_string(config.get("model")) or "gpt-5.5"
+    api_key = _normalize_optional_string(config.get("api_key"))
+    base_url = _normalize_optional_string(config.get("base_url"))
+    return model, api_key, base_url
+
+
+def _get_request_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Remove client construction options before sending request config."""
+    request_config = dict(config)
+    request_config.pop("model", None)
+    request_config.pop("api_key", None)
+    request_config.pop("base_url", None)
+    return request_config
+
+
 def create_chat_app() -> Flask:
     """
     Create a Flask web application for chatting with LLMs.
@@ -77,6 +105,12 @@ def create_chat_app() -> Flask:
         Flask application instance
     """
     app = Flask(__name__)
+    app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
+
+    @app.errorhandler(RequestEntityTooLarge)
+    def request_entity_too_large(_error: RequestEntityTooLarge) -> tuple[Response, int]:
+        """Return a JSON error when uploaded images make the request too large."""
+        return jsonify({"error": "Request body is too large. Please upload fewer or smaller images."}), 413
 
     # HTML template for the chat UI
     CHAT_TEMPLATE = """
@@ -90,9 +124,10 @@ def create_chat_app() -> Flask:
     </head>
     <body class="bg-gray-50 flex flex-col h-screen">
         <div class="bg-gray-900 text-white px-6 py-4 border-b border-gray-700 flex justify-between items-center">
-            <h1 class="text-xl font-semibold">🤖 LLM Playground</h1>
+            <h1 class="text-xl font-semibold">AgentHub</h1>
             <div class="flex items-center gap-4">
-                <a href="https://github.com/Prism-Shadow/AgentHub" target="_blank" class="text-gray-400 hover:text-white text-sm transition-colors">GitHub</a>
+                <a href="https://github.com/Prism-Shadow/AgentHub" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-white text-sm transition-colors">GitHub</a>
+                <a href="/tracer/" target="_blank" rel="noopener noreferrer" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm transition-colors">Open Tracer</a>
                 <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm transition-colors" onclick="toggleConfig()">
                     ⚙️ Config
                 </button>
@@ -122,12 +157,26 @@ def create_chat_app() -> Flask:
                     </datalist>
                 </div>
                 <div class="flex flex-col">
-                    <label class="text-sm font-semibold text-gray-900 mb-1" for="temperatureInput">Temperature</label>
-                    <input type="number" id="temperatureInput" min="0" max="2" step="0.1" value="" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="apiKeyInput">API Key</label>
+                    <div class="relative">
+                        <input type="password" id="apiKeyInput" autocomplete="off" placeholder="Use environment variable when empty" class="w-full px-3 py-2 pr-12 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <button type="button" id="apiKeyVisibilityToggle" aria-label="Show API key" title="Show API key" class="absolute inset-y-0 right-1 my-1 px-3 text-gray-500 hover:text-gray-900 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" onclick="toggleApiKeyVisibility()">
+                            <svg id="apiKeyVisibilityShowIcon" class="hidden" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            <svg id="apiKeyVisibilityHideIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M10.7 5.1A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a18.5 18.5 0 0 1-3.3 4.3"></path>
+                                <path d="M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a10.9 10.9 0 0 0 5.4-1.4"></path>
+                                <path d="M9.9 9.9A3 3 0 0 0 14.1 14.1"></path>
+                                <path d="M3 3l18 18"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="flex flex-col">
-                    <label class="text-sm font-semibold text-gray-900 mb-1" for="maxTokensInput">Max Tokens</label>
-                    <input type="number" id="maxTokensInput" min="1" max="100000" step="1" value="4096" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="baseUrlInput">Base URL</label>
+                    <input type="url" id="baseUrlInput" placeholder="Use provider default when empty" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 <div class="flex flex-col">
                     <label class="text-sm font-semibold text-gray-900 mb-1" for="thinkingLevelSelect">Thinking Level</label>
@@ -332,14 +381,33 @@ def create_chat_app() -> Flask:
                 panel.classList.toggle('hidden');
             }
 
+            function toggleApiKeyVisibility() {
+                const input = document.getElementById('apiKeyInput');
+                const toggle = document.getElementById('apiKeyVisibilityToggle');
+                const showIcon = document.getElementById('apiKeyVisibilityShowIcon');
+                const hideIcon = document.getElementById('apiKeyVisibilityHideIcon');
+                const shouldShow = input.type === 'password';
+
+                input.type = shouldShow ? 'text' : 'password';
+                toggle.setAttribute('aria-label', shouldShow ? 'Hide API key' : 'Show API key');
+                toggle.setAttribute('title', shouldShow ? 'Hide API key' : 'Show API key');
+                showIcon.classList.toggle('hidden', !shouldShow);
+                hideIcon.classList.toggle('hidden', shouldShow);
+            }
+
             function getConfig() {
                 const config = {
-                    model: document.getElementById('modelSelect').value,
-                    max_tokens: parseInt(document.getElementById('maxTokensInput').value)
+                    model: document.getElementById('modelSelect').value
                 };
-                temperature = document.getElementById('temperatureInput').value
-                if (temperature) {
-                    config.temperature = parseFloat(temperature);
+
+                const apiKey = document.getElementById('apiKeyInput').value.trim();
+                if (apiKey) {
+                    config.api_key = apiKey;
+                }
+
+                const baseUrl = document.getElementById('baseUrlInput').value.trim();
+                if (baseUrl) {
+                    config.base_url = baseUrl;
                 }
 
                 const thinkingLevel = document.getElementById('thinkingLevelSelect').value;
@@ -479,6 +547,22 @@ def create_chat_app() -> Flask:
                             session_id: sessionId
                         })
                     });
+
+                    if (!response.ok || !response.body) {
+                        let errorMessage = `Request failed with status ${response.status}`;
+                        try {
+                            const errorPayload = await response.clone().json();
+                            if (errorPayload && errorPayload.error) {
+                                errorMessage = errorPayload.error;
+                            }
+                        } catch (e) {
+                            const errorText = await response.text();
+                            if (errorText) {
+                                errorMessage = errorText;
+                            }
+                        }
+                        throw new Error(errorMessage);
+                    }
 
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
@@ -677,7 +761,7 @@ def create_chat_app() -> Flask:
     @app.route("/api/chat", methods=["POST"])
     def chat() -> Response:
         """Handle chat requests with streaming responses."""
-        data = request.json
+        data = request.json or {}
         message = data.get("message")
         config = data.get("config", {})
         session_id = data.get("session_id", "default")
@@ -689,18 +773,21 @@ def create_chat_app() -> Flask:
             """Generate streaming response using the persistent event loop."""
             try:
                 # Get or create client for this session
-                if session_id not in _session_clients:
-                    model = config.get("model") or "gpt-5.5"
-                    _session_clients[session_id] = AutoLLMClient(model=model)
+                client_options = _get_client_options(config)
+                if session_id not in _session_clients or _session_client_options.get(session_id) != client_options:
+                    model, api_key, base_url = client_options
+                    _session_clients[session_id] = AutoLLMClient(model=model, api_key=api_key, base_url=base_url)
+                    _session_client_options[session_id] = client_options
 
                 client = _session_clients[session_id]
+                request_config = _get_request_config(config)
 
                 # Get the persistent event loop
                 loop = _get_event_loop()
 
                 # Create async function to collect events
                 async def stream_events():
-                    async for event in client.streaming_response_stateful(message=message, config=config):
+                    async for event in client.streaming_response_stateful(message=message, config=request_config):
                         # Serialize event to handle bytes objects
                         serialized_event = _serialize_for_json(event)
                         yield f"data: {json.dumps(serialized_event, ensure_ascii=False)}\n\n"
@@ -734,8 +821,12 @@ def create_chat_app() -> Flask:
         if session_id in _session_clients:
             _session_clients[session_id].clear_history()
             del _session_clients[session_id]
+            _session_client_options.pop(session_id, None)
 
         return jsonify({"status": "success"})
+
+    tracer_app = Tracer().create_web_app(base_path="/tracer")
+    app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {"/tracer": tracer_app.wsgi_app})
 
     return app
 

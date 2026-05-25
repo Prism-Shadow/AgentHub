@@ -160,6 +160,23 @@ class Tracer:
         else:
             return f"{label}: {mime_type} ({mb_count:.2f} MB)"
 
+    @staticmethod
+    def _normalize_base_path(base_path: str = "") -> str:
+        """Normalize a URL prefix used when tracer is mounted inside another app."""
+        if not base_path or base_path == "/":
+            return ""
+        prefixed = base_path if base_path.startswith("/") else f"/{base_path}"
+        return prefixed[:-1] if prefixed.endswith("/") else prefixed
+
+    @staticmethod
+    def _prefix_url(base_path: str, url: str) -> str:
+        """Prefix an internal tracer URL with the mount path."""
+        if not base_path:
+            return url
+        if url == "/":
+            return f"{base_path}/"
+        return f"{base_path}{url}"
+
     def save_history(self, model: str, history: list[UniMessage], file_id: str, config: dict[str, Any]) -> None:
         """
         Save conversation history to files.
@@ -279,7 +296,7 @@ class Tracer:
 
         return "\n".join(lines)
 
-    def create_web_app(self) -> Flask:
+    def create_web_app(self, base_path: str = "") -> Flask:
         """
         Create a Flask web application for browsing conversation files.
 
@@ -288,6 +305,7 @@ class Tracer:
         """
         app = Flask(__name__)
         app.jinja_env.policies["json.dumps_kwargs"] = {"ensure_ascii": False}
+        base_path = self._normalize_base_path(base_path)
 
         @app.template_filter("format_ts")
         def format_ts(ms: int | None) -> str:
@@ -605,15 +623,18 @@ class Tracer:
                 try:
                     # Build breadcrumb
                     parts = subpath.split("/") if subpath else []
-                    breadcrumb_parts = ['<a href="/">cache</a>']
+                    breadcrumb_parts = [f'<a href="{self._prefix_url(base_path, "/")}">cache</a>']
                     for i, part in enumerate(parts[:-1]):
                         path_to_part = "/".join(parts[: i + 1])
-                        breadcrumb_parts.append(f'<a href="/{path_to_part}">{part}</a>')
+                        breadcrumb_parts.append(f'<a href="{self._prefix_url(base_path, "/" + path_to_part)}">{part}</a>')
                     breadcrumb_parts.append(f"<strong>{parts[-1]}</strong>" if parts else "")
                     breadcrumb = " / ".join(breadcrumb_parts)
 
                     # Determine back URL
-                    back_url = "/" + "/".join(parts[:-1]) if len(parts) > 1 else "/"
+                    back_url = self._prefix_url(
+                        base_path,
+                        "/" + "/".join(parts[:-1]) if len(parts) > 1 else "/",
+                    )
 
                     # If it's a JSON file, render with the JSON viewer
                     if full_path.suffix == ".json":
@@ -677,7 +698,7 @@ class Tracer:
                     item_info: dict[str, Any] = {
                         "name": entry.name,
                         "is_dir": entry.is_dir(),
-                        "url": f"/{relative_path}",
+                        "url": self._prefix_url(base_path, f"/{relative_path}"),
                         "mtime": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
                     }
                     if entry.is_file():
@@ -694,14 +715,14 @@ class Tracer:
 
             # Build breadcrumb
             parts = subpath.split("/") if subpath else []
-            breadcrumb_parts = ['<a href="/">cache</a>']
+            breadcrumb_parts = [f'<a href="{self._prefix_url(base_path, "/")}">cache</a>']
             for i, part in enumerate(parts):
                 if part:
                     path_to_part = "/".join(parts[: i + 1])
-                    breadcrumb_parts.append(f'<a href="/{path_to_part}">{part}</a>')
+                    breadcrumb_parts.append(f'<a href="{self._prefix_url(base_path, "/" + path_to_part)}">{part}</a>')
             breadcrumb = " / ".join(breadcrumb_parts)
 
-            base_url = "/" + subpath if subpath else "/"
+            base_url = self._prefix_url(base_path, "/" + subpath if subpath else "/")
             sort_name_url = base_url + "?sort=name"
             sort_mtime_url = base_url + "?sort=mtime"
 

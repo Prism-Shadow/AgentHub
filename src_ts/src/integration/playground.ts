@@ -20,11 +20,57 @@
  * showing token usage and stop reasons.
  */
 
-import express, { Express, Request, Response } from "express";
+import express, { Express, NextFunction, Request, Response } from "express";
 import { AutoLLMClient } from "../autoClient";
 import { UniMessage, UniConfig } from "../types";
+import { Tracer } from "./tracer";
 
 const sessionClients: Map<string, AutoLLMClient> = new Map();
+const sessionClientOptions: Map<string, PlaygroundClientOptions> = new Map();
+
+interface PlaygroundConfig extends UniConfig {
+  model?: string;
+  api_key?: string;
+  base_url?: string;
+}
+
+interface PlaygroundClientOptions {
+  model: string;
+  apiKey?: string;
+  baseUrl?: string;
+}
+
+function normalizeOptionalString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function getClientOptions(config: PlaygroundConfig): PlaygroundClientOptions {
+  return {
+    model: normalizeOptionalString(config.model) || "gpt-5.5",
+    apiKey: normalizeOptionalString(config.api_key),
+    baseUrl: normalizeOptionalString(config.base_url),
+  };
+}
+
+function getRequestConfig(config: PlaygroundConfig): UniConfig {
+  const requestConfig = { ...config };
+  delete requestConfig.model;
+  delete requestConfig.api_key;
+  delete requestConfig.base_url;
+  return requestConfig;
+}
+
+function clientOptionsChanged(
+  previous: PlaygroundClientOptions | undefined,
+  next: PlaygroundClientOptions,
+): boolean {
+  return (
+    !previous ||
+    previous.model !== next.model ||
+    previous.apiKey !== next.apiKey ||
+    previous.baseUrl !== next.baseUrl
+  );
+}
 
 /**
  * Serialize objects for JSON, converting Buffer to base64.
@@ -58,7 +104,24 @@ function serializeForJson(obj: any): any {
  */
 export function createChatApp(): Express {
   const app = express();
-  app.use(express.json());
+  app.use(express.json({ limit: "50mb" }));
+  app.use(
+    (
+      err: { message?: string; status?: number; type?: string },
+      _req: Request,
+      res: Response,
+      next: NextFunction,
+    ) => {
+      if (err.status === 413 || err.type === "entity.too.large") {
+        return res.status(413).json({
+          error:
+            "Request body is too large. Please upload fewer or smaller images.",
+        });
+      }
+      next(err);
+    },
+  );
+  app.use("/tracer", new Tracer().createWebApp({ basePath: "/tracer" }));
 
   const CHAT_TEMPLATE = `
   <!DOCTYPE html>
@@ -71,9 +134,10 @@ export function createChatApp(): Express {
   </head>
   <body class="bg-gray-50 flex flex-col h-screen">
       <div class="bg-gray-900 text-white px-6 py-4 border-b border-gray-700 flex justify-between items-center">
-          <h1 class="text-xl font-semibold">🤖 LLM Playground</h1>
+          <h1 class="text-xl font-semibold">AgentHub</h1>
           <div class="flex items-center gap-4">
-              <a href="https://github.com/Prism-Shadow/AgentHub" target="_blank" class="text-gray-400 hover:text-white text-sm transition-colors">GitHub</a>
+              <a href="https://github.com/Prism-Shadow/AgentHub" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-white text-sm transition-colors">GitHub</a>
+              <a href="/tracer/" target="_blank" rel="noopener noreferrer" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm transition-colors">Open Tracer</a>
               <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm transition-colors" onclick="toggleConfig()">
                   ⚙️ Config
               </button>
@@ -103,12 +167,26 @@ export function createChatApp(): Express {
                   </datalist>
               </div>
               <div class="flex flex-col">
-                  <label class="text-sm font-semibold text-gray-900 mb-1" for="temperatureInput">Temperature</label>
-                  <input type="number" id="temperatureInput" min="0" max="2" step="0.1" value="" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                  <label class="text-sm font-semibold text-gray-900 mb-1" for="apiKeyInput">API Key</label>
+                  <div class="relative">
+                      <input type="password" id="apiKeyInput" autocomplete="off" placeholder="Use environment variable when empty" class="w-full px-3 py-2 pr-12 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                      <button type="button" id="apiKeyVisibilityToggle" aria-label="Show API key" title="Show API key" class="absolute inset-y-0 right-1 my-1 px-3 text-gray-500 hover:text-gray-900 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" onclick="toggleApiKeyVisibility()">
+                          <svg id="apiKeyVisibilityShowIcon" class="hidden" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path>
+                              <circle cx="12" cy="12" r="3"></circle>
+                          </svg>
+                          <svg id="apiKeyVisibilityHideIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <path d="M10.7 5.1A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a18.5 18.5 0 0 1-3.3 4.3"></path>
+                              <path d="M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a10.9 10.9 0 0 0 5.4-1.4"></path>
+                              <path d="M9.9 9.9A3 3 0 0 0 14.1 14.1"></path>
+                              <path d="M3 3l18 18"></path>
+                          </svg>
+                      </button>
+                  </div>
               </div>
               <div class="flex flex-col">
-                  <label class="text-sm font-semibold text-gray-900 mb-1" for="maxTokensInput">Max Tokens</label>
-                  <input type="number" id="maxTokensInput" min="1" max="100000" step="1" value="4096" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                  <label class="text-sm font-semibold text-gray-900 mb-1" for="baseUrlInput">Base URL</label>
+                  <input type="url" id="baseUrlInput" placeholder="Use provider default when empty" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
               </div>
               <div class="flex flex-col">
                   <label class="text-sm font-semibold text-gray-900 mb-1" for="thinkingLevelSelect">Thinking Level</label>
@@ -313,15 +391,34 @@ export function createChatApp(): Express {
               panel.classList.toggle('hidden');
           }
 
+          function toggleApiKeyVisibility() {
+              const input = document.getElementById('apiKeyInput');
+              const toggle = document.getElementById('apiKeyVisibilityToggle');
+              const showIcon = document.getElementById('apiKeyVisibilityShowIcon');
+              const hideIcon = document.getElementById('apiKeyVisibilityHideIcon');
+              const shouldShow = input.type === 'password';
+
+              input.type = shouldShow ? 'text' : 'password';
+              toggle.setAttribute('aria-label', shouldShow ? 'Hide API key' : 'Show API key');
+              toggle.setAttribute('title', shouldShow ? 'Hide API key' : 'Show API key');
+              showIcon.classList.toggle('hidden', !shouldShow);
+              hideIcon.classList.toggle('hidden', shouldShow);
+          }
+
           function getConfig() {
               const config = {
-                  model: document.getElementById('modelSelect').value,
-                  max_tokens: parseInt(document.getElementById('maxTokensInput').value)
+                  model: document.getElementById('modelSelect').value
               };
-                temperature = document.getElementById('temperatureInput').value
-                if (temperature) {
-                    config.temperature = parseFloat(temperature);
-                }
+
+              const apiKey = document.getElementById('apiKeyInput').value.trim();
+              if (apiKey) {
+                  config.api_key = apiKey;
+              }
+
+              const baseUrl = document.getElementById('baseUrlInput').value.trim();
+              if (baseUrl) {
+                  config.base_url = baseUrl;
+              }
 
               const thinkingLevel = document.getElementById('thinkingLevelSelect').value;
               if (thinkingLevel) {
@@ -460,6 +557,22 @@ export function createChatApp(): Express {
                           session_id: sessionId
                       })
                   });
+
+                  if (!response.ok || !response.body) {
+                      let errorMessage = \`Request failed with status \${response.status}\`;
+                      try {
+                          const errorPayload = await response.clone().json();
+                          if (errorPayload && errorPayload.error) {
+                              errorMessage = errorPayload.error;
+                          }
+                      } catch (e) {
+                          const errorText = await response.text();
+                          if (errorText) {
+                              errorMessage = errorText;
+                          }
+                      }
+                      throw new Error(errorMessage);
+                  }
 
                   const reader = response.body.getReader();
                   const decoder = new TextDecoder();
@@ -657,8 +770,7 @@ export function createChatApp(): Express {
   app.post("/api/chat", async (req: Request, res: Response) => {
     const { message, config, session_id } = req.body as {
       message: UniMessage;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      config: UniConfig & { model?: string; [key: string]: any };
+      config: PlaygroundConfig;
       session_id: string;
     };
 
@@ -671,16 +783,21 @@ export function createChatApp(): Express {
     res.setHeader("Connection", "keep-alive");
 
     try {
-      if (!sessionClients.has(session_id)) {
-        const model = config.model || "gpt-5.5";
-        sessionClients.set(session_id, new AutoLLMClient({ model }));
+      const clientOptions = getClientOptions(config || {});
+      if (
+        !sessionClients.has(session_id) ||
+        clientOptionsChanged(sessionClientOptions.get(session_id), clientOptions)
+      ) {
+        sessionClients.set(session_id, new AutoLLMClient(clientOptions));
+        sessionClientOptions.set(session_id, clientOptions);
       }
 
       const client = sessionClients.get(session_id)!;
+      const requestConfig = getRequestConfig(config || {});
 
       for await (const event of client.streamingResponseStateful({
         message,
-        config,
+        config: requestConfig,
       })) {
         const serializedEvent = serializeForJson(event);
         res.write(`data: ${JSON.stringify(serializedEvent)}\n\n`);
@@ -707,6 +824,7 @@ export function createChatApp(): Express {
       const client = sessionClients.get(session_id)!;
       client.clearHistory();
       sessionClients.delete(session_id);
+      sessionClientOptions.delete(session_id);
     }
 
     res.json({ status: "success" });

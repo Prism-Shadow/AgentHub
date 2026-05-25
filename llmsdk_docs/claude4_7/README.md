@@ -1,6 +1,6 @@
 # Claude 4.7 SDK Documentation
 
-This directory contains comprehensive documentation and examples for using Anthropic's Claude 4.7 API.
+This directory contains documentation for using Anthropic's Claude 4.7 API.
 
 ## Documentation
 

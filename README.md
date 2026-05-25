@@ -475,6 +475,7 @@ cd src_ts && npm run playground
 ```
 
 You can access the playground at `http://localhost:25751/`.
+The integrated tracer is available at `http://localhost:25751/tracer/`.
 
 ## Related Work
 
