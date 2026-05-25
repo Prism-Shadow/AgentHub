@@ -19,6 +19,7 @@ import { GPT5_5Client } from "./gpt5_5";
 import { GLM5Client } from "./glm5";
 import { KimiK2_5Client } from "./kimi_k2_5";
 import { Qwen3Client } from "./qwen3";
+import { DeepSeekV4Client } from "./deepseek_v4";
 import {
   EmbeddingInputContentItem,
   EmbeddingResponse,
@@ -94,6 +95,8 @@ export class AutoLLMClient extends LLMClient {
       return new KimiK2_5Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("qwen3")) {
       return new Qwen3Client({ model, apiKey, baseUrl });
+    } else if (clientType.includes("deepseek-v4-")) {
+      return new DeepSeekV4Client({ model, apiKey, baseUrl });
     } else {
       throw new Error(
         `${clientType} is not supported. ` +

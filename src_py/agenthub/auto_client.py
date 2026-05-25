@@ -72,6 +72,10 @@ class AutoLLMClient(LLMClient):
             from .qwen3 import Qwen3Client
 
             return Qwen3Client(model=model, api_key=api_key, base_url=base_url)
+        elif "deepseek-v4-" in client_type:
+            from .deepseek_v4 import DeepSeekV4Client
+
+            return DeepSeekV4Client(model=model, api_key=api_key, base_url=base_url)
         else:
             raise ValueError(
                 f"{client_type} is not supported. "

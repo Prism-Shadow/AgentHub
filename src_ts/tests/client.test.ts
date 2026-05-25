@@ -145,6 +145,28 @@ if (process.env.MOONSHOT_API_KEY) {
   });
 }
 
+if (process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_BASE_URL) {
+  AVAILABLE_MODELS.push({
+    name: "deepseek-v4-pro",
+    supportTextGeneration: true,
+    supportTemperature: false,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    provider: "official",
+  });
+
+  AVAILABLE_MODELS.push({
+    name: "deepseek-v4-flash",
+    supportTextGeneration: true,
+    supportTemperature: false,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    provider: "official",
+  });
+}
+
 if (process.env.BEDROCK_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "global.anthropic.claude-sonnet-4-6",
