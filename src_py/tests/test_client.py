@@ -78,6 +78,14 @@ if os.getenv("ZAI_API_KEY"):
 if os.getenv("MOONSHOT_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="kimi-k2.5", support_temperature=False))
 
+if os.getenv("DEEPSEEK_API_KEY") and os.getenv("DEEPSEEK_BASE_URL"):
+    AVAILABLE_MODELS.append(
+        Model(name="deepseek-v4-pro", support_temperature=False, support_image_understanding=False)
+    )
+    AVAILABLE_MODELS.append(
+        Model(name="deepseek-v4-flash", support_temperature=False, support_image_understanding=False)
+    )
+
 if os.getenv("BEDROCK_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="global.anthropic.claude-sonnet-4-6", provider="bedrock"))
 

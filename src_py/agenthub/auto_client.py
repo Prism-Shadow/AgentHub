@@ -70,10 +70,15 @@ class AutoLLMClient(LLMClient):
             from .qwen3 import Qwen3Client
 
             return Qwen3Client(model=model, api_key=api_key, base_url=base_url)
+        elif "deepseek-v4-" in client_type:
+            from .deepseek_v4 import DeepSeekV4Client
+
+            return DeepSeekV4Client(model=model, api_key=api_key, base_url=base_url)
         else:
             raise ValueError(
                 f"{client_type} is not supported. "
-                "Supported client types: gemini-3, claude-4-6, gpt-5.4, gpt-5.5, glm-5, kimi-k2.5, qwen3."
+                "Supported client types: gemini-3, claude-4-6, gpt-5.4, gpt-5.5, glm-5, kimi-k2.5, qwen3, "
+                "deepseek-v4."
             )
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:
