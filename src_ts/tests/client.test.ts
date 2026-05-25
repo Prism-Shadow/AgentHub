@@ -153,6 +153,8 @@ if (process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_BASE_URL) {
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "official",
   });
 
@@ -163,6 +165,8 @@ if (process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_BASE_URL) {
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    supportImageEmbedding: false,
     provider: "official",
   });
 }
