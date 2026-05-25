@@ -26,6 +26,8 @@ from google.oauth2 import service_account
 
 from ..base_client import LLMClient
 from ..types import (
+    EmbeddingInputContentItem,
+    EmbeddingResponse,
     EventType,
     FinishReason,
     PartialContentItem,
@@ -33,6 +35,7 @@ from ..types import (
     ThinkingLevel,
     ToolChoice,
     UniConfig,
+    UniEmbeddingConfig,
     UniEvent,
     UniMessage,
     UsageMetadata,
@@ -332,6 +335,50 @@ class Gemini3Client(LLMClient):
             "content_items": content_items,
             "usage_metadata": usage_metadata,
             "finish_reason": finish_reason,
+        }
+
+    async def embed_content(
+        self,
+        inputs: list[EmbeddingInputContentItem],
+        config: UniEmbeddingConfig | None = None,
+    ) -> EmbeddingResponse:
+        model = config.get("model", self._model) if config else self._model
+
+        if "embedding" not in model.lower():
+            raise ValueError(f"Model '{model}' is not an embedding model.")
+
+        parts = []
+        for item in inputs:
+            if item["type"] == "text":
+                parts.append(types.Part(text=item["text"]))
+            elif item["type"] == "image_url":
+                image_data = await self._get_image_bytes_and_mime_type(item["image_url"])
+                parts.append(types.Part.from_bytes(**image_data))
+            elif item["type"] == "inline_data":
+                parts.append(types.Part.from_bytes(data=item["data"], mime_type=item["mime_type"]))
+            else:
+                raise ValueError(f"Unknown embedding item type: {item['type']}")
+
+        gemini_config = None
+        if config and config.get("dimensions") is not None:
+            gemini_config = types.EmbedContentConfig(output_dimensionality=config["dimensions"])
+
+        if config and config.get("aggregate") and len(parts) > 1:
+            # Aggregate multiple input parts and output a single vector
+            contents = types.Content(parts=parts)
+        else:
+            # Each input part is embedded as a separate vector
+            contents = [types.Content(parts=[p]) for p in parts]
+
+        result = await self._client.aio.models.embed_content(
+            model=model,
+            contents=contents,
+            config=gemini_config,
+        )
+
+        return {
+            "data": [{"embedding": list(e.values)} for e in result.embeddings] if result.embeddings else [],
+            "model": model,
         }
 
     async def _streaming_response_internal(

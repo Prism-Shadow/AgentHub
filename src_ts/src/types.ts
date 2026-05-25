@@ -189,3 +189,23 @@ export interface UniConfig {
   tts_config?: SpeakerConfig[];
   trace_id?: string;
 }
+
+export type EmbeddingInputContentItem =
+  | TextContentItem
+  | ImageContentItem
+  | InlineDataContentItem;
+
+export interface EmbeddingResult {
+  embedding: number[];
+}
+
+export interface EmbeddingResponse {
+  data: EmbeddingResult[];
+  model: string;
+}
+
+export interface UniEmbeddingConfig {
+  model?: string;
+  dimensions?: number;
+  aggregate?: boolean;
+}

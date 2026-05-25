@@ -176,3 +176,21 @@ class UniConfig(TypedDict):
     image_config: NotRequired[ImageConfig]
     tts_config: NotRequired[list[SpeakerConfig]]
     trace_id: NotRequired[str]
+
+
+EmbeddingInputContentItem = TextContentItem | ImageContentItem | InlineDataContentItem
+
+
+class EmbeddingResult(TypedDict):
+    embedding: list[float]
+
+
+class EmbeddingResponse(TypedDict):
+    data: list[EmbeddingResult]
+    model: str
+
+
+class UniEmbeddingConfig(TypedDict):
+    model: NotRequired[str]
+    dimensions: NotRequired[int]
+    aggregate: NotRequired[bool]
