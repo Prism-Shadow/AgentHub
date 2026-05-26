@@ -21,14 +21,7 @@ import { GLM5_1Client } from "./glm5_1";
 import { KimiK2_6Client } from "./kimi_k2_6";
 import { Qwen3_6Client } from "./qwen3_6";
 import { DeepSeekV4Client } from "./deepseek_v4";
-import {
-  EmbeddingInputContentItem,
-  EmbeddingResponse,
-  UniConfig,
-  UniEmbeddingConfig,
-  UniEvent,
-  UniMessage,
-} from "./types";
+import { UniConfig, UniEvent, UniMessage } from "./types";
 
 /**
  * Auto-routing LLM client that dispatches to appropriate model-specific client.
@@ -137,13 +130,6 @@ export class AutoLLMClient extends LLMClient {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   transformModelOutputToUniEvent(modelOutput: any): UniEvent {
     return this._client.transformModelOutputToUniEvent(modelOutput);
-  }
-
-  async embedContent(
-    inputs: EmbeddingInputContentItem[],
-    config?: UniEmbeddingConfig,
-  ): Promise<EmbeddingResponse> {
-    return this._client.embedContent(inputs, config);
   }
 
   /**

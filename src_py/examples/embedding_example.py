@@ -15,8 +15,8 @@
 """
 Example demonstrating text embedding with dimensions configuration.
 
-This example shows how to use embed_content to generate embeddings for
-multiple texts with a specified output dimensionality.
+This example shows how to generate embeddings through streaming_response
+with a specified output dimensionality.
 """
 
 import asyncio
@@ -43,17 +43,21 @@ async def main():
     ]
 
     print(f"Generating embeddings for {len(texts)} texts with dimensions=768...")
-    result = await client.embed_content(
-        inputs=[{"type": "text", "text": t} for t in texts],
-        config={"dimensions": 768},
-    )
+    events = []
+    async for event in client.streaming_response(
+        messages=[{"role": "user", "content_items": [{"type": "text", "text": text}]} for text in texts],
+        config={"embedding_config": {"dimensions": 768}},
+    ):
+        events.append(event)
 
-    for i, item in enumerate(result["data"]):
+    embeddings = [item["embedding"] for event in events for item in event["content_items"] if item["type"] == "embedding"]
+
+    for i, embedding in enumerate(embeddings):
         print(f'\nText {i}: "{texts[i]}"')
-        print(f"  Embedding dimension: {len(item['embedding'])}")
-        print(f"  First 5 values: {item['embedding'][:5]}")
+        print(f"  Embedding dimension: {len(embedding)}")
+        print(f"  First 5 values: {embedding[:5]}")
 
-    print(f"\nModel: {result['model']}")
+    print(f"\nModel: {model}")
     print("\n" + "=" * 60)
     print("Text embedding complete!")
     print("=" * 60)

@@ -104,6 +104,11 @@ export interface ToolResultContentItem {
   tool_call_id: string;
 }
 
+export interface EmbeddingContentItem {
+  type: "embedding";
+  embedding: number[];
+}
+
 export type ContentItem =
   | TextContentItem
   | ImageContentItem
@@ -111,7 +116,8 @@ export type ContentItem =
   | ThinkingContentItem
   | InlineThinkingContentItem
   | ToolCallContentItem
-  | ToolResultContentItem;
+  | ToolResultContentItem
+  | EmbeddingContentItem;
 
 export type PartialContentItem = ContentItem | PartialToolCallContentItem;
 
@@ -175,6 +181,13 @@ export interface SpeakerConfig {
 }
 
 /**
+ * Embedding generation configuration.
+ */
+export interface EmbeddingConfig {
+  dimensions?: number;
+}
+
+/**
  * Universal configuration format for LLM requests.
  */
 export interface UniConfig {
@@ -188,25 +201,6 @@ export interface UniConfig {
   prompt_caching?: PromptCaching;
   image_config?: ImageConfig;
   tts_config?: SpeakerConfig[];
+  embedding_config?: EmbeddingConfig;
   trace_id?: string;
-}
-
-export type EmbeddingInputContentItem =
-  | TextContentItem
-  | ImageContentItem
-  | InlineDataContentItem;
-
-export interface EmbeddingResult {
-  embedding: number[];
-}
-
-export interface EmbeddingResponse {
-  data: EmbeddingResult[];
-  model: string;
-}
-
-export interface UniEmbeddingConfig {
-  model?: string;
-  dimensions?: number;
-  aggregate?: boolean;
 }

@@ -18,11 +18,8 @@ from typing import Any, AsyncIterator
 
 from .types import (
     ContentItem,
-    EmbeddingInputContentItem,
-    EmbeddingResponse,
     FinishReason,
     UniConfig,
-    UniEmbeddingConfig,
     UniEvent,
     UniMessage,
     UsageMetadata,
@@ -78,28 +75,6 @@ class LLMClient(ABC):
             Universal event dictionary
         """
         pass
-
-    async def embed_content(
-        self,
-        inputs: list[EmbeddingInputContentItem],
-        config: UniEmbeddingConfig | None = None,
-    ) -> EmbeddingResponse:
-        """Generate embeddings for the given inputs.
-
-        The default implementation raises NotImplementedError. Provider clients
-        that support embedding override this method.
-
-        Args:
-            inputs: List of embedding input items (text, image_url, or inline_data)
-            config: Embedding configuration
-
-        Returns:
-            Embedding response containing model name and embedding vectors
-
-        Raises:
-            NotImplementedError: If the provider does not support embedding.
-        """
-        raise NotImplementedError(f"{type(self).__name__} does not support embedding.")
 
     def concat_uni_events_to_uni_message(self, events: list[UniEvent]) -> UniMessage:
         """

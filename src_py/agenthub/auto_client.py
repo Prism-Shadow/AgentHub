@@ -16,7 +16,7 @@ import os
 from typing import Any, AsyncIterator
 
 from .base_client import LLMClient
-from .types import EmbeddingInputContentItem, EmbeddingResponse, UniConfig, UniEmbeddingConfig, UniEvent, UniMessage
+from .types import UniConfig, UniEvent, UniMessage
 
 
 class AutoLLMClient(LLMClient):
@@ -97,13 +97,6 @@ class AutoLLMClient(LLMClient):
     def transform_model_output_to_uni_event(self, model_output: Any) -> UniEvent:
         """Delegate to underlying client's transform_model_output_to_uni_event."""
         return self._client.transform_model_output_to_uni_event(model_output)
-
-    async def embed_content(
-        self,
-        inputs: list[EmbeddingInputContentItem],
-        config: UniEmbeddingConfig | None = None,
-    ) -> EmbeddingResponse:
-        return await self._client.embed_content(inputs, config)
 
     async def _streaming_response_internal(
         self,

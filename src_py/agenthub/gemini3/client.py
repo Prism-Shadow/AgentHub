@@ -26,8 +26,6 @@ from google.oauth2 import service_account
 
 from ..base_client import LLMClient
 from ..types import (
-    EmbeddingInputContentItem,
-    EmbeddingResponse,
     EventType,
     FinishReason,
     PartialContentItem,
@@ -35,7 +33,6 @@ from ..types import (
     ThinkingLevel,
     ToolChoice,
     UniConfig,
-    UniEmbeddingConfig,
     UniEvent,
     UniMessage,
     UsageMetadata,
@@ -338,48 +335,40 @@ class Gemini3Client(LLMClient):
             "finish_reason": finish_reason,
         }
 
-    async def embed_content(
+    async def _embed_messages_internal(
         self,
-        inputs: list[EmbeddingInputContentItem],
-        config: UniEmbeddingConfig | None = None,
-    ) -> EmbeddingResponse:
-        model = config.get("model", self._model) if config else self._model
+        messages: list[UniMessage],
+        config: UniConfig,
+    ) -> AsyncIterator[UniEvent]:
+        contents = await self.transform_uni_message_to_model_input(messages)
+        if not contents:
+            raise ValueError("Gemini embedding requires at least one content item.")
 
-        if "embedding" not in model.lower():
-            raise ValueError(f"Model '{model}' is not an embedding model.")
-
-        parts = []
-        for item in inputs:
-            if item["type"] == "text":
-                parts.append(types.Part(text=item["text"]))
-            elif item["type"] == "image_url":
-                image_data = await self._get_image_bytes_and_mime_type(item["image_url"])
-                parts.append(types.Part.from_bytes(**image_data))
-            elif item["type"] == "inline_data":
-                parts.append(types.Part.from_bytes(data=item["data"], mime_type=item["mime_type"]))
-            else:
-                raise ValueError(f"Unknown embedding item type: {item['type']}")
-
+        embedding_config = config.get("embedding_config") or {}
         gemini_config = None
-        if config and config.get("dimensions") is not None:
-            gemini_config = types.EmbedContentConfig(output_dimensionality=config["dimensions"])
-
-        if config and config.get("aggregate") and len(parts) > 1:
-            # Aggregate multiple input parts and output a single vector
-            contents = types.Content(parts=parts)
-        else:
-            # Each input part is embedded as a separate vector
-            contents = [types.Content(parts=[p]) for p in parts]
+        if embedding_config.get("dimensions") is not None:
+            gemini_config = types.EmbedContentConfig(output_dimensionality=embedding_config["dimensions"])
 
         result = await self._client.aio.models.embed_content(
-            model=model,
+            model=self._model,
             contents=contents,
             config=gemini_config,
         )
 
-        return {
-            "data": [{"embedding": list(e.values)} for e in result.embeddings] if result.embeddings else [],
-            "model": model,
+        yield {
+            "role": "assistant",
+            "event_type": "stop",
+            "content_items": [
+                {"type": "embedding", "embedding": list(embedding.values or [])}
+                for embedding in (result.embeddings or [])
+            ],
+            "usage_metadata": {
+                "cached_tokens": None,
+                "prompt_tokens": None,
+                "thoughts_tokens": None,
+                "response_tokens": None,
+            },
+            "finish_reason": "stop",
         }
 
     async def _streaming_response_internal(
@@ -388,6 +377,11 @@ class Gemini3Client(LLMClient):
         config: UniConfig,
     ) -> AsyncIterator[UniEvent]:
         """Stream generate using Gemini SDK with unified conversion methods."""
+        if "embedding" in self._model.lower():
+            async for event in self._embed_messages_internal(messages, config):
+                yield event
+            return
+
         # Use unified config conversion
         gemini_config = self.transform_uni_config_to_model_config(config)
 

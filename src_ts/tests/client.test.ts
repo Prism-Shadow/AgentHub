@@ -28,7 +28,6 @@ interface Model {
   supportImageGeneration: boolean;
   supportAudioGeneration: boolean;
   supportEmbedding: boolean;
-  supportImageEmbedding: boolean;
   provider:
     | "official"
     | "bedrock"
@@ -49,7 +48,6 @@ if (process.env.GEMINI_API_KEY) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "official",
   });
 
@@ -61,7 +59,6 @@ if (process.env.GEMINI_API_KEY) {
     supportImageGeneration: true,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "official",
   });
 
@@ -73,7 +70,6 @@ if (process.env.GEMINI_API_KEY) {
     supportImageGeneration: false,
     supportAudioGeneration: true,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "official",
   });
 
@@ -85,7 +81,6 @@ if (process.env.GEMINI_API_KEY) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: true,
-    supportImageEmbedding: true,
     provider: "official",
   });
 }
@@ -99,7 +94,6 @@ if (process.env.ANTHROPIC_API_KEY) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "official",
   });
 }
@@ -113,7 +107,6 @@ if (process.env.OPENAI_API_KEY) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "official",
   });
 }
@@ -127,7 +120,6 @@ if (process.env.ZAI_API_KEY) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "official",
   });
 }
@@ -141,7 +133,6 @@ if (process.env.MOONSHOT_API_KEY) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "official",
   });
 }
@@ -155,7 +146,6 @@ if (process.env.DEEPSEEK_API_KEY) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "official",
   });
 }
@@ -169,7 +159,6 @@ if (process.env.BEDROCK_API_KEY) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "bedrock",
   });
 }
@@ -183,7 +172,6 @@ if (process.env.VERTEX_API_KEY) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "vertex",
   });
 
@@ -195,7 +183,6 @@ if (process.env.VERTEX_API_KEY) {
     supportImageGeneration: true,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "vertex",
   });
 
@@ -207,7 +194,6 @@ if (process.env.VERTEX_API_KEY) {
     supportImageGeneration: false,
     supportAudioGeneration: true,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "vertex",
   });
 }
@@ -223,7 +209,6 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
@@ -234,7 +219,6 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
@@ -245,7 +229,6 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "openrouter",
   });
 }
@@ -259,7 +242,6 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "siliconflow",
   });
   AVAILABLE_MODELS.push({
@@ -270,7 +252,6 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "siliconflow",
   });
   AVAILABLE_MODELS.push({
@@ -281,7 +262,6 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "siliconflow",
   });
 }
@@ -295,7 +275,6 @@ if (process.env.MODELVERSE_API_KEY && RUN_SLOW_TEST) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "modelverse",
   });
   AVAILABLE_MODELS.push({
@@ -306,7 +285,6 @@ if (process.env.MODELVERSE_API_KEY && RUN_SLOW_TEST) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    supportImageEmbedding: false,
     provider: "modelverse",
   });
 }
@@ -986,7 +964,7 @@ if (AVAILABLE_MODELS.length > 0) {
       expect(inlineItems.every((item) => item.data.length > 0)).toBe(true);
     }, 180000);
 
-    test("should embed text content", async () => {
+    test("should stream text embeddings", async () => {
       if (!model.supportEmbedding) {
         return;
       }
@@ -994,58 +972,31 @@ if (AVAILABLE_MODELS.length > 0) {
       const client = createClient(model);
       const texts = ["Hello world", "Goodbye world"];
 
-      const result = await client.embedContent(
-        texts.map((t) => ({ type: "text" as const, text: t })),
-        { dimensions: 768 },
-      );
+      const events: UniEvent[] = [];
+      for await (const event of client.streamingResponse({
+        messages: texts.map((text) => ({
+          role: "user",
+          content_items: [
+            {
+              type: "text" as const,
+              text,
+            },
+          ],
+        })),
+        config: { embedding_config: { dimensions: 768 } },
+      })) {
+        checkEventIntegrity(event);
+        events.push(event);
+      }
 
-      expect(result.model).toBe(model.name);
-      expect(result.data.length).toBe(2);
-      for (const item of result.data) {
+      const embeddingItems = events.flatMap((event) =>
+        event.content_items.filter((item) => item.type === "embedding"),
+      );
+      expect(embeddingItems.length).toBe(2);
+      for (const item of embeddingItems) {
         expect(item.embedding.length).toBe(768);
         expect(item.embedding.every((v) => typeof v === "number")).toBe(true);
       }
-    }, 60000);
-
-    test("should embed multimodal content", async () => {
-      if (!model.supportImageEmbedding) {
-        return;
-      }
-
-      const client = createClient(model);
-
-      const result = await client.embedContent([
-        { type: "image_url" as const, image_url: IMAGE },
-      ]);
-
-      expect(result.model).toBe(model.name);
-      expect(result.data.length).toBe(1);
-      for (const item of result.data) {
-        expect(item.embedding.length).toBeGreaterThan(0);
-        expect(item.embedding.every((v) => typeof v === "number")).toBe(true);
-      }
-    }, 60000);
-
-    test("should aggregate multiple inputs into a single embedding", async () => {
-      if (!model.supportEmbedding) {
-        return;
-      }
-
-      const client = createClient(model);
-
-      const result = await client.embedContent(
-        [
-          { type: "text" as const, text: "Hello world" },
-          { type: "text" as const, text: "Goodbye world" },
-        ],
-        { aggregate: true },
-      );
-
-      expect(result.model).toBe(model.name);
-      expect(result.data.length).toBe(1);
-      const item = result.data[0];
-      expect(item.embedding.length).toBeGreaterThan(0);
-      expect(item.embedding.every((v) => typeof v === "number")).toBe(true);
     }, 60000);
   });
 }
