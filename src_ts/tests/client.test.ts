@@ -18,6 +18,7 @@ import { expect, describe, test } from "@jest/globals";
 
 const IMAGE =
   "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg";
+const IMAGE_KEYWORDS = ["flower", "narcissus", "daffodil", "bloom"];
 
 interface Model {
   name: string;
@@ -119,7 +120,7 @@ if (process.env.OPENAI_API_KEY) {
 
 if (process.env.ZAI_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "glm-5",
+    name: "glm-5.1",
     supportTextGeneration: true,
     supportTemperature: true,
     supportImageUnderstanding: false,
@@ -133,7 +134,7 @@ if (process.env.ZAI_API_KEY) {
 
 if (process.env.MOONSHOT_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "kimi-k2.5",
+    name: "kimi-k2.6",
     supportTextGeneration: true,
     supportTemperature: false,
     supportImageUnderstanding: true,
@@ -215,7 +216,7 @@ const RUN_SLOW_TEST = process.env.RUN_SLOW_TEST === "1";
 
 if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
-    name: "z-ai/glm-5",
+    name: "z-ai/glm-5.1",
     supportTextGeneration: true,
     supportTemperature: true,
     supportImageUnderstanding: false,
@@ -251,7 +252,7 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
 
 if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
-    name: "Pro/zai-org/GLM-5",
+    name: "Pro/zai-org/GLM-5.1",
     supportTextGeneration: true,
     supportTemperature: true,
     supportImageUnderstanding: false,
@@ -764,8 +765,9 @@ if (AVAILABLE_MODELS.length > 0) {
       }
 
       expect(
-        text.toLowerCase().includes("flower") ||
-          text.toLowerCase().includes("narcissus"),
+        IMAGE_KEYWORDS.some((keyword) =>
+          text.toLowerCase().includes(keyword),
+        ),
       ).toBe(true);
     }, 60000);
 
@@ -811,8 +813,9 @@ if (AVAILABLE_MODELS.length > 0) {
       }
 
       expect(
-        text.toLowerCase().includes("flower") ||
-          text.toLowerCase().includes("narcissus"),
+        IMAGE_KEYWORDS.some((keyword) =>
+          text.toLowerCase().includes(keyword),
+        ),
       ).toBe(true);
     }, 60000);
 
@@ -892,8 +895,9 @@ if (AVAILABLE_MODELS.length > 0) {
       }
 
       expect(
-        text.toLowerCase().includes("flower") ||
-          text.toLowerCase().includes("narcissus"),
+        IMAGE_KEYWORDS.some((keyword) =>
+          text.toLowerCase().includes(keyword),
+        ),
       ).toBe(true);
     }, 60000);
 

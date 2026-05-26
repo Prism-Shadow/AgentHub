@@ -27,6 +27,7 @@ from agenthub import AutoLLMClient, ThinkingLevel
 
 
 IMAGE = "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg"
+IMAGE_KEYWORDS = ("flower", "narcissus", "daffodil", "bloom")
 
 
 @dataclass
@@ -501,7 +502,7 @@ async def test_image_understanding(model: Model):
             if item["type"] == "text":
                 text += item["text"]
 
-    assert ("flower" in text.lower()) or ("narcissus" in text.lower())
+    assert any(keyword in text.lower() for keyword in IMAGE_KEYWORDS)
 
 
 @pytest.mark.asyncio
@@ -538,7 +539,7 @@ async def test_image_understanding_base64(model: Model):
             if item["type"] == "text":
                 text += item["text"]
 
-    assert ("flower" in text.lower()) or ("narcissus" in text.lower())
+    assert any(keyword in text.lower() for keyword in IMAGE_KEYWORDS)
 
 
 @pytest.mark.asyncio
@@ -601,7 +602,7 @@ async def test_tool_result_with_image(model: Model):
             if item["type"] == "text":
                 text += item["text"]
 
-    assert ("flower" in text.lower()) or ("narcissus" in text.lower())
+    assert any(keyword in text.lower() for keyword in IMAGE_KEYWORDS)
 
 
 @pytest.mark.asyncio

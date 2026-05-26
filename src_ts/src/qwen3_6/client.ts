@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import OpenAI from "openai";
+import * as path from "path";
 import type {
   ChatCompletionChunk,
   ChatCompletionMessageParam,
@@ -24,7 +25,6 @@ import {
   FinishReason,
   PartialContentItem,
   PromptCaching,
-  ThinkingLevel,
   ToolChoice,
   UniConfig,
   UniEvent,
@@ -34,14 +34,14 @@ import {
 import { fixOpenrouterUsageMetadata } from "../utils";
 
 /**
- * GLM-5-specific LLM client implementation using OpenAI-compatible API.
+ * Qwen3.6 client-specific LLM client implementation using OpenAI-compatible API.
  */
-export class GLM5Client extends LLMClient {
+export class Qwen3_6Client extends LLMClient {
   protected _model: string;
   private _client: OpenAI;
 
   /**
-   * Initialize GLM-5 client with model and API key.
+   * Initialize Qwen3.6 client with model and API key.
    */
   constructor(options: {
     model: string;
@@ -51,28 +51,51 @@ export class GLM5Client extends LLMClient {
   }) {
     super();
     this._model = options.model;
-    const key = options.apiKey || process.env.ZAI_API_KEY || undefined;
+    const key = options.apiKey || process.env.QWEN_API_KEY || undefined;
     const url =
       options.baseUrl ||
-      process.env.ZAI_BASE_URL ||
-      "https://api.z.ai/api/paas/v4/";
+      process.env.QWEN_BASE_URL ||
+      "http://127.0.0.1:8000/v1/";
     this._client = new OpenAI({ apiKey: key, baseURL: url });
   }
 
   /**
-   * Convert ThinkingLevel enum to GLM's thinking configuration.
+   * Detect MIME type from URL extension for image.
    */
-  private _convertThinkingLevelToConfig(thinkingLevel: ThinkingLevel): {
-    type: string;
-  } {
-    const mapping: { [key: string]: { type: string } } = {
-      [ThinkingLevel.NONE]: { type: "disabled" },
-      [ThinkingLevel.LOW]: { type: "enabled" },
-      [ThinkingLevel.MEDIUM]: { type: "enabled" },
-      [ThinkingLevel.HIGH]: { type: "enabled" },
-      [ThinkingLevel.XHIGH]: { type: "enabled" },
+  private _detectImageMimeType(url: string): string {
+    const ext = path.extname(url).toLowerCase();
+    const mimeTypes: { [key: string]: string } = {
+      ".bmp": "image/bmp",
+      ".gif": "image/gif",
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".svg": "image/svg+xml",
+      ".tiff": "image/tiff",
+      ".webp": "image/webp",
     };
-    return mapping[thinkingLevel];
+    return mimeTypes[ext] || "image/jpeg";
+  }
+
+  /**
+   * Convert image URL to base64-encoded data URL.
+   */
+  private async _convertImageUrlToBase64(url: string): Promise<string> {
+    if (url.startsWith("data:")) {
+      return url;
+    }
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch image: ${response.status} ${response.statusText}`,
+      );
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const mimeType = this._detectImageMimeType(url);
+    const base64String = buffer.toString("base64");
+    return `data:${mimeType};base64,${base64String}`;
   }
 
   /**
@@ -82,68 +105,57 @@ export class GLM5Client extends LLMClient {
     if (toolChoice === "auto") {
       return "auto";
     } else {
-      throw new Error('GLM only supports "auto" for tool_choice.');
+      throw new Error('Qwen3 only supports "auto" for tool_choice.');
     }
   }
 
   /**
-   * Transform universal configuration to GLM-specific configuration.
+   * Transform universal configuration to Qwen-specific configuration.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   transformUniConfigToModelConfig(config: UniConfig): any {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const glmConfig: any = {
+    const qwenConfig: any = {
       model: this._model,
       stream: true,
-      extra_body: { tool_stream: true },
     };
 
     if (config.max_tokens !== undefined) {
-      glmConfig.max_tokens = config.max_tokens;
+      qwenConfig.max_tokens = config.max_tokens;
     }
 
     if (config.temperature !== undefined) {
-      glmConfig.temperature = config.temperature;
-    }
-
-    if (config.thinking_level !== undefined) {
-      const thinkingConfig = this._convertThinkingLevelToConfig(
-        config.thinking_level,
-      );
-      glmConfig.extra_body = {
-        ...(glmConfig.extra_body || {}),
-        thinking: thinkingConfig,
-      };
+      qwenConfig.temperature = config.temperature;
     }
 
     if (config.tools !== undefined) {
-      glmConfig.tools = config.tools.map((tool) => ({
+      qwenConfig.tools = config.tools.map((tool) => ({
         type: "function",
         function: tool,
       }));
     }
 
     if (config.tool_choice !== undefined) {
-      glmConfig.tool_choice = this._convertToolChoice(config.tool_choice);
+      qwenConfig.tool_choice = this._convertToolChoice(config.tool_choice);
     }
 
     if (
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE
     ) {
-      throw new Error("prompt_caching must be ENABLE for GLM-5.");
+      throw new Error("prompt_caching must be ENABLE for Qwen.");
     }
 
-    return glmConfig;
+    return qwenConfig;
   }
 
   /**
-   * Transform universal message format to OpenAI's message format.
+   * Transform universal message format to Qwen-specific message format.
    */
-  transformUniMessageToModelInput(
+  async transformUniMessageToModelInput(
     messages: UniMessage[],
-  ): ChatCompletionMessageParam[] {
-    const openaiMessages: ChatCompletionMessageParam[] = [];
+  ): Promise<ChatCompletionMessageParam[]> {
+    const qwenMessages: ChatCompletionMessageParam[] = [];
 
     for (const msg of messages) {
       const contentParts: Array<{
@@ -159,7 +171,13 @@ export class GLM5Client extends LLMClient {
         if (item.type === "text") {
           contentParts.push({ type: "text", text: item.text });
         } else if (item.type === "image_url") {
-          throw new Error("GLM-5 does not support image inputs.");
+          const base64Image = await this._convertImageUrlToBase64(
+            item.image_url,
+          );
+          contentParts.push({
+            type: "image_url",
+            image_url: { url: base64Image },
+          });
         } else if (item.type === "thinking") {
           thinking += item.thinking;
         } else if (item.type === "tool_call") {
@@ -176,14 +194,30 @@ export class GLM5Client extends LLMClient {
             throw new Error("tool_call_id is required for tool result.");
           }
 
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const content: any[] = [{ type: "text", text: item.text }];
+
           if (item.images && item.images.length > 0) {
-            throw new Error("GLM-5 does not support images in tool results.");
+            for (const imageUrl of item.images) {
+              const base64Image = await this._convertImageUrlToBase64(imageUrl);
+              if (this._client.baseURL.includes("siliconflow.cn")) {
+                contentParts.push({
+                  type: "image_url",
+                  image_url: { url: base64Image },
+                });
+              } else {
+                content.push({
+                  type: "image_url",
+                  image_url: { url: base64Image },
+                });
+              }
+            }
           }
 
-          openaiMessages.push({
+          qwenMessages.push({
             role: "tool",
             tool_call_id: item.tool_call_id,
-            content: item.text,
+            content,
           });
         } else {
           throw new Error(
@@ -208,15 +242,15 @@ export class GLM5Client extends LLMClient {
       }
 
       if (Object.keys(message).length > 1) {
-        openaiMessages.push(message);
+        qwenMessages.push(message);
       }
     }
 
-    return openaiMessages;
+    return qwenMessages;
   }
 
   /**
-   * Transform GLM model output to universal event format.
+   * Transform Qwen model output to universal event format.
    */
   transformModelOutputToUniEvent(modelOutput: ChatCompletionChunk): UniEvent {
     let eventType: EventType | null = null;
@@ -229,8 +263,14 @@ export class GLM5Client extends LLMClient {
       const delta = choice?.delta;
 
       if (delta?.content) {
-        eventType = "delta";
-        contentItems.push({ type: "text", text: delta.content });
+        if (delta.content === "<tool_call>") {
+          eventType = "start";
+        } else if (delta.content === "</tool_call>") {
+          eventType = "stop";
+        } else {
+          eventType = "delta";
+          contentItems.push({ type: "text", text: delta.content });
+        }
       }
 
       // vLLM & siliconflow compatibility
@@ -255,13 +295,13 @@ export class GLM5Client extends LLMClient {
       }
 
       if (delta?.tool_calls) {
-        eventType = "delta";
         for (const toolCall of delta.tool_calls) {
+          eventType = "delta";
           contentItems.push({
             type: "partial_tool_call",
             name: toolCall.function?.name || "",
             arguments: toolCall.function?.arguments || "",
-            tool_call_id: toolCall.id || "",
+            tool_call_id: toolCall.function?.name || "",
           });
         }
       }
@@ -317,25 +357,27 @@ export class GLM5Client extends LLMClient {
   }
 
   /**
-   * Stream generate using GLM SDK with unified conversion methods.
+   * Stream generate using Qwen3 SDK with unified conversion methods.
    */
   async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
-    const glmConfig = this.transformUniConfigToModelConfig(options.config);
-    const glmMessages = this.transformUniMessageToModelInput(options.messages);
+    const qwenConfig = this.transformUniConfigToModelConfig(options.config);
+    const qwenMessages = await this.transformUniMessageToModelInput(
+      options.messages,
+    );
 
     if (options.config.system_prompt) {
-      glmMessages.unshift({
+      qwenMessages.unshift({
         role: "system",
         content: options.config.system_prompt,
       });
     }
 
     const params: ChatCompletionCreateParamsStreaming = {
-      ...glmConfig,
-      messages: glmMessages,
+      ...qwenConfig,
+      messages: qwenMessages,
       stream: true,
     };
 
@@ -345,6 +387,7 @@ export class GLM5Client extends LLMClient {
       name?: string;
       arguments?: string;
       tool_call_id?: string;
+      data?: string;
     } = {};
     let partialUsage: {
       finish_reason?: FinishReason | null;
@@ -358,16 +401,27 @@ export class GLM5Client extends LLMClient {
         event.finish_reason || partialUsage.finish_reason;
       partialUsage.usage_metadata =
         event.usage_metadata || partialUsage.usage_metadata;
-      if (event.event_type === "delta") {
+      if (event.event_type === "start") {
+        // start new partial tool call for <tool_call>
+        partialToolCall.data = "";
+      } else if (event.event_type === "delta") {
+        if (partialToolCall.data !== undefined) {
+          // update partial tool call for <tool_call>
+          partialToolCall.data +=
+            event.content_items[0]?.type === "text"
+              ? (event.content_items[0] as { text: string }).text
+              : "";
+          continue;
+        }
+
         for (const item of event.content_items) {
           if (item.type === "partial_tool_call") {
             if (!partialToolCall.name) {
-              // start a new partial tool call
+              // start new partial tool call for tool call object
               partialToolCall.name = item.name;
               partialToolCall.arguments = item.arguments;
-              partialToolCall.tool_call_id = item.tool_call_id;
             } else if (item.name) {
-              // finish the previous partial tool call
+              // finish previous partial tool call for tool call object
               yield {
                 role: "assistant",
                 event_type: "delta",
@@ -376,27 +430,61 @@ export class GLM5Client extends LLMClient {
                     type: "tool_call",
                     name: partialToolCall.name,
                     arguments: JSON.parse(partialToolCall.arguments || "{}"),
-                    tool_call_id: partialToolCall.tool_call_id || "",
+                    tool_call_id: partialToolCall.name,
                   },
                 ],
                 usage_metadata: null,
                 finish_reason: null,
               };
-              // start a new partial tool call
+              // start new partial tool call for tool call object
               partialToolCall.name = item.name;
               partialToolCall.arguments = item.arguments;
-              partialToolCall.tool_call_id = item.tool_call_id;
             } else {
-              // update partial tool call
+              // update partial tool call for tool call object
               partialToolCall.arguments =
-                (partialToolCall.arguments || "") + item.arguments;
+                partialToolCall.arguments + item.arguments;
             }
           }
         }
+
         yield event;
       } else if (event.event_type === "stop") {
+        if (partialToolCall.data !== undefined) {
+          // finish partial tool call for <tool_call>
+          const toolCall = JSON.parse(partialToolCall.data.trim());
+          yield {
+            role: "assistant",
+            event_type: "delta",
+            content_items: [
+              {
+                type: "partial_tool_call",
+                name: toolCall.name,
+                arguments: JSON.stringify(toolCall.arguments, null, 0),
+                tool_call_id: toolCall.name,
+              },
+            ],
+            usage_metadata: null,
+            finish_reason: null,
+          };
+          yield {
+            role: "assistant",
+            event_type: "delta",
+            content_items: [
+              {
+                type: "tool_call",
+                name: toolCall.name,
+                arguments: toolCall.arguments,
+                tool_call_id: toolCall.name,
+              },
+            ],
+            usage_metadata: null,
+            finish_reason: null,
+          };
+          partialToolCall.data = undefined;
+        }
+
         if (partialToolCall.name) {
-          // finish the partial tool call
+          // finish partial tool call for tool call object
           yield {
             role: "assistant",
             event_type: "delta",
@@ -405,7 +493,7 @@ export class GLM5Client extends LLMClient {
                 type: "tool_call",
                 name: partialToolCall.name,
                 arguments: JSON.parse(partialToolCall.arguments || "{}"),
-                tool_call_id: partialToolCall.tool_call_id || "",
+                tool_call_id: partialToolCall.name,
               },
             ],
             usage_metadata: null,

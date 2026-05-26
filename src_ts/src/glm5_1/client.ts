@@ -24,6 +24,7 @@ import {
   FinishReason,
   PartialContentItem,
   PromptCaching,
+  ThinkingLevel,
   ToolChoice,
   UniConfig,
   UniEvent,
@@ -33,14 +34,14 @@ import {
 import { fixOpenrouterUsageMetadata } from "../utils";
 
 /**
- * Qwen3-specific LLM client implementation using OpenAI-compatible API.
+ * GLM-5.1-specific LLM client implementation using OpenAI-compatible API.
  */
-export class Qwen3Client extends LLMClient {
+export class GLM5_1Client extends LLMClient {
   protected _model: string;
   private _client: OpenAI;
 
   /**
-   * Initialize Qwen3 client with model and API key.
+   * Initialize GLM-5.1 client with model and API key.
    */
   constructor(options: {
     model: string;
@@ -50,12 +51,28 @@ export class Qwen3Client extends LLMClient {
   }) {
     super();
     this._model = options.model;
-    const key = options.apiKey || process.env.QWEN3_API_KEY || undefined;
+    const key = options.apiKey || process.env.ZAI_API_KEY || undefined;
     const url =
       options.baseUrl ||
-      process.env.QWEN3_BASE_URL ||
-      "http://127.0.0.1:8000/v1/";
+      process.env.ZAI_BASE_URL ||
+      "https://api.z.ai/api/paas/v4/";
     this._client = new OpenAI({ apiKey: key, baseURL: url });
+  }
+
+  /**
+   * Convert ThinkingLevel enum to GLM's thinking configuration.
+   */
+  private _convertThinkingLevelToConfig(thinkingLevel: ThinkingLevel): {
+    type: string;
+  } {
+    const mapping: { [key: string]: { type: string } } = {
+      [ThinkingLevel.NONE]: { type: "disabled" },
+      [ThinkingLevel.LOW]: { type: "enabled" },
+      [ThinkingLevel.MEDIUM]: { type: "enabled" },
+      [ThinkingLevel.HIGH]: { type: "enabled" },
+      [ThinkingLevel.XHIGH]: { type: "enabled" },
+    };
+    return mapping[thinkingLevel];
   }
 
   /**
@@ -65,60 +82,75 @@ export class Qwen3Client extends LLMClient {
     if (toolChoice === "auto") {
       return "auto";
     } else {
-      throw new Error('Qwen3 only supports "auto" for tool_choice.');
+      throw new Error('GLM only supports "auto" for tool_choice.');
     }
   }
 
   /**
-   * Transform universal configuration to Qwen3-specific configuration.
+   * Transform universal configuration to GLM-specific configuration.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   transformUniConfigToModelConfig(config: UniConfig): any {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const qwen3Config: any = {
+    const glmConfig: any = {
       model: this._model,
       stream: true,
+      extra_body: { tool_stream: true },
     };
 
     if (config.max_tokens !== undefined) {
-      qwen3Config.max_tokens = config.max_tokens;
+      glmConfig.max_tokens = config.max_tokens;
     }
 
     if (config.temperature !== undefined) {
-      qwen3Config.temperature = config.temperature;
+      glmConfig.temperature = config.temperature;
+    }
+
+    if (config.thinking_level !== undefined) {
+      const thinkingConfig = this._convertThinkingLevelToConfig(
+        config.thinking_level,
+      );
+      glmConfig.extra_body = {
+        ...(glmConfig.extra_body || {}),
+        thinking: thinkingConfig,
+      };
     }
 
     if (config.tools !== undefined) {
-      qwen3Config.tools = config.tools.map((tool) => ({
+      glmConfig.tools = config.tools.map((tool) => ({
         type: "function",
         function: tool,
       }));
     }
 
     if (config.tool_choice !== undefined) {
-      qwen3Config.tool_choice = this._convertToolChoice(config.tool_choice);
+      glmConfig.tool_choice = this._convertToolChoice(config.tool_choice);
     }
 
     if (
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE
     ) {
-      throw new Error("prompt_caching must be ENABLE for Qwen3.");
+      throw new Error("prompt_caching must be ENABLE for GLM.");
     }
 
-    return qwen3Config;
+    return glmConfig;
   }
 
   /**
-   * Transform universal message format to Qwen3-specific message format.
+   * Transform universal message format to OpenAI's message format.
    */
   transformUniMessageToModelInput(
     messages: UniMessage[],
   ): ChatCompletionMessageParam[] {
-    const qwen3Messages: ChatCompletionMessageParam[] = [];
+    const openaiMessages: ChatCompletionMessageParam[] = [];
 
     for (const msg of messages) {
-      const contentParts: Array<{ type: string; text?: string }> = [];
+      const contentParts: Array<{
+        type: string;
+        text?: string;
+        image_url?: { url: string };
+      }> = [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const toolCalls: any[] = [];
       let thinking = "";
@@ -127,7 +159,7 @@ export class Qwen3Client extends LLMClient {
         if (item.type === "text") {
           contentParts.push({ type: "text", text: item.text });
         } else if (item.type === "image_url") {
-          throw new Error("Qwen3 does not support image inputs.");
+          throw new Error("GLM-5 does not support image inputs.");
         } else if (item.type === "thinking") {
           thinking += item.thinking;
         } else if (item.type === "tool_call") {
@@ -145,10 +177,10 @@ export class Qwen3Client extends LLMClient {
           }
 
           if (item.images && item.images.length > 0) {
-            throw new Error("Qwen3 does not support images in tool results.");
+            throw new Error("GLM-5 does not support images in tool results.");
           }
 
-          qwen3Messages.push({
+          openaiMessages.push({
             role: "tool",
             tool_call_id: item.tool_call_id,
             content: item.text,
@@ -176,15 +208,15 @@ export class Qwen3Client extends LLMClient {
       }
 
       if (Object.keys(message).length > 1) {
-        qwen3Messages.push(message);
+        openaiMessages.push(message);
       }
     }
 
-    return qwen3Messages;
+    return openaiMessages;
   }
 
   /**
-   * Transform Qwen3 model output to universal event format.
+   * Transform GLM model output to universal event format.
    */
   transformModelOutputToUniEvent(modelOutput: ChatCompletionChunk): UniEvent {
     let eventType: EventType | null = null;
@@ -197,14 +229,8 @@ export class Qwen3Client extends LLMClient {
       const delta = choice?.delta;
 
       if (delta?.content) {
-        if (delta.content === "<tool_call>") {
-          eventType = "start";
-        } else if (delta.content === "</tool_call>") {
-          eventType = "stop";
-        } else {
-          eventType = "delta";
-          contentItems.push({ type: "text", text: delta.content });
-        }
+        eventType = "delta";
+        contentItems.push({ type: "text", text: delta.content });
       }
 
       // vLLM & siliconflow compatibility
@@ -229,13 +255,13 @@ export class Qwen3Client extends LLMClient {
       }
 
       if (delta?.tool_calls) {
+        eventType = "delta";
         for (const toolCall of delta.tool_calls) {
-          eventType = "delta";
           contentItems.push({
             type: "partial_tool_call",
             name: toolCall.function?.name || "",
             arguments: toolCall.function?.arguments || "",
-            tool_call_id: toolCall.function?.name || "",
+            tool_call_id: toolCall.id || "",
           });
         }
       }
@@ -291,27 +317,25 @@ export class Qwen3Client extends LLMClient {
   }
 
   /**
-   * Stream generate using Qwen3 SDK with unified conversion methods.
+   * Stream generate using GLM SDK with unified conversion methods.
    */
   async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
-    const qwen3Config = this.transformUniConfigToModelConfig(options.config);
-    const qwen3Messages = this.transformUniMessageToModelInput(
-      options.messages,
-    );
+    const glmConfig = this.transformUniConfigToModelConfig(options.config);
+    const glmMessages = this.transformUniMessageToModelInput(options.messages);
 
     if (options.config.system_prompt) {
-      qwen3Messages.unshift({
+      glmMessages.unshift({
         role: "system",
         content: options.config.system_prompt,
       });
     }
 
     const params: ChatCompletionCreateParamsStreaming = {
-      ...qwen3Config,
-      messages: qwen3Messages,
+      ...glmConfig,
+      messages: glmMessages,
       stream: true,
     };
 
@@ -321,7 +345,6 @@ export class Qwen3Client extends LLMClient {
       name?: string;
       arguments?: string;
       tool_call_id?: string;
-      data?: string;
     } = {};
     let partialUsage: {
       finish_reason?: FinishReason | null;
@@ -335,27 +358,16 @@ export class Qwen3Client extends LLMClient {
         event.finish_reason || partialUsage.finish_reason;
       partialUsage.usage_metadata =
         event.usage_metadata || partialUsage.usage_metadata;
-      if (event.event_type === "start") {
-        // start new partial tool call for <tool_call>
-        partialToolCall.data = "";
-      } else if (event.event_type === "delta") {
-        if (partialToolCall.data !== undefined) {
-          // update partial tool call for <tool_call>
-          partialToolCall.data +=
-            event.content_items[0]?.type === "text"
-              ? (event.content_items[0] as { text: string }).text
-              : "";
-          continue;
-        }
-
+      if (event.event_type === "delta") {
         for (const item of event.content_items) {
           if (item.type === "partial_tool_call") {
             if (!partialToolCall.name) {
-              // start new partial tool call for tool call object
+              // start a new partial tool call
               partialToolCall.name = item.name;
               partialToolCall.arguments = item.arguments;
+              partialToolCall.tool_call_id = item.tool_call_id;
             } else if (item.name) {
-              // finish previous partial tool call for tool call object
+              // finish the previous partial tool call
               yield {
                 role: "assistant",
                 event_type: "delta",
@@ -364,61 +376,27 @@ export class Qwen3Client extends LLMClient {
                     type: "tool_call",
                     name: partialToolCall.name,
                     arguments: JSON.parse(partialToolCall.arguments || "{}"),
-                    tool_call_id: partialToolCall.name,
+                    tool_call_id: partialToolCall.tool_call_id || "",
                   },
                 ],
                 usage_metadata: null,
                 finish_reason: null,
               };
-              // start new partial tool call for tool call object
+              // start a new partial tool call
               partialToolCall.name = item.name;
               partialToolCall.arguments = item.arguments;
+              partialToolCall.tool_call_id = item.tool_call_id;
             } else {
-              // update partial tool call for tool call object
+              // update partial tool call
               partialToolCall.arguments =
-                partialToolCall.arguments + item.arguments;
+                (partialToolCall.arguments || "") + item.arguments;
             }
           }
         }
-
         yield event;
       } else if (event.event_type === "stop") {
-        if (partialToolCall.data !== undefined) {
-          // finish partial tool call for <tool_call>
-          const toolCall = JSON.parse(partialToolCall.data.trim());
-          yield {
-            role: "assistant",
-            event_type: "delta",
-            content_items: [
-              {
-                type: "partial_tool_call",
-                name: toolCall.name,
-                arguments: JSON.stringify(toolCall.arguments, null, 0),
-                tool_call_id: toolCall.name,
-              },
-            ],
-            usage_metadata: null,
-            finish_reason: null,
-          };
-          yield {
-            role: "assistant",
-            event_type: "delta",
-            content_items: [
-              {
-                type: "tool_call",
-                name: toolCall.name,
-                arguments: toolCall.arguments,
-                tool_call_id: toolCall.name,
-              },
-            ],
-            usage_metadata: null,
-            finish_reason: null,
-          };
-          partialToolCall.data = undefined;
-        }
-
         if (partialToolCall.name) {
-          // finish partial tool call for tool call object
+          // finish the partial tool call
           yield {
             role: "assistant",
             event_type: "delta",
@@ -427,7 +405,7 @@ export class Qwen3Client extends LLMClient {
                 type: "tool_call",
                 name: partialToolCall.name,
                 arguments: JSON.parse(partialToolCall.arguments || "{}"),
-                tool_call_id: partialToolCall.name,
+                tool_call_id: partialToolCall.tool_call_id || "",
               },
             ],
             usage_metadata: null,

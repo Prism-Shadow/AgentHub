@@ -146,15 +146,16 @@ def create_chat_app() -> Flask:
                     />
                     <datalist id="modelList">
                         <option value="gpt-5.5">GPT 5.5</option>
-                        <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+                        <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
                         <option value="claude-opus-4-7">Claude Opus 4.7</option>
                         <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
-                        <option value="kimi-k2.5">Kimi K2.5</option>
-                        <option value="glm-5">GLM 5</option>
-                        <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
-                        <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                        <option value="kimi-k2.6">Kimi K2.6</option>
+                        <option value="glm-5.1">GLM 5.1</option>
+                        <option value="qwen/qwen3.6-35b-a3b">Qwen3.6 35B</option>
                         <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash Image (Nano Banana 2)</option>
                         <option value="gemini-3.1-flash-tts-preview">Gemini 3.1 Flash TTS</option>
+                        <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
                     </datalist>
                 </div>
                 <div class="flex flex-col">

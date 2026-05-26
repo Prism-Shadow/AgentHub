@@ -224,7 +224,7 @@ main().catch(console.error);
 
 </details>
 
-### OpenRouter GLM-5
+### OpenRouter GLM-5.1
 
 <details><summary><strong>Python Example</strong></summary>
 
@@ -233,11 +233,11 @@ import asyncio
 import os
 from agenthub import AutoLLMClient
 
-os.environ["GLM_API_KEY"] = "your-openrouter-api-key"
-os.environ["GLM_BASE_URL"] = "https://openrouter.ai/api/v1"
+os.environ["ZAI_API_KEY"] = "your-openrouter-api-key"
+os.environ["ZAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 
 async def main():
-    client = AutoLLMClient(model="z-ai/glm-5")
+    client = AutoLLMClient(model="z-ai/glm-5.1")
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -256,11 +256,11 @@ asyncio.run(main())
 ```typescript
 import { AutoLLMClient } from "@prismshadow/agenthub";
 
-process.env.GLM_API_KEY = "your-openrouter-api-key";
-process.env.GLM_BASE_URL = "https://openrouter.ai/api/v1";
+process.env.ZAI_API_KEY = "your-openrouter-api-key";
+process.env.ZAI_BASE_URL = "https://openrouter.ai/api/v1";
 
 async function main() {
-  const client = new AutoLLMClient({ model: "z-ai/glm-5" });
+  const client = new AutoLLMClient({ model: "z-ai/glm-5.1" });
   for await (const event of client.streamingResponseStateful({
     message: {
       role: "user",
@@ -276,7 +276,7 @@ main().catch(console.error);
 ```
 </details>
 
-### SiliconFlow Qwen3-8B
+### SiliconFlow Qwen3.6 35B
 
 <details><summary><strong>Python Example</strong></summary>
 
@@ -285,11 +285,11 @@ import asyncio
 import os
 from agenthub import AutoLLMClient
 
-os.environ["QWEN3_API_KEY"] = "your-siliconflow-api-key"
-os.environ["QWEN3_BASE_URL"] = "https://api.siliconflow.cn/v1"
+os.environ["QWEN_API_KEY"] = "your-siliconflow-api-key"
+os.environ["QWEN_BASE_URL"] = "https://api.siliconflow.cn/v1"
 
 async def main():  
-    client = AutoLLMClient(model="Qwen/Qwen3-8B")
+    client = AutoLLMClient(model="Qwen/Qwen3.6-35B-A3B")
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -308,11 +308,11 @@ asyncio.run(main())
 ```typescript
 import { AutoLLMClient } from "@prismshadow/agenthub";
 
-process.env.QWEN3_API_KEY = "your-siliconflow-api-key";
-process.env.QWEN3_BASE_URL = "https://api.siliconflow.cn/v1";
+process.env.QWEN_API_KEY = "your-siliconflow-api-key";
+process.env.QWEN_BASE_URL = "https://api.siliconflow.cn/v1";
 
 async function main() {
-  const client = new AutoLLMClient({ model: "Qwen/Qwen3-8B" });
+  const client = new AutoLLMClient({ model: "Qwen/Qwen3.6-35B-A3B" });
   for await (const event of client.streamingResponseStateful({
     message: {
       role: "user",

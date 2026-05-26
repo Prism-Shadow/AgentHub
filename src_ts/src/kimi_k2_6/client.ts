@@ -104,13 +104,14 @@ export class KimiK2_6Client extends LLMClient {
    */
   private _convertThinkingLevelToConfig(thinkingLevel: ThinkingLevel): {
     type: string;
+    keep?: string;
   } {
-    const mapping: { [key: string]: { type: string } } = {
+    const mapping: { [key: string]: { type: string; keep?: string } } = {
       [ThinkingLevel.NONE]: { type: "disabled" },
-      [ThinkingLevel.LOW]: { type: "enabled" },
-      [ThinkingLevel.MEDIUM]: { type: "enabled" },
-      [ThinkingLevel.HIGH]: { type: "enabled" },
-      [ThinkingLevel.XHIGH]: { type: "enabled" },
+      [ThinkingLevel.LOW]: { type: "enabled", keep: "all" },
+      [ThinkingLevel.MEDIUM]: { type: "enabled", keep: "all" },
+      [ThinkingLevel.HIGH]: { type: "enabled", keep: "all" },
+      [ThinkingLevel.XHIGH]: { type: "enabled", keep: "all" },
     };
     return mapping[thinkingLevel];
   }
