@@ -41,7 +41,7 @@ const AVAILABLE_MODELS: Model[] = [];
 
 if (process.env.GEMINI_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "gemini-3-flash-preview",
+    name: "gemini-3.5-flash",
     supportTextGeneration: true,
     supportTemperature: true,
     supportImageUnderstanding: true,
@@ -145,23 +145,11 @@ if (process.env.MOONSHOT_API_KEY) {
   });
 }
 
-if (process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_BASE_URL) {
-  AVAILABLE_MODELS.push({
-    name: "deepseek-v4-pro",
-    supportTextGeneration: true,
-    supportTemperature: false,
-    supportImageUnderstanding: false,
-    supportImageGeneration: false,
-    supportAudioGeneration: false,
-    supportEmbedding: false,
-    supportImageEmbedding: false,
-    provider: "official",
-  });
-
+if (process.env.DEEPSEEK_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "deepseek-v4-flash",
     supportTextGeneration: true,
-    supportTemperature: false,
+    supportTemperature: true,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -187,7 +175,7 @@ if (process.env.BEDROCK_API_KEY) {
 
 if (process.env.VERTEX_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "gemini-3-flash-preview",
+    name: "gemini-3.5-flash",
     supportTextGeneration: true,
     supportTemperature: true,
     supportImageUnderstanding: true,
@@ -238,10 +226,10 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
-    name: "qwen/qwen3-30b-a3b-thinking-2507",
+    name: "qwen/qwen3.6-35b-a3b",
     supportTextGeneration: true,
     supportTemperature: true,
-    supportImageUnderstanding: false,
+    supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
@@ -249,7 +237,7 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
-    name: "moonshotai/kimi-k2.5",
+    name: "moonshotai/kimi-k2.6",
     supportTextGeneration: true,
     supportTemperature: false,
     supportImageUnderstanding: true,
@@ -274,10 +262,10 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
     provider: "siliconflow",
   });
   AVAILABLE_MODELS.push({
-    name: "Qwen/Qwen3-8B",
+    name: "Qwen/Qwen3.6-35B-A3B",
     supportTextGeneration: true,
     supportTemperature: true,
-    supportImageUnderstanding: false,
+    supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
@@ -285,7 +273,7 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
     provider: "siliconflow",
   });
   AVAILABLE_MODELS.push({
-    name: "Pro/moonshotai/Kimi-K2.5",
+    name: "Pro/moonshotai/Kimi-K2.6",
     supportTextGeneration: true,
     supportTemperature: false,
     supportImageUnderstanding: true,

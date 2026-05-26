@@ -55,20 +55,24 @@ describe("Playground", () => {
     const response = await request(app).get("/");
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain('<h1 class="text-xl font-semibold">AgentHub</h1>');
+    expect(response.text).toContain(
+      '<h1 class="text-xl font-semibold">AgentHub</h1>',
+    );
     expect(response.text).not.toContain("🤖 LLM Playground");
     expect(response.text).toContain("apiKeyInput");
     expect(response.text).toContain("apiKeyVisibilityToggle");
     expect(response.text).toContain("toggleApiKeyVisibility()");
-    expect(response.text).toContain('id="apiKeyVisibilityShowIcon" class="hidden"');
+    expect(response.text).toContain(
+      'id="apiKeyVisibilityShowIcon" class="hidden"',
+    );
     expect(response.text).toContain('id="apiKeyVisibilityHideIcon" xmlns=');
     expect(response.text).toContain("baseUrlInput");
     expect(response.text).toContain('href="/tracer/"');
     expect(response.text).toContain('target="_blank"');
     expect(response.text).toContain("Open Tracer");
-    expect(response.text.indexOf('<h1 class="text-xl font-semibold">')).toBeLessThan(
-      response.text.indexOf(">GitHub<"),
-    );
+    expect(
+      response.text.indexOf('<h1 class="text-xl font-semibold">'),
+    ).toBeLessThan(response.text.indexOf(">GitHub<"));
     expect(response.text.indexOf(">GitHub<")).toBeLessThan(
       response.text.indexOf(">Open Tracer<"),
     );

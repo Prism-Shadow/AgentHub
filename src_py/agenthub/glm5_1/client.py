@@ -35,11 +35,11 @@ from ..types import (
 from ..utils import fix_openrouter_usage_metadata
 
 
-class GLM5Client(LLMClient):
-    """GLM-5-specific LLM client implementation using OpenAI-compatible API."""
+class GLM5_1Client(LLMClient):
+    """GLM-5.1-specific LLM client implementation using OpenAI-compatible API."""
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
-        """Initialize GLM-5 client with model and API key."""
+        """Initialize GLM-5.1 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("ZAI_API_KEY")
         base_url = base_url or os.getenv("ZAI_BASE_URL") or "https://api.z.ai/api/paas/v4/"
@@ -95,7 +95,7 @@ class GLM5Client(LLMClient):
             glm_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
 
         if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
-            raise ValueError("prompt_caching must be ENABLE for GLM-5.")
+            raise ValueError("prompt_caching must be ENABLE for GLM.")
 
         return glm_config
 

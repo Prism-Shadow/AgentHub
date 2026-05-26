@@ -2,6 +2,8 @@
 
 Here, we record the addition and removal times of models, major functional updates, bug fixes, and release times of key versions.
 
+- [2026-05-27] Support Gemini 3.5, Claude 4.7, Kimi-K2.6, GLM-5.1, DeepSeek V4 and Qwen3.6 models.
+
 - [2026-04-28] Release version 0.3.1.
 
 - [2026-04-28] Support Gemini 3.1 Flash TTS and GPT-5.5 models. Add UModelVerse vendor.

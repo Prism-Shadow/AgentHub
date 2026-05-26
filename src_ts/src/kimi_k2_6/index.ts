@@ -12,4 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { KimiK2_5Client } from "./client";
+export { KimiK2_6Client } from "./client";

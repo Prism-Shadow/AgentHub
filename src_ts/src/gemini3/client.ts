@@ -524,7 +524,7 @@ export class Gemini3Client extends LLMClient {
     const contents: Content[] | Content =
       config?.aggregate && parts.length > 1
         ? ({ parts } as Content)
-        : parts.map((p) => ({ parts: [p] } as Content));
+        : parts.map((p) => ({ parts: [p] }) as Content);
 
     const result = await this._client.models.embedContent({
       model,

@@ -626,7 +626,9 @@ class Tracer:
                     breadcrumb_parts = [f'<a href="{self._prefix_url(base_path, "/")}">cache</a>']
                     for i, part in enumerate(parts[:-1]):
                         path_to_part = "/".join(parts[: i + 1])
-                        breadcrumb_parts.append(f'<a href="{self._prefix_url(base_path, "/" + path_to_part)}">{part}</a>')
+                        breadcrumb_parts.append(
+                            f'<a href="{self._prefix_url(base_path, "/" + path_to_part)}">{part}</a>'
+                        )
                     breadcrumb_parts.append(f"<strong>{parts[-1]}</strong>" if parts else "")
                     breadcrumb = " / ".join(breadcrumb_parts)
 

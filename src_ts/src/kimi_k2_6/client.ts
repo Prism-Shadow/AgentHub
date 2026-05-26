@@ -35,14 +35,14 @@ import {
 import { fixOpenrouterUsageMetadata } from "../utils";
 
 /**
- * Kimi K2.5-specific LLM client implementation using OpenAI-compatible API.
+ * Kimi K2.6-specific LLM client implementation using OpenAI-compatible API.
  */
-export class KimiK2_5Client extends LLMClient {
+export class KimiK2_6Client extends LLMClient {
   protected _model: string;
   private _client: OpenAI;
 
   /**
-   * Initialize Kimi K2.5 client with model and API key.
+   * Initialize Kimi K2.6 client with model and API key.
    */
   constructor(options: {
     model: string;
@@ -145,7 +145,7 @@ export class KimiK2_5Client extends LLMClient {
     }
 
     if (config.temperature !== undefined && config.temperature !== 1.0) {
-      throw new Error("Kimi K2.5 does not support setting temperature.");
+      throw new Error("Kimi does not support setting temperature.");
     }
 
     if (config.thinking_level !== undefined) {
@@ -173,7 +173,7 @@ export class KimiK2_5Client extends LLMClient {
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE
     ) {
-      throw new Error("prompt_caching must be ENABLE for Kimi K2.5.");
+      throw new Error("prompt_caching must be ENABLE for Kimi.");
     }
 
     if (config.trace_id !== undefined) {

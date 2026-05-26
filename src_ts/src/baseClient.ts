@@ -70,9 +70,7 @@ export abstract class LLMClient {
     _inputs: EmbeddingInputContentItem[],
     _config?: UniEmbeddingConfig,
   ): Promise<EmbeddingResponse> {
-    throw new Error(
-      `${this.constructor.name} does not support embedding.`,
-    );
+    throw new Error(`${this.constructor.name} does not support embedding.`);
   }
 
   /**

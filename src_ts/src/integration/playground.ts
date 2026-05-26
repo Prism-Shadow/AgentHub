@@ -788,7 +788,10 @@ export function createChatApp(): Express {
       const clientOptions = getClientOptions(config || {});
       if (
         !sessionClients.has(session_id) ||
-        clientOptionsChanged(sessionClientOptions.get(session_id), clientOptions)
+        clientOptionsChanged(
+          sessionClientOptions.get(session_id),
+          clientOptions,
+        )
       ) {
         sessionClients.set(session_id, new AutoLLMClient(clientOptions));
         sessionClientOptions.set(session_id, clientOptions);

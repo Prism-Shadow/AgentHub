@@ -90,9 +90,6 @@ export class DeepSeekV4Client extends LLMClient {
     ) {
       return toolChoice;
     }
-    throw new Error(
-      'DeepSeek tool_choice config expected "auto", "none", "required", or tool names.',
-    );
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -186,7 +183,9 @@ export class DeepSeekV4Client extends LLMClient {
           }
 
           if (item.images && item.images.length > 0) {
-            throw new Error("DeepSeek does not support images in tool results.");
+            throw new Error(
+              "DeepSeek does not support images in tool results.",
+            );
           }
 
           deepseekMessages.push({
@@ -274,10 +273,11 @@ export class DeepSeekV4Client extends LLMClient {
 
     if (modelOutput.usage) {
       eventType = eventType || "stop";
-      const completionTokenDetails = modelOutput.usage.completion_tokens_details;
+      const completionTokenDetails =
+        modelOutput.usage.completion_tokens_details;
       const reasoningTokens = completionTokenDetails
         ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (completionTokenDetails as any).reasoning_tokens ?? null
+          ((completionTokenDetails as any).reasoning_tokens ?? null)
         : null;
       const responseTokens =
         modelOutput.usage.completion_tokens - (reasoningTokens || 0);

@@ -73,7 +73,6 @@ class DeepSeekV4Client(LLMClient):
             return {"mode": "required", "tools": [{"type": "function", "name": name} for name in tool_choice]}
         elif tool_choice in ["auto", "none", "required"]:
             return tool_choice
-        raise ValueError("DeepSeek tool_choice config expected `auto`, `none`, `required`, or tool names.")
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """
@@ -239,8 +238,8 @@ class DeepSeekV4Client(LLMClient):
 
             # usage.prompt_tokens = prompt_cache_hit_tokens + prompt_cache_miss_tokens
             usage_metadata = {
-                "cached_tokens": model_output.usage.prompt_cache_hit_tokens,
-                "prompt_tokens": model_output.usage.prompt_cache_miss_tokens,
+                "cached_tokens": getattr(model_output.usage, "prompt_cache_hit_tokens", 0),
+                "prompt_tokens": getattr(model_output.usage, "prompt_cache_miss_tokens", 0),
                 "thoughts_tokens": reasoning_tokens,
                 "response_tokens": response_tokens,
             }
