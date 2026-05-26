@@ -50,7 +50,9 @@ async def main():
     ):
         events.append(event)
 
-    embeddings = [item["embedding"] for event in events for item in event["content_items"] if item["type"] == "embedding"]
+    embeddings = [
+        item["embedding"] for event in events for item in event["content_items"] if item["type"] == "embedding"
+    ]
 
     for i, embedding in enumerate(embeddings):
         print(f'\nText {i}: "{texts[i]}"')

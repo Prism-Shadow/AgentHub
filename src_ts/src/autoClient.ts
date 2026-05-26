@@ -86,10 +86,7 @@ export class AutoLLMClient extends LLMClient {
       clientType.includes("gpt-5.5")
     ) {
       return new GPT5_5Client({ model, apiKey, baseUrl });
-    } else if (
-      clientType.includes("glm-5") ||
-      clientType.includes("glm-5.1")
-    ) {
+    } else if (clientType.includes("glm-5") || clientType.includes("glm-5.1")) {
       return new GLM5_1Client({ model, apiKey, baseUrl });
     } else if (
       clientType.includes("kimi-k2.5") ||

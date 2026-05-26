@@ -691,6 +691,7 @@ async def test_embedding(model: Model):
         assert len(item["embedding"]) == 768
         assert all(isinstance(v, float) for v in item["embedding"])
 
+
 if __name__ == "__main__":
     import asyncio
 

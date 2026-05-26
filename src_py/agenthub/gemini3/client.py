@@ -340,9 +340,8 @@ class Gemini3Client(LLMClient):
         messages: list[UniMessage],
         config: UniConfig,
     ) -> AsyncIterator[UniEvent]:
+        """Embed transformed messages and return them as a streaming event."""
         contents = await self.transform_uni_message_to_model_input(messages)
-        if not contents:
-            raise ValueError("Gemini embedding requires at least one content item.")
 
         embedding_config = config.get("embedding_config") or {}
         gemini_config = None
@@ -364,7 +363,7 @@ class Gemini3Client(LLMClient):
             ],
             "usage_metadata": {
                 "cached_tokens": None,
-                "prompt_tokens": None,
+                "prompt_tokens": result.metadata.billable_character_count if result.metadata else None,
                 "thoughts_tokens": None,
                 "response_tokens": None,
             },

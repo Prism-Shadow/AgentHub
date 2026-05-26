@@ -149,10 +149,9 @@ class Claude4_7Client(LLMClient):
             claude_config["max_tokens"] = 32768  # Claude requires max_tokens to be specified
 
         if config.get("temperature") is not None:
-            claude_config["temperature"] = config["temperature"]
+            raise ValueError("Claude 4.7 does not support setting temperature.")
 
         if config.get("thinking_level") is not None:
-            claude_config["temperature"] = 1.0  # `temperature` may only be set to 1 when thinking is enabled
             claude_config.update(self._convert_thinking_level_to_thinking_config(config["thinking_level"]))
             if config.get("thinking_summary") and claude_config.get("thinking") is not None:
                 claude_config["thinking"]["display"] = "summarized"

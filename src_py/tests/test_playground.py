@@ -34,15 +34,29 @@ def test_chat_app_index_route():
         assert response.status_code == 200
         assert b"LLM Playground" in response.data
         assert b'<h1 class="text-xl font-semibold">AgentHub</h1>' in response.data
-        assert "🤖 LLM Playground".encode() not in response.data
         assert b"messagesContainer" in response.data
         assert b"messageInput" in response.data
+        assert b'id="modelCombobox"' in response.data
+        assert b'id="thinkingLevelCombobox"' in response.data
+        assert b'id="thinkingSummaryCombobox"' in response.data
+        assert b'id="toolChoiceCombobox"' in response.data
+        assert b'data-combobox-option data-value="gpt-5.5"' in response.data
+        assert b"toggleCombobox('modelCombobox')" in response.data
+        assert b"selectComboboxOption('modelCombobox', this)" in response.data
+        assert b"customModelInput" in response.data
+        assert b"handleModelSelectChange()" in response.data
+        assert b"modelDropdown" not in response.data
+        assert b"toggleModelMenu()" not in response.data
+        assert b"<select" not in response.data
+        assert b"<datalist" not in response.data
         assert b"apiKeyInput" in response.data
         assert b"apiKeyVisibilityToggle" in response.data
         assert b"toggleApiKeyVisibility()" in response.data
         assert b'id="apiKeyVisibilityShowIcon" class="hidden"' in response.data
         assert b'id="apiKeyVisibilityHideIcon" xmlns=' in response.data
         assert b"baseUrlInput" in response.data
+        assert b"renderEmbedding" in response.data
+        assert b"item.embedding.slice(0, 5)" in response.data
         assert b'href="/tracer/"' in response.data
         assert b'target="_blank"' in response.data
         assert b"Open Tracer" in response.data

@@ -161,6 +161,12 @@ class Tracer:
             return f"{label}: {mime_type} ({mb_count:.2f} MB)"
 
     @staticmethod
+    def _format_embedding_preview(item: dict[str, Any]) -> str:
+        values = item.get("embedding") or []
+        preview = ", ".join(str(value) for value in values[:5])
+        return f"Embedding: [{preview}]"
+
+    @staticmethod
     def _normalize_base_path(base_path: str = "") -> str:
         """Normalize a URL prefix used when tracer is mounted inside another app."""
         if not base_path or base_path == "/":
@@ -253,6 +259,8 @@ class Tracer:
                     lines.append(f"Image URL: {item['image_url']}")
                 elif item["type"] == "inline_data":
                     lines.append(self._format_inline_data_summary(item))
+                elif item["type"] == "embedding":
+                    lines.append(self._format_embedding_preview(item))
                 elif item["type"] == "tool_call":
                     lines.append(f"Tool Call: {item['name']}")
                     lines.append(f"  Arguments: {json.dumps(item['arguments'], indent=2, ensure_ascii=False)}")
@@ -328,6 +336,11 @@ class Tracer:
         def inline_thinking_summary(item: dict[str, Any]) -> str:
             """Render a concise inline_thinking summary."""
             return self._format_inline_data_summary(item, is_thinking=True)
+
+        @app.template_filter("embedding_preview")
+        def embedding_preview(item: dict[str, Any]) -> str:
+            """Render the first five embedding values."""
+            return self._format_embedding_preview(item)
 
         # HTML template for directory listing
         DIRECTORY_TEMPLATE = """
@@ -501,6 +514,10 @@ class Tracer:
                                                     {{ item|inline_data_summary }}
                                                 </div>
                                             {% endif %}
+                                        </div>
+                                    {% elif item.type == 'embedding' %}
+                                        <div class="bg-indigo-50 p-4 rounded-md border-l-4 border-indigo-500">
+                                            <div class="font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item|embedding_preview|e }}</div>
                                         </div>
                                     {% endif %}
                                 </div>

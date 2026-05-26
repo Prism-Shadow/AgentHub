@@ -121,6 +121,29 @@ def create_chat_app() -> Flask:
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            [data-combobox-menu] [data-combobox-option] {
+                font-size: 0.875rem;
+                line-height: 1.25rem;
+            }
+
+            [data-combobox-menu] [data-combobox-option] span {
+                font-size: inherit;
+                line-height: inherit;
+            }
+
+            [data-combobox-menu] [data-combobox-option]::after {
+                content: attr(data-description);
+                display: block;
+                margin-top: 0.125rem;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                font-size: 0.75rem;
+                line-height: 1rem;
+                color: rgb(107 114 128);
+            }
+        </style>
     </head>
     <body class="bg-gray-50 flex flex-col h-screen">
         <div class="bg-gray-900 text-white px-6 py-4 border-b border-gray-700 flex justify-between items-center">
@@ -137,26 +160,80 @@ def create_chat_app() -> Flask:
         <div class="bg-white border-b border-gray-200 px-6 py-4" id="configPanel">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div class="flex flex-col">
-                    <label class="text-sm font-semibold text-gray-900 mb-1" for="modelSelect">Model</label>
-                    <input
-                        id="modelSelect"
-                        list="modelList"
-                        placeholder="Select or enter a model name"
-                        class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <datalist id="modelList">
-                        <option value="gpt-5.5">GPT 5.5</option>
-                        <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
-                        <option value="claude-opus-4-7">Claude Opus 4.7</option>
-                        <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
-                        <option value="kimi-k2.6">Kimi K2.6</option>
-                        <option value="glm-5.1">GLM 5.1</option>
-                        <option value="qwen/qwen3.6-35b-a3b">Qwen3.6 35B</option>
-                        <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash Image (Nano Banana 2)</option>
-                        <option value="gemini-3.1-flash-tts-preview">Gemini 3.1 Flash TTS</option>
-                        <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
-                        <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
-                    </datalist>
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="modelComboboxButton">Model</label>
+                    <div id="modelCombobox" class="relative" data-combobox>
+                        <input id="modelSelect" type="hidden" value="gpt-5.5" data-combobox-value>
+                        <button
+                            id="modelComboboxButton"
+                            type="button"
+                            role="combobox"
+                            aria-controls="modelComboboxMenu"
+                            aria-expanded="false"
+                            class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-left shadow-sm transition hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            onclick="toggleCombobox('modelCombobox')"
+                            onkeydown="handleComboboxKeydown(event, 'modelCombobox')"
+                            data-combobox-button
+                        >
+                            <span class="flex items-center justify-between gap-3">
+                                <span class="min-w-0">
+                                    <span class="block truncate text-sm font-medium text-gray-900" data-combobox-label>GPT 5.5</span>
+                                </span>
+                                <svg class="h-4 w-4 flex-none text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="m6 9 6 6 6-6"></path>
+                                </svg>
+                            </span>
+                        </button>
+                        <div id="modelComboboxMenu" class="hidden absolute z-30 mt-2 max-h-72 w-full overflow-y-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg" role="listbox" aria-labelledby="modelComboboxButton" data-combobox-menu>
+                            <button type="button" role="option" aria-selected="true" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none bg-blue-50" data-combobox-option data-value="gpt-5.5" data-label="GPT 5.5" data-description="gpt-5.5" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">GPT 5.5</span>
+                            </button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-3.5-flash" data-label="Gemini 3.5 Flash" data-description="gemini-3.5-flash" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">Gemini 3.5 Flash</span>
+                            </button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-embedding-2" data-label="Gemini Embedding 2" data-description="gemini-embedding-2" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">Gemini Embedding 2</span>
+                            </button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="claude-opus-4-7" data-label="Claude Opus 4.7" data-description="claude-opus-4-7" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">Claude Opus 4.7</span>
+                            </button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="claude-sonnet-4-6" data-label="Claude Sonnet 4.6" data-description="claude-sonnet-4-6" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">Claude Sonnet 4.6</span>
+                            </button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="kimi-k2.6" data-label="Kimi K2.6" data-description="kimi-k2.6" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">Kimi K2.6</span>
+                            </button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="glm-5.1" data-label="GLM 5.1" data-description="glm-5.1" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">GLM 5.1</span>
+                            </button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="qwen/qwen3.6-35b-a3b" data-label="Qwen3.6 35B" data-description="qwen/qwen3.6-35b-a3b" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">Qwen3.6 35B</span>
+                            </button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-3.1-flash-image-preview" data-label="Gemini 3.1 Flash Image" data-description="gemini-3.1-flash-image-preview" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">Gemini 3.1 Flash Image</span>
+                            </button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-3.1-flash-tts-preview" data-label="Gemini 3.1 Flash TTS" data-description="gemini-3.1-flash-tts-preview" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">Gemini 3.1 Flash TTS</span>
+                            </button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="deepseek-v4-pro" data-label="DeepSeek V4 Pro" data-description="deepseek-v4-pro" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">DeepSeek V4 Pro</span>
+                            </button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="deepseek-v4-flash" data-label="DeepSeek V4 Flash" data-description="deepseek-v4-flash" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">DeepSeek V4 Flash</span>
+                            </button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="__custom__" data-label="Custom model" data-description="Enter a model id" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">Custom model</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="customModelWrapper" class="hidden mt-2">
+                        <input
+                            id="customModelInput"
+                            type="text"
+                            autocomplete="off"
+                            placeholder="Custom model id"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                    </div>
                 </div>
                 <div class="flex flex-col">
                     <label class="text-sm font-semibold text-gray-900 mb-1" for="apiKeyInput">API Key</label>
@@ -181,32 +258,71 @@ def create_chat_app() -> Flask:
                     <input type="url" id="baseUrlInput" placeholder="Use provider default when empty" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 <div class="flex flex-col">
-                    <label class="text-sm font-semibold text-gray-900 mb-1" for="thinkingLevelSelect">Thinking Level</label>
-                    <select id="thinkingLevelSelect" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Unspecified</option>
-                        <option value="none">None</option>
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="xhigh">XHigh</option>
-                    </select>
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="thinkingLevelComboboxButton">Thinking Level</label>
+                    <div id="thinkingLevelCombobox" class="relative" data-combobox>
+                        <input id="thinkingLevelSelect" type="hidden" value="" data-combobox-value>
+                        <button id="thinkingLevelComboboxButton" type="button" role="combobox" aria-controls="thinkingLevelComboboxMenu" aria-expanded="false" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-left shadow-sm transition hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500" onclick="toggleCombobox('thinkingLevelCombobox')" onkeydown="handleComboboxKeydown(event, 'thinkingLevelCombobox')" data-combobox-button>
+                            <span class="flex items-center justify-between gap-3">
+                                <span class="min-w-0">
+                                    <span class="block truncate text-sm font-medium text-gray-900" data-combobox-label>Unspecified</span>
+                                </span>
+                                <svg class="h-4 w-4 flex-none text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="m6 9 6 6 6-6"></path>
+                                </svg>
+                            </span>
+                        </button>
+                        <div id="thinkingLevelComboboxMenu" class="hidden absolute z-30 mt-2 max-h-72 w-full overflow-y-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg" role="listbox" aria-labelledby="thinkingLevelComboboxButton" data-combobox-menu>
+                            <button type="button" role="option" aria-selected="true" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none bg-blue-50" data-combobox-option data-value="" data-label="Unspecified" data-description="Provider default" onclick="selectComboboxOption('thinkingLevelCombobox', this)">Unspecified</button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="none" data-label="None" data-description="Disable thinking" onclick="selectComboboxOption('thinkingLevelCombobox', this)">None</button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="low" data-label="Low" data-description="Low thinking budget" onclick="selectComboboxOption('thinkingLevelCombobox', this)">Low</button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="medium" data-label="Medium" data-description="Medium thinking budget" onclick="selectComboboxOption('thinkingLevelCombobox', this)">Medium</button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="high" data-label="High" data-description="High thinking budget" onclick="selectComboboxOption('thinkingLevelCombobox', this)">High</button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="xhigh" data-label="XHigh" data-description="Maximum thinking budget" onclick="selectComboboxOption('thinkingLevelCombobox', this)">XHigh</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="flex flex-col">
-                    <label class="text-sm font-semibold text-gray-900 mb-1" for="thinkingSummaryCheckbox">Thinking Summary</label>
-                    <select id="thinkingSummaryCheckbox" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Unspecified</option>
-                        <option value="true">True</option>
-                        <option value="false">False</option>
-                    </select>
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="thinkingSummaryComboboxButton">Thinking Summary</label>
+                    <div id="thinkingSummaryCombobox" class="relative" data-combobox>
+                        <input id="thinkingSummaryCheckbox" type="hidden" value="" data-combobox-value>
+                        <button id="thinkingSummaryComboboxButton" type="button" role="combobox" aria-controls="thinkingSummaryComboboxMenu" aria-expanded="false" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-left shadow-sm transition hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500" onclick="toggleCombobox('thinkingSummaryCombobox')" onkeydown="handleComboboxKeydown(event, 'thinkingSummaryCombobox')" data-combobox-button>
+                            <span class="flex items-center justify-between gap-3">
+                                <span class="min-w-0">
+                                    <span class="block truncate text-sm font-medium text-gray-900" data-combobox-label>Unspecified</span>
+                                </span>
+                                <svg class="h-4 w-4 flex-none text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="m6 9 6 6 6-6"></path>
+                                </svg>
+                            </span>
+                        </button>
+                        <div id="thinkingSummaryComboboxMenu" class="hidden absolute z-30 mt-2 max-h-72 w-full overflow-y-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg" role="listbox" aria-labelledby="thinkingSummaryComboboxButton" data-combobox-menu>
+                            <button type="button" role="option" aria-selected="true" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none bg-blue-50" data-combobox-option data-value="" data-label="Unspecified" data-description="Provider default" onclick="selectComboboxOption('thinkingSummaryCombobox', this)">Unspecified</button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="true" data-label="True" data-description="Request summaries" onclick="selectComboboxOption('thinkingSummaryCombobox', this)">True</button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="false" data-label="False" data-description="Hide summaries" onclick="selectComboboxOption('thinkingSummaryCombobox', this)">False</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="flex flex-col">
-                    <label class="text-sm font-semibold text-gray-900 mb-1" for="toolChoiceSelect">Tool Choice</label>
-                    <select id="toolChoiceSelect" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Unspecified</option>
-                        <option value="auto">Auto</option>
-                        <option value="required">Required</option>
-                        <option value="none">None</option>
-                    </select>
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="toolChoiceComboboxButton">Tool Choice</label>
+                    <div id="toolChoiceCombobox" class="relative" data-combobox>
+                        <input id="toolChoiceSelect" type="hidden" value="" data-combobox-value>
+                        <button id="toolChoiceComboboxButton" type="button" role="combobox" aria-controls="toolChoiceComboboxMenu" aria-expanded="false" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-left shadow-sm transition hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500" onclick="toggleCombobox('toolChoiceCombobox')" onkeydown="handleComboboxKeydown(event, 'toolChoiceCombobox')" data-combobox-button>
+                            <span class="flex items-center justify-between gap-3">
+                                <span class="min-w-0">
+                                    <span class="block truncate text-sm font-medium text-gray-900" data-combobox-label>Unspecified</span>
+                                </span>
+                                <svg class="h-4 w-4 flex-none text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="m6 9 6 6 6-6"></path>
+                                </svg>
+                            </span>
+                        </button>
+                        <div id="toolChoiceComboboxMenu" class="hidden absolute z-30 mt-2 max-h-72 w-full overflow-y-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg" role="listbox" aria-labelledby="toolChoiceComboboxButton" data-combobox-menu>
+                            <button type="button" role="option" aria-selected="true" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none bg-blue-50" data-combobox-option data-value="" data-label="Unspecified" data-description="SDK default" onclick="selectComboboxOption('toolChoiceCombobox', this)">Unspecified</button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="auto" data-label="Auto" data-description="Model may call tools" onclick="selectComboboxOption('toolChoiceCombobox', this)">Auto</button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="required" data-label="Required" data-description="Model must call tools" onclick="selectComboboxOption('toolChoiceCombobox', this)">Required</button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="none" data-label="None" data-description="Do not call tools" onclick="selectComboboxOption('toolChoiceCombobox', this)">None</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -325,6 +441,12 @@ def create_chat_app() -> Flask:
                 return `<div class="mb-3"><audio controls preload="metadata" class="max-w-xs"><source src="${audioSrc}" type="${playableMimeType ? mimeType : 'audio/wav'}"></audio></div>`;
             }
 
+            function renderEmbedding(item) {
+                const values = Array.isArray(item.embedding) ? item.embedding.slice(0, 5) : [];
+                const preview = escapeHtml(`[${values.join(', ')}]`);
+                return `<div class="embedding-content mb-2 rounded-md border-l-4 border-indigo-500 bg-indigo-50 p-3 whitespace-normal"><div class="flex items-start gap-2 text-sm"><strong class="shrink-0 text-gray-900">Embedding:</strong><code class="font-mono text-xs text-gray-800 break-all">${preview}</code></div></div>`;
+            }
+
             function handleImageSelect(event) {
                 const files = event.target.files;
                 if (!files || files.length === 0) return;
@@ -384,6 +506,95 @@ def create_chat_app() -> Flask:
                 panel.classList.toggle('hidden');
             }
 
+            function closeCombobox(comboboxId) {
+                const root = document.getElementById(comboboxId);
+                if (!root) {
+                    return;
+                }
+                const menu = root.querySelector('[data-combobox-menu]');
+                const button = root.querySelector('[data-combobox-button]');
+                menu.classList.add('hidden');
+                button.setAttribute('aria-expanded', 'false');
+            }
+
+            function closeComboboxes(exceptId) {
+                document.querySelectorAll('[data-combobox]').forEach((root) => {
+                    if (root.id !== exceptId) {
+                        closeCombobox(root.id);
+                    }
+                });
+            }
+
+            function toggleCombobox(comboboxId) {
+                const root = document.getElementById(comboboxId);
+                const menu = root.querySelector('[data-combobox-menu]');
+                const isOpen = !menu.classList.contains('hidden');
+                closeComboboxes(comboboxId);
+                if (isOpen) {
+                    closeCombobox(comboboxId);
+                    return;
+                }
+                menu.classList.remove('hidden');
+                root.querySelector('[data-combobox-button]').setAttribute('aria-expanded', 'true');
+            }
+
+            function selectComboboxOption(comboboxId, option) {
+                const root = document.getElementById(comboboxId);
+                root.querySelector('[data-combobox-value]').value = option.dataset.value || '';
+                root.querySelector('[data-combobox-label]').textContent = option.dataset.label || 'Unspecified';
+                const description = root.querySelector('[data-combobox-description]');
+                if (description) {
+                    description.textContent = option.dataset.description || option.dataset.value || 'Default';
+                }
+
+                root.querySelectorAll('[data-combobox-option]').forEach((item) => {
+                    const isSelected = item === option;
+                    item.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+                    item.classList.toggle('bg-blue-50', isSelected);
+                });
+
+                closeCombobox(comboboxId);
+                if (comboboxId === 'modelCombobox') {
+                    handleModelSelectChange();
+                }
+            }
+
+            function handleComboboxKeydown(event, comboboxId) {
+                if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    toggleCombobox(comboboxId);
+                } else if (event.key === 'Escape') {
+                    closeCombobox(comboboxId);
+                }
+            }
+
+            document.addEventListener('click', (event) => {
+                const target = event.target;
+                if (!(target instanceof Element)) {
+                    return;
+                }
+                if (!target.closest('[data-combobox]')) {
+                    closeComboboxes();
+                }
+            });
+
+            function handleModelSelectChange() {
+                const useCustom = document.getElementById('modelSelect').value === '__custom__';
+                const wrapper = document.getElementById('customModelWrapper');
+                wrapper.classList.toggle('hidden', !useCustom);
+                if (useCustom) {
+                    document.getElementById('customModelInput').focus();
+                }
+            }
+
+            function getSelectedModel() {
+                const modelSelect = document.getElementById('modelSelect');
+                if (modelSelect.value === '__custom__') {
+                    return document.getElementById('customModelInput').value.trim();
+                }
+                return modelSelect.value;
+            }
+
             function toggleApiKeyVisibility() {
                 const input = document.getElementById('apiKeyInput');
                 const toggle = document.getElementById('apiKeyVisibilityToggle');
@@ -400,7 +611,7 @@ def create_chat_app() -> Flask:
 
             function getConfig() {
                 const config = {
-                    model: document.getElementById('modelSelect').value
+                    model: getSelectedModel()
                 };
 
                 const apiKey = document.getElementById('apiKeyInput').value.trim();
@@ -639,6 +850,12 @@ def create_chat_app() -> Flask:
                                             inlineDataDiv.innerHTML = renderInlineData(item);
                                             if (inlineDataDiv.firstChild) {
                                                 contentDiv.appendChild(inlineDataDiv.firstChild);
+                                            }
+                                        } else if (item.type === 'embedding') {
+                                            const embeddingDiv = document.createElement('div');
+                                            embeddingDiv.innerHTML = renderEmbedding(item);
+                                            if (embeddingDiv.firstChild) {
+                                                contentDiv.appendChild(embeddingDiv.firstChild);
                                             }
                                         }
                                     }

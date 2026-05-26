@@ -58,7 +58,23 @@ describe("Playground", () => {
     expect(response.text).toContain(
       '<h1 class="text-xl font-semibold">AgentHub</h1>',
     );
-    expect(response.text).not.toContain("🤖 LLM Playground");
+    expect(response.text).toContain('id="modelCombobox"');
+    expect(response.text).toContain('id="thinkingLevelCombobox"');
+    expect(response.text).toContain('id="thinkingSummaryCombobox"');
+    expect(response.text).toContain('id="toolChoiceCombobox"');
+    expect(response.text).toContain(
+      'data-combobox-option data-value="gpt-5.5"',
+    );
+    expect(response.text).toContain("toggleCombobox('modelCombobox')");
+    expect(response.text).toContain(
+      "selectComboboxOption('modelCombobox', this)",
+    );
+    expect(response.text).toContain("customModelInput");
+    expect(response.text).toContain("handleModelSelectChange()");
+    expect(response.text).not.toContain("modelDropdown");
+    expect(response.text).not.toContain("toggleModelMenu()");
+    expect(response.text).not.toContain("<select");
+    expect(response.text).not.toContain("<datalist");
     expect(response.text).toContain("apiKeyInput");
     expect(response.text).toContain("apiKeyVisibilityToggle");
     expect(response.text).toContain("toggleApiKeyVisibility()");
@@ -67,6 +83,8 @@ describe("Playground", () => {
     );
     expect(response.text).toContain('id="apiKeyVisibilityHideIcon" xmlns=');
     expect(response.text).toContain("baseUrlInput");
+    expect(response.text).toContain("renderEmbedding");
+    expect(response.text).toContain("item.embedding.slice(0, 5)");
     expect(response.text).toContain('href="/tracer/"');
     expect(response.text).toContain('target="_blank"');
     expect(response.text).toContain("Open Tracer");

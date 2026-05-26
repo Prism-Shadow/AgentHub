@@ -481,12 +481,10 @@ export class Gemini3Client extends LLMClient {
     messages: UniMessage[];
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
+    // Embed transformed messages and return them as a streaming event.
     const contents = await this.transformUniMessageToModelInput(
       options.messages,
     );
-    if (contents.length === 0) {
-      throw new Error("Gemini embedding requires at least one content item.");
-    }
 
     const geminiConfig: EmbedContentConfig | undefined =
       options.config.embedding_config?.dimensions != null
@@ -511,7 +509,7 @@ export class Gemini3Client extends LLMClient {
         })) ?? [],
       usage_metadata: {
         cached_tokens: null,
-        prompt_tokens: null,
+        prompt_tokens: result.metadata?.billableCharacterCount ?? null,
         thoughts_tokens: null,
         response_tokens: null,
       },

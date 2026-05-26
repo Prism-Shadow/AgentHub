@@ -743,9 +743,7 @@ if (AVAILABLE_MODELS.length > 0) {
       }
 
       expect(
-        IMAGE_KEYWORDS.some((keyword) =>
-          text.toLowerCase().includes(keyword),
-        ),
+        IMAGE_KEYWORDS.some((keyword) => text.toLowerCase().includes(keyword)),
       ).toBe(true);
     }, 60000);
 
@@ -791,9 +789,7 @@ if (AVAILABLE_MODELS.length > 0) {
       }
 
       expect(
-        IMAGE_KEYWORDS.some((keyword) =>
-          text.toLowerCase().includes(keyword),
-        ),
+        IMAGE_KEYWORDS.some((keyword) => text.toLowerCase().includes(keyword)),
       ).toBe(true);
     }, 60000);
 
@@ -873,9 +869,7 @@ if (AVAILABLE_MODELS.length > 0) {
       }
 
       expect(
-        IMAGE_KEYWORDS.some((keyword) =>
-          text.toLowerCase().includes(keyword),
-        ),
+        IMAGE_KEYWORDS.some((keyword) => text.toLowerCase().includes(keyword)),
       ).toBe(true);
     }, 60000);
 

@@ -199,11 +199,10 @@ export class Claude4_7Client extends LLMClient {
     }
 
     if (config.temperature !== undefined) {
-      claudeConfig.temperature = config.temperature;
+      throw new Error("Claude 4.7 does not support setting temperature.");
     }
 
     if (config.thinking_level !== undefined) {
-      claudeConfig.temperature = 1.0; // `temperature` may only be set to 1 when thinking is enabled
       Object.assign(
         claudeConfig,
         this._convertThinkingLevelToThinkingConfig(config.thinking_level),

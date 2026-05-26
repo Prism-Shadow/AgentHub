@@ -185,6 +185,14 @@ export class Tracer {
     return `${label}: ${mimeType} (${mbCount.toFixed(2)} MB)`;
   }
 
+  private _formatEmbeddingPreview(item: { embedding?: number[] }): string {
+    const preview = (item.embedding || [])
+      .slice(0, 5)
+      .map((value) => String(value))
+      .join(", ");
+    return `Embedding: [${preview}]`;
+  }
+
   /**
    * Build a data URL for inline_data content.
    *
@@ -313,6 +321,8 @@ export class Tracer {
           lines.push(`Image URL: ${item.image_url}`);
         } else if (item.type === "inline_data") {
           lines.push(this._formatInlineDataSummary(item));
+        } else if (item.type === "embedding") {
+          lines.push(this._formatEmbeddingPreview(item));
         } else if (item.type === "tool_call") {
           lines.push(`Tool Call: ${item.name}`);
           lines.push(`  Arguments: ${JSON.stringify(item.arguments, null, 2)}`);
@@ -639,6 +649,8 @@ export class Tracer {
                         itemHtml += `<div class="font-mono text-sm whitespace-pre-wrap text-gray-800">${this._escapeHtml(summary)}</div>`;
                       }
                       itemHtml += `</div>`;
+                    } else if (item.type === "embedding") {
+                      itemHtml += `<div class="bg-indigo-50 p-4 rounded-md border-l-4 border-indigo-500"><div class="font-mono text-sm whitespace-pre-wrap text-gray-800">${this._escapeHtml(this._formatEmbeddingPreview(item))}</div></div>`;
                     }
                     itemHtml += "</div>";
                     return itemHtml;
