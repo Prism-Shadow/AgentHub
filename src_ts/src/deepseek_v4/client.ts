@@ -62,6 +62,7 @@ export class DeepSeekV4Client extends LLMClient {
       [ThinkingLevel.LOW]: { type: "enabled" },
       [ThinkingLevel.MEDIUM]: { type: "enabled" },
       [ThinkingLevel.HIGH]: { type: "enabled" },
+      [ThinkingLevel.XHIGH]: { type: "enabled" },
     };
     return mapping[thinkingLevel];
   }
@@ -69,9 +70,10 @@ export class DeepSeekV4Client extends LLMClient {
   private _convertReasoningEffort(thinkingLevel: ThinkingLevel): string | null {
     const mapping: { [key: string]: string | null } = {
       [ThinkingLevel.NONE]: null,
-      [ThinkingLevel.LOW]: null,
+      [ThinkingLevel.LOW]: "high",
       [ThinkingLevel.MEDIUM]: "high",
-      [ThinkingLevel.HIGH]: "max",
+      [ThinkingLevel.HIGH]: "high",
+      [ThinkingLevel.XHIGH]: "max",
     };
     return mapping[thinkingLevel];
   }

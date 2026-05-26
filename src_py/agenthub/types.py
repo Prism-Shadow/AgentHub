@@ -23,6 +23,7 @@ class ThinkingLevel(StrEnum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
+    XHIGH = "xhigh"
 
 
 class PromptCaching(StrEnum):

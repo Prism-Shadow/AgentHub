@@ -147,6 +147,7 @@ def create_chat_app() -> Flask:
                     <datalist id="modelList">
                         <option value="gpt-5.5">GPT 5.5</option>
                         <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+                        <option value="claude-opus-4-7">Claude Opus 4.7</option>
                         <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
                         <option value="kimi-k2.5">Kimi K2.5</option>
                         <option value="glm-5">GLM 5</option>
@@ -186,6 +187,7 @@ def create_chat_app() -> Flask:
                         <option value="low">Low</option>
                         <option value="medium">Medium</option>
                         <option value="high">High</option>
+                        <option value="xhigh">XHigh</option>
                     </select>
                 </div>
                 <div class="flex flex-col">

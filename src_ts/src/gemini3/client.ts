@@ -155,6 +155,7 @@ export class Gemini3Client extends LLMClient {
       [ThinkingLevel.LOW]: GeminiThinkingLevel.LOW,
       [ThinkingLevel.MEDIUM]: GeminiThinkingLevel.MEDIUM,
       [ThinkingLevel.HIGH]: GeminiThinkingLevel.HIGH,
+      [ThinkingLevel.XHIGH]: GeminiThinkingLevel.HIGH,
     };
     return mapping[thinkingLevel];
   }

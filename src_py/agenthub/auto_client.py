@@ -52,6 +52,10 @@ class AutoLLMClient(LLMClient):
             from .gemini3 import Gemini3Client
 
             return Gemini3Client(model=model, api_key=api_key, base_url=base_url)
+        elif "claude" in client_type and "4-7" in client_type:  # e.g., claude-opus-4-7
+            from .claude4_7 import Claude4_7Client
+
+            return Claude4_7Client(model=model, api_key=api_key, base_url=base_url)
         elif "claude" in client_type and "4-6" in client_type:  # e.g., claude-sonnet-4-6
             from .claude4_6 import Claude4_6Client
 
@@ -79,7 +83,7 @@ class AutoLLMClient(LLMClient):
         else:
             raise ValueError(
                 f"{client_type} is not supported. "
-                "Supported client types: gemini-3, claude-4-6, gpt-5.4, gpt-5.5, glm-5, kimi-k2.5, qwen3, gemini-embedding-2."
+                "Supported client types: gemini-3, claude-4-7, claude-4-6, gpt-5.4, gpt-5.5, glm-5, kimi-k2.5, qwen3, gemini-embedding-2."
             )
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:

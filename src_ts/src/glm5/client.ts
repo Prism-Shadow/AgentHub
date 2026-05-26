@@ -70,6 +70,7 @@ export class GLM5Client extends LLMClient {
       [ThinkingLevel.LOW]: { type: "enabled" },
       [ThinkingLevel.MEDIUM]: { type: "enabled" },
       [ThinkingLevel.HIGH]: { type: "enabled" },
+      [ThinkingLevel.XHIGH]: { type: "enabled" },
     };
     return mapping[thinkingLevel];
   }

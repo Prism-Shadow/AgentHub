@@ -41,11 +41,11 @@ from ..types import (
 REDACTED_THINKING = "_REDACTED_THINKING"
 
 
-class Claude4_6Client(LLMClient):
-    """Claude 4.6-specific LLM client implementation."""
+class Claude4_7Client(LLMClient):
+    """Claude 4.7-specific LLM client implementation."""
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
-        """Initialize Claude 4.6 client with model and API key."""
+        """Initialize Claude 4.7 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         base_url = base_url or os.getenv("ANTHROPIC_BASE_URL")
@@ -110,7 +110,7 @@ class Claude4_6Client(LLMClient):
             ThinkingLevel.LOW: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "low"}},
             ThinkingLevel.MEDIUM: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "medium"}},
             ThinkingLevel.HIGH: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "high"}},
-            ThinkingLevel.XHIGH: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "high"}},
+            ThinkingLevel.XHIGH: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "xhigh"}},
         }
         return mapping.get(thinking_level)
 
@@ -151,10 +151,11 @@ class Claude4_6Client(LLMClient):
         if config.get("temperature") is not None:
             claude_config["temperature"] = config["temperature"]
 
-        # NOTE: Claude always provides thinking summary
         if config.get("thinking_level") is not None:
             claude_config["temperature"] = 1.0  # `temperature` may only be set to 1 when thinking is enabled
             claude_config.update(self._convert_thinking_level_to_thinking_config(config["thinking_level"]))
+            if config.get("thinking_summary") and claude_config.get("thinking") is not None:
+                claude_config["thinking"]["display"] = "summarized"
 
         # Convert tools to Claude's tool schema
         if config.get("tools") is not None:

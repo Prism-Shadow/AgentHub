@@ -52,6 +52,7 @@ class GPT5_5Client(LLMClient):
             ThinkingLevel.LOW: "low",
             ThinkingLevel.MEDIUM: "medium",
             ThinkingLevel.HIGH: "high",
+            ThinkingLevel.XHIGH: "xhigh",
         }
         return mapping.get(thinking_level)
 

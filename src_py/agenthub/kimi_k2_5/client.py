@@ -76,6 +76,7 @@ class KimiK2_5Client(LLMClient):
             ThinkingLevel.LOW: {"type": "enabled"},
             ThinkingLevel.MEDIUM: {"type": "enabled"},
             ThinkingLevel.HIGH: {"type": "enabled"},
+            ThinkingLevel.XHIGH: {"type": "enabled"},
         }
         return mapping.get(thinking_level)
 

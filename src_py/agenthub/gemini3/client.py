@@ -99,6 +99,7 @@ class Gemini3Client(LLMClient):
             ThinkingLevel.LOW: types.ThinkingLevel.LOW,
             ThinkingLevel.MEDIUM: types.ThinkingLevel.MEDIUM,
             ThinkingLevel.HIGH: types.ThinkingLevel.HIGH,
+            ThinkingLevel.XHIGH: types.ThinkingLevel.HIGH,
         }
         return mapping.get(thinking_level)
 

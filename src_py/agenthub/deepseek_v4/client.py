@@ -54,6 +54,7 @@ class DeepSeekV4Client(LLMClient):
             ThinkingLevel.LOW: {"type": "enabled"},
             ThinkingLevel.MEDIUM: {"type": "enabled"},
             ThinkingLevel.HIGH: {"type": "enabled"},
+            ThinkingLevel.XHIGH: {"type": "enabled"},
         }
         return mapping[thinking_level]
 
@@ -61,9 +62,10 @@ class DeepSeekV4Client(LLMClient):
         """Convert ThinkingLevel enum to DeepSeek's reasoning_effort."""
         mapping = {
             ThinkingLevel.NONE: None,
-            ThinkingLevel.LOW: None,
+            ThinkingLevel.LOW: "high",
             ThinkingLevel.MEDIUM: "high",
-            ThinkingLevel.HIGH: "max",
+            ThinkingLevel.HIGH: "high",
+            ThinkingLevel.XHIGH: "max",
         }
         return mapping[thinking_level]
 

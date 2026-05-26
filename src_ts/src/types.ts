@@ -20,6 +20,7 @@ export enum ThinkingLevel {
   LOW = "low",
   MEDIUM = "medium",
   HIGH = "high",
+  XHIGH = "xhigh",
 }
 
 /**
