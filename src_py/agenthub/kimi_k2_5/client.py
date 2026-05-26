@@ -45,7 +45,7 @@ class KimiK2_5Client(LLMClient):
         """Initialize Kimi K2.5 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("MOONSHOT_API_KEY")
-        base_url = base_url or os.getenv("MOONSHOT_BASE_URL", "https://api.moonshot.cn/v1")
+        base_url = base_url or os.getenv("MOONSHOT_BASE_URL") or "https://api.moonshot.cn/v1"
         self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self._history: list[UniMessage] = []
 

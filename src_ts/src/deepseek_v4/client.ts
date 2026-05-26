@@ -45,12 +45,10 @@ export class DeepSeekV4Client extends LLMClient {
     super();
     this._model = options.model;
     const key = options.apiKey || process.env.DEEPSEEK_API_KEY || undefined;
-    const url = options.baseUrl || process.env.DEEPSEEK_BASE_URL;
-    if (!url) {
-      throw new Error(
-        "DeepSeek base_url is required. Pass baseUrl or set DEEPSEEK_BASE_URL.",
-      );
-    }
+    const url =
+      options.baseUrl ||
+      process.env.DEEPSEEK_BASE_URL ||
+      "https://api.deepseek.com";
     this._client = new OpenAI({ apiKey: key, baseURL: url });
   }
 
@@ -78,24 +76,27 @@ export class DeepSeekV4Client extends LLMClient {
     return mapping[thinkingLevel];
   }
 
-  private _convertToolChoice(toolChoice: ToolChoice): string {
-    if (toolChoice === "auto" || toolChoice === "none") {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private _convertToolChoice(toolChoice: ToolChoice): any {
+    if (Array.isArray(toolChoice)) {
+      return {
+        mode: "required",
+        tools: toolChoice.map((name) => ({ type: "function", name })),
+      };
+    } else if (
+      toolChoice === "auto" ||
+      toolChoice === "none" ||
+      toolChoice === "required"
+    ) {
       return toolChoice;
     }
     throw new Error(
-      'DeepSeek tool_choice config expected one of "auto" or "none".',
+      'DeepSeek tool_choice config expected "auto", "none", "required", or tool names.',
     );
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   transformUniConfigToModelConfig(config: UniConfig): any {
-    if (
-      config.prompt_caching !== undefined &&
-      config.prompt_caching !== PromptCaching.ENABLE
-    ) {
-      throw new Error("prompt_caching must be ENABLE for DeepSeek.");
-    }
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const deepseekConfig: any = {
       model: this._model,
@@ -108,7 +109,7 @@ export class DeepSeekV4Client extends LLMClient {
     }
 
     if (config.temperature !== undefined) {
-      throw new Error("DeepSeek does not support temperature.");
+      deepseekConfig.temperature = config.temperature;
     }
 
     if (config.thinking_level !== undefined) {
@@ -138,6 +139,13 @@ export class DeepSeekV4Client extends LLMClient {
       deepseekConfig.tool_choice = this._convertToolChoice(config.tool_choice);
     }
 
+    if (
+      config.prompt_caching !== undefined &&
+      config.prompt_caching !== PromptCaching.ENABLE
+    ) {
+      throw new Error("prompt_caching must be ENABLE for DeepSeek.");
+    }
+
     return deepseekConfig;
   }
 
@@ -161,12 +169,8 @@ export class DeepSeekV4Client extends LLMClient {
           contentParts.push({ type: "text", text: item.text });
         } else if (item.type === "image_url") {
           throw new Error("DeepSeek does not support image url inputs.");
-        } else if (item.type === "inline_data") {
-          throw new Error("DeepSeek does not support inline data inputs.");
         } else if (item.type === "thinking") {
           thinking += item.thinking;
-        } else if (item.type === "inline_thinking") {
-          throw new Error("DeepSeek does not support inline thinking inputs.");
         } else if (item.type === "tool_call") {
           toolCalls.push({
             id: item.tool_call_id,

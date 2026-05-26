@@ -38,12 +38,10 @@ class DeepSeekV4Client(LLMClient):
     """DeepSeek V4-specific LLM client implementation using OpenAI-compatible Chat Completions."""
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
-        """Initialize DeepSeek client with model, API key, and caller-provided base URL."""
+        """Initialize DeepSeek client with model, API key, and base URL."""
         self._model = model
         api_key = api_key or os.getenv("DEEPSEEK_API_KEY")
-        base_url = base_url or os.getenv("DEEPSEEK_BASE_URL")
-        if base_url is None:
-            raise ValueError("DeepSeek base_url is required. Pass base_url or set DEEPSEEK_BASE_URL.")
+        base_url = base_url or os.getenv("DEEPSEEK_BASE_URL") or "https://api.deepseek.com"
         self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self._history: list[UniMessage] = []
 
@@ -69,11 +67,13 @@ class DeepSeekV4Client(LLMClient):
         }
         return mapping[thinking_level]
 
-    def _convert_tool_choice(self, tool_choice: ToolChoice) -> str:
+    def _convert_tool_choice(self, tool_choice: ToolChoice) -> str | dict[str, Any]:
         """Convert ToolChoice to DeepSeek's OpenAI-compatible tool_choice format."""
-        if tool_choice in ["auto", "none"]:
+        if isinstance(tool_choice, list):
+            return {"mode": "required", "tools": [{"type": "function", "name": name} for name in tool_choice]}
+        elif tool_choice in ["auto", "none", "required"]:
             return tool_choice
-        raise ValueError("DeepSeek tool_choice config expected one of `auto` or `none`.")
+        raise ValueError("DeepSeek tool_choice config expected `auto`, `none`, `required`, or tool names.")
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """
@@ -85,16 +85,13 @@ class DeepSeekV4Client(LLMClient):
         Returns:
             DeepSeek configuration dictionary
         """
-        if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
-            raise ValueError("prompt_caching must be ENABLE for DeepSeek.")
-
         deepseek_config = {"model": self._model, "stream": True, "stream_options": {"include_usage": True}}
 
         if config.get("max_tokens") is not None:
             deepseek_config["max_tokens"] = config["max_tokens"]
 
         if config.get("temperature") is not None:
-            raise ValueError("DeepSeek does not support temperature.")
+            deepseek_config["temperature"] = config["temperature"]
 
         thinking_level = config.get("thinking_level")
         if thinking_level is not None:
@@ -108,6 +105,9 @@ class DeepSeekV4Client(LLMClient):
 
         if config.get("tool_choice") is not None:
             deepseek_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
+
+        if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
+            raise ValueError("prompt_caching must be ENABLE for DeepSeek.")
 
         return deepseek_config
 
@@ -132,12 +132,8 @@ class DeepSeekV4Client(LLMClient):
                     content_parts.append({"type": "text", "text": item["text"]})
                 elif item["type"] == "image_url":
                     raise ValueError("DeepSeek does not support image url inputs.")
-                elif item["type"] == "inline_data":
-                    raise ValueError("DeepSeek does not support inline data inputs.")
                 elif item["type"] == "thinking":
                     thinking += item["thinking"]
-                elif item["type"] == "inline_thinking":
-                    raise ValueError("DeepSeek does not support inline thinking inputs.")
                 elif item["type"] == "tool_call":
                     tool_calls.append(
                         {

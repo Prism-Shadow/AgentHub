@@ -79,13 +79,9 @@ export class GPT5_5Client extends LLMClient {
         mode: "required",
         tools: toolChoice.map((name) => ({ type: "function", name })),
       };
-    } else if (toolChoice === "none") {
-      return "none";
-    } else if (toolChoice === "auto") {
-      return "auto";
-    } else if (toolChoice === "required") {
-      return "required";
     }
+
+    return toolChoice;
   }
 
   /**
