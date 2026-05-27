@@ -21,6 +21,7 @@ import { UniConfig, UniEvent, UniMessage } from "../src/types";
 let mockLastStreamingOptions: {
   message: UniMessage;
   config: UniConfig;
+  signal?: AbortSignal;
 } | null = null;
 
 jest.mock("../src/autoClient", () => ({
@@ -28,6 +29,7 @@ jest.mock("../src/autoClient", () => ({
     streamingResponseStateful: async function* (options: {
       message: UniMessage;
       config: UniConfig;
+      signal?: AbortSignal;
     }): AsyncGenerator<UniEvent> {
       mockLastStreamingOptions = options;
       yield {
@@ -78,6 +80,10 @@ describe("Playground", () => {
     expect(response.text).toContain("apiKeyInput");
     expect(response.text).toContain("apiKeyVisibilityToggle");
     expect(response.text).toContain("toggleApiKeyVisibility()");
+    expect(response.text).toContain('id="stopButton"');
+    expect(response.text).toContain("stopGeneration()");
+    expect(response.text).toContain("currentAbortController.abort()");
+    expect(response.text).toContain("/api/abort");
     expect(response.text).toContain(
       'id="apiKeyVisibilityShowIcon" class="hidden"',
     );
@@ -138,6 +144,7 @@ describe("Playground", () => {
     expect(mockLastStreamingOptions?.config).toEqual({
       thinking_level: "low",
     });
+    expect(mockLastStreamingOptions?.signal).toBeInstanceOf(AbortSignal);
   });
 
   test("should accept image payloads larger than the default JSON limit", async () => {
@@ -164,5 +171,17 @@ describe("Playground", () => {
       type: "image_url",
       image_url: largeImage,
     });
+    expect(mockLastStreamingOptions?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  test("should expose an abort endpoint", async () => {
+    const app = createChatApp();
+
+    const response = await request(app).post("/api/abort").send({
+      session_id: "idle-session",
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ status: "idle" });
   });
 });

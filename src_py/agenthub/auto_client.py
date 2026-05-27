@@ -15,6 +15,7 @@
 import os
 from typing import Any, AsyncIterator
 
+from .abort_signal import AbortSignal
 from .base_client import LLMClient
 from .types import UniConfig, UniEvent, UniMessage
 
@@ -109,11 +110,13 @@ class AutoLLMClient(LLMClient):
         self,
         messages: list[UniMessage],
         config: UniConfig,
+        signal: AbortSignal | None = None,
     ) -> AsyncIterator[UniEvent]:
         """Route to underlying client's streaming_response."""
         async for event in self._client.streaming_response(
             messages=messages,
             config=config,
+            signal=signal,
         ):
             yield event
 
@@ -121,11 +124,13 @@ class AutoLLMClient(LLMClient):
         self,
         message: UniMessage,
         config: UniConfig,
+        signal: AbortSignal | None = None,
     ) -> AsyncIterator[UniEvent]:
         """Route to underlying client's streaming_response_stateful."""
         async for event in self._client.streaming_response_stateful(
             message=message,
             config=config,
+            signal=signal,
         ):
             yield event
 

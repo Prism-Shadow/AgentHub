@@ -179,6 +179,16 @@ export class Gemini3Client extends LLMClient {
     return undefined;
   }
 
+  private _withAbortSignal<T extends { abortSignal?: AbortSignal }>(
+    config: T | undefined,
+    signal?: AbortSignal,
+  ): T | undefined {
+    if (!signal) {
+      return config;
+    }
+    return { ...(config ?? {}), abortSignal: signal } as T;
+  }
+
   /**
    * Transform universal configuration to Gemini-specific configuration.
    */
@@ -496,14 +506,14 @@ export class Gemini3Client extends LLMClient {
       options.signal,
     );
 
-    const geminiConfig: EmbedContentConfig | undefined =
-      options.config.embedding_config?.dimensions != null || options.signal
+    const geminiConfig = this._withAbortSignal<EmbedContentConfig>(
+      options.config.embedding_config?.dimensions != null
         ? {
-            outputDimensionality:
-              options.config.embedding_config?.dimensions ?? undefined,
-            abortSignal: options.signal,
+            outputDimensionality: options.config.embedding_config.dimensions,
           }
-        : undefined;
+        : undefined,
+      options.signal,
+    );
 
     const result = await this._client.models.embedContent({
       model: this._model,
@@ -557,20 +567,19 @@ export class Gemini3Client extends LLMClient {
       }
     }
 
-    const geminiConfig = this.transformUniConfigToModelConfig(options.config);
+    const geminiConfig = this._withAbortSignal<GenerateContentConfig>(
+      this.transformUniConfigToModelConfig(options.config),
+      options.signal,
+    );
     const contents = await this.transformUniMessageToModelInput(
       options.messages,
       options.signal,
     );
-    const requestConfig =
-      geminiConfig || options.signal
-        ? { ...(geminiConfig || {}), abortSignal: options.signal }
-        : undefined;
 
     const responseStream = await this._client.models.generateContentStream({
       model: this._model,
       contents: contents,
-      config: requestConfig,
+      config: geminiConfig,
     });
 
     for await (const chunk of responseStream) {
