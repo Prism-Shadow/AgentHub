@@ -51,8 +51,10 @@ export abstract class LLMClient {
    * @param messages - List of universal message objects
    * @returns Model-specific input format (e.g., Gemini's Content list, OpenAI's messages array)
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  abstract transformUniMessageToModelInput(messages: UniMessage[]): any;
+  abstract transformUniMessageToModelInput(
+    messages: UniMessage[],
+    signal?: AbortSignal,
+  ): any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
   /**
    * Transform model output to universal event format.
@@ -143,6 +145,7 @@ export abstract class LLMClient {
   abstract _streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
+    signal?: AbortSignal;
   }): AsyncGenerator<UniEvent>;
 
   /**
@@ -158,6 +161,7 @@ export abstract class LLMClient {
   async *streamingResponse(options: {
     messages: UniMessage[];
     config: UniConfig;
+    signal?: AbortSignal;
   }): AsyncGenerator<UniEvent> {
     const { messages, config } = options;
 
@@ -206,6 +210,7 @@ export abstract class LLMClient {
   async *streamingResponseStateful(options: {
     message: UniMessage;
     config: UniConfig;
+    signal?: AbortSignal;
   }): AsyncGenerator<UniEvent> {
     const { message, config } = options;
 
@@ -215,6 +220,7 @@ export abstract class LLMClient {
     for await (const event of this.streamingResponse({
       messages: tempMessages,
       config,
+      signal: options.signal,
     })) {
       events.push(event);
       yield event;

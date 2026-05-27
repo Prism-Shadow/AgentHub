@@ -81,12 +81,15 @@ export class KimiK2_6Client extends LLMClient {
   /**
    * Convert image URL to base64-encoded data URL.
    */
-  private async _convertImageUrlToBase64(url: string): Promise<string> {
+  private async _convertImageUrlToBase64(
+    url: string,
+    signal?: AbortSignal,
+  ): Promise<string> {
     if (url.startsWith("data:")) {
       return url;
     }
 
-    const response = await fetch(url);
+    const response = await fetch(url, { signal });
     if (!response.ok) {
       throw new Error(
         `Failed to fetch image: ${response.status} ${response.statusText}`,
@@ -190,6 +193,7 @@ export class KimiK2_6Client extends LLMClient {
    */
   async transformUniMessageToModelInput(
     messages: UniMessage[],
+    signal?: AbortSignal,
   ): Promise<ChatCompletionMessageParam[]> {
     const openaiMessages: ChatCompletionMessageParam[] = [];
 
@@ -209,6 +213,7 @@ export class KimiK2_6Client extends LLMClient {
         } else if (item.type === "image_url") {
           const base64Image = await this._convertImageUrlToBase64(
             item.image_url,
+            signal,
           );
           contentParts.push({
             type: "image_url",
@@ -235,7 +240,10 @@ export class KimiK2_6Client extends LLMClient {
 
           if (item.images && item.images.length > 0) {
             for (const imageUrl of item.images) {
-              const base64Image = await this._convertImageUrlToBase64(imageUrl);
+              const base64Image = await this._convertImageUrlToBase64(
+                imageUrl,
+                signal,
+              );
               if (this._client.baseURL.includes("siliconflow.cn")) {
                 // siliconflow does not support image_url in tool result
                 contentParts.push({
@@ -393,10 +401,12 @@ export class KimiK2_6Client extends LLMClient {
   async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
+    signal?: AbortSignal;
   }): AsyncGenerator<UniEvent> {
     const kimiConfig = this.transformUniConfigToModelConfig(options.config);
     const kimiMessages = await this.transformUniMessageToModelInput(
       options.messages,
+      options.signal,
     );
 
     if (options.config.system_prompt) {
@@ -412,7 +422,9 @@ export class KimiK2_6Client extends LLMClient {
       stream: true,
     };
 
-    const stream = await this._client.chat.completions.create(params);
+    const stream = await this._client.chat.completions.create(params, {
+      signal: options.signal,
+    });
 
     const partialToolCall: {
       name?: string;

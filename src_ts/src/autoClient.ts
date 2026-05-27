@@ -116,10 +116,14 @@ export class AutoLLMClient extends LLMClient {
   /**
    * Delegate to underlying client's transformUniMessageToModelInput.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  transformUniMessageToModelInput(messages: UniMessage[]): any {
-    return this._client.transformUniMessageToModelInput(messages);
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  transformUniMessageToModelInput(
+    messages: UniMessage[],
+    signal?: AbortSignal,
+  ): any {
+    return this._client.transformUniMessageToModelInput(messages, signal);
   }
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 
   /**
    * Delegate to underlying client's transformModelOutputToUniEvent.
@@ -150,10 +154,12 @@ export class AutoLLMClient extends LLMClient {
   async *streamingResponse(options: {
     messages: UniMessage[];
     config: UniConfig;
+    signal?: AbortSignal;
   }): AsyncGenerator<UniEvent> {
     for await (const event of this._client.streamingResponse({
       messages: options.messages,
       config: options.config,
+      signal: options.signal,
     })) {
       yield event;
     }
@@ -165,10 +171,12 @@ export class AutoLLMClient extends LLMClient {
   async *streamingResponseStateful(options: {
     message: UniMessage;
     config: UniConfig;
+    signal?: AbortSignal;
   }): AsyncGenerator<UniEvent> {
     for await (const event of this._client.streamingResponseStateful({
       message: options.message,
       config: options.config,
+      signal: options.signal,
     })) {
       yield event;
     }
