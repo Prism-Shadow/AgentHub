@@ -267,6 +267,40 @@ describe("Tracer", () => {
     expect(txtContent).toContain("Inline Audio: audio/pcm");
   });
 
+  test("should render embedding previews with the first five values", async () => {
+    const tracer = new Tracer(tempCacheDir);
+
+    const model = "fake-model";
+    const history: UniMessage[] = [
+      {
+        role: "assistant",
+        content_items: [
+          {
+            type: "embedding",
+            embedding: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
+          },
+        ],
+      },
+    ];
+    const fileId = "test/embedding_preview";
+
+    tracer.saveHistory(model, history, fileId, {});
+
+    const txtPath = path.join(tempCacheDir, fileId + ".txt");
+    const txtContent = fs.readFileSync(txtPath, "utf-8");
+    expect(txtContent).toContain("Embedding: [0.1, 0.2, 0.3, 0.4, 0.5]");
+    expect(txtContent).not.toContain("0.6");
+
+    const app = tracer.createWebApp();
+    const supertest = await import("supertest");
+    const response = await supertest
+      .default(app)
+      .get("/test/embedding_preview.json");
+    expect(response.status).toBe(200);
+    expect(response.text).toContain("Embedding: [0.1, 0.2, 0.3, 0.4, 0.5]");
+    expect(response.text).not.toContain("0.6");
+  });
+
   test("should sort directory listing by name", async () => {
     const tracer = new Tracer(tempCacheDir);
     const model = "fake-model";

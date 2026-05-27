@@ -23,6 +23,7 @@ class ThinkingLevel(StrEnum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
+    XHIGH = "xhigh"
 
 
 class PromptCaching(StrEnum):
@@ -97,6 +98,11 @@ class ToolResultContentItem(TypedDict):
     tool_call_id: str
 
 
+class EmbeddingContentItem(TypedDict):
+    type: Literal["embedding"]
+    embedding: list[float]
+
+
 ContentItem = (
     TextContentItem
     | ImageContentItem
@@ -105,6 +111,7 @@ ContentItem = (
     | InlineThinkingContentItem
     | ToolCallContentItem
     | ToolResultContentItem
+    | EmbeddingContentItem
 )
 
 PartialContentItem = ContentItem | PartialToolCallContentItem
@@ -162,6 +169,12 @@ class SpeakerConfig(TypedDict):
     speaker: NotRequired[str]
 
 
+class EmbeddingConfig(TypedDict):
+    """Embedding generation configuration."""
+
+    dimensions: NotRequired[int]
+
+
 class UniConfig(TypedDict):
     """Universal configuration format for LLM requests."""
 
@@ -175,22 +188,5 @@ class UniConfig(TypedDict):
     prompt_caching: NotRequired[PromptCaching]
     image_config: NotRequired[ImageConfig]
     tts_config: NotRequired[list[SpeakerConfig]]
+    embedding_config: NotRequired[EmbeddingConfig]
     trace_id: NotRequired[str]
-
-
-EmbeddingInputContentItem = TextContentItem | ImageContentItem | InlineDataContentItem
-
-
-class EmbeddingResult(TypedDict):
-    embedding: list[float]
-
-
-class EmbeddingResponse(TypedDict):
-    data: list[EmbeddingResult]
-    model: str
-
-
-class UniEmbeddingConfig(TypedDict):
-    model: NotRequired[str]
-    dimensions: NotRequired[int]
-    aggregate: NotRequired[bool]

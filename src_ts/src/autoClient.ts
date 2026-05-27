@@ -15,19 +15,13 @@
 import { LLMClient } from "./baseClient";
 import { Gemini3Client } from "./gemini3";
 import { Claude4_6Client } from "./claude4_6";
+import { Claude4_7Client } from "./claude4_7";
 import { GPT5_5Client } from "./gpt5_5";
-import { GLM5Client } from "./glm5";
-import { KimiK2_5Client } from "./kimi_k2_5";
-import { Qwen3Client } from "./qwen3";
+import { GLM5_1Client } from "./glm5_1";
+import { KimiK2_6Client } from "./kimi_k2_6";
+import { Qwen3_6Client } from "./qwen3_6";
 import { DeepSeekV4Client } from "./deepseek_v4";
-import {
-  EmbeddingInputContentItem,
-  EmbeddingResponse,
-  UniConfig,
-  UniEmbeddingConfig,
-  UniEvent,
-  UniMessage,
-} from "./types";
+import { UniConfig, UniEvent, UniMessage } from "./types";
 
 /**
  * Auto-routing LLM client that dispatches to appropriate model-specific client.
@@ -79,9 +73,12 @@ export class AutoLLMClient extends LLMClient {
     if (
       clientType.includes("gemini-3-") ||
       clientType.includes("gemini-3.1-") ||
+      clientType.includes("gemini-3.5-") ||
       clientType.includes("gemini-embedding")
     ) {
       return new Gemini3Client({ model, apiKey, baseUrl });
+    } else if (clientType.includes("claude") && clientType.includes("4-7")) {
+      return new Claude4_7Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("claude") && clientType.includes("4-6")) {
       return new Claude4_6Client({ model, apiKey, baseUrl });
     } else if (
@@ -89,18 +86,21 @@ export class AutoLLMClient extends LLMClient {
       clientType.includes("gpt-5.5")
     ) {
       return new GPT5_5Client({ model, apiKey, baseUrl });
-    } else if (clientType.includes("glm-5")) {
-      return new GLM5Client({ model, apiKey, baseUrl });
-    } else if (clientType.includes("kimi-k2.5")) {
-      return new KimiK2_5Client({ model, apiKey, baseUrl });
-    } else if (clientType.includes("qwen3")) {
-      return new Qwen3Client({ model, apiKey, baseUrl });
+    } else if (clientType.includes("glm-5") || clientType.includes("glm-5.1")) {
+      return new GLM5_1Client({ model, apiKey, baseUrl });
+    } else if (
+      clientType.includes("kimi-k2.5") ||
+      clientType.includes("kimi-k2.6")
+    ) {
+      return new KimiK2_6Client({ model, apiKey, baseUrl });
+    } else if (clientType.includes("qwen3.6")) {
+      return new Qwen3_6Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("deepseek-v4-")) {
       return new DeepSeekV4Client({ model, apiKey, baseUrl });
     } else {
       throw new Error(
         `${clientType} is not supported. ` +
-          "Supported client types: gemini-3, claude-4-6, gpt-5.4, gpt-5.5, glm-5, kimi-k2.5, qwen3, gemini-embedding-2.",
+          "Supported client types: gemini-3, claude-4-7, claude-4-6, gpt-5.4, gpt-5.5, glm-5.1, kimi-k2.5, kimi-k2.6, qwen3.6, deepseek-v4.",
       );
     }
   }
@@ -127,13 +127,6 @@ export class AutoLLMClient extends LLMClient {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   transformModelOutputToUniEvent(modelOutput: any): UniEvent {
     return this._client.transformModelOutputToUniEvent(modelOutput);
-  }
-
-  async embedContent(
-    inputs: EmbeddingInputContentItem[],
-    config?: UniEmbeddingConfig,
-  ): Promise<EmbeddingResponse> {
-    return this._client.embedContent(inputs, config);
   }
 
   /**

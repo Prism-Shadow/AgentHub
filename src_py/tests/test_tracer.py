@@ -139,6 +139,7 @@ def test_format_history_with_different_content_types(temp_cache_dir):
                 {"type": "thinking", "thinking": "Let me analyze..."},
                 {"type": "inline_thinking", "data": b"abc", "mime_type": "image/png"},
                 {"type": "text", "text": "This is a flower."},
+                {"type": "embedding", "embedding": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]},
             ],
         },
         {
@@ -163,9 +164,19 @@ def test_format_history_with_different_content_types(temp_cache_dir):
     assert "Let me analyze..." in content
     assert "Thinking Inline Image: image/png" in content
     assert "This is a flower." in content
+    assert "Embedding: [0.1, 0.2, 0.3, 0.4, 0.5]" in content
+    assert "0.6" not in content
     assert "Inline Audio: audio/pcm" in content
     assert "Tool Result" in content
     assert "Temperature is 20C" in content
+
+    app = tracer.create_web_app()
+    with app.test_client() as client:
+        response = client.get("/test/multi_content.json")
+        assert response.status_code == 200
+        html = response.data.decode()
+        assert "Embedding: [0.1, 0.2, 0.3, 0.4, 0.5]" in html
+        assert "0.6" not in html
 
 
 def test_web_app_creation(temp_cache_dir):

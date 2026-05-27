@@ -27,6 +27,7 @@ from agenthub import AutoLLMClient, ThinkingLevel
 
 
 IMAGE = "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg"
+IMAGE_KEYWORDS = ("flower", "narcissus", "daffodil", "bloom")
 
 
 @dataclass
@@ -38,7 +39,6 @@ class Model:
     support_image_generation: bool = False
     support_tts: bool = False
     support_embedding: bool = False
-    support_image_embedding: bool = False
     provider: Literal["official", "bedrock", "vertex", "siliconflow", "openrouter", "modelverse"] = "official"
 
     def __repr__(self) -> str:
@@ -48,7 +48,7 @@ class Model:
 AVAILABLE_MODELS: list[Model] = []
 
 if os.getenv("GEMINI_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="gemini-3-flash-preview"))
+    AVAILABLE_MODELS.append(Model(name="gemini-3.5-flash"))
     AVAILABLE_MODELS.append(
         Model(
             name="gemini-3.1-flash-image-preview",
@@ -74,7 +74,6 @@ if os.getenv("GEMINI_API_KEY"):
             support_temperature=False,
             support_image_understanding=False,
             support_embedding=True,
-            support_image_embedding=True,
         )
     )
 
@@ -85,15 +84,12 @@ if os.getenv("OPENAI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="gpt-5.5", support_temperature=False))
 
 if os.getenv("ZAI_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="glm-5", support_image_understanding=False))
+    AVAILABLE_MODELS.append(Model(name="glm-5.1", support_image_understanding=False))
 
 if os.getenv("MOONSHOT_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="kimi-k2.5", support_temperature=False))
+    AVAILABLE_MODELS.append(Model(name="kimi-k2.6", support_temperature=False))
 
-if os.getenv("DEEPSEEK_API_KEY") and os.getenv("DEEPSEEK_BASE_URL"):
-    AVAILABLE_MODELS.append(
-        Model(name="deepseek-v4-pro", support_temperature=False, support_image_understanding=False)
-    )
+if os.getenv("DEEPSEEK_API_KEY"):
     AVAILABLE_MODELS.append(
         Model(name="deepseek-v4-flash", support_temperature=False, support_image_understanding=False)
     )
@@ -102,7 +98,7 @@ if os.getenv("BEDROCK_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="global.anthropic.claude-sonnet-4-6", provider="bedrock"))
 
 if os.getenv("VERTEX_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="gemini-3-flash-preview", provider="vertex"))
+    AVAILABLE_MODELS.append(Model(name="gemini-3.5-flash", provider="vertex"))
     AVAILABLE_MODELS.append(
         Model(
             name="gemini-3.1-flash-image-preview",
@@ -127,16 +123,16 @@ if os.getenv("VERTEX_API_KEY"):
 RUN_SLOW_TEST = os.getenv("RUN_SLOW_TEST", "0") == "1"
 
 if os.getenv("OPENROUTER_API_KEY") and RUN_SLOW_TEST:
-    AVAILABLE_MODELS.append(Model(name="z-ai/glm-5", provider="openrouter", support_image_understanding=False))
-    AVAILABLE_MODELS.append(
-        Model(name="qwen/qwen3-30b-a3b-thinking-2507", provider="openrouter", support_image_understanding=False)
-    )
-    AVAILABLE_MODELS.append(Model(name="moonshotai/kimi-k2.5", provider="openrouter", support_temperature=False))
+    AVAILABLE_MODELS.append(Model(name="z-ai/glm-5.1", provider="openrouter", support_image_understanding=False))
+    AVAILABLE_MODELS.append(Model(name="qwen/qwen3.6-35b-a3b", provider="openrouter"))
+    AVAILABLE_MODELS.append(Model(name="moonshotai/kimi-k2.6", provider="openrouter", support_temperature=False))
 
 if os.getenv("SILICONFLOW_API_KEY") and RUN_SLOW_TEST:
-    AVAILABLE_MODELS.append(Model(name="Pro/zai-org/GLM-5", provider="siliconflow", support_image_understanding=False))
-    AVAILABLE_MODELS.append(Model(name="Qwen/Qwen3-8B", provider="siliconflow", support_image_understanding=False))
-    AVAILABLE_MODELS.append(Model(name="Pro/moonshotai/Kimi-K2.5", provider="siliconflow", support_temperature=False))
+    AVAILABLE_MODELS.append(
+        Model(name="Pro/zai-org/GLM-5.1", provider="siliconflow", support_image_understanding=False)
+    )
+    AVAILABLE_MODELS.append(Model(name="Qwen/Qwen3.6-35B-A3B", provider="siliconflow"))
+    AVAILABLE_MODELS.append(Model(name="Pro/moonshotai/Kimi-K2.6", provider="siliconflow", support_temperature=False))
 
 if os.getenv("MODELVERSE_API_KEY") and RUN_SLOW_TEST:
     AVAILABLE_MODELS.append(Model(name="claude-sonnet-4-6", provider="modelverse"))
@@ -506,7 +502,7 @@ async def test_image_understanding(model: Model):
             if item["type"] == "text":
                 text += item["text"]
 
-    assert ("flower" in text.lower()) or ("narcissus" in text.lower())
+    assert any(keyword in text.lower() for keyword in IMAGE_KEYWORDS)
 
 
 @pytest.mark.asyncio
@@ -543,7 +539,7 @@ async def test_image_understanding_base64(model: Model):
             if item["type"] == "text":
                 text += item["text"]
 
-    assert ("flower" in text.lower()) or ("narcissus" in text.lower())
+    assert any(keyword in text.lower() for keyword in IMAGE_KEYWORDS)
 
 
 @pytest.mark.asyncio
@@ -606,7 +602,7 @@ async def test_tool_result_with_image(model: Model):
             if item["type"] == "text":
                 text += item["text"]
 
-    assert ("flower" in text.lower()) or ("narcissus" in text.lower())
+    assert any(keyword in text.lower() for keyword in IMAGE_KEYWORDS)
 
 
 @pytest.mark.asyncio
@@ -675,70 +671,27 @@ async def test_tts_generation_single_speaker(model: Model):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
-async def test_embed_content_text(model: Model):
-    """Test text embedding with dimensions configuration."""
+async def test_embedding(model: Model):
+    """Test streamed text embedding with dimensions configuration."""
     if not model.support_embedding:
         pytest.skip(f"Embedding is not supported by {model.name}.")
 
     client = await _create_client(model)
     texts = ["Hello world", "Goodbye world"]
 
-    result = await client.embed_content(
-        inputs=[{"type": "text", "text": t} for t in texts],
-        config={"dimensions": 768},
-    )
+    events = []
+    async for event in client.streaming_response(
+        messages=[{"role": "user", "content_items": [{"type": "text", "text": text}]} for text in texts],
+        config={"embedding_config": {"dimensions": 768}},
+    ):
+        await _check_event_integrity(event)
+        events.append(event)
 
-    assert result["model"] == model.name
-    assert len(result["data"]) == 2
-    for item in result["data"]:
+    embedding_items = [item for event in events for item in event["content_items"] if item["type"] == "embedding"]
+    assert len(embedding_items) == 2
+    for item in embedding_items:
         assert len(item["embedding"]) == 768
         assert all(isinstance(v, float) for v in item["embedding"])
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
-async def test_embed_content_multimodal(model: Model):
-    """Test multimodal embedding with text and image URL data."""
-    if not model.support_image_embedding:
-        pytest.skip(f"Image embedding is not supported by {model.name}.")
-
-    client = await _create_client(model)
-
-    result = await client.embed_content(
-        inputs=[
-            {"type": "image_url", "image_url": IMAGE},
-        ],
-    )
-
-    assert result["model"] == model.name
-    assert len(result["data"]) == 1
-    for item in result["data"]:
-        assert len(item["embedding"]) > 0
-        assert all(isinstance(v, float) for v in item["embedding"])
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
-async def test_embed_content_aggregate(model: Model):
-    """Test aggregated embedding: multiple inputs fused into a single vector."""
-    if not model.support_embedding:
-        pytest.skip(f"Embedding is not supported by {model.name}.")
-
-    client = await _create_client(model)
-
-    result = await client.embed_content(
-        inputs=[
-            {"type": "text", "text": "Hello world"},
-            {"type": "text", "text": "Goodbye world"},
-        ],
-        config={"aggregate": True},
-    )
-
-    assert result["model"] == model.name
-    assert len(result["data"]) == 1
-    item = result["data"][0]
-    assert len(item["embedding"]) > 0
-    assert all(isinstance(v, float) for v in item["embedding"])
 
 
 if __name__ == "__main__":

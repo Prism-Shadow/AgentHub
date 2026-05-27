@@ -360,7 +360,6 @@ cache/
 generated_image*
 generated_audio*
 
-# Local AI agent instructions
-AGENTS.md
+# Local AI agent instruction overrides
 AGENTS.override.md
 CLAUDE.md

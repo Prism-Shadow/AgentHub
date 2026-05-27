@@ -52,6 +52,7 @@ class GPT5_5Client(LLMClient):
             ThinkingLevel.LOW: "low",
             ThinkingLevel.MEDIUM: "medium",
             ThinkingLevel.HIGH: "high",
+            ThinkingLevel.XHIGH: "xhigh",
         }
         return mapping.get(thinking_level)
 
@@ -59,12 +60,7 @@ class GPT5_5Client(LLMClient):
         """Convert ToolChoice to OpenAI's tool_choice format with allowed tools support."""
         if isinstance(tool_choice, list):
             return {"mode": "required", "tools": [{"type": "function", "name": name} for name in tool_choice]}
-        elif tool_choice == "none":
-            return "none"
-        elif tool_choice == "auto":
-            return "auto"
-        elif tool_choice == "required":
-            return "required"
+        return tool_choice
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """

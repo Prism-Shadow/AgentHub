@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as path from "path";
 import OpenAI from "openai";
+import * as path from "path";
 import type {
   ChatCompletionChunk,
   ChatCompletionMessageParam,
@@ -25,7 +25,6 @@ import {
   FinishReason,
   PartialContentItem,
   PromptCaching,
-  ThinkingLevel,
   ToolChoice,
   UniConfig,
   UniEvent,
@@ -35,14 +34,14 @@ import {
 import { fixOpenrouterUsageMetadata } from "../utils";
 
 /**
- * Kimi K2.5-specific LLM client implementation using OpenAI-compatible API.
+ * Qwen3.6 client-specific LLM client implementation using OpenAI-compatible API.
  */
-export class KimiK2_5Client extends LLMClient {
+export class Qwen3_6Client extends LLMClient {
   protected _model: string;
   private _client: OpenAI;
 
   /**
-   * Initialize Kimi K2.5 client with model and API key.
+   * Initialize Qwen3.6 client with model and API key.
    */
   constructor(options: {
     model: string;
@@ -52,11 +51,11 @@ export class KimiK2_5Client extends LLMClient {
   }) {
     super();
     this._model = options.model;
-    const key = options.apiKey || process.env.MOONSHOT_API_KEY || undefined;
+    const key = options.apiKey || process.env.QWEN_API_KEY || undefined;
     const url =
       options.baseUrl ||
-      process.env.MOONSHOT_BASE_URL ||
-      "https://api.moonshot.cn/v1";
+      process.env.QWEN_BASE_URL ||
+      "http://127.0.0.1:8000/v1/";
     this._client = new OpenAI({ apiKey: key, baseURL: url });
   }
 
@@ -100,96 +99,63 @@ export class KimiK2_5Client extends LLMClient {
   }
 
   /**
-   * Convert ThinkingLevel enum to Kimi's thinking configuration.
-   */
-  private _convertThinkingLevelToConfig(thinkingLevel: ThinkingLevel): {
-    type: string;
-  } {
-    const mapping: { [key: string]: { type: string } } = {
-      [ThinkingLevel.NONE]: { type: "disabled" },
-      [ThinkingLevel.LOW]: { type: "enabled" },
-      [ThinkingLevel.MEDIUM]: { type: "enabled" },
-      [ThinkingLevel.HIGH]: { type: "enabled" },
-    };
-    return mapping[thinkingLevel];
-  }
-
-  /**
    * Convert ToolChoice to OpenAI's tool_choice format.
    */
   private _convertToolChoice(toolChoice: ToolChoice): string {
     if (toolChoice === "auto") {
       return "auto";
-    } else if (toolChoice === "none") {
-      return "none";
     } else {
-      throw new Error('Kimi only supports "auto" and "none" for tool_choice.');
+      throw new Error('Qwen3 only supports "auto" for tool_choice.');
     }
   }
 
   /**
-   * Transform universal configuration to Kimi-specific configuration.
+   * Transform universal configuration to Qwen-specific configuration.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   transformUniConfigToModelConfig(config: UniConfig): any {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const kimiConfig: any = {
+    const qwenConfig: any = {
       model: this._model,
       stream: true,
-      stream_options: { include_usage: true },
     };
 
     if (config.max_tokens !== undefined) {
-      kimiConfig.max_tokens = config.max_tokens;
+      qwenConfig.max_tokens = config.max_tokens;
     }
 
-    if (config.temperature !== undefined && config.temperature !== 1.0) {
-      throw new Error("Kimi K2.5 does not support setting temperature.");
-    }
-
-    if (config.thinking_level !== undefined) {
-      const thinkingConfig = this._convertThinkingLevelToConfig(
-        config.thinking_level,
-      );
-      kimiConfig.extra_body = {
-        ...(kimiConfig.extra_body || {}),
-        thinking: thinkingConfig,
-      };
+    if (config.temperature !== undefined) {
+      qwenConfig.temperature = config.temperature;
     }
 
     if (config.tools !== undefined) {
-      kimiConfig.tools = config.tools.map((tool) => ({
+      qwenConfig.tools = config.tools.map((tool) => ({
         type: "function",
         function: tool,
       }));
     }
 
     if (config.tool_choice !== undefined) {
-      kimiConfig.tool_choice = this._convertToolChoice(config.tool_choice);
+      qwenConfig.tool_choice = this._convertToolChoice(config.tool_choice);
     }
 
     if (
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE
     ) {
-      throw new Error("prompt_caching must be ENABLE for Kimi K2.5.");
+      throw new Error("prompt_caching must be ENABLE for Qwen.");
     }
 
-    if (config.trace_id !== undefined) {
-      // use trace_id as the prompt cache key
-      kimiConfig.prompt_cache_key = config.trace_id;
-    }
-
-    return kimiConfig;
+    return qwenConfig;
   }
 
   /**
-   * Transform universal message format to OpenAI's message format.
+   * Transform universal message format to Qwen-specific message format.
    */
   async transformUniMessageToModelInput(
     messages: UniMessage[],
   ): Promise<ChatCompletionMessageParam[]> {
-    const openaiMessages: ChatCompletionMessageParam[] = [];
+    const qwenMessages: ChatCompletionMessageParam[] = [];
 
     for (const msg of messages) {
       const contentParts: Array<{
@@ -235,7 +201,6 @@ export class KimiK2_5Client extends LLMClient {
             for (const imageUrl of item.images) {
               const base64Image = await this._convertImageUrlToBase64(imageUrl);
               if (this._client.baseURL.includes("siliconflow.cn")) {
-                // siliconflow does not support image_url in tool result
                 contentParts.push({
                   type: "image_url",
                   image_url: { url: base64Image },
@@ -249,7 +214,7 @@ export class KimiK2_5Client extends LLMClient {
             }
           }
 
-          openaiMessages.push({
+          qwenMessages.push({
             role: "tool",
             tool_call_id: item.tool_call_id,
             content,
@@ -277,15 +242,15 @@ export class KimiK2_5Client extends LLMClient {
       }
 
       if (Object.keys(message).length > 1) {
-        openaiMessages.push(message);
+        qwenMessages.push(message);
       }
     }
 
-    return openaiMessages;
+    return qwenMessages;
   }
 
   /**
-   * Transform Kimi model output to universal event format.
+   * Transform Qwen model output to universal event format.
    */
   transformModelOutputToUniEvent(modelOutput: ChatCompletionChunk): UniEvent {
     let eventType: EventType | null = null;
@@ -298,8 +263,14 @@ export class KimiK2_5Client extends LLMClient {
       const delta = choice?.delta;
 
       if (delta?.content) {
-        eventType = "delta";
-        contentItems.push({ type: "text", text: delta.content });
+        if (delta.content === "<tool_call>") {
+          eventType = "start";
+        } else if (delta.content === "</tool_call>") {
+          eventType = "stop";
+        } else {
+          eventType = "delta";
+          contentItems.push({ type: "text", text: delta.content });
+        }
       }
 
       // vLLM & siliconflow compatibility
@@ -324,13 +295,13 @@ export class KimiK2_5Client extends LLMClient {
       }
 
       if (delta?.tool_calls) {
-        eventType = "delta";
         for (const toolCall of delta.tool_calls) {
+          eventType = "delta";
           contentItems.push({
             type: "partial_tool_call",
             name: toolCall.function?.name || "",
             arguments: toolCall.function?.arguments || "",
-            tool_call_id: toolCall.id || "",
+            tool_call_id: toolCall.function?.name || "",
           });
         }
       }
@@ -386,27 +357,27 @@ export class KimiK2_5Client extends LLMClient {
   }
 
   /**
-   * Stream generate using Kimi SDK with unified conversion methods.
+   * Stream generate using Qwen3 SDK with unified conversion methods.
    */
   async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
-    const kimiConfig = this.transformUniConfigToModelConfig(options.config);
-    const kimiMessages = await this.transformUniMessageToModelInput(
+    const qwenConfig = this.transformUniConfigToModelConfig(options.config);
+    const qwenMessages = await this.transformUniMessageToModelInput(
       options.messages,
     );
 
     if (options.config.system_prompt) {
-      kimiMessages.unshift({
+      qwenMessages.unshift({
         role: "system",
         content: options.config.system_prompt,
       });
     }
 
     const params: ChatCompletionCreateParamsStreaming = {
-      ...kimiConfig,
-      messages: kimiMessages,
+      ...qwenConfig,
+      messages: qwenMessages,
       stream: true,
     };
 
@@ -416,6 +387,7 @@ export class KimiK2_5Client extends LLMClient {
       name?: string;
       arguments?: string;
       tool_call_id?: string;
+      data?: string;
     } = {};
     let partialUsage: {
       finish_reason?: FinishReason | null;
@@ -429,16 +401,27 @@ export class KimiK2_5Client extends LLMClient {
         event.finish_reason || partialUsage.finish_reason;
       partialUsage.usage_metadata =
         event.usage_metadata || partialUsage.usage_metadata;
-      if (event.event_type === "delta") {
+      if (event.event_type === "start") {
+        // start new partial tool call for <tool_call>
+        partialToolCall.data = "";
+      } else if (event.event_type === "delta") {
+        if (partialToolCall.data !== undefined) {
+          // update partial tool call for <tool_call>
+          partialToolCall.data +=
+            event.content_items[0]?.type === "text"
+              ? (event.content_items[0] as { text: string }).text
+              : "";
+          continue;
+        }
+
         for (const item of event.content_items) {
           if (item.type === "partial_tool_call") {
             if (!partialToolCall.name) {
-              // start a new partial tool call
+              // start new partial tool call for tool call object
               partialToolCall.name = item.name;
               partialToolCall.arguments = item.arguments;
-              partialToolCall.tool_call_id = item.tool_call_id;
             } else if (item.name) {
-              // finish the previous partial tool call
+              // finish previous partial tool call for tool call object
               yield {
                 role: "assistant",
                 event_type: "delta",
@@ -447,27 +430,61 @@ export class KimiK2_5Client extends LLMClient {
                     type: "tool_call",
                     name: partialToolCall.name,
                     arguments: JSON.parse(partialToolCall.arguments || "{}"),
-                    tool_call_id: partialToolCall.tool_call_id || "",
+                    tool_call_id: partialToolCall.name,
                   },
                 ],
                 usage_metadata: null,
                 finish_reason: null,
               };
-              // start a new partial tool call
+              // start new partial tool call for tool call object
               partialToolCall.name = item.name;
               partialToolCall.arguments = item.arguments;
-              partialToolCall.tool_call_id = item.tool_call_id;
             } else {
-              // update partial tool call
+              // update partial tool call for tool call object
               partialToolCall.arguments =
-                (partialToolCall.arguments || "") + item.arguments;
+                partialToolCall.arguments + item.arguments;
             }
           }
         }
+
         yield event;
       } else if (event.event_type === "stop") {
+        if (partialToolCall.data !== undefined) {
+          // finish partial tool call for <tool_call>
+          const toolCall = JSON.parse(partialToolCall.data.trim());
+          yield {
+            role: "assistant",
+            event_type: "delta",
+            content_items: [
+              {
+                type: "partial_tool_call",
+                name: toolCall.name,
+                arguments: JSON.stringify(toolCall.arguments, null, 0),
+                tool_call_id: toolCall.name,
+              },
+            ],
+            usage_metadata: null,
+            finish_reason: null,
+          };
+          yield {
+            role: "assistant",
+            event_type: "delta",
+            content_items: [
+              {
+                type: "tool_call",
+                name: toolCall.name,
+                arguments: toolCall.arguments,
+                tool_call_id: toolCall.name,
+              },
+            ],
+            usage_metadata: null,
+            finish_reason: null,
+          };
+          partialToolCall.data = undefined;
+        }
+
         if (partialToolCall.name) {
-          // finish the partial tool call
+          // finish partial tool call for tool call object
           yield {
             role: "assistant",
             event_type: "delta",
@@ -476,7 +493,7 @@ export class KimiK2_5Client extends LLMClient {
                 type: "tool_call",
                 name: partialToolCall.name,
                 arguments: JSON.parse(partialToolCall.arguments || "{}"),
-                tool_call_id: partialToolCall.tool_call_id || "",
+                tool_call_id: partialToolCall.name,
               },
             ],
             usage_metadata: null,

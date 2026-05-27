@@ -39,8 +39,6 @@ import {
 import * as path from "path";
 import { LLMClient } from "../baseClient";
 import {
-  EmbeddingInputContentItem,
-  EmbeddingResponse,
   EventType,
   FinishReason,
   PartialContentItem,
@@ -48,7 +46,6 @@ import {
   ThinkingLevel,
   ToolChoice,
   UniConfig,
-  UniEmbeddingConfig,
   UniEvent,
   UniMessage,
   UsageMetadata,
@@ -155,6 +152,7 @@ export class Gemini3Client extends LLMClient {
       [ThinkingLevel.LOW]: GeminiThinkingLevel.LOW,
       [ThinkingLevel.MEDIUM]: GeminiThinkingLevel.MEDIUM,
       [ThinkingLevel.HIGH]: GeminiThinkingLevel.HIGH,
+      [ThinkingLevel.XHIGH]: GeminiThinkingLevel.HIGH,
     };
     return mapping[thinkingLevel];
   }
@@ -479,64 +477,43 @@ export class Gemini3Client extends LLMClient {
     };
   }
 
-  async embedContent(
-    inputs: EmbeddingInputContentItem[],
-    config?: UniEmbeddingConfig,
-  ): Promise<EmbeddingResponse> {
-    const model = config?.model ?? this._model;
-
-    if (!model.toLowerCase().includes("embedding")) {
-      throw new Error(`Model '${model}' is not an embedding model.`);
-    }
-
-    const parts: Part[] = [];
-    for (const item of inputs) {
-      if (item.type === "text") {
-        parts.push({ text: item.text } as Part);
-      } else if (item.type === "image_url") {
-        const imageData = await this._getImageBytesAndMimeType(item.image_url);
-        parts.push({
-          inlineData: {
-            mimeType: imageData.mimeType,
-            data: imageData.data.toString("base64"),
-          },
-        } as Part);
-      } else if (item.type === "inline_data") {
-        parts.push({
-          inlineData: {
-            mimeType: item.mime_type,
-            data: item.data.toString("base64"),
-          },
-        } as Part);
-      } else {
-        throw new Error(
-          `Unknown embedding item type: ${(item as { type: string }).type}`,
-        );
-      }
-    }
+  private async *_embedMessagesInternal(options: {
+    messages: UniMessage[];
+    config: UniConfig;
+  }): AsyncGenerator<UniEvent> {
+    // Embed transformed messages and return them as a streaming event.
+    const contents = await this.transformUniMessageToModelInput(
+      options.messages,
+    );
 
     const geminiConfig: EmbedContentConfig | undefined =
-      config?.dimensions != null
-        ? { outputDimensionality: config.dimensions }
+      options.config.embedding_config?.dimensions != null
+        ? {
+            outputDimensionality: options.config.embedding_config.dimensions,
+          }
         : undefined;
 
-    const contents: Content[] | Content =
-      config?.aggregate && parts.length > 1
-        ? ({ parts } as Content)
-        : parts.map((p) => ({ parts: [p] } as Content));
-
     const result = await this._client.models.embedContent({
-      model,
+      model: this._model,
       contents,
       config: geminiConfig,
     });
 
-    return {
-      data:
-        result.embeddings?.map((e) => ({
-          embedding: e.values ?? [],
+    yield {
+      role: "assistant",
+      event_type: "stop",
+      content_items:
+        result.embeddings?.map((embedding) => ({
+          type: "embedding",
+          embedding: embedding.values ?? [],
         })) ?? [],
-      model,
+      usage_metadata: {
+        cached_tokens: null,
+        prompt_tokens: result.metadata?.billableCharacterCount ?? null,
+        thoughts_tokens: null,
+        response_tokens: null,
+      },
+      finish_reason: "stop",
     };
   }
 
@@ -547,6 +524,13 @@ export class Gemini3Client extends LLMClient {
     messages: UniMessage[];
     config: UniConfig;
   }): AsyncGenerator<UniEvent> {
+    if (this._model.toLowerCase().includes("embedding")) {
+      for await (const event of this._embedMessagesInternal(options)) {
+        yield event;
+      }
+      return;
+    }
+
     // check if all items are text for tts model
     const isTtsModel = this._model.toLowerCase().includes("tts");
     if (isTtsModel) {

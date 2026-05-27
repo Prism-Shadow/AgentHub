@@ -324,3 +324,4 @@ python -m agenthub.integration.playground --host 127.0.0.1 --port 25751
 ```
 
 Then visit `http://127.0.0.1:25751` in your browser to test with the playground.
+The integrated tracer is available at `http://127.0.0.1:25751/tracer/`.

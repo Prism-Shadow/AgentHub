@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .client import KimiK2_5Client
+from .client import Qwen3_6Client
 
 
-__all__ = ["KimiK2_5Client"]
+__all__ = ["Qwen3_6Client"]

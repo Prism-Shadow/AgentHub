@@ -84,6 +84,7 @@ import { startPlaygroundServer } from "@prismshadow/agenthub/integration/playgro
 // Start the playground server
 startPlaygroundServer("127.0.0.1", 25751);
 // Open http://127.0.0.1:25751 in your browser
+// Open http://127.0.0.1:25751/tracer/ to browse traces
 ```
 
 ## Examples

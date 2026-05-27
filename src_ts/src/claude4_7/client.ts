@@ -36,15 +36,15 @@ import {
 const REDACTED_THINKING = "_REDACTED_THINKING";
 
 /**
- * Claude 4.6-specific LLM client implementation.
+ * Claude 4.7-specific LLM client implementation.
  */
-export class Claude4_6Client extends LLMClient {
+export class Claude4_7Client extends LLMClient {
   protected _model: string;
   private _client: Anthropic | AnthropicBedrock;
   private _use_bedrock: boolean;
 
   /**
-   * Initialize Claude 4.6 client with model and API key.
+   * Initialize Claude 4.7 client with model and API key.
    */
   constructor(options: {
     model: string;
@@ -128,12 +128,12 @@ export class Claude4_6Client extends LLMClient {
    * Convert ThinkingLevel enum to Claude's adaptive thinking config.
    */
   private _convertThinkingLevelToThinkingConfig(thinkingLevel: ThinkingLevel): {
-    thinking?: { type: string };
+    thinking?: { type: string; display?: string };
     output_config?: { effort: string };
   } {
     const mapping: {
       [key: string]: {
-        thinking?: { type: string };
+        thinking?: { type: string; display?: string };
         output_config?: { effort: string };
       };
     } = {
@@ -152,7 +152,7 @@ export class Claude4_6Client extends LLMClient {
       },
       [ThinkingLevel.XHIGH]: {
         thinking: { type: "adaptive" },
-        output_config: { effort: "high" },
+        output_config: { effort: "xhigh" },
       },
     };
     return mapping[thinkingLevel];
@@ -199,15 +199,17 @@ export class Claude4_6Client extends LLMClient {
     }
 
     if (config.temperature !== undefined) {
-      claudeConfig.temperature = config.temperature;
+      throw new Error("Claude 4.7 does not support setting temperature.");
     }
 
     if (config.thinking_level !== undefined) {
-      claudeConfig.temperature = 1.0; // `temperature` may only be set to 1 when thinking is enabled
       Object.assign(
         claudeConfig,
         this._convertThinkingLevelToThinkingConfig(config.thinking_level),
       );
+      if (config.thinking_summary && claudeConfig.thinking) {
+        claudeConfig.thinking.display = "summarized";
+      }
     }
 
     if (config.tools !== undefined) {

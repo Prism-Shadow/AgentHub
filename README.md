@@ -38,15 +38,15 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 
 ## Supported Models
 
-| Model Name     | Vendor                              | Reasoning          | Tool Use           | Image Understanding | Image Generation   | Speech Generation  |
-| -------------- | ----------------------------------- | ------------------ | ------------------ | ------------------- | ------------------ | ------------------ |
-| Gemini 3/3.1   | Official/Google Vertex AI           | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :white_check_mark: | :white_check_mark: |
-| Claude 4.6     | Official/Amazon Bedrock/UModelVerse | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :x:                | :x:                |
-| GPT-5.4/5.5    | Official/UModelVerse                | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :x:                | :x:                |
-| Kimi-K2.5      | Official/OpenRouter/SiliconFlow     | :white_check_mark: | :white_check_mark: | :white_check_mark:  | :x:                | :x:                |
-| GLM-5          | Official/OpenRouter/SiliconFlow     | :white_check_mark: | :white_check_mark: | :x:                 | :x:                | :x:                |
-| Qwen3          | OpenRouter/SiliconFlow/vLLM         | :white_check_mark: | :white_check_mark: | :x:                 | :x:                | :x:                |
-| DeepSeek V4 Pro/Flash | Official                     | :white_check_mark: | :white_check_mark: | :x:                 | :x:                | :x:                |
+| Model Name     | Vendor                              | Example Model ID       | Input Modalities | Output Modalities              |
+| -------------- | ----------------------------------- | ---------------------- | ---------------- | ------------------------------ |
+| Gemini 3-3.5   | Official/Google Vertex AI           | `gemini-3.5-flash`     | Text, Image      | Text, Image, Speech, Embedding |
+| Claude 4.6/4.7 | Official/Amazon Bedrock/UModelVerse | `claude-opus-4-7`      | Text, Image      | Text                           |
+| GPT-5.4/5.5    | Official/UModelVerse                | `gpt-5.5`              | Text, Image      | Text                           |
+| Kimi-K2.5/K2.6 | Official/OpenRouter/SiliconFlow     | `kimi-k2.6`            | Text, Image      | Text                           |
+| DeepSeek V4    | Official/OpenRouter/SiliconFlow     | `deepseek-v4-pro`      | Text             | Text                           |
+| GLM-5.1        | Official/OpenRouter/SiliconFlow     | `glm-5.1`              | Text             | Text                           |
+| Qwen3.6        | OpenRouter/SiliconFlow/vLLM         | `qwen/qwen3.6-35b-a3b` | Text, Image      | Text                           |
 
 ## Installation
 
@@ -224,7 +224,7 @@ main().catch(console.error);
 
 </details>
 
-### OpenRouter GLM-5
+### OpenRouter GLM-5.1
 
 <details><summary><strong>Python Example</strong></summary>
 
@@ -233,11 +233,11 @@ import asyncio
 import os
 from agenthub import AutoLLMClient
 
-os.environ["GLM_API_KEY"] = "your-openrouter-api-key"
-os.environ["GLM_BASE_URL"] = "https://openrouter.ai/api/v1"
+os.environ["ZAI_API_KEY"] = "your-openrouter-api-key"
+os.environ["ZAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 
 async def main():
-    client = AutoLLMClient(model="z-ai/glm-5")
+    client = AutoLLMClient(model="z-ai/glm-5.1")
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -256,11 +256,11 @@ asyncio.run(main())
 ```typescript
 import { AutoLLMClient } from "@prismshadow/agenthub";
 
-process.env.GLM_API_KEY = "your-openrouter-api-key";
-process.env.GLM_BASE_URL = "https://openrouter.ai/api/v1";
+process.env.ZAI_API_KEY = "your-openrouter-api-key";
+process.env.ZAI_BASE_URL = "https://openrouter.ai/api/v1";
 
 async function main() {
-  const client = new AutoLLMClient({ model: "z-ai/glm-5" });
+  const client = new AutoLLMClient({ model: "z-ai/glm-5.1" });
   for await (const event of client.streamingResponseStateful({
     message: {
       role: "user",
@@ -276,7 +276,7 @@ main().catch(console.error);
 ```
 </details>
 
-### SiliconFlow Qwen3-8B
+### SiliconFlow Qwen3.6 35B
 
 <details><summary><strong>Python Example</strong></summary>
 
@@ -285,11 +285,11 @@ import asyncio
 import os
 from agenthub import AutoLLMClient
 
-os.environ["QWEN3_API_KEY"] = "your-siliconflow-api-key"
-os.environ["QWEN3_BASE_URL"] = "https://api.siliconflow.cn/v1"
+os.environ["QWEN_API_KEY"] = "your-siliconflow-api-key"
+os.environ["QWEN_BASE_URL"] = "https://api.siliconflow.cn/v1"
 
 async def main():  
-    client = AutoLLMClient(model="Qwen/Qwen3-8B")
+    client = AutoLLMClient(model="Qwen/Qwen3.6-35B-A3B")
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -308,11 +308,11 @@ asyncio.run(main())
 ```typescript
 import { AutoLLMClient } from "@prismshadow/agenthub";
 
-process.env.QWEN3_API_KEY = "your-siliconflow-api-key";
-process.env.QWEN3_BASE_URL = "https://api.siliconflow.cn/v1";
+process.env.QWEN_API_KEY = "your-siliconflow-api-key";
+process.env.QWEN_BASE_URL = "https://api.siliconflow.cn/v1";
 
 async function main() {
-  const client = new AutoLLMClient({ model: "Qwen/Qwen3-8B" });
+  const client = new AutoLLMClient({ model: "Qwen/Qwen3.6-35B-A3B" });
   for await (const event of client.streamingResponseStateful({
     message: {
       role: "user",
@@ -475,6 +475,7 @@ cd src_ts && npm run playground
 ```
 
 You can access the playground at `http://localhost:25751/`.
+The integrated tracer is available at `http://localhost:25751/tracer/`.
 
 ## Related Work
 

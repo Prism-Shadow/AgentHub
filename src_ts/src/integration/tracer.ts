@@ -185,6 +185,14 @@ export class Tracer {
     return `${label}: ${mimeType} (${mbCount.toFixed(2)} MB)`;
   }
 
+  private _formatEmbeddingPreview(item: { embedding?: number[] }): string {
+    const preview = (item.embedding || [])
+      .slice(0, 5)
+      .map((value) => String(value))
+      .join(", ");
+    return `Embedding: [${preview}]`;
+  }
+
   /**
    * Build a data URL for inline_data content.
    *
@@ -313,6 +321,8 @@ export class Tracer {
           lines.push(`Image URL: ${item.image_url}`);
         } else if (item.type === "inline_data") {
           lines.push(this._formatInlineDataSummary(item));
+        } else if (item.type === "embedding") {
+          lines.push(this._formatEmbeddingPreview(item));
         } else if (item.type === "tool_call") {
           lines.push(`Tool Call: ${item.name}`);
           lines.push(`  Arguments: ${JSON.stringify(item.arguments, null, 2)}`);
@@ -366,8 +376,9 @@ export class Tracer {
    *
    * @returns Express application instance
    */
-  createWebApp(): Express {
+  createWebApp(options: { basePath?: string } = {}): Express {
     const app = express();
+    const basePath = this._normalizeBasePath(options.basePath);
 
     const DIRECTORY_TEMPLATE = (
       breadcrumb: string,
@@ -518,13 +529,13 @@ export class Tracer {
         try {
           const parts = subpath ? subpath.split("/") : [];
           const breadcrumbParts = [
-            '<a href="/" class="text-blue-600 hover:underline">cache</a>',
+            `<a href="${this._prefixUrl(basePath, "/")}" class="text-blue-600 hover:underline">cache</a>`,
           ];
 
           for (let i = 0; i < parts.length - 1; i++) {
             const pathToPart = parts.slice(0, i + 1).join("/");
             breadcrumbParts.push(
-              `<a href="/${pathToPart}" class="text-blue-600 hover:underline">${parts[i]}</a>`,
+              `<a href="${this._prefixUrl(basePath, "/" + pathToPart)}" class="text-blue-600 hover:underline">${parts[i]}</a>`,
             );
           }
 
@@ -533,8 +544,10 @@ export class Tracer {
           }
 
           const breadcrumb = breadcrumbParts.join(" / ");
-          const backUrl =
-            parts.length > 1 ? "/" + parts.slice(0, -1).join("/") : "/";
+          const backUrl = this._prefixUrl(
+            basePath,
+            parts.length > 1 ? "/" + parts.slice(0, -1).join("/") : "/",
+          );
 
           if (fullPath.endsWith(".json")) {
             const data = JSON.parse(fs.readFileSync(fullPath, "utf-8"));
@@ -636,6 +649,8 @@ export class Tracer {
                         itemHtml += `<div class="font-mono text-sm whitespace-pre-wrap text-gray-800">${this._escapeHtml(summary)}</div>`;
                       }
                       itemHtml += `</div>`;
+                    } else if (item.type === "embedding") {
+                      itemHtml += `<div class="bg-indigo-50 p-4 rounded-md border-l-4 border-indigo-500"><div class="font-mono text-sm whitespace-pre-wrap text-gray-800">${this._escapeHtml(this._formatEmbeddingPreview(item))}</div></div>`;
                     }
                     itemHtml += "</div>";
                     return itemHtml;
@@ -790,7 +805,10 @@ export class Tracer {
           return {
             name: entry.name,
             is_dir: isDir,
-            url: "/" + relativePath.replace(/\\/g, "/"),
+            url: this._prefixUrl(
+              basePath,
+              "/" + relativePath.replace(/\\/g, "/"),
+            ),
             size,
             mtime,
           };
@@ -798,14 +816,14 @@ export class Tracer {
 
         const parts = subpath ? subpath.split("/") : [];
         const breadcrumbParts = [
-          '<a href="/" class="text-blue-600 hover:underline">cache</a>',
+          `<a href="${this._prefixUrl(basePath, "/")}" class="text-blue-600 hover:underline">cache</a>`,
         ];
 
         for (let i = 0; i < parts.length; i++) {
           if (parts[i]) {
             const pathToPart = parts.slice(0, i + 1).join("/");
             breadcrumbParts.push(
-              `<a href="/${pathToPart}" class="text-blue-600 hover:underline">${parts[i]}</a>`,
+              `<a href="${this._prefixUrl(basePath, "/" + pathToPart)}" class="text-blue-600 hover:underline">${parts[i]}</a>`,
             );
           }
         }
@@ -813,8 +831,8 @@ export class Tracer {
         const breadcrumb = breadcrumbParts.join(" / ");
 
         const baseUrl = subpath ? "/" + subpath : "/";
-        const sortNameUrl = baseUrl + "?sort=name";
-        const sortMtimeUrl = baseUrl + "?sort=mtime";
+        const sortNameUrl = this._prefixUrl(basePath, baseUrl + "?sort=name");
+        const sortMtimeUrl = this._prefixUrl(basePath, baseUrl + "?sort=mtime");
 
         const itemsHtml = items.length
           ? items
@@ -867,6 +885,37 @@ export class Tracer {
     });
 
     return app;
+  }
+
+  /**
+   * Normalize the base path used when tracer is mounted inside another app.
+   *
+   * @param basePath - Optional URL prefix for tracer routes
+   * @returns Normalized URL prefix without a trailing slash
+   */
+  private _normalizeBasePath(basePath: string = ""): string {
+    if (!basePath || basePath === "/") {
+      return "";
+    }
+    const prefixed = basePath.startsWith("/") ? basePath : "/" + basePath;
+    return prefixed.endsWith("/") ? prefixed.slice(0, -1) : prefixed;
+  }
+
+  /**
+   * Prefix an internal tracer URL with the mount path.
+   *
+   * @param basePath - Normalized tracer mount path
+   * @param url - Internal URL beginning with /
+   * @returns URL safe to render into tracer links
+   */
+  private _prefixUrl(basePath: string, url: string): string {
+    if (!basePath) {
+      return url;
+    }
+    if (url === "/") {
+      return basePath + "/";
+    }
+    return basePath + url;
   }
 
   /**

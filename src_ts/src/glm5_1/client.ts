@@ -34,14 +34,14 @@ import {
 import { fixOpenrouterUsageMetadata } from "../utils";
 
 /**
- * GLM-5-specific LLM client implementation using OpenAI-compatible API.
+ * GLM-5.1-specific LLM client implementation using OpenAI-compatible API.
  */
-export class GLM5Client extends LLMClient {
+export class GLM5_1Client extends LLMClient {
   protected _model: string;
   private _client: OpenAI;
 
   /**
-   * Initialize GLM-5 client with model and API key.
+   * Initialize GLM-5.1 client with model and API key.
    */
   constructor(options: {
     model: string;
@@ -70,6 +70,7 @@ export class GLM5Client extends LLMClient {
       [ThinkingLevel.LOW]: { type: "enabled" },
       [ThinkingLevel.MEDIUM]: { type: "enabled" },
       [ThinkingLevel.HIGH]: { type: "enabled" },
+      [ThinkingLevel.XHIGH]: { type: "enabled" },
     };
     return mapping[thinkingLevel];
   }
@@ -130,7 +131,7 @@ export class GLM5Client extends LLMClient {
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE
     ) {
-      throw new Error("prompt_caching must be ENABLE for GLM-5.");
+      throw new Error("prompt_caching must be ENABLE for GLM.");
     }
 
     return glmConfig;

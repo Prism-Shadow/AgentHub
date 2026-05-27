@@ -1,3 +1,5 @@
+# Embeddings
+
 <br />
 
 > [!IMPORTANT]
@@ -56,6 +58,58 @@ Use the `embedContent` method to generate text embeddings:
 
     main();
 
+### Go
+
+    package main
+
+    import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "log"
+
+        "google.golang.org/genai"
+    )
+
+    func main() {
+        ctx := context.Background()
+        client, err := genai.NewClient(ctx, nil)
+        if err != nil {
+            log.Fatal(err)
+        }
+
+        contents := []*genai.Content{
+            genai.NewContentFromText("What is the meaning of life?", genai.RoleUser),
+        }
+        result, err := client.Models.EmbedContent(ctx,
+            "gemini-embedding-2",
+            contents,
+            nil,
+        )
+        if err != nil {
+            log.Fatal(err)
+        }
+
+        embeddings, err := json.MarshalIndent(result.Embeddings, "", "  ")
+        if err != nil {
+            log.Fatal(err)
+        }
+        fmt.Println(string(embeddings))
+    }
+
+### REST
+
+    curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:embedContent" \
+        -H "Content-Type: application/json" \
+        -H "x-goog-api-key: ${GEMINI_API_KEY}" \
+        -d '{
+            "model": "models/gemini-embedding-2",
+            "content": {
+            "parts": [{
+                "text": "What is the meaning of life?"
+            }]
+            }
+        }'
 
 > [!NOTE]
 > **Note:** While `gemini-embedding-001` lets you generate individual embeddings for a list of strings, Gemini Embedding 2 produces a single aggregated embedding for multiple inputs. You can find more information in [Embedding aggregation](https://ai.google.dev/gemini-api/docs/embeddings#embedding-aggregation), or you can use the [Batch API](https://ai.google.dev/gemini-api/docs/batch-api#batch-embedding) if you want to generate multiple embeddings at once.
@@ -206,6 +260,92 @@ similar in meaning strings of texts are.
 
     main();
 
+### Go
+
+    package main
+
+    import (
+        "context"
+        "fmt"
+        "log"
+        "math"
+
+        "google.golang.org/genai"
+    )
+
+    // cosineSimilarity calculates the similarity between two vectors.
+    func cosineSimilarity(a, b []float32) (float64, error) {
+        if len(a) != len(b) {
+            return 0, fmt.Errorf("vectors must have the same length")
+        }
+
+        var dotProduct, aMagnitude, bMagnitude float64
+        for i := 0; i < len(a); i++ {
+            dotProduct += float64(a[i] * b[i])
+            aMagnitude += float64(a[i] * a[i])
+            bMagnitude += float64(b[i] * b[i])
+        }
+
+        if aMagnitude == 0 || bMagnitude == 0 {
+            return 0, nil
+        }
+
+        return dotProduct / (math.Sqrt(aMagnitude) * math.Sqrt(bMagnitude)), nil
+    }
+
+    func main() {
+        ctx := context.Background()
+        client, _ := genai.NewClient(ctx, nil)
+        defer client.Close()
+
+        texts := []string{
+            "What is the meaning of life?",
+            "What is the purpose of existence?",
+            "How do I bake a cake?",
+        }
+
+        var contents []*genai.Content
+        for _, text := range texts {
+            contents = append(contents, genai.NewContentFromText(text, genai.RoleUser))
+        }
+
+        result, _ := client.Models.EmbedContent(ctx,
+            "gemini-embedding-001",
+            contents,
+            &genai.EmbedContentRequest{TaskType: genai.TaskTypeSemanticSimilarity},
+        )
+
+        embeddings := result.Embeddings
+
+        for i := 0; i < len(texts); i++ {
+            for j := i + 1; j < len(texts); j++ {
+                similarity, _ := cosineSimilarity(embeddings[i].Values, embeddings[j].Values)
+                fmt.Printf("Similarity between '%s' and '%s': %.4f\n", texts[i], texts[j], similarity)
+            }
+        }
+    }
+
+### REST
+
+    curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent" \
+        -H "Content-Type: application/json" \
+        -H "x-goog-api-key: $GEMINI_API_KEY" \
+        -d '{
+        "taskType": "SEMANTIC_SIMILARITY",
+        "content": {
+            "parts": [
+            {
+                "text": "What is the meaning of life?"
+            },
+            {
+                "text": "How much wood would a woodchuck chuck?"
+            },
+            {
+                "text": "How does the brain work?"
+            }
+            ]
+        }
+        }'
 
 The code snippets will show how similar the different chunks of text are to one
 another when run.
@@ -280,6 +420,55 @@ output dimensions.
 
     main();
 
+### Go
+
+    package main
+
+    import (
+        "context"
+        "fmt"
+        "log"
+
+        "google.golang.org/genai"
+    )
+
+    func main() {
+        ctx := context.Background()
+        // The client uses Application Default Credentials.
+        // Authenticate with 'gcloud auth application-default login'.
+        client, err := genai.NewClient(ctx, nil)
+        if err != nil {
+            log.Fatal(err)
+        }
+        defer client.Close()
+
+        contents := []*genai.Content{
+            genai.NewContentFromText("What is the meaning of life?", genai.RoleUser),
+        }
+
+        result, err := client.Models.EmbedContent(ctx,
+            "gemini-embedding-2",
+            contents,
+            &genai.EmbedContentRequest{OutputDimensionality: 768},
+        )
+        if err != nil {
+            log.Fatal(err)
+        }
+
+        embedding := result.Embeddings[0]
+        embeddingLength := len(embedding.Values)
+        fmt.Printf("Length of embedding: %d\n", embeddingLength)
+    }
+
+### REST
+
+    curl -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:embedContent" \
+        -H 'Content-Type: application/json' \
+        -H "x-goog-api-key: $GEMINI_API_KEY" \
+        -d '{
+            "content": {"parts":[{ "text": "What is the meaning of life?"}]},
+            "output_dimensionality": 768
+        }'
 
 Example output from the code snippet:
 
@@ -403,6 +592,24 @@ through the [Files API](https://ai.google.dev/gemini-api/docs/files).
 
     main();
 
+### REST
+
+    IMG_PATH="/path/to/your/image.png"
+    IMG_BASE64=$(base64 -w0 "${IMG_PATH}")
+
+    curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:embedContent" \
+        -H "Content-Type: application/json" \
+        -H "x-goog-api-key: ${GEMINI_API_KEY}" \
+        -d '{
+            "content": {
+                "parts": [{
+                    "inline_data": {
+                        "mime_type": "image/png",
+                        "data": "'"${IMG_BASE64}"'"
+                    }
+                }]
+            }
+        }'
 
 ### Embedding aggregation
 
@@ -472,6 +679,27 @@ image input. Simply add multiple inputs to the `contents` parameter:
 
     main();
 
+### REST
+
+    IMG_PATH="/path/to/your/dog.png"
+    IMG_BASE64=$(base64 -w0 "${IMG_PATH}")
+
+    curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:embedContent" \
+        -H "Content-Type: application/json" \
+        -H "x-goog-api-key: ${GEMINI_API_KEY}" \
+        -d '{
+            "content": {
+                "parts": [
+                    {"text": "An image of a dog"},
+                    {
+                        "inline_data": {
+                            "mime_type": "image/png",
+                            "data": "'"${IMG_BASE64}"'"
+                        }
+                    }
+                ]
+            }
+        }'
 
 On the other hand, if you use `Content` objects inside the `contents` parameter,
 it returns separate embeddings. This example creates multiple embeddings in one
@@ -539,6 +767,26 @@ embedding call:
 
     main();
 
+### REST
+
+    IMG_PATH="/path/to/your/dog.png"
+    IMG_BASE64=$(base64 -w0 "${IMG_PATH}")
+
+    curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:batchEmbedContents" \
+        -H "Content-Type: application/json" \
+        -H "x-goog-api-key: ${GEMINI_API_KEY}" \
+        -d '{
+            "requests": [
+                {
+                    "model": "models/gemini-embedding-2",
+                    "content": {"parts": [{"text": "An image of a dog"}]}
+                },
+                {
+                    "model": "models/gemini-embedding-2",
+                    "content": {"parts": [{"inline_data": {"mime_type": "image/png", "data": "'"${IMG_BASE64}"'"}}]}
+                }
+            ]
+        }'
 
 ### Embedding audio
 
@@ -595,6 +843,24 @@ through the [Files API](https://ai.google.dev/gemini-api/docs/files).
 
     main();
 
+### REST
+
+    AUDIO_PATH="/path/to/your/example.mp3"
+    AUDIO_BASE64=$(base64 -w0 "${AUDIO_PATH}")
+
+    curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:embedContent" \
+        -H "Content-Type: application/json" \
+        -H "x-goog-api-key: ${GEMINI_API_KEY}" \
+        -d '{
+            "content": {
+                "parts": [{
+                    "inline_data": {
+                        "mime_type": "audio/mpeg",
+                        "data": "'"${AUDIO_BASE64}"'"
+                    }
+                }]
+            }
+        }'
 
 ### Embedding video
 
@@ -651,6 +917,24 @@ through the [Files API](https://ai.google.dev/gemini-api/docs/files).
 
     main();
 
+### REST
+
+    VIDEO_PATH="/path/to/your/video.mp4"
+    VIDEO_BASE64=$(base64 -w0 "${VIDEO_PATH}")
+
+    curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:embedContent" \
+        -H "Content-Type: application/json" \
+        -H "x-goog-api-key: ${GEMINI_API_KEY}" \
+        -d '{
+            "content": {
+                "parts": [{
+                    "inline_data": {
+                        "mime_type": "video/mp4",
+                        "data": "'"${VIDEO_BASE64}"'"
+                    }
+                }]
+            }
+        }'
 
 If you need to embed videos \>120 seconds, you can chunk the video into
 overlapping segments and embed those chunks individually.
@@ -710,6 +994,24 @@ through the [Files API](https://ai.google.dev/gemini-api/docs/files).
 
     main();
 
+### REST
+
+    PDF_PATH="/path/to/your/example.pdf"
+    PDF_BASE64=$(base64 -w0 "${PDF_PATH}")
+
+    curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:embedContent" \
+        -H "Content-Type: application/json" \
+        -H "x-goog-api-key: ${GEMINI_API_KEY}" \
+        -d '{
+            "content": {
+                "parts": [{
+                    "inline_data": {
+                        "mime_type": "application/pdf",
+                        "data": "'"${PDF_BASE64}"'"
+                    }
+                }]
+            }
+        }'
 
 ## Use cases
 

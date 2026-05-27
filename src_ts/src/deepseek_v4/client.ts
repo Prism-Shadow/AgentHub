@@ -45,12 +45,10 @@ export class DeepSeekV4Client extends LLMClient {
     super();
     this._model = options.model;
     const key = options.apiKey || process.env.DEEPSEEK_API_KEY || undefined;
-    const url = options.baseUrl || process.env.DEEPSEEK_BASE_URL;
-    if (!url) {
-      throw new Error(
-        "DeepSeek base_url is required. Pass baseUrl or set DEEPSEEK_BASE_URL.",
-      );
-    }
+    const url =
+      options.baseUrl ||
+      process.env.DEEPSEEK_BASE_URL ||
+      "https://api.deepseek.com";
     this._client = new OpenAI({ apiKey: key, baseURL: url });
   }
 
@@ -62,6 +60,7 @@ export class DeepSeekV4Client extends LLMClient {
       [ThinkingLevel.LOW]: { type: "enabled" },
       [ThinkingLevel.MEDIUM]: { type: "enabled" },
       [ThinkingLevel.HIGH]: { type: "enabled" },
+      [ThinkingLevel.XHIGH]: { type: "enabled" },
     };
     return mapping[thinkingLevel];
   }
@@ -69,9 +68,10 @@ export class DeepSeekV4Client extends LLMClient {
   private _convertReasoningEffort(thinkingLevel: ThinkingLevel): string | null {
     const mapping: { [key: string]: string | null } = {
       [ThinkingLevel.NONE]: null,
-      [ThinkingLevel.LOW]: null,
+      [ThinkingLevel.LOW]: "high",
       [ThinkingLevel.MEDIUM]: "high",
-      [ThinkingLevel.HIGH]: "max",
+      [ThinkingLevel.HIGH]: "high",
+      [ThinkingLevel.XHIGH]: "max",
     };
     return mapping[thinkingLevel];
   }
@@ -81,19 +81,12 @@ export class DeepSeekV4Client extends LLMClient {
       return toolChoice;
     }
     throw new Error(
-      'DeepSeek tool_choice config expected one of "auto" or "none".',
+      'DeepSeek V4 only supports "auto" and "none" for tool_choice.',
     );
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   transformUniConfigToModelConfig(config: UniConfig): any {
-    if (
-      config.prompt_caching !== undefined &&
-      config.prompt_caching !== PromptCaching.ENABLE
-    ) {
-      throw new Error("prompt_caching must be ENABLE for DeepSeek.");
-    }
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const deepseekConfig: any = {
       model: this._model,
@@ -106,7 +99,7 @@ export class DeepSeekV4Client extends LLMClient {
     }
 
     if (config.temperature !== undefined) {
-      throw new Error("DeepSeek does not support temperature.");
+      throw new Error("DeepSeek V4 does not support setting temperature.");
     }
 
     if (config.thinking_level !== undefined) {
@@ -136,6 +129,13 @@ export class DeepSeekV4Client extends LLMClient {
       deepseekConfig.tool_choice = this._convertToolChoice(config.tool_choice);
     }
 
+    if (
+      config.prompt_caching !== undefined &&
+      config.prompt_caching !== PromptCaching.ENABLE
+    ) {
+      throw new Error("prompt_caching must be ENABLE for DeepSeek.");
+    }
+
     return deepseekConfig;
   }
 
@@ -159,12 +159,8 @@ export class DeepSeekV4Client extends LLMClient {
           contentParts.push({ type: "text", text: item.text });
         } else if (item.type === "image_url") {
           throw new Error("DeepSeek does not support image url inputs.");
-        } else if (item.type === "inline_data") {
-          throw new Error("DeepSeek does not support inline data inputs.");
         } else if (item.type === "thinking") {
           thinking += item.thinking;
-        } else if (item.type === "inline_thinking") {
-          throw new Error("DeepSeek does not support inline thinking inputs.");
         } else if (item.type === "tool_call") {
           toolCalls.push({
             id: item.tool_call_id,
@@ -180,7 +176,9 @@ export class DeepSeekV4Client extends LLMClient {
           }
 
           if (item.images && item.images.length > 0) {
-            throw new Error("DeepSeek does not support images in tool results.");
+            throw new Error(
+              "DeepSeek does not support images in tool results.",
+            );
           }
 
           deepseekMessages.push({
@@ -268,10 +266,11 @@ export class DeepSeekV4Client extends LLMClient {
 
     if (modelOutput.usage) {
       eventType = eventType || "stop";
-      const completionTokenDetails = modelOutput.usage.completion_tokens_details;
+      const completionTokenDetails =
+        modelOutput.usage.completion_tokens_details;
       const reasoningTokens = completionTokenDetails
         ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (completionTokenDetails as any).reasoning_tokens ?? null
+          ((completionTokenDetails as any).reasoning_tokens ?? null)
         : null;
       const responseTokens =
         modelOutput.usage.completion_tokens - (reasoningTokens || 0);

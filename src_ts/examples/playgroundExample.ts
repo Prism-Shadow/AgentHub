@@ -17,9 +17,10 @@
  *
  * This example shows how to start the playground server for interactive
  * chat with LLMs. The playground supports:
- * - Config editing (model, temperature, max_tokens)
+ * - Config editing (model, API key, base URL)
  * - Streaming chat responses
  * - Message cards with token usage and finish reasons
+ * - Integrated tracer at /tracer
  */
 
 import { startPlaygroundServer } from "../src/integration/playground";
@@ -29,6 +30,7 @@ console.log("AgentHub LLM Playground");
 console.log("=".repeat(60));
 console.log("\nStarting web server...");
 console.log("\nOpen http://127.0.0.1:25751 in your browser to start chatting!");
+console.log("Open http://127.0.0.1:25751/tracer/ to browse traces.");
 console.log("Press Ctrl+C to stop the server.\n");
 
 startPlaygroundServer("127.0.0.1", 25751);

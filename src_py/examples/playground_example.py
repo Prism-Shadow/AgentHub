@@ -17,9 +17,10 @@ Example demonstrating the AgentHub Playground.
 
 This example shows how to start the playground server for interactive
 chat with LLMs. The playground supports:
-- Config editing (model, temperature, max_tokens)
+- Config editing (model, API key, base URL)
 - Streaming chat responses
 - Message cards with token usage and finish reasons
+- Integrated tracer at /tracer
 """
 
 from agenthub.integration.playground import start_playground_server
@@ -31,6 +32,7 @@ if __name__ == "__main__":
     print("=" * 60)
     print("\nStarting web server...")
     print("\nOpen http://127.0.0.1:25751 in your browser to start chatting!")
+    print("Open http://127.0.0.1:25751/tracer/ to browse traces.")
     print("Press Ctrl+C to stop the server.\n")
 
     start_playground_server(host="127.0.0.1", port=25751, debug=False)

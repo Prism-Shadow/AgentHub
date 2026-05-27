@@ -160,6 +160,29 @@ class Tracer:
         else:
             return f"{label}: {mime_type} ({mb_count:.2f} MB)"
 
+    @staticmethod
+    def _format_embedding_preview(item: dict[str, Any]) -> str:
+        values = item.get("embedding") or []
+        preview = ", ".join(str(value) for value in values[:5])
+        return f"Embedding: [{preview}]"
+
+    @staticmethod
+    def _normalize_base_path(base_path: str = "") -> str:
+        """Normalize a URL prefix used when tracer is mounted inside another app."""
+        if not base_path or base_path == "/":
+            return ""
+        prefixed = base_path if base_path.startswith("/") else f"/{base_path}"
+        return prefixed[:-1] if prefixed.endswith("/") else prefixed
+
+    @staticmethod
+    def _prefix_url(base_path: str, url: str) -> str:
+        """Prefix an internal tracer URL with the mount path."""
+        if not base_path:
+            return url
+        if url == "/":
+            return f"{base_path}/"
+        return f"{base_path}{url}"
+
     def save_history(self, model: str, history: list[UniMessage], file_id: str, config: dict[str, Any]) -> None:
         """
         Save conversation history to files.
@@ -236,6 +259,8 @@ class Tracer:
                     lines.append(f"Image URL: {item['image_url']}")
                 elif item["type"] == "inline_data":
                     lines.append(self._format_inline_data_summary(item))
+                elif item["type"] == "embedding":
+                    lines.append(self._format_embedding_preview(item))
                 elif item["type"] == "tool_call":
                     lines.append(f"Tool Call: {item['name']}")
                     lines.append(f"  Arguments: {json.dumps(item['arguments'], indent=2, ensure_ascii=False)}")
@@ -279,7 +304,7 @@ class Tracer:
 
         return "\n".join(lines)
 
-    def create_web_app(self) -> Flask:
+    def create_web_app(self, base_path: str = "") -> Flask:
         """
         Create a Flask web application for browsing conversation files.
 
@@ -288,6 +313,7 @@ class Tracer:
         """
         app = Flask(__name__)
         app.jinja_env.policies["json.dumps_kwargs"] = {"ensure_ascii": False}
+        base_path = self._normalize_base_path(base_path)
 
         @app.template_filter("format_ts")
         def format_ts(ms: int | None) -> str:
@@ -310,6 +336,11 @@ class Tracer:
         def inline_thinking_summary(item: dict[str, Any]) -> str:
             """Render a concise inline_thinking summary."""
             return self._format_inline_data_summary(item, is_thinking=True)
+
+        @app.template_filter("embedding_preview")
+        def embedding_preview(item: dict[str, Any]) -> str:
+            """Render the first five embedding values."""
+            return self._format_embedding_preview(item)
 
         # HTML template for directory listing
         DIRECTORY_TEMPLATE = """
@@ -484,6 +515,10 @@ class Tracer:
                                                 </div>
                                             {% endif %}
                                         </div>
+                                    {% elif item.type == 'embedding' %}
+                                        <div class="bg-indigo-50 p-4 rounded-md border-l-4 border-indigo-500">
+                                            <div class="font-mono text-sm whitespace-pre-wrap text-gray-800">{{ item|embedding_preview|e }}</div>
+                                        </div>
                                     {% endif %}
                                 </div>
                             {% endfor %}
@@ -605,15 +640,20 @@ class Tracer:
                 try:
                     # Build breadcrumb
                     parts = subpath.split("/") if subpath else []
-                    breadcrumb_parts = ['<a href="/">cache</a>']
+                    breadcrumb_parts = [f'<a href="{self._prefix_url(base_path, "/")}">cache</a>']
                     for i, part in enumerate(parts[:-1]):
                         path_to_part = "/".join(parts[: i + 1])
-                        breadcrumb_parts.append(f'<a href="/{path_to_part}">{part}</a>')
+                        breadcrumb_parts.append(
+                            f'<a href="{self._prefix_url(base_path, "/" + path_to_part)}">{part}</a>'
+                        )
                     breadcrumb_parts.append(f"<strong>{parts[-1]}</strong>" if parts else "")
                     breadcrumb = " / ".join(breadcrumb_parts)
 
                     # Determine back URL
-                    back_url = "/" + "/".join(parts[:-1]) if len(parts) > 1 else "/"
+                    back_url = self._prefix_url(
+                        base_path,
+                        "/" + "/".join(parts[:-1]) if len(parts) > 1 else "/",
+                    )
 
                     # If it's a JSON file, render with the JSON viewer
                     if full_path.suffix == ".json":
@@ -677,7 +717,7 @@ class Tracer:
                     item_info: dict[str, Any] = {
                         "name": entry.name,
                         "is_dir": entry.is_dir(),
-                        "url": f"/{relative_path}",
+                        "url": self._prefix_url(base_path, f"/{relative_path}"),
                         "mtime": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
                     }
                     if entry.is_file():
@@ -694,14 +734,14 @@ class Tracer:
 
             # Build breadcrumb
             parts = subpath.split("/") if subpath else []
-            breadcrumb_parts = ['<a href="/">cache</a>']
+            breadcrumb_parts = [f'<a href="{self._prefix_url(base_path, "/")}">cache</a>']
             for i, part in enumerate(parts):
                 if part:
                     path_to_part = "/".join(parts[: i + 1])
-                    breadcrumb_parts.append(f'<a href="/{path_to_part}">{part}</a>')
+                    breadcrumb_parts.append(f'<a href="{self._prefix_url(base_path, "/" + path_to_part)}">{part}</a>')
             breadcrumb = " / ".join(breadcrumb_parts)
 
-            base_url = "/" + subpath if subpath else "/"
+            base_url = self._prefix_url(base_path, "/" + subpath if subpath else "/")
             sort_name_url = base_url + "?sort=name"
             sort_mtime_url = base_url + "?sort=mtime"
 

@@ -64,6 +64,7 @@ export class GPT5_5Client extends LLMClient {
       [ThinkingLevel.LOW]: "low",
       [ThinkingLevel.MEDIUM]: "medium",
       [ThinkingLevel.HIGH]: "high",
+      [ThinkingLevel.XHIGH]: "xhigh",
     };
     return mapping[thinkingLevel];
   }
@@ -78,13 +79,9 @@ export class GPT5_5Client extends LLMClient {
         mode: "required",
         tools: toolChoice.map((name) => ({ type: "function", name })),
       };
-    } else if (toolChoice === "none") {
-      return "none";
-    } else if (toolChoice === "auto") {
-      return "auto";
-    } else if (toolChoice === "required") {
-      return "required";
     }
+
+    return toolChoice;
   }
 
   /**
