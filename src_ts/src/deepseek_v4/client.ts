@@ -98,7 +98,7 @@ export class DeepSeekV4Client extends LLMClient {
       deepseekConfig.max_tokens = config.max_tokens;
     }
 
-    if (config.temperature !== undefined) {
+    if (config.temperature !== undefined && config.temperature !== 1.0) {
       throw new Error("DeepSeek V4 does not support setting temperature.");
     }
 

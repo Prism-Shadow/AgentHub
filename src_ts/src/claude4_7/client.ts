@@ -201,7 +201,7 @@ export class Claude4_7Client extends LLMClient {
       claudeConfig.max_tokens = 32768;
     }
 
-    if (config.temperature !== undefined) {
+    if (config.temperature !== undefined && config.temperature !== 1.0) {
       throw new Error("Claude 4.7 does not support setting temperature.");
     }
 

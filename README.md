@@ -12,6 +12,8 @@
 
 AgentHub is the LLM API Hub for the Agent era, built for high-precision autonomous agents.
 
+Using a coding agent? Install the AgentHub SKILL files from [`skills/`](skills/) so it can use AgentHub correctly in generated code.
+
 📢 Follow us on X: [![Twitter](https://img.shields.io/twitter/follow/prismshadow_ai)](https://twitter.com/prismshadow_ai) or join our [Discord Community](https://discord.gg/4TQ2bsSb)
 
 ## Why AgentHub?
