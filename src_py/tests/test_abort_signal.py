@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import threading
 from typing import Any, AsyncIterator
 
 import pytest
@@ -89,6 +90,22 @@ async def test_abort_signal_waits_until_aborted() -> None:
 
     await asyncio.wait_for(waiter, timeout=1)
     assert signal.aborted
+
+
+@pytest.mark.asyncio
+async def test_abort_signal_can_abort_from_another_thread() -> None:
+    signal = AbortSignal()
+    waiter = asyncio.create_task(signal.wait())
+
+    await asyncio.sleep(0)
+
+    thread = threading.Thread(target=lambda: signal.abort("thread-stop"))
+    thread.start()
+    thread.join(timeout=1)
+
+    await asyncio.wait_for(waiter, timeout=1)
+    assert signal.aborted
+    assert signal.reason == "thread-stop"
 
 
 @pytest.mark.asyncio

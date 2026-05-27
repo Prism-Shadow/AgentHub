@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import threading
 from contextlib import suppress
 from typing import Any, Awaitable, TypeVar
 
@@ -24,52 +25,56 @@ class AbortSignal:
     """Abort signal that can also trigger its own aborted state."""
 
     def __init__(self) -> None:
+        self._lock = threading.Lock()
         self._aborted = False
         self._reason: Any = None
         self._waiters: set[asyncio.Future[None]] = set()
 
     @property
     def aborted(self) -> bool:
-        return self._aborted
+        with self._lock:
+            return self._aborted
 
     @property
     def reason(self) -> Any:
-        return self._reason
+        with self._lock:
+            return self._reason
 
     def abort(self, reason: Any = None) -> None:
-        if self._aborted:
-            return
+        with self._lock:
+            if self._aborted:
+                return
 
-        self._aborted = True
-        self._reason = reason
+            self._aborted = True
+            self._reason = reason
+            waiters = tuple(self._waiters)
+            self._waiters.clear()
 
-        waiters = tuple(self._waiters)
-        self._waiters.clear()
         for waiter in waiters:
-            loop = waiter.get_loop()
-            if loop.is_running():
-                loop.call_soon_threadsafe(_set_waiter_result, waiter)
-            else:
-                _set_waiter_result(waiter)
+            _notify_waiter(waiter)
 
     async def wait(self) -> None:
-        if self._aborted:
-            return
-
         loop = asyncio.get_running_loop()
         waiter = loop.create_future()
-        self._waiters.add(waiter)
-        if self._aborted:
-            self._waiters.discard(waiter)
-            _set_waiter_result(waiter)
+        with self._lock:
+            if self._aborted:
+                return
+
+            self._waiters.add(waiter)
+
         try:
             await waiter
         finally:
-            self._waiters.discard(waiter)
+            with self._lock:
+                self._waiters.discard(waiter)
 
     def throw_if_aborted(self) -> None:
-        if self._aborted:
-            raise _cancelled_error(self._reason)
+        with self._lock:
+            aborted = self._aborted
+            reason = self._reason
+
+        if aborted:
+            raise _cancelled_error(reason)
 
 
 async def run_with_abort(awaitable: Awaitable[T], signal: AbortSignal) -> T:
@@ -110,6 +115,17 @@ async def run_with_abort(awaitable: Awaitable[T], signal: AbortSignal) -> T:
 def _set_waiter_result(waiter: asyncio.Future[None]) -> None:
     if not waiter.done():
         waiter.set_result(None)
+
+
+def _notify_waiter(waiter: asyncio.Future[None]) -> None:
+    loop = waiter.get_loop()
+    if loop.is_closed():
+        return
+
+    if loop.is_running():
+        loop.call_soon_threadsafe(_set_waiter_result, waiter)
+    else:
+        _set_waiter_result(waiter)
 
 
 def _cancelled_error(reason: Any) -> asyncio.CancelledError:
