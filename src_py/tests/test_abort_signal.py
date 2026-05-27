@@ -65,6 +65,76 @@ class SlowStreamingClient(LLMClient):
         }
 
 
+class MultiEventStreamingClient(LLMClient):
+    def __init__(self) -> None:
+        self._model = "multi-event-test"
+        self._history = []
+
+    def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
+        return dict(config)
+
+    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[UniMessage]:
+        return messages
+
+    def transform_model_output_to_uni_event(self, model_output: UniEvent) -> UniEvent:
+        return model_output
+
+    async def _streaming_response_internal(
+        self,
+        messages: list[UniMessage],
+        config: UniConfig,
+    ) -> AsyncIterator[UniEvent]:
+        for text in ("hello", " world"):
+            await asyncio.sleep(0)
+            yield {
+                "role": "assistant",
+                "event_type": "delta",
+                "content_items": [{"type": "text", "text": text}],
+                "usage_metadata": None,
+                "finish_reason": None,
+                "created_at": 0,
+            }
+
+        await asyncio.sleep(0)
+        yield {
+            "role": "assistant",
+            "event_type": "stop",
+            "content_items": [],
+            "usage_metadata": {
+                "cached_tokens": None,
+                "prompt_tokens": 1,
+                "thoughts_tokens": None,
+                "response_tokens": 2,
+            },
+            "finish_reason": "stop",
+            "created_at": 0,
+        }
+
+
+class CountingAbortSignal(AbortSignal):
+    def __init__(self) -> None:
+        super().__init__()
+        self.wait_count = 0
+
+    async def wait(self) -> None:
+        self.wait_count += 1
+        await super().wait()
+
+
+class StreamCreationTrackingClient(MultiEventStreamingClient):
+    def __init__(self) -> None:
+        super().__init__()
+        self.stream_created = False
+
+    def _streaming_response_internal(
+        self,
+        messages: list[UniMessage],
+        config: UniConfig,
+    ) -> AsyncIterator[UniEvent]:
+        self.stream_created = True
+        return super()._streaming_response_internal(messages, config)
+
+
 def test_abort_signal_state_is_idempotent() -> None:
     signal = AbortSignal()
 
@@ -195,3 +265,29 @@ async def test_streaming_response_cancels_current_iteration_when_signal_aborts()
         await task
 
     assert client.cleaned.is_set()
+
+
+@pytest.mark.asyncio
+async def test_streaming_response_reuses_one_abort_waiter_for_whole_stream() -> None:
+    client = MultiEventStreamingClient()
+    signal = CountingAbortSignal()
+    messages: list[UniMessage] = [{"role": "user", "content_items": [{"type": "text", "text": "hello"}]}]
+
+    events = [event async for event in client.streaming_response(messages=messages, config={}, signal=signal)]
+
+    assert len(events) == 3
+    assert signal.wait_count == 1
+
+
+@pytest.mark.asyncio
+async def test_streaming_response_does_not_create_stream_when_signal_is_already_aborted() -> None:
+    client = StreamCreationTrackingClient()
+    signal = AbortSignal()
+    signal.abort("stop")
+    messages: list[UniMessage] = [{"role": "user", "content_items": [{"type": "text", "text": "hello"}]}]
+
+    with pytest.raises(asyncio.CancelledError):
+        async for _ in client.streaming_response(messages=messages, config={}, signal=signal):
+            pass
+
+    assert not client.stream_created
