@@ -15,6 +15,7 @@
 import os
 from typing import Any, AsyncIterator
 
+from .abort_signal import AbortSignal
 from .base_client import LLMClient
 from .types import UniConfig, UniEvent, UniMessage
 
@@ -46,10 +47,16 @@ class AutoLLMClient(LLMClient):
     ) -> LLMClient:
         """Create the appropriate client for the given model."""
         client_type = client_type or os.getenv("CLIENT_TYPE", model.lower())
-        if "gemini-3-" in client_type or "gemini-3.1-" in client_type:  # e.g., gemini-3-flash-preview
+        if any(
+            prefix in client_type for prefix in ("gemini-3-", "gemini-3.1-", "gemini-3.5-", "gemini-embedding")
+        ):  # e.g., gemini-3-flash-preview, gemini-embedding-2
             from .gemini3 import Gemini3Client
 
             return Gemini3Client(model=model, api_key=api_key, base_url=base_url)
+        elif "claude" in client_type and "4-7" in client_type:  # e.g., claude-opus-4-7
+            from .claude4_7 import Claude4_7Client
+
+            return Claude4_7Client(model=model, api_key=api_key, base_url=base_url)
         elif "claude" in client_type and "4-6" in client_type:  # e.g., claude-sonnet-4-6
             from .claude4_6 import Claude4_6Client
 
@@ -58,22 +65,26 @@ class AutoLLMClient(LLMClient):
             from .gpt5_5 import GPT5_5Client
 
             return GPT5_5Client(model=model, api_key=api_key, base_url=base_url)
-        elif "glm-5" in client_type:
-            from .glm5 import GLM5Client
+        elif "glm-5" in client_type or "glm-5.1" in client_type:
+            from .glm5_1 import GLM5_1Client
 
-            return GLM5Client(model=model, api_key=api_key, base_url=base_url)
-        elif "kimi-k2.5" in client_type:
-            from .kimi_k2_5 import KimiK2_5Client
+            return GLM5_1Client(model=model, api_key=api_key, base_url=base_url)
+        elif "kimi-k2.5" in client_type or "kimi-k2.6" in client_type:
+            from .kimi_k2_6 import KimiK2_6Client
 
-            return KimiK2_5Client(model=model, api_key=api_key, base_url=base_url)
-        elif "qwen3" in client_type:
-            from .qwen3 import Qwen3Client
+            return KimiK2_6Client(model=model, api_key=api_key, base_url=base_url)
+        elif "qwen3.6" in client_type:
+            from .qwen3_6 import Qwen3_6Client
 
-            return Qwen3Client(model=model, api_key=api_key, base_url=base_url)
+            return Qwen3_6Client(model=model, api_key=api_key, base_url=base_url)
+        elif "deepseek-v4-" in client_type:
+            from .deepseek_v4 import DeepSeekV4Client
+
+            return DeepSeekV4Client(model=model, api_key=api_key, base_url=base_url)
         else:
             raise ValueError(
                 f"{client_type} is not supported. "
-                "Supported client types: gemini-3, claude-4-6, gpt-5.4, gpt-5.5, glm-5, kimi-k2.5, qwen3."
+                "Supported client types: gemini-3, claude-4-7, claude-4-6, gpt-5.4, gpt-5.5, glm-5.1, kimi-k2.5, kimi-k2.6, qwen3.6, deepseek-v4."
             )
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:
@@ -99,11 +110,13 @@ class AutoLLMClient(LLMClient):
         self,
         messages: list[UniMessage],
         config: UniConfig,
+        signal: AbortSignal | None = None,
     ) -> AsyncIterator[UniEvent]:
         """Route to underlying client's streaming_response."""
         async for event in self._client.streaming_response(
             messages=messages,
             config=config,
+            signal=signal,
         ):
             yield event
 
@@ -111,11 +124,13 @@ class AutoLLMClient(LLMClient):
         self,
         message: UniMessage,
         config: UniConfig,
+        signal: AbortSignal | None = None,
     ) -> AsyncIterator[UniEvent]:
         """Route to underlying client's streaming_response_stateful."""
         async for event in self._client.streaming_response_stateful(
             message=message,
             config=config,
+            signal=signal,
         ):
             yield event
 

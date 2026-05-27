@@ -12,11 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import time
 from abc import ABC, abstractmethod
+from contextlib import suppress
 from typing import Any, AsyncIterator
 
-from .types import ContentItem, FinishReason, UniConfig, UniEvent, UniMessage, UsageMetadata
+from .abort_signal import AbortSignal
+from .types import (
+    ContentItem,
+    FinishReason,
+    UniConfig,
+    UniEvent,
+    UniMessage,
+    UsageMetadata,
+)
 
 
 class LLMClient(ABC):
@@ -156,6 +166,7 @@ class LLMClient(ABC):
         self,
         messages: list[UniMessage],
         config: UniConfig,
+        signal: AbortSignal | None = None,
     ) -> AsyncIterator[UniEvent]:
         """
         Generate content in streaming mode (stateless).
@@ -167,6 +178,7 @@ class LLMClient(ABC):
         Args:
             messages: List of universal message dictionaries containing conversation history
             config: Universal configuration dict
+            signal: Optional abort signal used to cancel the active request
 
         Yields:
             Universal events from the streaming response
@@ -178,11 +190,58 @@ class LLMClient(ABC):
 
         last_event: UniEvent | None = None
         events = []
-        async for event in self._streaming_response_internal(messages, config):
-            event["created_at"] = int(time.time() * 1000)
-            last_event = event
-            events.append(event)
-            yield event
+        if signal is not None:
+            signal.throw_if_aborted()
+
+        stream = self._streaming_response_internal(messages, config)
+        abort_task: asyncio.Task[None] | None = None
+        waiting_for_stream = False
+        if signal is not None:
+            streaming_task = asyncio.current_task()
+            abort_task = asyncio.create_task(signal.wait())
+
+            def cancel_streaming_task(task: asyncio.Task[None]) -> None:
+                if (
+                    task.cancelled()
+                    or not signal.aborted
+                    or not waiting_for_stream
+                    or streaming_task is None
+                    or streaming_task.done()
+                ):
+                    return
+
+                streaming_task.cancel(signal.reason)
+
+            abort_task.add_done_callback(cancel_streaming_task)
+
+        try:
+            while True:
+                try:
+                    if signal is not None:
+                        signal.throw_if_aborted()
+                        waiting_for_stream = True
+                        signal.throw_if_aborted()
+
+                    event = await anext(stream)
+                except StopAsyncIteration:
+                    break
+                except asyncio.CancelledError:
+                    if signal is not None and signal.aborted:
+                        signal.throw_if_aborted()
+                    raise
+                finally:
+                    waiting_for_stream = False
+
+                event["created_at"] = int(time.time() * 1000)
+                last_event = event
+                events.append(event)
+                yield event
+        finally:
+            if abort_task is not None and not abort_task.done():
+                abort_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await abort_task
+            await stream.aclose()
 
         self._validate_last_event(last_event)
 
@@ -198,6 +257,7 @@ class LLMClient(ABC):
         self,
         message: UniMessage,
         config: UniConfig,
+        signal: AbortSignal | None = None,
     ) -> AsyncIterator[UniEvent]:
         """
         Generate content in streaming mode (stateful).
@@ -209,6 +269,7 @@ class LLMClient(ABC):
         Args:
             message: Latest universal message dictionary to add to conversation
             config: Universal configuration dict
+            signal: Optional abort signal used to cancel the active request
 
         Yields:
             Universal events from the streaming response
@@ -218,7 +279,7 @@ class LLMClient(ABC):
 
         # Collect all events for history
         events = []
-        async for event in self.streaming_response(messages=temp_messages, config=config):
+        async for event in self.streaming_response(messages=temp_messages, config=config, signal=signal):
             events.append(event)
             yield event
 

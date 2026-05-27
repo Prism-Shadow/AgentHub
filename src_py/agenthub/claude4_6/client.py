@@ -110,6 +110,7 @@ class Claude4_6Client(LLMClient):
             ThinkingLevel.LOW: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "low"}},
             ThinkingLevel.MEDIUM: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "medium"}},
             ThinkingLevel.HIGH: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "high"}},
+            ThinkingLevel.XHIGH: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "high"}},
         }
         return mapping.get(thinking_level)
 
@@ -373,7 +374,9 @@ class Claude4_6Client(LLMClient):
                             "arguments": "",
                             "tool_call_id": item["tool_call_id"],
                         }
-                        yield event
+
+                if event["content_items"]:
+                    yield event
 
                 if event["usage_metadata"] is not None:
                     # initialize partial_usage

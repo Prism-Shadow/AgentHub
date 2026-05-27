@@ -18,6 +18,7 @@ import { expect, describe, test } from "@jest/globals";
 
 const IMAGE =
   "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg";
+const IMAGE_KEYWORDS = ["flower", "narcissus", "daffodil", "bloom"];
 
 interface Model {
   name: string;
@@ -26,6 +27,7 @@ interface Model {
   supportImageUnderstanding: boolean;
   supportImageGeneration: boolean;
   supportAudioGeneration: boolean;
+  supportEmbedding: boolean;
   provider:
     | "official"
     | "bedrock"
@@ -39,12 +41,13 @@ const AVAILABLE_MODELS: Model[] = [];
 
 if (process.env.GEMINI_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "gemini-3-flash-preview",
+    name: "gemini-3.5-flash",
     supportTextGeneration: true,
     supportTemperature: true,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
     provider: "official",
   });
 
@@ -55,6 +58,7 @@ if (process.env.GEMINI_API_KEY) {
     supportImageUnderstanding: false,
     supportImageGeneration: true,
     supportAudioGeneration: false,
+    supportEmbedding: false,
     provider: "official",
   });
 
@@ -65,6 +69,18 @@ if (process.env.GEMINI_API_KEY) {
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: true,
+    supportEmbedding: false,
+    provider: "official",
+  });
+
+  AVAILABLE_MODELS.push({
+    name: "gemini-embedding-2",
+    supportTextGeneration: false,
+    supportTemperature: false,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    supportEmbedding: true,
     provider: "official",
   });
 }
@@ -77,6 +93,7 @@ if (process.env.ANTHROPIC_API_KEY) {
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
     provider: "official",
   });
 }
@@ -89,30 +106,46 @@ if (process.env.OPENAI_API_KEY) {
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
     provider: "official",
   });
 }
 
 if (process.env.ZAI_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "glm-5",
+    name: "glm-5.1",
     supportTextGeneration: true,
     supportTemperature: true,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
     provider: "official",
   });
 }
 
 if (process.env.MOONSHOT_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "kimi-k2.5",
+    name: "kimi-k2.6",
     supportTextGeneration: true,
     supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
+    provider: "official",
+  });
+}
+
+if (process.env.DEEPSEEK_API_KEY) {
+  AVAILABLE_MODELS.push({
+    name: "deepseek-v4-flash",
+    supportTextGeneration: true,
+    supportTemperature: false,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    supportEmbedding: false,
     provider: "official",
   });
 }
@@ -125,18 +158,20 @@ if (process.env.BEDROCK_API_KEY) {
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
     provider: "bedrock",
   });
 }
 
 if (process.env.VERTEX_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "gemini-3-flash-preview",
+    name: "gemini-3.5-flash",
     supportTextGeneration: true,
     supportTemperature: true,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
     provider: "vertex",
   });
 
@@ -147,6 +182,7 @@ if (process.env.VERTEX_API_KEY) {
     supportImageUnderstanding: false,
     supportImageGeneration: true,
     supportAudioGeneration: false,
+    supportEmbedding: false,
     provider: "vertex",
   });
 
@@ -157,6 +193,7 @@ if (process.env.VERTEX_API_KEY) {
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: true,
+    supportEmbedding: false,
     provider: "vertex",
   });
 }
@@ -165,60 +202,66 @@ const RUN_SLOW_TEST = process.env.RUN_SLOW_TEST === "1";
 
 if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
-    name: "z-ai/glm-5",
+    name: "z-ai/glm-5.1",
     supportTextGeneration: true,
     supportTemperature: true,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
-    name: "qwen/qwen3-30b-a3b-thinking-2507",
+    name: "qwen/qwen3.6-35b-a3b",
     supportTextGeneration: true,
     supportTemperature: true,
-    supportImageUnderstanding: false,
+    supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
-    name: "moonshotai/kimi-k2.5",
+    name: "moonshotai/kimi-k2.6",
     supportTextGeneration: true,
     supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
     provider: "openrouter",
   });
 }
 
 if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
-    name: "Pro/zai-org/GLM-5",
+    name: "Pro/zai-org/GLM-5.1",
     supportTextGeneration: true,
     supportTemperature: true,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
     provider: "siliconflow",
   });
   AVAILABLE_MODELS.push({
-    name: "Qwen/Qwen3-8B",
+    name: "Qwen/Qwen3.6-35B-A3B",
     supportTextGeneration: true,
     supportTemperature: true,
-    supportImageUnderstanding: false,
+    supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
     provider: "siliconflow",
   });
   AVAILABLE_MODELS.push({
-    name: "Pro/moonshotai/Kimi-K2.5",
+    name: "Pro/moonshotai/Kimi-K2.6",
     supportTextGeneration: true,
     supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
     provider: "siliconflow",
   });
 }
@@ -231,6 +274,7 @@ if (process.env.MODELVERSE_API_KEY && RUN_SLOW_TEST) {
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
     provider: "modelverse",
   });
   AVAILABLE_MODELS.push({
@@ -240,6 +284,7 @@ if (process.env.MODELVERSE_API_KEY && RUN_SLOW_TEST) {
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
+    supportEmbedding: false,
     provider: "modelverse",
   });
 }
@@ -274,6 +319,7 @@ function createClient(model: Model): AutoLLMClient {
 
   return new AutoLLMClient({ model: model.name, apiKey, baseUrl });
 }
+
 function checkEventIntegrity(event: UniEvent): void {
   expect(event).toHaveProperty("role");
   expect(event).toHaveProperty("event_type");
@@ -698,8 +744,7 @@ if (AVAILABLE_MODELS.length > 0) {
       }
 
       expect(
-        text.toLowerCase().includes("flower") ||
-          text.toLowerCase().includes("narcissus"),
+        IMAGE_KEYWORDS.some((keyword) => text.toLowerCase().includes(keyword)),
       ).toBe(true);
     }, 60000);
 
@@ -745,8 +790,7 @@ if (AVAILABLE_MODELS.length > 0) {
       }
 
       expect(
-        text.toLowerCase().includes("flower") ||
-          text.toLowerCase().includes("narcissus"),
+        IMAGE_KEYWORDS.some((keyword) => text.toLowerCase().includes(keyword)),
       ).toBe(true);
     }, 60000);
 
@@ -826,8 +870,7 @@ if (AVAILABLE_MODELS.length > 0) {
       }
 
       expect(
-        text.toLowerCase().includes("flower") ||
-          text.toLowerCase().includes("narcissus"),
+        IMAGE_KEYWORDS.some((keyword) => text.toLowerCase().includes(keyword)),
       ).toBe(true);
     }, 60000);
 
@@ -915,6 +958,41 @@ if (AVAILABLE_MODELS.length > 0) {
       ).toBe(true);
       expect(inlineItems.every((item) => item.data.length > 0)).toBe(true);
     }, 180000);
+
+    test("should stream text embeddings", async () => {
+      if (!model.supportEmbedding) {
+        return;
+      }
+
+      const client = createClient(model);
+      const texts = ["Hello world", "Goodbye world"];
+
+      const events: UniEvent[] = [];
+      for await (const event of client.streamingResponse({
+        messages: texts.map((text) => ({
+          role: "user",
+          content_items: [
+            {
+              type: "text" as const,
+              text,
+            },
+          ],
+        })),
+        config: { embedding_config: { dimensions: 768 } },
+      })) {
+        checkEventIntegrity(event);
+        events.push(event);
+      }
+
+      const embeddingItems = events.flatMap((event) =>
+        event.content_items.filter((item) => item.type === "embedding"),
+      );
+      expect(embeddingItems.length).toBe(2);
+      for (const item of embeddingItems) {
+        expect(item.embedding.length).toBe(768);
+        expect(item.embedding.every((v) => typeof v === "number")).toBe(true);
+      }
+    }, 60000);
   });
 }
 

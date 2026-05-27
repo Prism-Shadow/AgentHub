@@ -34,6 +34,7 @@ import {
   FunctionResponseBlob,
   FunctionResponse,
   VoiceConfig,
+  EmbedContentConfig,
 } from "@google/genai";
 import * as path from "path";
 import { LLMClient } from "../baseClient";
@@ -115,6 +116,7 @@ export class Gemini3Client extends LLMClient {
    */
   private async _getImageBytesAndMimeType(
     url: string,
+    signal?: AbortSignal,
   ): Promise<{ data: Buffer; mimeType: string }> {
     if (url.startsWith("data:")) {
       const match = url.match(/^data:([^;]+);base64,(.+)$/);
@@ -127,7 +129,7 @@ export class Gemini3Client extends LLMClient {
         throw new Error(`Invalid base64 image: ${url}`);
       }
     } else {
-      const response = await fetch(url);
+      const response = await fetch(url, { signal });
       if (!response.ok) {
         throw new Error(`Failed to fetch image: ${url}`);
       }
@@ -151,6 +153,7 @@ export class Gemini3Client extends LLMClient {
       [ThinkingLevel.LOW]: GeminiThinkingLevel.LOW,
       [ThinkingLevel.MEDIUM]: GeminiThinkingLevel.MEDIUM,
       [ThinkingLevel.HIGH]: GeminiThinkingLevel.HIGH,
+      [ThinkingLevel.XHIGH]: GeminiThinkingLevel.HIGH,
     };
     return mapping[thinkingLevel];
   }
@@ -174,6 +177,16 @@ export class Gemini3Client extends LLMClient {
       return { mode: "ANY" } as FunctionCallingConfig;
     }
     return undefined;
+  }
+
+  private _withAbortSignal<T extends { abortSignal?: AbortSignal }>(
+    config: T | undefined,
+    signal?: AbortSignal,
+  ): T | undefined {
+    if (!signal) {
+      return config;
+    }
+    return { ...(config ?? {}), abortSignal: signal } as T;
   }
 
   /**
@@ -285,6 +298,7 @@ export class Gemini3Client extends LLMClient {
    */
   async transformUniMessageToModelInput(
     messages: UniMessage[],
+    signal?: AbortSignal,
   ): Promise<Content[]> {
     const mapping: { [key: string]: string } = {
       user: "user",
@@ -302,7 +316,10 @@ export class Gemini3Client extends LLMClient {
           } as Part);
         } else if (item.type === "image_url") {
           const urlValue = item.image_url;
-          const imageData = await this._getImageBytesAndMimeType(urlValue);
+          const imageData = await this._getImageBytesAndMimeType(
+            urlValue,
+            signal,
+          );
           parts.push({
             inlineData: {
               mimeType: imageData.mimeType,
@@ -352,7 +369,10 @@ export class Gemini3Client extends LLMClient {
 
           if (item.images) {
             for (const imageUrl of item.images) {
-              const imageData = await this._getImageBytesAndMimeType(imageUrl);
+              const imageData = await this._getImageBytesAndMimeType(
+                imageUrl,
+                signal,
+              );
               multimodalParts.push({
                 inlineData: {
                   mimeType: imageData.mimeType,
@@ -475,13 +495,65 @@ export class Gemini3Client extends LLMClient {
     };
   }
 
+  private async *_embedMessagesInternal(options: {
+    messages: UniMessage[];
+    config: UniConfig;
+    signal?: AbortSignal;
+  }): AsyncGenerator<UniEvent> {
+    // Embed transformed messages and return them as a streaming event.
+    const contents = await this.transformUniMessageToModelInput(
+      options.messages,
+      options.signal,
+    );
+
+    const geminiConfig = this._withAbortSignal<EmbedContentConfig>(
+      options.config.embedding_config?.dimensions != null
+        ? {
+            outputDimensionality: options.config.embedding_config.dimensions,
+          }
+        : undefined,
+      options.signal,
+    );
+
+    const result = await this._client.models.embedContent({
+      model: this._model,
+      contents,
+      config: geminiConfig,
+    });
+
+    yield {
+      role: "assistant",
+      event_type: "stop",
+      content_items:
+        result.embeddings?.map((embedding) => ({
+          type: "embedding",
+          embedding: embedding.values ?? [],
+        })) ?? [],
+      usage_metadata: {
+        cached_tokens: null,
+        prompt_tokens: result.metadata?.billableCharacterCount ?? null,
+        thoughts_tokens: null,
+        response_tokens: null,
+      },
+      finish_reason: "stop",
+    };
+  }
+
   /**
    * Stream generate using Gemini SDK with unified conversion methods.
    */
   async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
+    signal?: AbortSignal;
   }): AsyncGenerator<UniEvent> {
+    if (this._model.toLowerCase().includes("embedding")) {
+      for await (const event of this._embedMessagesInternal(options)) {
+        yield event;
+      }
+      return;
+    }
+
     // check if all items are text for tts model
     const isTtsModel = this._model.toLowerCase().includes("tts");
     if (isTtsModel) {
@@ -495,9 +567,13 @@ export class Gemini3Client extends LLMClient {
       }
     }
 
-    const geminiConfig = this.transformUniConfigToModelConfig(options.config);
+    const geminiConfig = this._withAbortSignal<GenerateContentConfig>(
+      this.transformUniConfigToModelConfig(options.config),
+      options.signal,
+    );
     const contents = await this.transformUniMessageToModelInput(
       options.messages,
+      options.signal,
     );
 
     const responseStream = await this._client.models.generateContentStream({

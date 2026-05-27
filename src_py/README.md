@@ -190,7 +190,7 @@ async def main():
 
     # Execute function and send result back with tool_call_id
     if tool_call:
-        result = get_weather(**tool_call["argument"])
+        result = get_weather(**tool_call["arguments"])
 
         # IMPORTANT: Include tool_call_id in the tool response
         async for event in client.streaming_response_stateful(
@@ -221,7 +221,7 @@ asyncio.run(main())
     "content_items": [
         {"type": "text", "text": "Hello"},
         {"type": "image_url", "image_url": "https://..."},
-        {"type": "tool_call", "name": "get_weather", "argument": {"location": "London"}, "tool_call_id": "call_abc123"}
+        {"type": "tool_call", "name": "get_weather", "arguments": {"location": "London"}, "tool_call_id": "call_abc123"}
     ]
 }
 ```
@@ -324,3 +324,4 @@ python -m agenthub.integration.playground --host 127.0.0.1 --port 25751
 ```
 
 Then visit `http://127.0.0.1:25751` in your browser to test with the playground.
+The integrated tracer is available at `http://127.0.0.1:25751/tracer/`.

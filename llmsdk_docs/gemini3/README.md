@@ -11,16 +11,17 @@ This directory contains comprehensive documentation and examples for using Googl
 
 The `docs/` folder contains detailed guides on various Gemini 3 features:
 
+- [embeddings.md](./docs/embeddings.md) - Embeddings capabilities
 - [function-calling.md](./docs/function-calling.md) - Function calling and tool use
 - [gemini3.md](./docs/gemini3.md) - Gemini 3 overview and capabilities
 - [image-generation.md](./docs/image-generation.md) - Image generation with nanobanana
 - [image-understanding.md](./docs/image-understanding.md) - Image understanding example
 - [models.md](./docs/models.md) - Available models and their specifications
+- [python-sdk.md](./docs/python-sdk.md) - Python SDK documentation
 - [speech-generation.md](./docs/speech-generation.md) - Text-to-speech generation (TTS)
 - [text-generation.md](./docs/text-generation.md) - Text generation features
 - [thinking.md](./docs/thinking.md) - Thinking and reasoning capabilities
 - [thought-signatures.md](./docs/thought-signatures.md) - Thought signature features
-- [python-sdk.md](./docs/python-sdk.md) - Python SDK documentation
 - [typescript-sdk.md](./docs/typescript-sdk.md) - TypeScript SDK documentation
 
 ## Note

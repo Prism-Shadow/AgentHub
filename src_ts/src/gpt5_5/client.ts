@@ -64,6 +64,7 @@ export class GPT5_5Client extends LLMClient {
       [ThinkingLevel.LOW]: "low",
       [ThinkingLevel.MEDIUM]: "medium",
       [ThinkingLevel.HIGH]: "high",
+      [ThinkingLevel.XHIGH]: "xhigh",
     };
     return mapping[thinkingLevel];
   }
@@ -78,13 +79,9 @@ export class GPT5_5Client extends LLMClient {
         mode: "required",
         tools: toolChoice.map((name) => ({ type: "function", name })),
       };
-    } else if (toolChoice === "none") {
-      return "none";
-    } else if (toolChoice === "auto") {
-      return "auto";
-    } else if (toolChoice === "required") {
-      return "required";
     }
+
+    return toolChoice;
   }
 
   /**
@@ -144,7 +141,10 @@ export class GPT5_5Client extends LLMClient {
   /**
    * Transform universal message format to OpenAI Responses API input format.
    */
-  transformUniMessageToModelInput(messages: UniMessage[]): ResponseInputItem[] {
+  transformUniMessageToModelInput(
+    messages: UniMessage[],
+    _signal?: AbortSignal,
+  ): ResponseInputItem[] {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const inputList: any[] = [];
 
@@ -367,9 +367,13 @@ export class GPT5_5Client extends LLMClient {
   async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
+    signal?: AbortSignal;
   }): AsyncGenerator<UniEvent> {
     const openaiConfig = this.transformUniConfigToModelConfig(options.config);
-    const inputList = this.transformUniMessageToModelInput(options.messages);
+    const inputList = this.transformUniMessageToModelInput(
+      options.messages,
+      options.signal,
+    );
 
     const partialToolCall: {
       name?: string;
@@ -383,7 +387,9 @@ export class GPT5_5Client extends LLMClient {
       stream: true,
     };
 
-    const stream = await this._client.responses.create(params);
+    const stream = await this._client.responses.create(params, {
+      signal: options.signal,
+    });
     for await (const event of stream) {
       const uniEvent = this.transformModelOutputToUniEvent(event);
 
