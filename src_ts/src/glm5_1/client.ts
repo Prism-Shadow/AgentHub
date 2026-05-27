@@ -142,6 +142,7 @@ export class GLM5_1Client extends LLMClient {
    */
   transformUniMessageToModelInput(
     messages: UniMessage[],
+    _signal?: AbortSignal,
   ): ChatCompletionMessageParam[] {
     const openaiMessages: ChatCompletionMessageParam[] = [];
 
@@ -322,9 +323,13 @@ export class GLM5_1Client extends LLMClient {
   async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
+    signal?: AbortSignal;
   }): AsyncGenerator<UniEvent> {
     const glmConfig = this.transformUniConfigToModelConfig(options.config);
-    const glmMessages = this.transformUniMessageToModelInput(options.messages);
+    const glmMessages = this.transformUniMessageToModelInput(
+      options.messages,
+      options.signal,
+    );
 
     if (options.config.system_prompt) {
       glmMessages.unshift({
@@ -339,7 +344,9 @@ export class GLM5_1Client extends LLMClient {
       stream: true,
     };
 
-    const stream = await this._client.chat.completions.create(params);
+    const stream = await this._client.chat.completions.create(params, {
+      signal: options.signal,
+    });
 
     const partialToolCall: {
       name?: string;

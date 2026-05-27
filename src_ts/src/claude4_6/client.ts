@@ -81,7 +81,10 @@ export class Claude4_6Client extends LLMClient {
    *
    * Bedrock does not support image url sources, so we need to fetch the image bytes and encode them.
    */
-  private async _convertImageUrlToSource(url: string): Promise<{
+  private async _convertImageUrlToSource(
+    url: string,
+    signal?: AbortSignal,
+  ): Promise<{
     type: string;
     source: { type: string; media_type?: string; data?: string; url?: string };
   }> {
@@ -102,7 +105,7 @@ export class Claude4_6Client extends LLMClient {
         throw new Error(`Invalid base64 image: ${url}`);
       }
     } else if (this._use_bedrock) {
-      const response = await fetch(url);
+      const response = await fetch(url, { signal });
       if (!response.ok) {
         throw new Error(
           `Failed to fetch image: ${response.status} ${response.statusText}`,
@@ -246,6 +249,7 @@ export class Claude4_6Client extends LLMClient {
    */
   async transformUniMessageToModelInput(
     messages: UniMessage[],
+    signal?: AbortSignal,
   ): Promise<BetaMessageParam[]> {
     const claudeMessages: BetaMessageParam[] = [];
 
@@ -257,7 +261,9 @@ export class Claude4_6Client extends LLMClient {
           contentBlocks.push({ type: "text", text: item.text });
         } else if (item.type === "image_url") {
           const imageUrl = item.image_url;
-          contentBlocks.push(await this._convertImageUrlToSource(imageUrl));
+          contentBlocks.push(
+            await this._convertImageUrlToSource(imageUrl, signal),
+          );
         } else if (item.type === "thinking") {
           if (item.thinking === REDACTED_THINKING) {
             contentBlocks.push({
@@ -288,7 +294,9 @@ export class Claude4_6Client extends LLMClient {
 
           if (item.images) {
             for (const imageUrl of item.images) {
-              toolResult.push(await this._convertImageUrlToSource(imageUrl));
+              toolResult.push(
+                await this._convertImageUrlToSource(imageUrl, signal),
+              );
             }
           }
 
@@ -424,10 +432,12 @@ export class Claude4_6Client extends LLMClient {
   async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
+    signal?: AbortSignal;
   }): AsyncGenerator<UniEvent> {
     const claudeConfig = this.transformUniConfigToModelConfig(options.config);
     const claudeMessages = await this.transformUniMessageToModelInput(
       options.messages,
+      options.signal,
     );
 
     // Add cache_control to last user message's last item if enabled
@@ -470,10 +480,15 @@ export class Claude4_6Client extends LLMClient {
       cached_tokens?: number | null;
     } = {};
 
-    const stream = (await this._client.beta.messages.create({
-      ...claudeConfig,
-      messages: claudeMessages,
-    })) as unknown as Stream<BetaRawMessageStreamEvent>;
+    const stream = (await this._client.beta.messages.create(
+      {
+        ...claudeConfig,
+        messages: claudeMessages,
+      },
+      {
+        signal: options.signal,
+      },
+    )) as unknown as Stream<BetaRawMessageStreamEvent>;
 
     for await (const event of stream) {
       const uniEvent = this.transformModelOutputToUniEvent(event);

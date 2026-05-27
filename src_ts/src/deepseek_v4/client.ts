@@ -141,6 +141,7 @@ export class DeepSeekV4Client extends LLMClient {
 
   transformUniMessageToModelInput(
     messages: UniMessage[],
+    _signal?: AbortSignal,
   ): ChatCompletionMessageParam[] {
     const deepseekMessages: ChatCompletionMessageParam[] = [];
 
@@ -300,10 +301,12 @@ export class DeepSeekV4Client extends LLMClient {
   async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
+    signal?: AbortSignal;
   }): AsyncGenerator<UniEvent> {
     const deepseekConfig = this.transformUniConfigToModelConfig(options.config);
     const deepseekMessages = this.transformUniMessageToModelInput(
       options.messages,
+      options.signal,
     );
 
     if (options.config.system_prompt) {
@@ -319,7 +322,9 @@ export class DeepSeekV4Client extends LLMClient {
       stream: true,
     };
 
-    const stream = await this._client.chat.completions.create(params);
+    const stream = await this._client.chat.completions.create(params, {
+      signal: options.signal,
+    });
 
     const partialToolCall: {
       name?: string;
