@@ -27,6 +27,7 @@ import { Tracer } from "./tracer";
 
 const sessionClients: Map<string, AutoLLMClient> = new Map();
 const sessionClientOptions: Map<string, PlaygroundClientOptions> = new Map();
+const sessionAbortControllers: Map<string, AbortController> = new Map();
 
 interface PlaygroundConfig extends UniConfig {
   model?: string;
@@ -363,8 +364,9 @@ export function createChatApp(): Express {
           <div class="flex gap-3 max-w-5xl mx-auto">
               <input type="file" id="imageInput" accept="image/*" multiple class="hidden" onchange="handleImageSelect(event)">
               <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-md text-sm font-semibold whitespace-nowrap transition-colors" onclick="document.getElementById('imageInput').click()">📎 Image</button>
-              <textarea id="messageInput" class="flex-1 px-4 py-3 border border-gray-300 rounded-md text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Type your message here..." rows="1"></textarea>
+              <textarea id="messageInput" class="flex-1 px-4 py-3 border border-gray-300 rounded-md text-sm resize-none overflow-y-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Type your message here..." rows="1"></textarea>
               <button class="bg-green-600 hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-md text-sm font-semibold whitespace-nowrap transition-colors" id="sendButton" onclick="sendMessage()">Send</button>
+              <button class="hidden bg-orange-600 hover:bg-orange-700 disabled:bg-orange-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-md text-sm font-semibold whitespace-nowrap transition-colors" id="stopButton" onclick="stopGeneration()" disabled>Stop</button>
               <button class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-md text-sm font-semibold transition-colors" onclick="clearChat()">Clear</button>
           </div>
       </div>
@@ -374,6 +376,7 @@ export function createChatApp(): Express {
           let sessionId = Math.random().toString(36).substring(7);
           let selectedImages = [];
           let lastMessageTimestamp = null;
+          let currentAbortController = null;
 
           function escapeHtml(text) {
               const div = document.createElement('div');
@@ -721,18 +724,59 @@ export function createChatApp(): Express {
               return card;
           }
 
+          function setStreamingControls(streaming) {
+              const sendButton = document.getElementById('sendButton');
+              const stopButton = document.getElementById('stopButton');
+              sendButton.disabled = streaming;
+              stopButton.disabled = !streaming;
+              stopButton.classList.toggle('hidden', !streaming);
+          }
+
+          function stopGeneration() {
+              if (!isStreaming) return;
+
+              fetch('/api/abort', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                      session_id: sessionId
+                  }),
+                  keepalive: true
+              }).catch(error => {
+                  console.error('Error interrupting chat:', error);
+              });
+
+              if (currentAbortController) {
+                  currentAbortController.abort();
+              }
+          }
+
+          function markInterrupted(contentDiv) {
+              if (!contentDiv.textContent.trim() && contentDiv.children.length === 0) {
+                  contentDiv.textContent = 'Interrupted.';
+                  return;
+              }
+
+              const interruptedDiv = document.createElement('div');
+              interruptedDiv.className = 'mt-3 text-xs font-semibold text-orange-600';
+              interruptedDiv.textContent = 'Interrupted';
+              contentDiv.appendChild(interruptedDiv);
+          }
+
           async function sendMessage() {
               const input = document.getElementById('messageInput');
-              const sendButton = document.getElementById('sendButton');
               const container = document.getElementById('messagesContainer');
               const message = input.value.trim();
 
               if ((!message && selectedImages.length === 0) || isStreaming) return;
 
               isStreaming = true;
-              sendButton.disabled = true;
+              currentAbortController = new AbortController();
+              setStreamingControls(true);
               input.value = '';
-              input.style.height = 'auto';
+              resizeMessageInput();
 
               const currentImages = [...selectedImages];
               selectedImages = [];
@@ -769,7 +813,8 @@ export function createChatApp(): Express {
                           },
                           config: config,
                           session_id: sessionId
-                      })
+                      }),
+                      signal: currentAbortController.signal
                   });
 
                   if (!response.ok || !response.body) {
@@ -930,13 +975,18 @@ export function createChatApp(): Express {
                   }
 
               } catch (error) {
-                  contentDiv.textContent = \`Error: \${error.message}\`;
-                  console.error('Error:', error);
+                  if (error.name === 'AbortError') {
+                      markInterrupted(contentDiv);
+                  } else {
+                      contentDiv.textContent = \`Error: \${error.message}\`;
+                      console.error('Error:', error);
+                  }
                   lastMessageTimestamp = Date.now();
+              } finally {
+                  isStreaming = false;
+                  currentAbortController = null;
+                  setStreamingControls(false);
               }
-
-              isStreaming = false;
-              sendButton.disabled = false;
           }
 
           function clearChat() {
@@ -973,10 +1023,15 @@ export function createChatApp(): Express {
           });
 
           const textarea = document.getElementById('messageInput');
-          textarea.addEventListener('input', function() {
-              this.style.height = 'auto';
-              this.style.height = Math.min(this.scrollHeight, 200) + 'px';
-          });
+          function resizeMessageInput() {
+              const maxHeight = 200;
+              textarea.style.height = 'auto';
+              const nextHeight = Math.min(textarea.scrollHeight, maxHeight);
+              textarea.style.height = nextHeight + 'px';
+              textarea.style.overflowY = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
+          }
+          textarea.addEventListener('input', resizeMessageInput);
+          resizeMessageInput();
 
       </script>
   </body>
@@ -997,57 +1052,103 @@ export function createChatApp(): Express {
     if (!message) {
       return res.status(400).json({ error: "No message provided" });
     }
+    const sessionId = session_id || "default";
 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
+    const abortController = new AbortController();
+    sessionAbortControllers.get(sessionId)?.abort();
+    sessionAbortControllers.set(sessionId, abortController);
+    let completed = false;
+    res.on("close", () => {
+      if (!completed) {
+        abortController.abort();
+      }
+    });
+
     try {
       const clientOptions = getClientOptions(config || {});
       if (
-        !sessionClients.has(session_id) ||
+        !sessionClients.has(sessionId) ||
         clientOptionsChanged(
-          sessionClientOptions.get(session_id),
+          sessionClientOptions.get(sessionId),
           clientOptions,
         )
       ) {
-        sessionClients.set(session_id, new AutoLLMClient(clientOptions));
-        sessionClientOptions.set(session_id, clientOptions);
+        sessionClients.set(sessionId, new AutoLLMClient(clientOptions));
+        sessionClientOptions.set(sessionId, clientOptions);
       }
 
-      const client = sessionClients.get(session_id)!;
+      const client = sessionClients.get(sessionId)!;
       const requestConfig = getRequestConfig(config || {});
 
       for await (const event of client.streamingResponseStateful({
         message,
         config: requestConfig,
+        signal: abortController.signal,
       })) {
         const serializedEvent = serializeForJson(event);
         res.write(`data: ${JSON.stringify(serializedEvent)}\n\n`);
       }
 
+      completed = true;
       res.write("data: [DONE]\n\n");
       res.end();
     } catch (error) {
+      if (abortController.signal.aborted) {
+        completed = true;
+        if (!res.writableEnded && !res.destroyed) {
+          res.write("data: [DONE]\n\n");
+          res.end();
+        }
+        return;
+      }
+
       const errorEvent = {
         role: "assistant",
         content_items: [{ type: "text", text: `Error: ${error}` }],
         finish_reason: "error",
       };
+      completed = true;
       res.write(`data: ${JSON.stringify(errorEvent)}\n\n`);
       res.write("data: [DONE]\n\n");
       res.end();
+    } finally {
+      if (sessionAbortControllers.get(sessionId) === abortController) {
+        sessionAbortControllers.delete(sessionId);
+      }
     }
+  });
+
+  app.post("/api/abort", (req: Request, res: Response) => {
+    const { session_id } = req.body as { session_id?: string };
+    const sessionId = session_id || "default";
+    const abortController = sessionAbortControllers.get(sessionId);
+    if (!abortController) {
+      return res.json({ status: "idle" });
+    }
+
+    abortController.abort();
+    return res.json({ status: "aborted" });
   });
 
   app.post("/api/clear", (req: Request, res: Response) => {
     const { session_id } = req.body as { session_id: string };
+    const sessionId = session_id || "default";
 
-    if (sessionClients.has(session_id)) {
-      const client = sessionClients.get(session_id)!;
+    const abortController = sessionAbortControllers.get(sessionId);
+    if (abortController) {
+      abortController.abort();
+      sessionAbortControllers.delete(sessionId);
+    }
+
+    if (sessionClients.has(sessionId)) {
+      const client = sessionClients.get(sessionId)!;
       client.clearHistory();
-      sessionClients.delete(session_id);
-      sessionClientOptions.delete(session_id);
+      sessionClients.delete(sessionId);
+      sessionClientOptions.delete(sessionId);
     }
 
     res.json({ status: "success" });

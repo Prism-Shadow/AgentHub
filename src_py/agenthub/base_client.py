@@ -16,6 +16,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any, AsyncIterator
 
+from .abort_signal import AbortSignal, run_with_abort
 from .types import (
     ContentItem,
     FinishReason,
@@ -163,6 +164,7 @@ class LLMClient(ABC):
         self,
         messages: list[UniMessage],
         config: UniConfig,
+        signal: AbortSignal | None = None,
     ) -> AsyncIterator[UniEvent]:
         """
         Generate content in streaming mode (stateless).
@@ -174,6 +176,7 @@ class LLMClient(ABC):
         Args:
             messages: List of universal message dictionaries containing conversation history
             config: Universal configuration dict
+            signal: Optional abort signal used to cancel the active request
 
         Yields:
             Universal events from the streaming response
@@ -185,11 +188,20 @@ class LLMClient(ABC):
 
         last_event: UniEvent | None = None
         events = []
-        async for event in self._streaming_response_internal(messages, config):
-            event["created_at"] = int(time.time() * 1000)
-            last_event = event
-            events.append(event)
-            yield event
+        stream = self._streaming_response_internal(messages, config)
+        try:
+            while True:
+                try:
+                    event = await anext(stream) if signal is None else await run_with_abort(anext(stream), signal)
+                except StopAsyncIteration:
+                    break
+
+                event["created_at"] = int(time.time() * 1000)
+                last_event = event
+                events.append(event)
+                yield event
+        finally:
+            await stream.aclose()
 
         self._validate_last_event(last_event)
 
@@ -205,6 +217,7 @@ class LLMClient(ABC):
         self,
         message: UniMessage,
         config: UniConfig,
+        signal: AbortSignal | None = None,
     ) -> AsyncIterator[UniEvent]:
         """
         Generate content in streaming mode (stateful).
@@ -216,6 +229,7 @@ class LLMClient(ABC):
         Args:
             message: Latest universal message dictionary to add to conversation
             config: Universal configuration dict
+            signal: Optional abort signal used to cancel the active request
 
         Yields:
             Universal events from the streaming response
@@ -225,7 +239,7 @@ class LLMClient(ABC):
 
         # Collect all events for history
         events = []
-        async for event in self.streaming_response(messages=temp_messages, config=config):
+        async for event in self.streaming_response(messages=temp_messages, config=config, signal=signal):
             events.append(event)
             yield event
 

@@ -14,6 +14,7 @@
 
 from flask import Flask
 
+from agenthub.abort_signal import AbortSignal
 from agenthub.integration import playground
 from agenthub.integration.playground import create_chat_app
 
@@ -52,6 +53,10 @@ def test_chat_app_index_route():
         assert b"apiKeyInput" in response.data
         assert b"apiKeyVisibilityToggle" in response.data
         assert b"toggleApiKeyVisibility()" in response.data
+        assert b'id="stopButton"' in response.data
+        assert b"stopGeneration()" in response.data
+        assert b"currentAbortController.abort()" in response.data
+        assert b"/api/abort" in response.data
         assert b'id="apiKeyVisibilityShowIcon" class="hidden"' in response.data
         assert b'id="apiKeyVisibilityHideIcon" xmlns=' in response.data
         assert b"baseUrlInput" in response.data
@@ -101,8 +106,9 @@ def test_chat_app_uses_client_connection_options(monkeypatch):
                 "base_url": base_url,
             }
 
-        async def streaming_response_stateful(self, message, config):
+        async def streaming_response_stateful(self, message, config, signal=None):
             captured["request_config"] = config
+            captured["signal"] = signal
             yield {
                 "role": "assistant",
                 "event_type": "stop",
@@ -144,6 +150,7 @@ def test_chat_app_uses_client_connection_options(monkeypatch):
         "base_url": "https://example.test/v1",
     }
     assert captured["request_config"] == {"thinking_level": "low"}
+    assert isinstance(captured["signal"], AbortSignal)
 
 
 def test_chat_app_accepts_large_image_payload(monkeypatch):
@@ -154,8 +161,9 @@ def test_chat_app_accepts_large_image_payload(monkeypatch):
         def __init__(self, model, api_key=None, base_url=None):
             pass
 
-        async def streaming_response_stateful(self, message, config):
+        async def streaming_response_stateful(self, message, config, signal=None):
             captured["message"] = message
+            captured["signal"] = signal
             yield {
                 "role": "assistant",
                 "event_type": "stop",
@@ -188,3 +196,21 @@ def test_chat_app_accepts_large_image_payload(monkeypatch):
         assert b"data:" in response.data
 
     assert captured["message"]["content_items"][0] == {"type": "image_url", "image_url": large_image}
+    assert isinstance(captured["signal"], AbortSignal)
+
+
+def test_chat_app_abort_route_interrupts_active_signal():
+    """Test that the abort route interrupts the active request signal."""
+    playground._session_abort_signals.clear()
+    signal = AbortSignal()
+    playground._session_abort_signals["abort-session"] = signal
+
+    app = create_chat_app()
+    with app.test_client() as client:
+        response = client.post("/api/abort", json={"session_id": "abort-session"})
+
+        assert response.status_code == 200
+        assert response.get_json() == {"status": "aborted"}
+
+    assert signal.aborted
+    playground._session_abort_signals.clear()

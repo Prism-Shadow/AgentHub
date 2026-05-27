@@ -23,6 +23,7 @@ showing token usage and stop reasons.
 
 import asyncio
 import base64
+import concurrent.futures
 import json
 import threading
 from typing import Any
@@ -32,6 +33,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
 from .. import AutoLLMClient
+from ..abort_signal import AbortSignal
 from .tracer import Tracer
 
 
@@ -40,6 +42,7 @@ _event_loop: asyncio.AbstractEventLoop | None = None
 _loop_lock = threading.Lock()
 _session_clients: dict[str, AutoLLMClient] = {}
 _session_client_options: dict[str, tuple[str, str | None, str | None]] = {}
+_session_abort_signals: dict[str, AbortSignal] = {}
 
 
 def _get_event_loop() -> asyncio.AbstractEventLoop:
@@ -353,8 +356,9 @@ def create_chat_app() -> Flask:
             <div class="flex gap-3 max-w-5xl mx-auto">
                 <input type="file" id="imageInput" accept="image/*" multiple class="hidden" onchange="handleImageSelect(event)">
                 <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-md text-sm font-semibold whitespace-nowrap transition-colors" onclick="document.getElementById('imageInput').click()">📎 Image</button>
-                <textarea id="messageInput" class="flex-1 px-4 py-3 border border-gray-300 rounded-md text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Type your message here..." rows="1"></textarea>
+                <textarea id="messageInput" class="flex-1 px-4 py-3 border border-gray-300 rounded-md text-sm resize-none overflow-y-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Type your message here..." rows="1"></textarea>
                 <button class="bg-green-600 hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-md text-sm font-semibold whitespace-nowrap transition-colors" id="sendButton" onclick="sendMessage()">Send</button>
+                <button class="hidden bg-orange-600 hover:bg-orange-700 disabled:bg-orange-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-md text-sm font-semibold whitespace-nowrap transition-colors" id="stopButton" onclick="stopGeneration()" disabled>Stop</button>
                 <button class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-md text-sm font-semibold transition-colors" onclick="clearChat()">Clear</button>
             </div>
         </div>
@@ -364,6 +368,7 @@ def create_chat_app() -> Flask:
             let sessionId = Math.random().toString(36).substring(7);
             let selectedImages = [];
             let lastMessageTimestamp = null;
+            let currentAbortController = null;
 
             function escapeHtml(text) {
                 const div = document.createElement('div');
@@ -711,18 +716,59 @@ def create_chat_app() -> Flask:
                 return card;
             }
 
+            function setStreamingControls(streaming) {
+                const sendButton = document.getElementById('sendButton');
+                const stopButton = document.getElementById('stopButton');
+                sendButton.disabled = streaming;
+                stopButton.disabled = !streaming;
+                stopButton.classList.toggle('hidden', !streaming);
+            }
+
+            function stopGeneration() {
+                if (!isStreaming) return;
+
+                fetch('/api/abort', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId
+                    }),
+                    keepalive: true
+                }).catch(error => {
+                    console.error('Error interrupting chat:', error);
+                });
+
+                if (currentAbortController) {
+                    currentAbortController.abort();
+                }
+            }
+
+            function markInterrupted(contentDiv) {
+                if (!contentDiv.textContent.trim() && contentDiv.children.length === 0) {
+                    contentDiv.textContent = 'Interrupted.';
+                    return;
+                }
+
+                const interruptedDiv = document.createElement('div');
+                interruptedDiv.className = 'mt-3 text-xs font-semibold text-orange-600';
+                interruptedDiv.textContent = 'Interrupted';
+                contentDiv.appendChild(interruptedDiv);
+            }
+
             async function sendMessage() {
                 const input = document.getElementById('messageInput');
-                const sendButton = document.getElementById('sendButton');
                 const container = document.getElementById('messagesContainer');
                 const message = input.value.trim();
 
                 if ((!message && selectedImages.length === 0) || isStreaming) return;
 
                 isStreaming = true;
-                sendButton.disabled = true;
+                currentAbortController = new AbortController();
+                setStreamingControls(true);
                 input.value = '';
-                input.style.height = 'auto';
+                resizeMessageInput();
 
                 const currentImages = [...selectedImages];
                 selectedImages = [];
@@ -759,7 +805,8 @@ def create_chat_app() -> Flask:
                             },
                             config: config,
                             session_id: sessionId
-                        })
+                        }),
+                        signal: currentAbortController.signal
                     });
 
                     if (!response.ok || !response.body) {
@@ -920,13 +967,18 @@ def create_chat_app() -> Flask:
                     }
 
                 } catch (error) {
-                    contentDiv.textContent = `Error: ${error.message}`;
-                    console.error('Error:', error);
+                    if (error.name === 'AbortError') {
+                        markInterrupted(contentDiv);
+                    } else {
+                        contentDiv.textContent = `Error: ${error.message}`;
+                        console.error('Error:', error);
+                    }
                     lastMessageTimestamp = Date.now();
+                } finally {
+                    isStreaming = false;
+                    currentAbortController = null;
+                    setStreamingControls(false);
                 }
-
-                isStreaming = false;
-                sendButton.disabled = false;
             }
 
             function clearChat() {
@@ -963,10 +1015,15 @@ def create_chat_app() -> Flask:
             });
 
             const textarea = document.getElementById('messageInput');
-            textarea.addEventListener('input', function() {
-                this.style.height = 'auto';
-                this.style.height = Math.min(this.scrollHeight, 200) + 'px';
-            });
+            function resizeMessageInput() {
+                const maxHeight = 200;
+                textarea.style.height = 'auto';
+                const nextHeight = Math.min(textarea.scrollHeight, maxHeight);
+                textarea.style.height = nextHeight + 'px';
+                textarea.style.overflowY = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
+            }
+            textarea.addEventListener('input', resizeMessageInput);
+            resizeMessageInput();
 
         </script>
     </body>
@@ -991,6 +1048,13 @@ def create_chat_app() -> Flask:
 
         def generate():
             """Generate streaming response using the persistent event loop."""
+            signal = AbortSignal()
+            previous_signal = _session_abort_signals.get(session_id)
+            if previous_signal is not None:
+                previous_signal.abort("replaced")
+            _session_abort_signals[session_id] = signal
+            async_gen = None
+            loop = _get_event_loop()
             try:
                 # Get or create client for this session
                 client_options = _get_client_options(config)
@@ -1002,12 +1066,13 @@ def create_chat_app() -> Flask:
                 client = _session_clients[session_id]
                 request_config = _get_request_config(config)
 
-                # Get the persistent event loop
-                loop = _get_event_loop()
-
                 # Create async function to collect events
                 async def stream_events():
-                    async for event in client.streaming_response_stateful(message=message, config=request_config):
+                    async for event in client.streaming_response_stateful(
+                        message=message,
+                        config=request_config,
+                        signal=signal,
+                    ):
                         # Serialize event to handle bytes objects
                         serialized_event = _serialize_for_json(event)
                         yield f"data: {json.dumps(serialized_event, ensure_ascii=False)}\n\n"
@@ -1020,6 +1085,17 @@ def create_chat_app() -> Flask:
                     except StopAsyncIteration:
                         break
 
+                yield "data: [DONE]\n\n"
+            except (asyncio.CancelledError, concurrent.futures.CancelledError):
+                yield "data: [DONE]\n\n"
+            except GeneratorExit:
+                signal.abort("client disconnected")
+                if async_gen is not None:
+                    try:
+                        asyncio.run_coroutine_threadsafe(async_gen.aclose(), loop).result(timeout=1)
+                    except Exception:
+                        pass
+                raise
             except Exception as e:
                 error_event = {
                     "role": "assistant",
@@ -1028,14 +1104,34 @@ def create_chat_app() -> Flask:
                 }
                 yield f"data: {json.dumps(error_event, ensure_ascii=False)}\n\n"
                 yield "data: [DONE]\n\n"
+            finally:
+                signal.abort("request ended")
+                if _session_abort_signals.get(session_id) is signal:
+                    del _session_abort_signals[session_id]
 
         return Response(generate(), mimetype="text/event-stream")
+
+    @app.route("/api/abort", methods=["POST"])
+    def abort() -> Response:
+        """Interrupt the active streaming response for a session."""
+        data = request.json or {}
+        session_id = data.get("session_id", "default")
+        signal = _session_abort_signals.get(session_id)
+        if signal is None:
+            return jsonify({"status": "idle"})
+
+        signal.abort("interrupted")
+        return jsonify({"status": "aborted"})
 
     @app.route("/api/clear", methods=["POST"])
     def clear() -> Response:
         """Clear chat history for a session."""
-        data = request.json
+        data = request.json or {}
         session_id = data.get("session_id", "default")
+
+        signal = _session_abort_signals.pop(session_id, None)
+        if signal is not None:
+            signal.abort("cleared")
 
         # Clear the client history if it exists
         if session_id in _session_clients:
