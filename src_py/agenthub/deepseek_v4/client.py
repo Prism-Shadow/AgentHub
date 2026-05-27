@@ -88,7 +88,7 @@ class DeepSeekV4Client(LLMClient):
         if config.get("max_tokens") is not None:
             deepseek_config["max_tokens"] = config["max_tokens"]
 
-        if config.get("temperature") is not None:
+        if config.get("temperature") is not None and config["temperature"] != 1.0:
             raise ValueError("DeepSeek V4 does not support setting temperature.")
 
         thinking_level = config.get("thinking_level")
