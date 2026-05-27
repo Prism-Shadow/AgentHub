@@ -14,12 +14,3 @@
 
 export { AutoLLMClient } from "./autoClient";
 export { PromptCaching, ThinkingLevel } from "./types";
-export type {
-  ContentItem,
-  FinishReason,
-  ToolSchema,
-  UniConfig,
-  UniEvent,
-  UniMessage,
-  UsageMetadata,
-} from "./types";
