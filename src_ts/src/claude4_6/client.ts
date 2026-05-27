@@ -498,8 +498,11 @@ export class Claude4_6Client extends LLMClient {
             partialToolCall.name = item.name;
             partialToolCall.arguments = "";
             partialToolCall.tool_call_id = item.tool_call_id;
-            yield uniEvent;
           }
+        }
+
+        if (uniEvent.content_items.length > 0) {
+          yield uniEvent;
         }
 
         if (uniEvent.usage_metadata !== null) {
