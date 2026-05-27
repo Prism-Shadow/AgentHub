@@ -76,20 +76,13 @@ export class DeepSeekV4Client extends LLMClient {
     return mapping[thinkingLevel];
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private _convertToolChoice(toolChoice: ToolChoice): any {
-    if (Array.isArray(toolChoice)) {
-      return {
-        mode: "required",
-        tools: toolChoice.map((name) => ({ type: "function", name })),
-      };
-    } else if (
-      toolChoice === "auto" ||
-      toolChoice === "none" ||
-      toolChoice === "required"
-    ) {
+  private _convertToolChoice(toolChoice: ToolChoice): string {
+    if (toolChoice === "auto" || toolChoice === "none") {
       return toolChoice;
     }
+    throw new Error(
+      'DeepSeek V4 only supports "auto" and "none" for tool_choice.',
+    );
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -106,7 +99,7 @@ export class DeepSeekV4Client extends LLMClient {
     }
 
     if (config.temperature !== undefined) {
-      deepseekConfig.temperature = config.temperature;
+      throw new Error("DeepSeek V4 does not support setting temperature.");
     }
 
     if (config.thinking_level !== undefined) {

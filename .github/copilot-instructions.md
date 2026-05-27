@@ -61,6 +61,8 @@ When adding new functionality, follow these rules:
 2. When making changes, by default synchronize updates to both Python and TypeScript implementations unless the user explicitly specifies otherwise.
 3. When using JSON serialization, ensure that CJK strings are serialized correctly by using `ensure_ascii=False`.
 4. **DO NOT** use the `requests` library in code. Always use `httpx` with async methods (`httpx.AsyncClient()`) to avoid blocking the global event loop.
+5. **DO NOT** modify files under `llmsdk_docs/` unless the user explicitly requests changes to reference SDK documentation.
+6. **DO NOT** add unit test functions or dedicated test suites for a single specific model; use existing parameterized tests, model capability flags, or environment-driven coverage instead.
 
 When writing documentation, follow these rules:
 

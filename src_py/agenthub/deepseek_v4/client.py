@@ -67,12 +67,11 @@ class DeepSeekV4Client(LLMClient):
         }
         return mapping[thinking_level]
 
-    def _convert_tool_choice(self, tool_choice: ToolChoice) -> str | dict[str, Any]:
+    def _convert_tool_choice(self, tool_choice: ToolChoice) -> str:
         """Convert ToolChoice to DeepSeek's OpenAI-compatible tool_choice format."""
-        if isinstance(tool_choice, list):
-            return {"mode": "required", "tools": [{"type": "function", "name": name} for name in tool_choice]}
-        elif tool_choice in ["auto", "none", "required"]:
+        if tool_choice in ["auto", "none"]:
             return tool_choice
+        raise ValueError("DeepSeek V4 only supports 'auto' and 'none' for tool_choice.")
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """
@@ -90,7 +89,7 @@ class DeepSeekV4Client(LLMClient):
             deepseek_config["max_tokens"] = config["max_tokens"]
 
         if config.get("temperature") is not None:
-            deepseek_config["temperature"] = config["temperature"]
+            raise ValueError("DeepSeek V4 does not support setting temperature.")
 
         thinking_level = config.get("thinking_level")
         if thinking_level is not None:

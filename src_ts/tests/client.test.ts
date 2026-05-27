@@ -141,7 +141,7 @@ if (process.env.DEEPSEEK_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "deepseek-v4-flash",
     supportTextGeneration: true,
-    supportTemperature: true,
+    supportTemperature: false,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -319,6 +319,7 @@ function createClient(model: Model): AutoLLMClient {
 
   return new AutoLLMClient({ model: model.name, apiKey, baseUrl });
 }
+
 function checkEventIntegrity(event: UniEvent): void {
   expect(event).toHaveProperty("role");
   expect(event).toHaveProperty("event_type");
