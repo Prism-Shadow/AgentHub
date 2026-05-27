@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import time
 from abc import ABC, abstractmethod
+from contextlib import suppress
 from typing import Any, AsyncIterator
 
-from .abort_signal import AbortSignal, run_with_abort
+from .abort_signal import AbortSignal
 from .types import (
     ContentItem,
     FinishReason,
@@ -188,19 +190,57 @@ class LLMClient(ABC):
 
         last_event: UniEvent | None = None
         events = []
+        if signal is not None:
+            signal.throw_if_aborted()
+
         stream = self._streaming_response_internal(messages, config)
+        abort_task: asyncio.Task[None] | None = None
+        waiting_for_stream = False
+        if signal is not None:
+            streaming_task = asyncio.current_task()
+            abort_task = asyncio.create_task(signal.wait())
+
+            def cancel_streaming_task(task: asyncio.Task[None]) -> None:
+                if (
+                    task.cancelled()
+                    or not signal.aborted
+                    or not waiting_for_stream
+                    or streaming_task is None
+                    or streaming_task.done()
+                ):
+                    return
+
+                streaming_task.cancel(signal.reason)
+
+            abort_task.add_done_callback(cancel_streaming_task)
+
         try:
             while True:
                 try:
-                    event = await anext(stream) if signal is None else await run_with_abort(anext(stream), signal)
+                    if signal is not None:
+                        signal.throw_if_aborted()
+                        waiting_for_stream = True
+                        signal.throw_if_aborted()
+
+                    event = await anext(stream)
                 except StopAsyncIteration:
                     break
+                except asyncio.CancelledError:
+                    if signal is not None and signal.aborted:
+                        signal.throw_if_aborted()
+                    raise
+                finally:
+                    waiting_for_stream = False
 
                 event["created_at"] = int(time.time() * 1000)
                 last_event = event
                 events.append(event)
                 yield event
         finally:
+            if abort_task is not None and not abort_task.done():
+                abort_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await abort_task
             await stream.aclose()
 
         self._validate_last_event(last_event)
