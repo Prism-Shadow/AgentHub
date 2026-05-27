@@ -374,7 +374,9 @@ class Claude4_7Client(LLMClient):
                             "arguments": "",
                             "tool_call_id": item["tool_call_id"],
                         }
-                        yield event
+
+                if event["content_items"]:
+                    yield event
 
                 if event["usage_metadata"] is not None:
                     # initialize partial_usage
