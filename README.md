@@ -48,7 +48,7 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 | Kimi-K2.5/K2.6 | Official/OpenRouter/SiliconFlow     | `kimi-k2.6`            | Text, Image      | Text                           |
 | DeepSeek V4    | Official/OpenRouter/SiliconFlow     | `deepseek-v4-pro`      | Text             | Text                           |
 | GLM-5.1        | Official/OpenRouter/SiliconFlow     | `glm-5.1`              | Text             | Text                           |
-| Qwen3.6        | OpenRouter/SiliconFlow/vLLM         | `qwen/qwen3.6-35b-a3b` | Text, Image      | Text                           |
+| Qwen3.6        | OpenAI-compatible                   | `qwen/qwen3.6-35b-a3b` | Text, Image      | Text                           |
 
 ## Installation
 
@@ -278,7 +278,7 @@ main().catch(console.error);
 ```
 </details>
 
-### SiliconFlow Qwen3.6 35B
+### SiliconFlow Qwen3.6 35B via OpenAI-compatible API
 
 <details><summary><strong>Python Example</strong></summary>
 
@@ -287,11 +287,11 @@ import asyncio
 import os
 from agenthub import AutoLLMClient
 
-os.environ["QWEN_API_KEY"] = "your-siliconflow-api-key"
-os.environ["QWEN_BASE_URL"] = "https://api.siliconflow.cn/v1"
+os.environ["OPENAI_API_KEY"] = "your-siliconflow-api-key"
+os.environ["OPENAI_BASE_URL"] = "https://api.siliconflow.cn/v1"
 
-async def main():  
-    client = AutoLLMClient(model="Qwen/Qwen3.6-35B-A3B")
+async def main():
+    client = AutoLLMClient(model="Qwen/Qwen3.6-35B-A3B", client_type="openai")
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -310,11 +310,14 @@ asyncio.run(main())
 ```typescript
 import { AutoLLMClient } from "@prismshadow/agenthub";
 
-process.env.QWEN_API_KEY = "your-siliconflow-api-key";
-process.env.QWEN_BASE_URL = "https://api.siliconflow.cn/v1";
+process.env.OPENAI_API_KEY = "your-siliconflow-api-key";
+process.env.OPENAI_BASE_URL = "https://api.siliconflow.cn/v1";
 
 async function main() {
-  const client = new AutoLLMClient({ model: "Qwen/Qwen3.6-35B-A3B" });
+  const client = new AutoLLMClient({
+    model: "Qwen/Qwen3.6-35B-A3B",
+    clientType: "openai",
+  });
   for await (const event of client.streamingResponseStateful({
     message: {
       role: "user",

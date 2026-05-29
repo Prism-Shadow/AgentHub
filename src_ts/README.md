@@ -22,6 +22,8 @@ process.env.OPENAI_API_KEY = "your-openai-api-key";
 
 async function main() {
   const client = new AutoLLMClient({ model: "gpt-5.5" });
+  // For OpenAI Chat Completions-compatible endpoints:
+  // const client = new AutoLLMClient({ model: "custom-model", clientType: "openai" });
 
   for await (const event of client.streamingResponseStateful({
     message: {

@@ -46,7 +46,7 @@ class AutoLLMClient(LLMClient):
         self, model: str, api_key: str | None = None, base_url: str | None = None, client_type: str | None = None
     ) -> LLMClient:
         """Create the appropriate client for the given model."""
-        client_type = client_type or os.getenv("CLIENT_TYPE", model.lower())
+        client_type = (client_type or os.getenv("CLIENT_TYPE", model.lower())).lower()
         if any(
             prefix in client_type for prefix in ("gemini-3-", "gemini-3.1-", "gemini-3.5-", "gemini-embedding")
         ):  # e.g., gemini-3-flash-preview, gemini-embedding-2
@@ -73,10 +73,10 @@ class AutoLLMClient(LLMClient):
             from .kimi_k2_6 import KimiK2_6Client
 
             return KimiK2_6Client(model=model, api_key=api_key, base_url=base_url)
-        elif "qwen3.6" in client_type:
-            from .qwen3_6 import Qwen3_6Client
+        elif "openai" in client_type:
+            from .openai import OpenaiClient
 
-            return Qwen3_6Client(model=model, api_key=api_key, base_url=base_url)
+            return OpenaiClient(model=model, api_key=api_key, base_url=base_url)
         elif "deepseek-v4-" in client_type:
             from .deepseek_v4 import DeepSeekV4Client
 
@@ -84,7 +84,7 @@ class AutoLLMClient(LLMClient):
         else:
             raise ValueError(
                 f"{client_type} is not supported. "
-                "Supported client types: gemini-3, claude-4-7, claude-4-6, gpt-5.4, gpt-5.5, glm-5.1, kimi-k2.5, kimi-k2.6, qwen3.6, deepseek-v4."
+                "Supported client types: gemini-3, claude-4-7, claude-4-6, gpt-5.4, gpt-5.5, glm-5.1, kimi-k2.5, kimi-k2.6, openai, deepseek-v4."
             )
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:

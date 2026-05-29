@@ -28,6 +28,7 @@ interface Model {
   supportImageGeneration: boolean;
   supportAudioGeneration: boolean;
   supportEmbedding: boolean;
+  clientType?: string;
   provider:
     | "official"
     | "bedrock"
@@ -219,6 +220,7 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
+    clientType: "openai",
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
@@ -252,6 +254,7 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
+    clientType: "openai",
     provider: "siliconflow",
   });
   AVAILABLE_MODELS.push({
@@ -317,7 +320,12 @@ function createClient(model: Model): AutoLLMClient {
     baseUrl = undefined;
   }
 
-  return new AutoLLMClient({ model: model.name, apiKey, baseUrl });
+  return new AutoLLMClient({
+    model: model.name,
+    apiKey,
+    baseUrl,
+    clientType: model.clientType,
+  });
 }
 
 function checkEventIntegrity(event: UniEvent): void {
@@ -1000,6 +1008,16 @@ test("should reject unknown model", () => {
   expect(() => new AutoLLMClient({ model: "unknown-model" })).toThrow(
     "not supported",
   );
+});
+
+test("should route openai clientType to OpenaiClient", () => {
+  const client = new AutoLLMClient({
+    model: "unknown-model",
+    apiKey: "test-key",
+    clientType: "openai-compatible",
+  });
+
+  expect((client as any)._client.constructor.name).toBe("OpenaiClient");
 });
 
 test("should validate last event has usage_metadata and finish_reason", () => {

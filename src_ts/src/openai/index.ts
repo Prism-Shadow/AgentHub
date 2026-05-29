@@ -12,4 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { Qwen3_6Client } from "./client";
+export { OpenaiClient } from "./client";

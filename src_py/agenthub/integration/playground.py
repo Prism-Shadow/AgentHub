@@ -41,7 +41,7 @@ from .tracer import Tracer
 _event_loop: asyncio.AbstractEventLoop | None = None
 _loop_lock = threading.Lock()
 _session_clients: dict[str, AutoLLMClient] = {}
-_session_client_options: dict[str, tuple[str, str | None, str | None]] = {}
+_session_client_options: dict[str, tuple[str, str | None, str | None, str | None]] = {}
 _session_abort_signals: dict[str, AbortSignal] = {}
 
 
@@ -83,12 +83,13 @@ def _normalize_optional_string(value: Any) -> str | None:
     return None
 
 
-def _get_client_options(config: dict[str, Any]) -> tuple[str, str | None, str | None]:
+def _get_client_options(config: dict[str, Any]) -> tuple[str, str | None, str | None, str | None]:
     """Extract client construction options from playground config."""
     model = _normalize_optional_string(config.get("model")) or "gpt-5.5"
     api_key = _normalize_optional_string(config.get("api_key"))
     base_url = _normalize_optional_string(config.get("base_url"))
-    return model, api_key, base_url
+    client_type = _normalize_optional_string(config.get("client_type"))
+    return model, api_key, base_url, client_type
 
 
 def _get_request_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -97,6 +98,7 @@ def _get_request_config(config: dict[str, Any]) -> dict[str, Any]:
     request_config.pop("model", None)
     request_config.pop("api_key", None)
     request_config.pop("base_url", None)
+    request_config.pop("client_type", None)
     return request_config
 
 
@@ -120,7 +122,7 @@ def create_chat_app() -> Flask:
     <!DOCTYPE html>
     <html>
     <head>
-        <title>LLM Playground</title>
+        <title>AgentHub Playground</title>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <script src="https://cdn.tailwindcss.com"></script>
@@ -208,9 +210,6 @@ def create_chat_app() -> Flask:
                             <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="glm-5.1" data-label="GLM 5.1" data-description="glm-5.1" onclick="selectComboboxOption('modelCombobox', this)">
                                 <span class="block truncate text-sm font-medium text-gray-900">GLM 5.1</span>
                             </button>
-                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="qwen/qwen3.6-35b-a3b" data-label="Qwen3.6 35B" data-description="qwen/qwen3.6-35b-a3b" onclick="selectComboboxOption('modelCombobox', this)">
-                                <span class="block truncate text-sm font-medium text-gray-900">Qwen3.6 35B</span>
-                            </button>
                             <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-3.1-flash-image-preview" data-label="Gemini 3.1 Flash Image" data-description="gemini-3.1-flash-image-preview" onclick="selectComboboxOption('modelCombobox', this)">
                                 <span class="block truncate text-sm font-medium text-gray-900">Gemini 3.1 Flash Image</span>
                             </button>
@@ -228,12 +227,19 @@ def create_chat_app() -> Flask:
                             </button>
                         </div>
                     </div>
-                    <div id="customModelWrapper" class="hidden mt-2">
+                    <div id="customModelWrapper" class="hidden mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <input
                             id="customModelInput"
                             type="text"
                             autocomplete="off"
                             placeholder="Custom model id"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <input
+                            id="customClientTypeInput"
+                            type="text"
+                            autocomplete="off"
+                            placeholder="Client type"
                             class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                     </div>
@@ -622,6 +628,13 @@ def create_chat_app() -> Flask:
                 const apiKey = document.getElementById('apiKeyInput').value.trim();
                 if (apiKey) {
                     config.api_key = apiKey;
+                }
+
+                if (document.getElementById('modelSelect').value === '__custom__') {
+                    const clientType = document.getElementById('customClientTypeInput').value.trim();
+                    if (clientType) {
+                        config.client_type = clientType;
+                    }
                 }
 
                 const baseUrl = document.getElementById('baseUrlInput').value.trim();
@@ -1059,8 +1072,13 @@ def create_chat_app() -> Flask:
                 # Get or create client for this session
                 client_options = _get_client_options(config)
                 if session_id not in _session_clients or _session_client_options.get(session_id) != client_options:
-                    model, api_key, base_url = client_options
-                    _session_clients[session_id] = AutoLLMClient(model=model, api_key=api_key, base_url=base_url)
+                    model, api_key, base_url, client_type = client_options
+                    _session_clients[session_id] = AutoLLMClient(
+                        model=model,
+                        api_key=api_key,
+                        base_url=base_url,
+                        client_type=client_type,
+                    )
                     _session_client_options[session_id] = client_options
 
                 client = _session_clients[session_id]
