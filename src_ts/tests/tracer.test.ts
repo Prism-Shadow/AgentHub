@@ -333,6 +333,30 @@ describe("Tracer", () => {
     expect(html).toContain("sort=mtime");
   });
 
+  test("should filter .DS_Store from directory listings", async () => {
+    const tracer = new Tracer(tempCacheDir);
+    const model = "fake-model";
+    const history: UniMessage[] = [
+      { role: "user", content_items: [{ type: "text", text: "Test" }] },
+    ];
+    const config = {};
+
+    tracer.saveHistory(model, history, "agent/conv", config);
+    fs.writeFileSync(path.join(tempCacheDir, ".DS_Store"), "metadata");
+    fs.writeFileSync(path.join(tempCacheDir, "agent", ".DS_Store"), "metadata");
+
+    const app = tracer.createWebApp();
+    const supertest = await import("supertest");
+
+    const rootResponse = await supertest.default(app).get("/");
+    expect(rootResponse.status).toBe(200);
+    expect(rootResponse.text).not.toContain(".DS_Store");
+
+    const nestedResponse = await supertest.default(app).get("/agent");
+    expect(nestedResponse.status).toBe(200);
+    expect(nestedResponse.text).not.toContain(".DS_Store");
+  });
+
   test("should sort directory listing by mtime", async () => {
     const tracer = new Tracer(tempCacheDir);
     const model = "fake-model";

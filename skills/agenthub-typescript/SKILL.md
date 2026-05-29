@@ -15,7 +15,7 @@ npm install @prismshadow/agenthub
 
 ## Model Selection
 
-Use exact model IDs. Create with `new AutoLLMClient({ model: modelId })`, or pass credentials directly: `new AutoLLMClient({ model: modelId, apiKey: key, baseUrl: url })`. If a model ID is not listed, ask the user to confirm the exact ID before using it.
+Use exact model IDs. If a model ID is not listed, ask the user to confirm the exact ID before using it.
 
 | Family | Provider | Model IDs | API Key | Base URL |
 | --- | --- | --- | --- | --- |
@@ -171,6 +171,26 @@ Event-only content item:
 ## APIs
 
 `AutoLLMClient` exposes five basic APIs. Prefer the stateful stream for agent loops.
+
+Initialize `AutoLLMClient` in one of three common ways:
+
+```typescript
+// Initialize with model name
+const clientByModel = new AutoLLMClient({ model: "gpt-5.5" });
+
+// Optionally specify API key (if not using environment variables)
+const clientWithEndpoint = new AutoLLMClient({
+  model: "gpt-5.5",
+  apiKey: "your-openai-api-key",
+  baseUrl: "https://api.openai.com/v1",
+});
+
+// Use OpenAI Chat Completions-compatible routing explicitly
+const clientWithType = new AutoLLMClient({
+  model: "custom-model",
+  clientType: "openai",
+});
+```
 
 ```typescript
 /** Stream one stateless response from a full message list. */

@@ -17,7 +17,7 @@ pip install agenthub-python
 
 ## Model Selection
 
-Use exact model IDs. Create with `AutoLLMClient(model=model_id)`, or pass credentials directly: `AutoLLMClient(model=model_id, api_key=key, base_url=url)`. If a model ID is not listed, ask the user to confirm the exact ID before using it.
+Use exact model IDs. If a model ID is not listed, ask the user to confirm the exact ID before using it.
 
 | Family | Provider | Model IDs | API Key | Base URL |
 | --- | --- | --- | --- | --- |
@@ -173,6 +173,23 @@ Event-only content item:
 ## APIs
 
 `AutoLLMClient` exposes five basic APIs. Prefer the stateful stream for agent loops.
+
+Initialize `AutoLLMClient` in one of three common ways:
+
+```python
+# Initialize with model name
+client = AutoLLMClient(model="gpt-5.5")
+
+# Optionally specify API key (if not using environment variables)
+client = AutoLLMClient(
+    model="gpt-5.5",
+    api_key="your-openai-api-key",
+    base_url="https://api.openai.com/v1",
+)
+
+# Use OpenAI Chat Completions-compatible routing explicitly
+client = AutoLLMClient(model="custom-model", client_type="openai")
+```
 
 ```python
 async def streaming_response(messages: list[UniMessage], config: UniConfig) -> AsyncIterator[UniEvent]:
