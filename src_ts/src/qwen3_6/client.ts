@@ -121,6 +121,7 @@ export class Qwen3_6Client extends LLMClient {
     const qwenConfig: any = {
       model: this._model,
       stream: true,
+      stream_options: { include_usage: true },
     };
 
     if (config.max_tokens !== undefined) {
