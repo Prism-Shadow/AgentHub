@@ -15,7 +15,7 @@
 import { LLMClient } from "./baseClient";
 import { Gemini3Client } from "./gemini3";
 import { Claude4_6Client } from "./claude4_6";
-import { Claude4_7Client } from "./claude4_7";
+import { Claude4_8Client } from "./claude4_8";
 import { GPT5_5Client } from "./gpt5_5";
 import { GLM5_1Client } from "./glm5_1";
 import { KimiK2_6Client } from "./kimi_k2_6";
@@ -75,14 +75,15 @@ export class AutoLLMClient extends LLMClient {
     ).toLowerCase();
 
     if (
-      clientType.includes("gemini-3-") ||
-      clientType.includes("gemini-3.1-") ||
-      clientType.includes("gemini-3.5-") ||
+      clientType.includes("gemini-3") ||
       clientType.includes("gemini-embedding")
     ) {
       return new Gemini3Client({ model, apiKey, baseUrl });
-    } else if (clientType.includes("claude") && clientType.includes("4-7")) {
-      return new Claude4_7Client({ model, apiKey, baseUrl });
+    } else if (
+      clientType.includes("claude") &&
+      (clientType.includes("4-7") || clientType.includes("4-8"))
+    ) {
+      return new Claude4_8Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("claude") && clientType.includes("4-6")) {
       return new Claude4_6Client({ model, apiKey, baseUrl });
     } else if (
@@ -97,14 +98,14 @@ export class AutoLLMClient extends LLMClient {
       clientType.includes("kimi-k2.6")
     ) {
       return new KimiK2_6Client({ model, apiKey, baseUrl });
+    } else if (clientType.includes("deepseek-v4")) {
+      return new DeepSeekV4Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("openai")) {
       return new OpenaiClient({ model, apiKey, baseUrl });
-    } else if (clientType.includes("deepseek-v4-")) {
-      return new DeepSeekV4Client({ model, apiKey, baseUrl });
     } else {
       throw new Error(
         `${clientType} is not supported. ` +
-          "Supported client types: gemini-3, claude-4-7, claude-4-6, gpt-5.4, gpt-5.5, glm-5.1, kimi-k2.5, kimi-k2.6, openai, deepseek-v4.",
+          "Supported client types: gemini-3, claude-4-8, claude-4-7, claude-4-6, gpt-5.5, gpt-5.4, glm-5.1, kimi-k2.6, kimi-k2.5, deepseek-v4, openai.",
       );
     }
   }

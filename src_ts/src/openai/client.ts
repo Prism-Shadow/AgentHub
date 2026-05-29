@@ -116,13 +116,7 @@ export class OpenaiClient extends LLMClient {
       };
     }
 
-    if (["none", "auto", "required"].includes(toolChoice)) {
-      return toolChoice;
-    }
-
-    throw new Error(
-      'OpenAI Chat Completions only supports "none", "auto", "required", or named tools.',
-    );
+    return toolChoice;
   }
 
   /**
@@ -160,9 +154,7 @@ export class OpenaiClient extends LLMClient {
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE
     ) {
-      throw new Error(
-        "prompt_caching must be ENABLE for OpenAI Chat Compatible.",
-      );
+      throw new Error("prompt_caching must be ENABLE for OpenAI.");
     }
 
     return openaiConfig;
@@ -454,8 +446,6 @@ export class OpenaiClient extends LLMClient {
               // update partial tool call for tool call object
               partialToolCall.arguments =
                 (partialToolCall.arguments || "") + item.arguments;
-              partialToolCall.tool_call_id =
-                item.tool_call_id || partialToolCall.tool_call_id;
             }
           }
         }

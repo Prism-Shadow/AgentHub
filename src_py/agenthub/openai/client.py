@@ -79,10 +79,7 @@ class OpenaiClient(LLMClient):
                 },
             }
 
-        if tool_choice in ("none", "auto", "required"):
-            return tool_choice
-
-        raise ValueError("OpenAI Chat Completions only supports 'none', 'auto', 'required', or named tools.")
+        return tool_choice
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """
@@ -109,7 +106,7 @@ class OpenaiClient(LLMClient):
             openai_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
 
         if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
-            raise ValueError("prompt_caching must be ENABLE for OpenAI Chat Compatible.")
+            raise ValueError("prompt_caching must be ENABLE for OpenAI.")
 
         return openai_config
 
@@ -344,9 +341,6 @@ class OpenaiClient(LLMClient):
                         else:
                             # update partial tool call for tool call object
                             partial_tool_call["arguments"] += item["arguments"]
-                            partial_tool_call["tool_call_id"] = (
-                                item["tool_call_id"] or partial_tool_call["tool_call_id"]
-                            )
 
                 yield event
             elif event["event_type"] == "stop":

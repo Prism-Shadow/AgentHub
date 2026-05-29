@@ -36,15 +36,15 @@ import {
 const REDACTED_THINKING = "_REDACTED_THINKING";
 
 /**
- * Claude 4.7-specific LLM client implementation.
+ * Claude 4.8-specific LLM client implementation.
  */
-export class Claude4_7Client extends LLMClient {
+export class Claude4_8Client extends LLMClient {
   protected _model: string;
   private _client: Anthropic | AnthropicBedrock;
   private _use_bedrock: boolean;
 
   /**
-   * Initialize Claude 4.7 client with model and API key.
+   * Initialize Claude 4.8 client with model and API key.
    */
   constructor(options: {
     model: string;

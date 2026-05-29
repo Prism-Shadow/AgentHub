@@ -66,7 +66,9 @@ export class GLM5_1Client extends LLMClient {
     type: string;
     clear_thinking?: boolean;
   } {
-    const mapping: { [key: string]: { type: string; clear_thinking?: boolean } } = {
+    const mapping: {
+      [key: string]: { type: string; clear_thinking?: boolean };
+    } = {
       [ThinkingLevel.NONE]: { type: "disabled" },
       [ThinkingLevel.LOW]: { type: "enabled", clear_thinking: false },
       [ThinkingLevel.MEDIUM]: { type: "enabled", clear_thinking: false },
