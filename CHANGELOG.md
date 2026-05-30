@@ -2,6 +2,8 @@
 
 Here, we record the addition and removal times of models, major functional updates, bug fixes, and release times of key versions.
 
+- [2026-05-30] Release version 0.3.2.
+
 - [2026-05-30] Support Claude 4.8 models and an OpenAI Chat Completions API-compatible client.
 
 - [2026-05-28] Add abort support and agent skills.
