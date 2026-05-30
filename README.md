@@ -86,20 +86,12 @@ cd src_ts && make install && make build
 
 See [src_ts/README.md](src_ts/README.md) for comprehensive usage examples and API documentation.
 
-## Skills for AI Coding Assistants
+## Agent Skills
 
 AgentHub provides Codex/Claude Code skill files for assistants that need to help users consume the SDK packages:
 
-```text
-skills/
-  agenthub-python/
-    SKILL.md
-  agenthub-typescript/
-    SKILL.md
-```
-
-- `skills/agenthub-python/SKILL.md` guides Python package usage with `agenthub-python`.
-- `skills/agenthub-typescript/SKILL.md` guides TypeScript and Node.js package usage with `@prismshadow/agenthub`.
+- Python skill: [`skills/agenthub-python/SKILL.md`](skills/agenthub-python/SKILL.md)
+- TypeScript skill: [`skills/agenthub-typescript/SKILL.md`](skills/agenthub-typescript/SKILL.md)
 
 ## APIs
 
