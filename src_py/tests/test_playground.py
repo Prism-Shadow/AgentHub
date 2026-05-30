@@ -33,7 +33,7 @@ def test_chat_app_index_route():
     with app.test_client() as client:
         response = client.get("/")
         assert response.status_code == 200
-        assert b"LLM Playground" in response.data
+        assert b"AgentHub Playground" in response.data
         assert b'<h1 class="text-xl font-semibold">AgentHub</h1>' in response.data
         assert b"messagesContainer" in response.data
         assert b"messageInput" in response.data
@@ -99,11 +99,12 @@ def test_chat_app_uses_client_connection_options(monkeypatch):
     captured = {}
 
     class FakeClient:
-        def __init__(self, model, api_key=None, base_url=None):
+        def __init__(self, model, api_key=None, base_url=None, client_type=None):
             captured["client_options"] = {
                 "model": model,
                 "api_key": api_key,
                 "base_url": base_url,
+                "client_type": client_type,
             }
 
         async def streaming_response_stateful(self, message, config, signal=None):
@@ -136,6 +137,7 @@ def test_chat_app_uses_client_connection_options(monkeypatch):
                     "model": "gpt-5.5",
                     "api_key": "test-key",
                     "base_url": "https://example.test/v1",
+                    "client_type": "gpt-5.5",
                     "thinking_level": "low",
                 },
             },
@@ -148,6 +150,7 @@ def test_chat_app_uses_client_connection_options(monkeypatch):
         "model": "gpt-5.5",
         "api_key": "test-key",
         "base_url": "https://example.test/v1",
+        "client_type": "gpt-5.5",
     }
     assert captured["request_config"] == {"thinking_level": "low"}
     assert isinstance(captured["signal"], AbortSignal)
@@ -158,7 +161,7 @@ def test_chat_app_accepts_large_image_payload(monkeypatch):
     captured = {}
 
     class FakeClient:
-        def __init__(self, model, api_key=None, base_url=None):
+        def __init__(self, model, api_key=None, base_url=None, client_type=None):
             pass
 
         async def streaming_response_stateful(self, message, config, signal=None):

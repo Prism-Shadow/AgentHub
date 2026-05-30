@@ -692,7 +692,7 @@ class Tracer:
             items = []
             try:
                 with os.scandir(full_path) as scanner:
-                    raw_entries = list(scanner)
+                    raw_entries = [entry for entry in scanner if entry.name != ".DS_Store"]
 
                 # Filter entries that pass the security check first
                 safe_entries: list[tuple[os.DirEntry, Path]] = []

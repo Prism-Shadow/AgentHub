@@ -146,7 +146,7 @@ class Claude4_6Client(LLMClient):
         if config.get("max_tokens") is not None:
             claude_config["max_tokens"] = config["max_tokens"]
         else:
-            claude_config["max_tokens"] = 32768  # Claude requires max_tokens to be specified
+            claude_config["max_tokens"] = 64000  # Claude requires max_tokens to be specified
 
         if config.get("temperature") is not None:
             claude_config["temperature"] = config["temperature"]

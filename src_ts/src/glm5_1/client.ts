@@ -64,13 +64,16 @@ export class GLM5_1Client extends LLMClient {
    */
   private _convertThinkingLevelToConfig(thinkingLevel: ThinkingLevel): {
     type: string;
+    clear_thinking?: boolean;
   } {
-    const mapping: { [key: string]: { type: string } } = {
+    const mapping: {
+      [key: string]: { type: string; clear_thinking?: boolean };
+    } = {
       [ThinkingLevel.NONE]: { type: "disabled" },
-      [ThinkingLevel.LOW]: { type: "enabled" },
-      [ThinkingLevel.MEDIUM]: { type: "enabled" },
-      [ThinkingLevel.HIGH]: { type: "enabled" },
-      [ThinkingLevel.XHIGH]: { type: "enabled" },
+      [ThinkingLevel.LOW]: { type: "enabled", clear_thinking: false },
+      [ThinkingLevel.MEDIUM]: { type: "enabled", clear_thinking: false },
+      [ThinkingLevel.HIGH]: { type: "enabled", clear_thinking: false },
+      [ThinkingLevel.XHIGH]: { type: "enabled", clear_thinking: false },
     };
     return mapping[thinkingLevel];
   }

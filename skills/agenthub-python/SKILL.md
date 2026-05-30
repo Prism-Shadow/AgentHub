@@ -17,7 +17,7 @@ pip install agenthub-python
 
 ## Model Selection
 
-Use exact model IDs. Create with `AutoLLMClient(model=model_id)`, or pass credentials directly: `AutoLLMClient(model=model_id, api_key=key, base_url=url)`. If a model ID is not listed, ask the user to confirm the exact ID before using it.
+Use exact model IDs. If a model ID is not listed, ask the user to confirm the exact ID before using it.
 
 | Family | Provider | Model IDs | API Key | Base URL |
 | --- | --- | --- | --- | --- |
@@ -29,6 +29,8 @@ Use exact model IDs. Create with `AutoLLMClient(model=model_id)`, or pass creden
 | Claude 4.6 | Bedrock | `global.anthropic.claude-sonnet-4-6` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
 | Claude 4.7 | Official / ModelVerse | `claude-opus-4-7` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
 | Claude 4.7 | Bedrock | `global.anthropic.claude-opus-4-7` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
+| Claude 4.8 | Official / ModelVerse | `claude-opus-4-8` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
+| Claude 4.8 | Bedrock | `global.anthropic.claude-opus-4-8` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
 | GPT 5.4 | Official / ModelVerse | `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` |
 | GPT 5.5 | Official / ModelVerse | `gpt-5.5` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` |
 | Kimi-K2.6 | Official | `kimi-k2.6` | `MOONSHOT_API_KEY` | `MOONSHOT_BASE_URL` |
@@ -40,8 +42,6 @@ Use exact model IDs. Create with `AutoLLMClient(model=model_id)`, or pass creden
 | GLM-5.1 | Official | `glm-5.1` | `ZAI_API_KEY` | `ZAI_BASE_URL` |
 | GLM-5.1 | OpenRouter | `z-ai/glm-5.1` | `ZAI_API_KEY` | `ZAI_BASE_URL` |
 | GLM-5.1 | SiliconFlow | `Pro/zai-org/GLM-5.1` | `ZAI_API_KEY` | `ZAI_BASE_URL` |
-| Qwen3.6 | OpenRouter | `qwen/qwen3.6-35b-a3b` | `QWEN_API_KEY` | `QWEN_BASE_URL` |
-| Qwen3.6 | SiliconFlow | `Qwen/Qwen3.6-35B-A3B` | `QWEN_API_KEY` | `QWEN_BASE_URL` |
 
 Common gateway base URLs:
 
@@ -173,6 +173,23 @@ Event-only content item:
 ## APIs
 
 `AutoLLMClient` exposes five basic APIs. Prefer the stateful stream for agent loops.
+
+Initialize `AutoLLMClient` in one of three common ways:
+
+```python
+# Initialize with model name
+client = AutoLLMClient(model="gpt-5.5")
+
+# Optionally specify API key (if not using environment variables)
+client = AutoLLMClient(
+    model="gpt-5.5",
+    api_key="your-openai-api-key",
+    base_url="https://api.openai.com/v1",
+)
+
+# Use OpenAI Chat Completions-compatible routing explicitly
+client = AutoLLMClient(model="custom-model", client_type="openai")
+```
 
 ```python
 async def streaming_response(messages: list[UniMessage], config: UniConfig) -> AsyncIterator[UniEvent]:

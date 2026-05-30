@@ -46,14 +46,14 @@ class GLM5_1Client(LLMClient):
         self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self._history: list[UniMessage] = []
 
-    def _convert_thinking_level_to_config(self, thinking_level: ThinkingLevel) -> dict[str, str]:
+    def _convert_thinking_level_to_config(self, thinking_level: ThinkingLevel) -> dict[str, str | bool]:
         """Convert ThinkingLevel enum to GLM's thinking configuration."""
         mapping = {
             ThinkingLevel.NONE: {"type": "disabled"},
-            ThinkingLevel.LOW: {"type": "enabled"},
-            ThinkingLevel.MEDIUM: {"type": "enabled"},
-            ThinkingLevel.HIGH: {"type": "enabled"},
-            ThinkingLevel.XHIGH: {"type": "enabled"},
+            ThinkingLevel.LOW: {"type": "enabled", "clear_thinking": False},
+            ThinkingLevel.MEDIUM: {"type": "enabled", "clear_thinking": False},
+            ThinkingLevel.HIGH: {"type": "enabled", "clear_thinking": False},
+            ThinkingLevel.XHIGH: {"type": "enabled", "clear_thinking": False},
         }
         return mapping.get(thinking_level)
 

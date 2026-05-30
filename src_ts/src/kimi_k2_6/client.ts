@@ -145,7 +145,7 @@ export class KimiK2_6Client extends LLMClient {
     };
 
     if (config.max_tokens !== undefined) {
-      kimiConfig.max_tokens = config.max_tokens;
+      kimiConfig.max_completion_tokens = config.max_tokens;
     }
 
     if (config.temperature !== undefined && config.temperature !== 1.0) {

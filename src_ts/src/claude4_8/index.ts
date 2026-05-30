@@ -12,4 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { Claude4_7Client } from "./client";
+export { Claude4_8Client } from "./client";

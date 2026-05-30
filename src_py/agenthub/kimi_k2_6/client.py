@@ -102,7 +102,7 @@ class KimiK2_6Client(LLMClient):
         kimi_config = {"model": self._model, "stream": True, "stream_options": {"include_usage": True}}
 
         if config.get("max_tokens") is not None:
-            kimi_config["max_tokens"] = config["max_tokens"]
+            kimi_config["max_completion_tokens"] = config["max_tokens"]
 
         if config.get("temperature") is not None and config["temperature"] != 1.0:
             raise ValueError("Kimi does not support setting temperature.")

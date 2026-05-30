@@ -41,11 +41,11 @@ from ..types import (
 REDACTED_THINKING = "_REDACTED_THINKING"
 
 
-class Claude4_7Client(LLMClient):
-    """Claude 4.7-specific LLM client implementation."""
+class Claude4_8Client(LLMClient):
+    """Claude 4.8-specific LLM client implementation."""
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
-        """Initialize Claude 4.7 client with model and API key."""
+        """Initialize Claude 4.8 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         base_url = base_url or os.getenv("ANTHROPIC_BASE_URL")
@@ -146,10 +146,10 @@ class Claude4_7Client(LLMClient):
         if config.get("max_tokens") is not None:
             claude_config["max_tokens"] = config["max_tokens"]
         else:
-            claude_config["max_tokens"] = 32768  # Claude requires max_tokens to be specified
+            claude_config["max_tokens"] = 64000  # Claude requires max_tokens to be specified
 
         if config.get("temperature") is not None and config["temperature"] != 1.0:
-            raise ValueError("Claude 4.7 does not support setting temperature.")
+            raise ValueError("Claude 4.8 does not support setting temperature.")
 
         if config.get("thinking_level") is not None:
             claude_config.update(self._convert_thinking_level_to_thinking_config(config["thinking_level"]))
