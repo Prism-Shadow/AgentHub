@@ -198,7 +198,7 @@ export class Claude4_6Client extends LLMClient {
     if (config.max_tokens !== undefined) {
       claudeConfig.max_tokens = config.max_tokens;
     } else {
-      claudeConfig.max_tokens = 32768;
+      claudeConfig.max_tokens = 64000;
     }
 
     if (config.temperature !== undefined) {
