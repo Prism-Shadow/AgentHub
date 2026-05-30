@@ -43,7 +43,7 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 | Model Name     | Vendor                              | Example Model ID       | Input Modalities | Output Modalities              |
 | -------------- | ----------------------------------- | ---------------------- | ---------------- | ------------------------------ |
 | Gemini 3-3.5   | Official/Google Vertex AI           | `gemini-3.5-flash`     | Text, Image      | Text, Image, Speech, Embedding |
-| Claude 4.6/4.7 | Official/Amazon Bedrock/UModelVerse | `claude-opus-4-7`      | Text, Image      | Text                           |
+| Claude 4.6-4.8 | Official/Amazon Bedrock/UModelVerse | `claude-opus-4-8`      | Text, Image      | Text                           |
 | GPT-5.4/5.5    | Official/UModelVerse                | `gpt-5.5`              | Text, Image      | Text                           |
 | Kimi-K2.5/K2.6 | Official/OpenRouter/SiliconFlow     | `kimi-k2.6`            | Text, Image      | Text                           |
 | DeepSeek V4    | Official/OpenRouter/SiliconFlow     | `deepseek-v4-pro`      | Text             | Text                           |
@@ -278,7 +278,7 @@ main().catch(console.error);
 ```
 </details>
 
-### SiliconFlow Qwen3.6 35B
+### SiliconFlow Qwen3.6 35B via OpenAI-compatible API
 
 <details><summary><strong>Python Example</strong></summary>
 
@@ -287,11 +287,11 @@ import asyncio
 import os
 from agenthub import AutoLLMClient
 
-os.environ["QWEN_API_KEY"] = "your-siliconflow-api-key"
-os.environ["QWEN_BASE_URL"] = "https://api.siliconflow.cn/v1"
+os.environ["OPENAI_API_KEY"] = "your-siliconflow-api-key"
+os.environ["OPENAI_BASE_URL"] = "https://api.siliconflow.cn/v1"
 
-async def main():  
-    client = AutoLLMClient(model="Qwen/Qwen3.6-35B-A3B")
+async def main():
+    client = AutoLLMClient(model="Qwen/Qwen3.6-35B-A3B", client_type="openai")
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -310,11 +310,14 @@ asyncio.run(main())
 ```typescript
 import { AutoLLMClient } from "@prismshadow/agenthub";
 
-process.env.QWEN_API_KEY = "your-siliconflow-api-key";
-process.env.QWEN_BASE_URL = "https://api.siliconflow.cn/v1";
+process.env.OPENAI_API_KEY = "your-siliconflow-api-key";
+process.env.OPENAI_BASE_URL = "https://api.siliconflow.cn/v1";
 
 async function main() {
-  const client = new AutoLLMClient({ model: "Qwen/Qwen3.6-35B-A3B" });
+  const client = new AutoLLMClient({
+    model: "Qwen/Qwen3.6-35B-A3B",
+    clientType: "openai",
+  });
   for await (const event of client.streamingResponseStateful({
     message: {
       role: "user",

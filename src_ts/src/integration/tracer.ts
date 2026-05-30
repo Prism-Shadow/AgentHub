@@ -766,7 +766,9 @@ export class Tracer {
       try {
         const sortBy = req.query["sort"] === "mtime" ? "mtime" : "name";
 
-        const entries = fs.readdirSync(fullPath, { withFileTypes: true });
+        const entries = fs
+          .readdirSync(fullPath, { withFileTypes: true })
+          .filter((entry) => entry.name !== ".DS_Store");
         const entryStats = new Map<string, fs.Stats>();
         for (const entry of entries) {
           entryStats.set(

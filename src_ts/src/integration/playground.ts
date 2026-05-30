@@ -33,12 +33,14 @@ interface PlaygroundConfig extends UniConfig {
   model?: string;
   api_key?: string;
   base_url?: string;
+  client_type?: string;
 }
 
 interface PlaygroundClientOptions {
   model: string;
   apiKey?: string;
   baseUrl?: string;
+  clientType?: string;
 }
 
 function normalizeOptionalString(value: unknown): string | undefined {
@@ -50,6 +52,7 @@ function getClientOptions(config: PlaygroundConfig): PlaygroundClientOptions {
     model: normalizeOptionalString(config.model) || "gpt-5.5",
     apiKey: normalizeOptionalString(config.api_key),
     baseUrl: normalizeOptionalString(config.base_url),
+    clientType: normalizeOptionalString(config.client_type),
   };
 }
 
@@ -58,6 +61,7 @@ function getRequestConfig(config: PlaygroundConfig): UniConfig {
   delete requestConfig.model;
   delete requestConfig.api_key;
   delete requestConfig.base_url;
+  delete requestConfig.client_type;
   return requestConfig;
 }
 
@@ -69,7 +73,8 @@ function clientOptionsChanged(
     !previous ||
     previous.model !== next.model ||
     previous.apiKey !== next.apiKey ||
-    previous.baseUrl !== next.baseUrl
+    previous.baseUrl !== next.baseUrl ||
+    previous.clientType !== next.clientType
   );
 }
 
@@ -128,7 +133,7 @@ export function createChatApp(): Express {
   <!DOCTYPE html>
   <html>
   <head>
-      <title>LLM Playground</title>
+      <title>AgentHub Playground</title>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <script src="https://cdn.tailwindcss.com"></script>
@@ -216,9 +221,6 @@ export function createChatApp(): Express {
                           <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="glm-5.1" data-label="GLM 5.1" data-description="glm-5.1" onclick="selectComboboxOption('modelCombobox', this)">
                               <span class="block truncate text-sm font-medium text-gray-900">GLM 5.1</span>
                           </button>
-                          <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="qwen/qwen3.6-35b-a3b" data-label="Qwen3.6 35B" data-description="qwen/qwen3.6-35b-a3b" onclick="selectComboboxOption('modelCombobox', this)">
-                              <span class="block truncate text-sm font-medium text-gray-900">Qwen3.6 35B</span>
-                          </button>
                           <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-3.1-flash-image-preview" data-label="Gemini 3.1 Flash Image" data-description="gemini-3.1-flash-image-preview" onclick="selectComboboxOption('modelCombobox', this)">
                               <span class="block truncate text-sm font-medium text-gray-900">Gemini 3.1 Flash Image</span>
                           </button>
@@ -236,12 +238,19 @@ export function createChatApp(): Express {
                           </button>
                       </div>
                   </div>
-                  <div id="customModelWrapper" class="hidden mt-2">
+                  <div id="customModelWrapper" class="hidden mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <input
                           id="customModelInput"
                           type="text"
                           autocomplete="off"
                           placeholder="Custom model id"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <input
+                          id="customClientTypeInput"
+                          type="text"
+                          autocomplete="off"
+                          placeholder="Client type"
                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                   </div>
@@ -630,6 +639,13 @@ export function createChatApp(): Express {
               const apiKey = document.getElementById('apiKeyInput').value.trim();
               if (apiKey) {
                   config.api_key = apiKey;
+              }
+
+              if (document.getElementById('modelSelect').value === '__custom__') {
+                  const clientType = document.getElementById('customClientTypeInput').value.trim();
+                  if (clientType) {
+                      config.client_type = clientType;
+                  }
               }
 
               const baseUrl = document.getElementById('baseUrlInput').value.trim();
@@ -1072,10 +1088,7 @@ export function createChatApp(): Express {
       const clientOptions = getClientOptions(config || {});
       if (
         !sessionClients.has(sessionId) ||
-        clientOptionsChanged(
-          sessionClientOptions.get(sessionId),
-          clientOptions,
-        )
+        clientOptionsChanged(sessionClientOptions.get(sessionId), clientOptions)
       ) {
         sessionClients.set(sessionId, new AutoLLMClient(clientOptions));
         sessionClientOptions.set(sessionId, clientOptions);

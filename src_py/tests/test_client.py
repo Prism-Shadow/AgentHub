@@ -40,6 +40,7 @@ class Model:
     support_tts: bool = False
     support_embedding: bool = False
     provider: Literal["official", "bedrock", "vertex", "siliconflow", "openrouter", "modelverse"] = "official"
+    client_type: str | None = None
 
     def __repr__(self) -> str:
         return f"{self.name}:{self.provider}"
@@ -124,14 +125,14 @@ RUN_SLOW_TEST = os.getenv("RUN_SLOW_TEST", "0") == "1"
 
 if os.getenv("OPENROUTER_API_KEY") and RUN_SLOW_TEST:
     AVAILABLE_MODELS.append(Model(name="z-ai/glm-5.1", provider="openrouter", support_image_understanding=False))
-    AVAILABLE_MODELS.append(Model(name="qwen/qwen3.6-35b-a3b", provider="openrouter"))
+    AVAILABLE_MODELS.append(Model(name="qwen/qwen3.6-35b-a3b", provider="openrouter", client_type="openai"))
     AVAILABLE_MODELS.append(Model(name="moonshotai/kimi-k2.6", provider="openrouter", support_temperature=False))
 
 if os.getenv("SILICONFLOW_API_KEY") and RUN_SLOW_TEST:
     AVAILABLE_MODELS.append(
         Model(name="Pro/zai-org/GLM-5.1", provider="siliconflow", support_image_understanding=False)
     )
-    AVAILABLE_MODELS.append(Model(name="Qwen/Qwen3.6-35B-A3B", provider="siliconflow"))
+    AVAILABLE_MODELS.append(Model(name="Qwen/Qwen3.6-35B-A3B", provider="siliconflow", client_type="openai"))
     AVAILABLE_MODELS.append(Model(name="Pro/moonshotai/Kimi-K2.6", provider="siliconflow", support_temperature=False))
 
 if os.getenv("MODELVERSE_API_KEY") and RUN_SLOW_TEST:
@@ -162,7 +163,7 @@ async def _create_client(model: Model) -> AutoLLMClient:
     else:
         api_key, base_url = None, None
 
-    return AutoLLMClient(model=model.name, api_key=api_key, base_url=base_url)
+    return AutoLLMClient(model=model.name, api_key=api_key, base_url=base_url, client_type=model.client_type)
 
 
 async def _check_event_integrity(event: dict) -> None:
@@ -361,6 +362,14 @@ async def test_unknown_model():
     """Test that unknown models raise ValueError."""
     with pytest.raises(ValueError, match="not support"):
         AutoLLMClient(model="unknown-model")
+
+
+@pytest.mark.asyncio
+async def test_openai_client_type_routes_to_openai_client():
+    """Test client_type override for OpenAI-compatible models."""
+    client = AutoLLMClient(model="unknown-model", api_key="test-key", client_type="openai-compatible")
+
+    assert client._client.__class__.__name__ == "OpenaiClient"
 
 
 @pytest.mark.asyncio

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .client import Claude4_7Client
+from .client import Claude4_8Client
 
 
-__all__ = ["Claude4_7Client"]
+__all__ = ["Claude4_8Client"]

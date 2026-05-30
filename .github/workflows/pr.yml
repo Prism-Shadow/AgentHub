@@ -10,8 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check source branch
+        env:
+          BASE_REPO: ${{ github.event.pull_request.base.repo.full_name }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
-          if [[ "${{ github.head_ref }}" != "dev" ]]; then
-            echo "Only dev branch can open PR to main"
+          if [[ "$HEAD_REPO" != "$BASE_REPO" || "$HEAD_REF" != "dev" ]]; then
+            echo "Only the dev branch from $BASE_REPO can open PRs to main"
+            echo "Current source: $HEAD_REPO:$HEAD_REF"
             exit 1
           fi

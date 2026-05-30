@@ -27,6 +27,9 @@ client = AutoLLMClient(model="gpt-5.5")
 
 # Optionally specify API key (if not using environment variables)
 client = AutoLLMClient(model="gpt-5.5", api_key="your-openai-api-key")
+
+# Use OpenAI Chat Completions-compatible routing explicitly
+client = AutoLLMClient(model="custom-model", client_type="openai")
 ```
 
 The client automatically selects the appropriate client based on the model name.

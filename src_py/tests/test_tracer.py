@@ -372,6 +372,29 @@ def test_web_app_sort_by_name(temp_cache_dir):
         assert "sort=mtime" in html
 
 
+def test_web_app_filters_ds_store(temp_cache_dir):
+    """Test that macOS metadata files are hidden from directory listings."""
+    tracer = Tracer(cache_dir=temp_cache_dir)
+
+    model = "fake-model"
+    history = [{"role": "user", "content_items": [{"type": "text", "text": "Test"}]}]
+    config = {}
+    tracer.save_history(model, history, "agent/conv", config)
+    (Path(temp_cache_dir) / ".DS_Store").write_text("metadata")
+    (Path(temp_cache_dir) / "agent" / ".DS_Store").write_text("metadata")
+
+    app = tracer.create_web_app()
+
+    with app.test_client() as client:
+        root_response = client.get("/")
+        assert root_response.status_code == 200
+        assert ".DS_Store" not in root_response.data.decode()
+
+        nested_response = client.get("/agent")
+        assert nested_response.status_code == 200
+        assert ".DS_Store" not in nested_response.data.decode()
+
+
 def test_web_app_sort_by_mtime(temp_cache_dir):
     """Test directory listing sorted by modification time (most recent first)."""
     tracer = Tracer(cache_dir=temp_cache_dir)

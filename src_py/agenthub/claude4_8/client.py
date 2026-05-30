@@ -41,11 +41,11 @@ from ..types import (
 REDACTED_THINKING = "_REDACTED_THINKING"
 
 
-class Claude4_7Client(LLMClient):
-    """Claude 4.7-specific LLM client implementation."""
+class Claude4_8Client(LLMClient):
+    """Claude 4.8-specific LLM client implementation."""
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
-        """Initialize Claude 4.7 client with model and API key."""
+        """Initialize Claude 4.8 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         base_url = base_url or os.getenv("ANTHROPIC_BASE_URL")
