@@ -284,52 +284,12 @@ class OpenaiClient(LLMClient):
             "finish_reason": finish_reason,
         }
 
-    async def _embed_messages_internal(
-        self,
-        messages: list[UniMessage],
-        config: UniConfig,
-    ) -> AsyncIterator[UniEvent]:
-        """Embed text messages and return embeddings."""
-        texts = []
-        for msg in messages:
-            msg_text = ""
-            for item in msg["content_items"]:
-                if item["type"] == "text":
-                    msg_text += item["text"]
-            texts.append(msg_text or " ")
-
-        embedding_config = config.get("embedding_config") or {}
-
-        params: dict[str, Any] = {"model": self._model, "input": texts}
-        if embedding_config.get("dimensions") is not None:
-            params["dimensions"] = embedding_config.get("dimensions")
-
-        result = await self._client.embeddings.create(**params)
-
-        yield {
-            "role": "assistant",
-            "event_type": "stop",
-            "content_items": [{"type": "embedding", "embedding": item.embedding} for item in result.data],
-            "usage_metadata": {
-                "cached_tokens": None,
-                "prompt_tokens": result.usage.prompt_tokens if getattr(result, "usage", None) else None,
-                "thoughts_tokens": None,
-                "response_tokens": None,
-            },
-            "finish_reason": "stop",
-        }
-
     async def _streaming_response_internal(
         self,
         messages: list[UniMessage],
         config: UniConfig,
     ) -> AsyncIterator[UniEvent]:
         """Stream generate using OpenAI Chat Completions-compatible API."""
-        if "embedding" in self._model.lower():
-            async for event in self._embed_messages_internal(messages, config):
-                yield event
-            return
-
         openai_config = self.transform_uni_config_to_model_config(config)
 
         openai_messages = await self.transform_uni_message_to_model_input(messages)
