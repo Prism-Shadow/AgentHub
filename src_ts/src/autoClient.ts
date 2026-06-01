@@ -88,7 +88,8 @@ export class AutoLLMClient extends LLMClient {
       return new Claude4_6Client({ model, apiKey, baseUrl });
     } else if (
       clientType.includes("gpt-5.4") ||
-      clientType.includes("gpt-5.5")
+      clientType.includes("gpt-5.5") ||
+      clientType.includes("text-embedding")
     ) {
       return new GPT5_5Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("glm-5") || clientType.includes("glm-5.1")) {

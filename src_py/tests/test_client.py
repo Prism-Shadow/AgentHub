@@ -83,6 +83,15 @@ if os.getenv("ANTHROPIC_API_KEY"):
 
 if os.getenv("OPENAI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="gpt-5.5", support_temperature=False))
+    AVAILABLE_MODELS.append(
+        Model(
+            name="text-embedding-3-large",
+            support_text=False,
+            support_temperature=False,
+            support_image_understanding=False,
+            support_embedding=True,
+        )
+    )
 
 if os.getenv("ZAI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="glm-5.1", support_image_understanding=False))

@@ -110,6 +110,17 @@ if (process.env.OPENAI_API_KEY) {
     supportEmbedding: false,
     provider: "official",
   });
+
+  AVAILABLE_MODELS.push({
+    name: "text-embedding-3-large",
+    supportTextGeneration: false,
+    supportTemperature: false,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    supportEmbedding: true,
+    provider: "official",
+  });
 }
 
 if (process.env.ZAI_API_KEY) {

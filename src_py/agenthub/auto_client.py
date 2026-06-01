@@ -61,7 +61,9 @@ class AutoLLMClient(LLMClient):
             from .claude4_6 import Claude4_6Client
 
             return Claude4_6Client(model=model, api_key=api_key, base_url=base_url)
-        elif "gpt-5.4" in client_type or "gpt-5.5" in client_type:  # e.g., gpt-5.5
+        elif (
+            "gpt-5.4" in client_type or "gpt-5.5" in client_type or "text-embedding" in client_type
+        ):  # e.g., gpt-5.5, text-embedding-3-large
             from .gpt5_5 import GPT5_5Client
 
             return GPT5_5Client(model=model, api_key=api_key, base_url=base_url)
