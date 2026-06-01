@@ -292,9 +292,12 @@ class OpenaiClient(LLMClient):
         """Embed text messages and return embeddings."""
         texts = []
         for msg in messages:
+            msg_text = ""
             for item in msg["content_items"]:
                 if item["type"] == "text":
-                    texts.append(item["text"])
+                    msg_text += item["text"]
+            if msg_text:
+                texts.append(msg_text)
 
         if not texts:
             raise ValueError("No text content found for embedding.")
@@ -313,7 +316,7 @@ class OpenaiClient(LLMClient):
             "content_items": [{"type": "embedding", "embedding": item.embedding} for item in result.data],
             "usage_metadata": {
                 "cached_tokens": None,
-                "prompt_tokens": result.usage.prompt_tokens,
+                "prompt_tokens": result.usage.prompt_tokens if getattr(result, "usage", None) else None,
                 "thoughts_tokens": None,
                 "response_tokens": None,
             },

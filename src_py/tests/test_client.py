@@ -707,11 +707,14 @@ async def test_embedding(model: Model):
         pytest.skip(f"Embedding is not supported by {model.name}.")
 
     client = await _create_client(model)
-    texts = ["Hello world", "Goodbye world"]
+    messages = [
+        {"role": "user", "content_items": [{"type": "text", "text": "Hello world"}]},
+        {"role": "user", "content_items": [{"type": "text", "text": "Goodbye "}, {"type": "text", "text": "world"}]},
+    ]
 
     events = []
     async for event in client.streaming_response(
-        messages=[{"role": "user", "content_items": [{"type": "text", "text": text}]} for text in texts],
+        messages=messages,
         config={"embedding_config": {"dimensions": 768}},
     ):
         await _check_event_integrity(event)

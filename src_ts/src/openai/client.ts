@@ -376,10 +376,14 @@ export class OpenaiClient extends LLMClient {
   }): AsyncGenerator<UniEvent> {
     const texts: string[] = [];
     for (const msg of options.messages) {
+      let msgText = "";
       for (const item of msg.content_items) {
         if (item.type === "text") {
-          texts.push(item.text);
+          msgText += item.text;
         }
+      }
+      if (msgText) {
+        texts.push(msgText);
       }
     }
 
@@ -410,7 +414,7 @@ export class OpenaiClient extends LLMClient {
       })),
       usage_metadata: {
         cached_tokens: null,
-        prompt_tokens: result.usage.prompt_tokens,
+        prompt_tokens: result.usage?.prompt_tokens ?? null,
         thoughts_tokens: null,
         response_tokens: null,
       },

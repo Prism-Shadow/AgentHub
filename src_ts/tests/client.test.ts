@@ -996,19 +996,14 @@ if (AVAILABLE_MODELS.length > 0) {
       }
 
       const client = createClient(model);
-      const texts = ["Hello world", "Goodbye world"];
+      const messages = [
+        { role: "user" as const, content_items: [{ type: "text" as const, text: "Hello world" }] },
+        { role: "user" as const, content_items: [{ type: "text" as const, text: "Goodbye " }, { type: "text" as const, text: "world" }] },
+      ];
 
       const events: UniEvent[] = [];
       for await (const event of client.streamingResponse({
-        messages: texts.map((text) => ({
-          role: "user",
-          content_items: [
-            {
-              type: "text" as const,
-              text,
-            },
-          ],
-        })),
+        messages,
         config: { embedding_config: { dimensions: 768 } },
       })) {
         checkEventIntegrity(event);
