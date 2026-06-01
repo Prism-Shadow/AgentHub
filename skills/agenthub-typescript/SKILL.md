@@ -52,7 +52,7 @@ Common gateway base URLs:
 For models accessed through OpenAI-compatible APIs (e.g., Qwen series models via SiliconFlow or OpenRouter), pass `clientType: "openai"` (`clientType: "openai-embedding"` for embedding endpoints). These models use `OPENAI_API_KEY` and `OPENAI_BASE_URL`:
 
 ```typescript
-const client = new AutoLLMClient({ model: "Qwen/Qwen3-Embedding-0.6B", clientType: "openai" });
+const client = new AutoLLMClient({ model: "Qwen/Qwen3-Embedding-0.6B", clientType: "openai-embedding" });
 ```
 
 ## Data Models
