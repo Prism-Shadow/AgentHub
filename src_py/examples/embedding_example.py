@@ -31,10 +31,11 @@ async def main():
     print("Text Embedding Example")
     print("=" * 60)
 
-    model = os.getenv("MODEL", "gemini-embedding-2")
+    model = os.getenv("MODEL", "Qwen/Qwen3-Embedding-8B")
     print(f"Using model: {model}")
-
-    client = AutoLLMClient(model=model)
+    api_key = os.getenv("SILICONFLOW_API_KEY")
+    base_url = "https://api.siliconflow.cn/v1"
+    client = AutoLLMClient(model=model, client_type="openai", api_key=api_key, base_url=base_url)
 
     texts = [
         "What is the meaning of life?",
