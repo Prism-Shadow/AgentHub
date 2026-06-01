@@ -83,6 +83,16 @@ if os.getenv("ANTHROPIC_API_KEY"):
 
 if os.getenv("OPENAI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="gpt-5.5", support_temperature=False))
+    AVAILABLE_MODELS.append(
+        Model(
+            name="text-embedding-3-large",
+            support_text=False,
+            support_temperature=False,
+            support_image_understanding=False,
+            support_embedding=True,
+            client_type="openai",
+        )
+    )
 
 if os.getenv("ZAI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="glm-5.1", support_image_understanding=False))
@@ -134,6 +144,17 @@ if os.getenv("SILICONFLOW_API_KEY") and RUN_SLOW_TEST:
     )
     AVAILABLE_MODELS.append(Model(name="Qwen/Qwen3.6-35B-A3B", provider="siliconflow", client_type="openai"))
     AVAILABLE_MODELS.append(Model(name="Pro/moonshotai/Kimi-K2.6", provider="siliconflow", support_temperature=False))
+    AVAILABLE_MODELS.append(
+        Model(
+            name="Qwen/Qwen3-Embedding-8B",
+            support_text=False,
+            support_temperature=False,
+            support_image_understanding=False,
+            support_embedding=True,
+            provider="siliconflow",
+            client_type="openai",
+        )
+    )
 
 if os.getenv("MODELVERSE_API_KEY") and RUN_SLOW_TEST:
     AVAILABLE_MODELS.append(Model(name="claude-sonnet-4-6", provider="modelverse"))
@@ -686,11 +707,14 @@ async def test_embedding(model: Model):
         pytest.skip(f"Embedding is not supported by {model.name}.")
 
     client = await _create_client(model)
-    texts = ["Hello world", "Goodbye world"]
+    messages = [
+        {"role": "user", "content_items": [{"type": "text", "text": "Hello world"}]},
+        {"role": "user", "content_items": [{"type": "text", "text": "Goodbye "}, {"type": "text", "text": "world"}]},
+    ]
 
     events = []
     async for event in client.streaming_response(
-        messages=[{"role": "user", "content_items": [{"type": "text", "text": text}]} for text in texts],
+        messages=messages,
         config={"embedding_config": {"dimensions": 768}},
     ):
         await _check_event_integrity(event)

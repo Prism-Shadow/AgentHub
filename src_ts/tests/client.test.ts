@@ -110,6 +110,18 @@ if (process.env.OPENAI_API_KEY) {
     supportEmbedding: false,
     provider: "official",
   });
+
+  AVAILABLE_MODELS.push({
+    name: "text-embedding-3-large",
+    supportTextGeneration: false,
+    supportTemperature: false,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    supportEmbedding: true,
+    clientType: "openai",
+    provider: "official",
+  });
 }
 
 if (process.env.ZAI_API_KEY) {
@@ -265,6 +277,17 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
+    provider: "siliconflow",
+  });
+  AVAILABLE_MODELS.push({
+    name: "Qwen/Qwen3-Embedding-8B",
+    supportTextGeneration: false,
+    supportTemperature: false,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    supportEmbedding: true,
+    clientType: "openai",
     provider: "siliconflow",
   });
 }
@@ -973,19 +996,14 @@ if (AVAILABLE_MODELS.length > 0) {
       }
 
       const client = createClient(model);
-      const texts = ["Hello world", "Goodbye world"];
+      const messages = [
+        { role: "user" as const, content_items: [{ type: "text" as const, text: "Hello world" }] },
+        { role: "user" as const, content_items: [{ type: "text" as const, text: "Goodbye " }, { type: "text" as const, text: "world" }] },
+      ];
 
       const events: UniEvent[] = [];
       for await (const event of client.streamingResponse({
-        messages: texts.map((text) => ({
-          role: "user",
-          content_items: [
-            {
-              type: "text" as const,
-              text,
-            },
-          ],
-        })),
+        messages,
         config: { embedding_config: { dimensions: 768 } },
       })) {
         checkEventIntegrity(event);

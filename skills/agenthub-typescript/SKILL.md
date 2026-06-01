@@ -23,6 +23,7 @@ Use exact model IDs. If a model ID is not listed, ask the user to confirm the ex
 | Gemini 3 Image | Official / Vertex AI | `gemini-3.1-flash-image-preview`, `gemini-3-pro-image-preview` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
 | Gemini 3 TTS | Official / Vertex AI | `gemini-3.1-flash-tts-preview` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
 | Gemini Embedding | Official / Vertex AI | `gemini-embedding-2` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
+| OpenAI Embedding | Official | `text-embedding-3-small`, `text-embedding-3-large` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` |
 | Claude 4.6 | Official / ModelVerse | `claude-sonnet-4-6` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
 | Claude 4.6 | Bedrock | `global.anthropic.claude-sonnet-4-6` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
 | Claude 4.7 | Official / ModelVerse | `claude-opus-4-7` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
@@ -47,6 +48,12 @@ Common gateway base URLs:
 - SiliconFlow: `https://api.siliconflow.cn/v1`
 - ModelVerse: `https://api.modelverse.cn/v1` (`https://api.modelverse.cn/` for Claude)
 - vLLM: `http://127.0.0.1:8000/v1/`
+
+For models accessed through OpenAI-compatible APIs (e.g., Qwen series models via SiliconFlow or OpenRouter), pass `clientType: "openai"`. These models use `OPENAI_API_KEY` and `OPENAI_BASE_URL`:
+
+```typescript
+const client = new AutoLLMClient({ model: "Qwen/Qwen3-Embedding-8B", clientType: "openai" });
+```
 
 ## Data Models
 
@@ -285,6 +292,42 @@ async function main(): Promise<void> {
 void main();
 ```
 
+
+## Text Embedding
+
+Use `streamingResponse` with an embedding model (e.g., `gemini-embedding-2`, `text-embedding-3-large`) to generate vector embeddings. 
+
+Each `UniMessage` in the `messages` array produces **one embedding vector**. Within a single message, all items in `content_items` are aggregated into a single embedding. Set `embedding_config.dimensions` in the config to control vector size.
+
+```typescript
+import { AutoLLMClient } from "@prismshadow/agenthub";
+
+const client = new AutoLLMClient({ model: "gemini-embedding-2" });
+
+const embeddings: number[][] = [];
+for await (const event of client.streamingResponse({
+  messages: [
+    { role: "user", content_items: [{ type: "text", text: "Hello world" }] },
+    {
+      role: "user",
+      content_items: [
+        { type: "text", text: "Goodbye " },
+        { type: "text", text: "world" },
+      ],
+    },
+  ],
+  config: { embedding_config: { dimensions: 768 } },
+})) {
+  for (const item of event.content_items) {
+    if (item.type === "embedding") {
+      embeddings.push(item.embedding);
+    }
+  }
+}
+
+// len(embeddings) == 2
+// len(embeddings[0]) == 768
+```
 
 ## Tracer
 

@@ -367,6 +367,62 @@ export class OpenaiClient extends LLMClient {
   }
 
   /**
+   * Embed text messages and return embeddings.
+   */
+  private async *_embedMessagesInternal(options: {
+    messages: UniMessage[];
+    config: UniConfig;
+    signal?: AbortSignal;
+  }): AsyncGenerator<UniEvent> {
+    const texts: string[] = [];
+    for (const msg of options.messages) {
+      let msgText = "";
+      for (const item of msg.content_items) {
+        if (item.type === "text") {
+          msgText += item.text;
+        }
+      }
+      if (msgText) {
+        texts.push(msgText);
+      }
+    }
+
+    if (texts.length === 0) {
+      throw new Error("No text content found for embedding.");
+    }
+
+    const dimensions = options.config.embedding_config?.dimensions;
+
+    const params: OpenAI.EmbeddingCreateParams = {
+      model: this._model as OpenAI.EmbeddingModel,
+      input: texts,
+    };
+    if (dimensions !== undefined) {
+      params.dimensions = dimensions;
+    }
+
+    const result = await this._client.embeddings.create(params, {
+      signal: options.signal,
+    });
+
+    yield {
+      role: "assistant",
+      event_type: "stop",
+      content_items: result.data.map((item) => ({
+        type: "embedding" as const,
+        embedding: item.embedding,
+      })),
+      usage_metadata: {
+        cached_tokens: null,
+        prompt_tokens: result.usage?.prompt_tokens ?? null,
+        thoughts_tokens: null,
+        response_tokens: null,
+      },
+      finish_reason: "stop",
+    };
+  }
+
+  /**
    * Stream generate using OpenAI Chat Completions-compatible API.
    */
   async *_streamingResponseInternal(options: {
@@ -374,6 +430,13 @@ export class OpenaiClient extends LLMClient {
     config: UniConfig;
     signal?: AbortSignal;
   }): AsyncGenerator<UniEvent> {
+    if (this._model.toLowerCase().includes("embedding")) {
+      for await (const event of this._embedMessagesInternal(options)) {
+        yield event;
+      }
+      return;
+    }
+
     const openaiConfig = this.transformUniConfigToModelConfig(options.config);
     const openaiMessages = await this.transformUniMessageToModelInput(
       options.messages,
