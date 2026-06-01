@@ -136,6 +136,17 @@ RUN_SLOW_TEST = os.getenv("RUN_SLOW_TEST", "0") == "1"
 if os.getenv("OPENROUTER_API_KEY") and RUN_SLOW_TEST:
     AVAILABLE_MODELS.append(Model(name="z-ai/glm-5.1", provider="openrouter", support_image_understanding=False))
     AVAILABLE_MODELS.append(Model(name="qwen/qwen3.6-35b-a3b", provider="openrouter", client_type="openai"))
+    AVAILABLE_MODELS.append(
+        Model(
+            name="qwen/qwen3-embedding-4b",
+            support_text=False,
+            support_temperature=False,
+            support_image_understanding=False,
+            support_embedding=True,
+            provider="openrouter",
+            client_type="openai",
+        )
+    )
     AVAILABLE_MODELS.append(Model(name="moonshotai/kimi-k2.6", provider="openrouter", support_temperature=False))
 
 if os.getenv("SILICONFLOW_API_KEY") and RUN_SLOW_TEST:

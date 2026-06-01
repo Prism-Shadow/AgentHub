@@ -44,11 +44,11 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 | -------------- | ----------------------------------- | ---------------------- | ---------------- | ------------------------------ |
 | Gemini 3-3.5   | Official/Google Vertex AI           | `gemini-3.5-flash`     | Text, Image      | Text, Image, Speech, Embedding |
 | Claude 4.6-4.8 | Official/Amazon Bedrock/UModelVerse | `claude-opus-4-8`      | Text, Image      | Text                           |
-| GPT-5.4/5.5    | Official/UModelVerse                | `gpt-5.5`              | Text, Image      | Text                           |
+| GPT-5.4/5.5    | Official/UModelVerse                | `gpt-5.5`              | Text, Image      | Text, Embedding                |
 | Kimi-K2.5/K2.6 | Official/OpenRouter/SiliconFlow     | `kimi-k2.6`            | Text, Image      | Text                           |
 | DeepSeek V4    | Official/OpenRouter/SiliconFlow     | `deepseek-v4-pro`      | Text             | Text                           |
 | GLM-5.1        | Official/OpenRouter/SiliconFlow     | `glm-5.1`              | Text             | Text                           |
-| Qwen3.6        | OpenRouter/SiliconFlow/vLLM         | `qwen/qwen3.6-35b-a3b` | Text, Image      | Text                           |
+| Qwen3.6        | OpenRouter/SiliconFlow/vLLM         | `qwen/qwen3.6-35b-a3b` | Text, Image      | Text, Embedding                |
 
 ## Installation
 
@@ -325,31 +325,63 @@ main().catch(console.error);
 ```
 </details>
 
-## Concepts: UniConfig, UniMessage and UniEvent
+### SiliconFlow Qwen3 Embedding 0.6B via OpenAI-compatible API
 
-### Text Embedding
-
-Generate embeddings using the same `streaming_response` API.
+<details><summary><strong>Python Example</strong></summary>
 
 ```python
-client = AutoLLMClient(model="gemini-embedding-2")
+import asyncio
+import os
+from agenthub import AutoLLMClient
 
-# Two messages → two embedding vectors; content_items within each message are aggregated
-embeddings = []
-async for event in client.streaming_response(
-    messages=[
-        {"role": "user", "content_items": [{"type": "text", "text": "Hello world"}]},
-        {"role": "user", "content_items": [{"type": "text", "text": "Goodbye "}, {"type": "text", "text": "world"}]},
-    ],
-    config={"embedding_config": {"dimensions": 768}},
-):
-    for item in event["content_items"]:
-        if item["type"] == "embedding":
-            embeddings.append(item["embedding"])
+os.environ["OPENAI_API_KEY"] = "your-siliconflow-api-key"
+os.environ["OPENAI_BASE_URL"] = "https://api.siliconflow.cn/v1"
 
-# len(embeddings) == 2
-# len(embeddings[0]) == 768
+async def main():
+    client = AutoLLMClient(model="Qwen/Qwen3-Embedding-0.6B", client_type="openai")
+
+    async for event in client.streaming_response_stateful(
+        message={
+            "role": "user",
+            "content_items": [{"type": "text", "text": "Hello world"}],
+        },
+        config={},
+    ):
+        print(event)
+
+asyncio.run(main())
 ```
+</details>
+
+<details><summary><strong>TypeScript Example</strong></summary>
+
+```typescript
+import { AutoLLMClient } from "@prismshadow/agenthub";
+
+process.env.OPENAI_API_KEY = "your-siliconflow-api-key";
+process.env.OPENAI_BASE_URL = "https://api.siliconflow.cn/v1";
+
+async function main() {
+  const client = new AutoLLMClient({
+    model: "Qwen/Qwen3-Embedding-0.6B",
+    clientType: "openai",
+  });
+  for await (const event of client.streamingResponseStateful({
+    message: {
+      role: "user",
+      content_items: [{ type: "text", text: "Hello world" }],
+    },
+    config: {},
+  })) {
+    console.log(event);
+  }
+}
+
+main().catch(console.error);
+```
+</details>
+
+## Concepts: UniConfig, UniMessage and UniEvent
 
 ### UniConfig
 

@@ -236,6 +236,17 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
+    name: "qwen/qwen3-embedding-4b",
+    supportTextGeneration: false,
+    supportTemperature: false,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    supportEmbedding: true,
+    clientType: "openai",
+    provider: "openrouter",
+  });
+  AVAILABLE_MODELS.push({
     name: "moonshotai/kimi-k2.6",
     supportTextGeneration: true,
     supportTemperature: false,
