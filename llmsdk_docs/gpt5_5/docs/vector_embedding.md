@@ -115,7 +115,9 @@ Below, we combine the review summary and review text into a single combined text
 
 
 
-<span>Get_embeddings_from_dataset.ipynb</span> ```python
+<span>Get_embeddings_from_dataset.ipynb</span>
+
+```python
 from openai import OpenAI
 client = OpenAI()
 

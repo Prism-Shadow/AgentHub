@@ -327,6 +327,30 @@ main().catch(console.error);
 
 ## Concepts: UniConfig, UniMessage and UniEvent
 
+### Text Embedding
+
+Generate embeddings using the same `streaming_response` API.
+
+```python
+client = AutoLLMClient(model="gemini-embedding-2")
+
+# Two messages → two embedding vectors; content_items within each message are aggregated
+embeddings = []
+async for event in client.streaming_response(
+    messages=[
+        {"role": "user", "content_items": [{"type": "text", "text": "Hello world"}]},
+        {"role": "user", "content_items": [{"type": "text", "text": "Goodbye "}, {"type": "text", "text": "world"}]},
+    ],
+    config={"embedding_config": {"dimensions": 768}},
+):
+    for item in event["content_items"]:
+        if item["type"] == "embedding":
+            embeddings.append(item["embedding"])
+
+# len(embeddings) == 2
+# len(embeddings[0]) == 768
+```
+
 ### UniConfig
 
 UniConfig is an object that contains the configuration for LLMs.
