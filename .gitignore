@@ -363,3 +363,4 @@ generated_audio*
 # Local AI agent instruction overrides
 AGENTS.override.md
 CLAUDE.md
+opencode.json

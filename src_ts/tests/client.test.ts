@@ -110,6 +110,18 @@ if (process.env.OPENAI_API_KEY) {
     supportEmbedding: false,
     provider: "official",
   });
+
+  AVAILABLE_MODELS.push({
+    name: "text-embedding-3-large",
+    supportTextGeneration: false,
+    supportTemperature: false,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    supportEmbedding: true,
+    clientType: "openai-embedding",
+    provider: "official",
+  });
 }
 
 if (process.env.ZAI_API_KEY) {
@@ -224,6 +236,17 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
+    name: "qwen/qwen3-embedding-4b",
+    supportTextGeneration: false,
+    supportTemperature: false,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    supportEmbedding: true,
+    clientType: "openai-embedding",
+    provider: "openrouter",
+  });
+  AVAILABLE_MODELS.push({
     name: "moonshotai/kimi-k2.6",
     supportTextGeneration: true,
     supportTemperature: false,
@@ -265,6 +288,17 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
+    provider: "siliconflow",
+  });
+  AVAILABLE_MODELS.push({
+    name: "Qwen/Qwen3-Embedding-8B",
+    supportTextGeneration: false,
+    supportTemperature: false,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    supportEmbedding: true,
+    clientType: "openai-embedding",
     provider: "siliconflow",
   });
 }
@@ -973,19 +1007,23 @@ if (AVAILABLE_MODELS.length > 0) {
       }
 
       const client = createClient(model);
-      const texts = ["Hello world", "Goodbye world"];
+      const messages = [
+        {
+          role: "user" as const,
+          content_items: [{ type: "text" as const, text: "Hello world" }],
+        },
+        {
+          role: "user" as const,
+          content_items: [
+            { type: "text" as const, text: "Goodbye " },
+            { type: "text" as const, text: "world" },
+          ],
+        },
+      ];
 
       const events: UniEvent[] = [];
       for await (const event of client.streamingResponse({
-        messages: texts.map((text) => ({
-          role: "user",
-          content_items: [
-            {
-              type: "text" as const,
-              text,
-            },
-          ],
-        })),
+        messages,
         config: { embedding_config: { dimensions: 768 } },
       })) {
         checkEventIntegrity(event);
@@ -1010,14 +1048,35 @@ test("should reject unknown model", () => {
   );
 });
 
-test("should route openai clientType to OpenaiClient", () => {
+test.each([
+  ["openai-compatible", "OpenaiClient"],
+  ["openai-embedding-compatible", "OpenaiEmbeddingClient"],
+])("should route %s clientType to %s", (clientType, clientName) => {
   const client = new AutoLLMClient({
     model: "unknown-model",
     apiKey: "test-key",
-    clientType: "openai-compatible",
+    clientType,
   });
 
-  expect((client as any)._client.constructor.name).toBe("OpenaiClient");
+  expect((client as any)._client.constructor.name).toBe(clientName);
+});
+
+test("should reject non-text content items for OpenAI embeddings", () => {
+  const client = new AutoLLMClient({
+    model: "unknown-model",
+    apiKey: "test-key",
+    clientType: "openai-embedding",
+  });
+  const messages: UniMessage[] = [
+    {
+      role: "user",
+      content_items: [{ type: "image_url", image_url: IMAGE }],
+    },
+  ];
+
+  expect(() => client.transformUniMessageToModelInput(messages)).toThrow(
+    "only support text",
+  );
 });
 
 test("should validate last event has usage_metadata and finish_reason", () => {

@@ -83,6 +83,16 @@ if os.getenv("ANTHROPIC_API_KEY"):
 
 if os.getenv("OPENAI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="gpt-5.5", support_temperature=False))
+    AVAILABLE_MODELS.append(
+        Model(
+            name="text-embedding-3-large",
+            support_text=False,
+            support_temperature=False,
+            support_image_understanding=False,
+            support_embedding=True,
+            client_type="openai-embedding",
+        )
+    )
 
 if os.getenv("ZAI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="glm-5.1", support_image_understanding=False))
@@ -126,6 +136,17 @@ RUN_SLOW_TEST = os.getenv("RUN_SLOW_TEST", "0") == "1"
 if os.getenv("OPENROUTER_API_KEY") and RUN_SLOW_TEST:
     AVAILABLE_MODELS.append(Model(name="z-ai/glm-5.1", provider="openrouter", support_image_understanding=False))
     AVAILABLE_MODELS.append(Model(name="qwen/qwen3.6-35b-a3b", provider="openrouter", client_type="openai"))
+    AVAILABLE_MODELS.append(
+        Model(
+            name="qwen/qwen3-embedding-4b",
+            support_text=False,
+            support_temperature=False,
+            support_image_understanding=False,
+            support_embedding=True,
+            provider="openrouter",
+            client_type="openai-embedding",
+        )
+    )
     AVAILABLE_MODELS.append(Model(name="moonshotai/kimi-k2.6", provider="openrouter", support_temperature=False))
 
 if os.getenv("SILICONFLOW_API_KEY") and RUN_SLOW_TEST:
@@ -134,6 +155,17 @@ if os.getenv("SILICONFLOW_API_KEY") and RUN_SLOW_TEST:
     )
     AVAILABLE_MODELS.append(Model(name="Qwen/Qwen3.6-35B-A3B", provider="siliconflow", client_type="openai"))
     AVAILABLE_MODELS.append(Model(name="Pro/moonshotai/Kimi-K2.6", provider="siliconflow", support_temperature=False))
+    AVAILABLE_MODELS.append(
+        Model(
+            name="Qwen/Qwen3-Embedding-8B",
+            support_text=False,
+            support_temperature=False,
+            support_image_understanding=False,
+            support_embedding=True,
+            provider="siliconflow",
+            client_type="openai-embedding",
+        )
+    )
 
 if os.getenv("MODELVERSE_API_KEY") and RUN_SLOW_TEST:
     AVAILABLE_MODELS.append(Model(name="claude-sonnet-4-6", provider="modelverse"))
@@ -365,11 +397,18 @@ async def test_unknown_model():
 
 
 @pytest.mark.asyncio
-async def test_openai_client_type_routes_to_openai_client():
+@pytest.mark.parametrize(
+    ("client_type", "client_name"),
+    [
+        ("openai-compatible", "OpenaiClient"),
+        ("openai-embedding-compatible", "OpenaiEmbeddingClient"),
+    ],
+)
+async def test_openai_client_type_routes(client_type: str, client_name: str):
     """Test client_type override for OpenAI-compatible models."""
-    client = AutoLLMClient(model="unknown-model", api_key="test-key", client_type="openai-compatible")
+    client = AutoLLMClient(model="unknown-model", api_key="test-key", client_type=client_type)
 
-    assert client._client.__class__.__name__ == "OpenaiClient"
+    assert client._client.__class__.__name__ == client_name
 
 
 @pytest.mark.asyncio
@@ -686,11 +725,14 @@ async def test_embedding(model: Model):
         pytest.skip(f"Embedding is not supported by {model.name}.")
 
     client = await _create_client(model)
-    texts = ["Hello world", "Goodbye world"]
+    messages = [
+        {"role": "user", "content_items": [{"type": "text", "text": "Hello world"}]},
+        {"role": "user", "content_items": [{"type": "text", "text": "Goodbye "}, {"type": "text", "text": "world"}]},
+    ]
 
     events = []
     async for event in client.streaming_response(
-        messages=[{"role": "user", "content_items": [{"type": "text", "text": text}]} for text in texts],
+        messages=messages,
         config={"embedding_config": {"dimensions": 768}},
     ):
         await _check_event_integrity(event)

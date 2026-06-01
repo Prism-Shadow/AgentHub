@@ -33,6 +33,7 @@ Use exact model IDs. If a model ID is not listed, ask the user to confirm the ex
 | Claude 4.8 | Bedrock | `global.anthropic.claude-opus-4-8` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
 | GPT 5.4 | Official / ModelVerse | `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` |
 | GPT 5.5 | Official / ModelVerse | `gpt-5.5` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` |
+| OpenAI Embedding | Official | `text-embedding-3-small`, `text-embedding-3-large` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` |
 | Kimi-K2.6 | Official | `kimi-k2.6` | `MOONSHOT_API_KEY` | `MOONSHOT_BASE_URL` |
 | Kimi-K2.6 | OpenRouter | `moonshotai/kimi-k2.6` | `MOONSHOT_API_KEY` | `MOONSHOT_BASE_URL` |
 | Kimi-K2.6 | SiliconFlow | `Pro/moonshotai/Kimi-K2.6` | `MOONSHOT_API_KEY` | `MOONSHOT_BASE_URL` |
@@ -49,6 +50,12 @@ Common gateway base URLs:
 - SiliconFlow: `https://api.siliconflow.cn/v1`
 - ModelVerse: `https://api.modelverse.cn/v1` (`https://api.modelverse.cn/` for Claude)
 - vLLM: `http://127.0.0.1:8000/v1/`
+
+For models accessed through OpenAI-compatible APIs (e.g., Qwen series models via SiliconFlow or OpenRouter), pass `client_type="openai"` (`client_type="openai-embedding"` for embedding endpoints), and set `OPENAI_API_KEY` and `OPENAI_BASE_URL`:
+
+```python
+client = AutoLLMClient(model="Qwen/Qwen3-Embedding-0.6B", client_type="openai-embedding")
+```
 
 ## Data Models
 
@@ -282,7 +289,6 @@ async def main():
 asyncio.run(main())
 ```
 
-
 ## Tracer
 
 Tracer saves trace files and serves a local UI for inspecting conversations.
@@ -344,3 +350,4 @@ Agent loop rules:
 
 - Send every tool result with the exact `tool_call_id` from its originating `tool_call`. Do not invent, normalize, or reuse IDs across unrelated tool calls.
 - Preserve `thinking` and `inline_thinking` items. Do not strip `phase` or `signature` fields.
+- For embedding models, each `UniMessage` in the `messages` array produces **one embedding vector**. Within a single message, all items in `content_items` are aggregated into a single embedding. Set `embedding_config.dimensions` in the config to control vector size.
