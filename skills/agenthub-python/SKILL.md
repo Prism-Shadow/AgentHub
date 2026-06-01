@@ -25,7 +25,6 @@ Use exact model IDs. If a model ID is not listed, ask the user to confirm the ex
 | Gemini 3 Image | Official / Vertex AI | `gemini-3.1-flash-image-preview`, `gemini-3-pro-image-preview` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
 | Gemini 3 TTS | Official / Vertex AI | `gemini-3.1-flash-tts-preview` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
 | Gemini Embedding | Official / Vertex AI | `gemini-embedding-2` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
-| OpenAI Embedding | Official | `text-embedding-3-small`, `text-embedding-3-large` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` |
 | Claude 4.6 | Official / ModelVerse | `claude-sonnet-4-6` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
 | Claude 4.6 | Bedrock | `global.anthropic.claude-sonnet-4-6` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
 | Claude 4.7 | Official / ModelVerse | `claude-opus-4-7` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
@@ -34,6 +33,7 @@ Use exact model IDs. If a model ID is not listed, ask the user to confirm the ex
 | Claude 4.8 | Bedrock | `global.anthropic.claude-opus-4-8` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
 | GPT 5.4 | Official / ModelVerse | `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` |
 | GPT 5.5 | Official / ModelVerse | `gpt-5.5` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` |
+| OpenAI Embedding | Official | `text-embedding-3-small`, `text-embedding-3-large` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` |
 | Kimi-K2.6 | Official | `kimi-k2.6` | `MOONSHOT_API_KEY` | `MOONSHOT_BASE_URL` |
 | Kimi-K2.6 | OpenRouter | `moonshotai/kimi-k2.6` | `MOONSHOT_API_KEY` | `MOONSHOT_BASE_URL` |
 | Kimi-K2.6 | SiliconFlow | `Pro/moonshotai/Kimi-K2.6` | `MOONSHOT_API_KEY` | `MOONSHOT_BASE_URL` |
@@ -54,7 +54,7 @@ Common gateway base URLs:
 For models accessed through OpenAI-compatible APIs (e.g., Qwen series models via SiliconFlow or OpenRouter), pass `client_type="openai"`, and set `OPENAI_API_KEY` and `OPENAI_BASE_URL`:
 
 ```python
-client = AutoLLMClient(model="Qwen/Qwen3-Embedding-8B", client_type="openai")
+client = AutoLLMClient(model="Qwen/Qwen3-Embedding-0.6B", client_type="openai")
 ```
 
 ## Data Models
@@ -287,37 +287,6 @@ async def main():
 
 
 asyncio.run(main())
-```
-
-
-## Text Embedding
-
-Use `streaming_response` with an embedding model (e.g., `gemini-embedding-2`, `text-embedding-3-large`) to generate vector embeddings. 
-
-Each `UniMessage` in the `messages` list produces **one embedding vector**. Within a single message, all items in `content_items` are aggregated into a single embedding. Set `embedding_config.dimensions` in the config to control vector size.
-
-```python
-from agenthub import AutoLLMClient
-
-client = AutoLLMClient(model="gemini-embedding-2")
-
-embeddings = []
-async for event in client.streaming_response(
-    messages=[
-        {"role": "user", "content_items": [{"type": "text", "text": "Hello world"}]},
-        {"role": "user", "content_items": [
-            {"type": "text", "text": "Goodbye "},
-            {"type": "text", "text": "world"},
-        ]},
-    ],
-    config={"embedding_config": {"dimensions": 768}},
-):
-    for item in event["content_items"]:
-        if item["type"] == "embedding":
-            embeddings.append(item["embedding"])
-
-# len(embeddings) == 2
-# len(embeddings[0]) == 768
 ```
 
 ## Tracer
