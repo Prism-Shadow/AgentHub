@@ -382,13 +382,7 @@ export class OpenaiClient extends LLMClient {
           msgText += item.text;
         }
       }
-      if (msgText) {
-        texts.push(msgText);
-      }
-    }
-
-    if (texts.length === 0) {
-      throw new Error("No text content found for embedding.");
+      texts.push(msgText);
     }
 
     const dimensions = options.config.embedding_config?.dimensions;
