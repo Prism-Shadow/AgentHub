@@ -90,7 +90,7 @@ if os.getenv("OPENAI_API_KEY"):
             support_temperature=False,
             support_image_understanding=False,
             support_embedding=True,
-            client_type="openai",
+            client_type="openai-embedding",
         )
     )
 
@@ -144,7 +144,7 @@ if os.getenv("OPENROUTER_API_KEY") and RUN_SLOW_TEST:
             support_image_understanding=False,
             support_embedding=True,
             provider="openrouter",
-            client_type="openai",
+            client_type="openai-embedding",
         )
     )
     AVAILABLE_MODELS.append(Model(name="moonshotai/kimi-k2.6", provider="openrouter", support_temperature=False))
@@ -163,7 +163,7 @@ if os.getenv("SILICONFLOW_API_KEY") and RUN_SLOW_TEST:
             support_image_understanding=False,
             support_embedding=True,
             provider="siliconflow",
-            client_type="openai",
+            client_type="openai-embedding",
         )
     )
 
@@ -397,11 +397,18 @@ async def test_unknown_model():
 
 
 @pytest.mark.asyncio
-async def test_openai_client_type_routes_to_openai_client():
+@pytest.mark.parametrize(
+    ("client_type", "client_name"),
+    [
+        ("openai-compatible", "OpenaiClient"),
+        ("openai-embedding-compatible", "OpenaiEmbeddingClient"),
+    ],
+)
+async def test_openai_client_type_routes(client_type: str, client_name: str):
     """Test client_type override for OpenAI-compatible models."""
-    client = AutoLLMClient(model="unknown-model", api_key="test-key", client_type="openai-compatible")
+    client = AutoLLMClient(model="unknown-model", api_key="test-key", client_type=client_type)
 
-    assert client._client.__class__.__name__ == "OpenaiClient"
+    assert client._client.__class__.__name__ == client_name
 
 
 @pytest.mark.asyncio

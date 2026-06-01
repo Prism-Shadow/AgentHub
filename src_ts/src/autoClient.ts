@@ -20,6 +20,7 @@ import { GPT5_5Client } from "./gpt5_5";
 import { GLM5_1Client } from "./glm5_1";
 import { KimiK2_6Client } from "./kimi_k2_6";
 import { OpenaiClient } from "./openai";
+import { OpenaiEmbeddingClient } from "./openai_embedding";
 import { DeepSeekV4Client } from "./deepseek_v4";
 import { UniConfig, UniEvent, UniMessage } from "./types";
 
@@ -100,12 +101,17 @@ export class AutoLLMClient extends LLMClient {
       return new KimiK2_6Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("deepseek-v4")) {
       return new DeepSeekV4Client({ model, apiKey, baseUrl });
+    } else if (
+      clientType.includes("openai") &&
+      clientType.includes("embedding")
+    ) {
+      return new OpenaiEmbeddingClient({ model, apiKey, baseUrl });
     } else if (clientType.includes("openai")) {
       return new OpenaiClient({ model, apiKey, baseUrl });
     } else {
       throw new Error(
         `${clientType} is not supported. ` +
-          "Supported client types: gemini-3, claude-4-8, claude-4-7, claude-4-6, gpt-5.5, gpt-5.4, glm-5.1, kimi-k2.6, kimi-k2.5, deepseek-v4, openai.",
+          "Supported client types: gemini-3, claude-4-8, claude-4-7, claude-4-6, gpt-5.5, gpt-5.4, glm-5.1, kimi-k2.6, kimi-k2.5, deepseek-v4, openai-embedding, openai.",
       );
     }
   }

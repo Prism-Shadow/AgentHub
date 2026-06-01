@@ -49,7 +49,7 @@ Common gateway base URLs:
 - ModelVerse: `https://api.modelverse.cn/v1` (`https://api.modelverse.cn/` for Claude)
 - vLLM: `http://127.0.0.1:8000/v1/`
 
-For models accessed through OpenAI-compatible APIs (e.g., Qwen series models via SiliconFlow or OpenRouter), pass `clientType: "openai"`. These models use `OPENAI_API_KEY` and `OPENAI_BASE_URL`:
+For models accessed through OpenAI-compatible APIs (e.g., Qwen series models via SiliconFlow or OpenRouter), pass `clientType: "openai"` (`clientType: "openai-embedding"` for embedding endpoints). These models use `OPENAI_API_KEY` and `OPENAI_BASE_URL`:
 
 ```typescript
 const client = new AutoLLMClient({ model: "Qwen/Qwen3-Embedding-0.6B", clientType: "openai" });

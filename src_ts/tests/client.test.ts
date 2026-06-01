@@ -119,7 +119,7 @@ if (process.env.OPENAI_API_KEY) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: true,
-    clientType: "openai",
+    clientType: "openai-embedding",
     provider: "official",
   });
 }
@@ -243,7 +243,7 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: true,
-    clientType: "openai",
+    clientType: "openai-embedding",
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
@@ -298,7 +298,7 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: true,
-    clientType: "openai",
+    clientType: "openai-embedding",
     provider: "siliconflow",
   });
 }
@@ -1008,8 +1008,17 @@ if (AVAILABLE_MODELS.length > 0) {
 
       const client = createClient(model);
       const messages = [
-        { role: "user" as const, content_items: [{ type: "text" as const, text: "Hello world" }] },
-        { role: "user" as const, content_items: [{ type: "text" as const, text: "Goodbye " }, { type: "text" as const, text: "world" }] },
+        {
+          role: "user" as const,
+          content_items: [{ type: "text" as const, text: "Hello world" }],
+        },
+        {
+          role: "user" as const,
+          content_items: [
+            { type: "text" as const, text: "Goodbye " },
+            { type: "text" as const, text: "world" },
+          ],
+        },
       ];
 
       const events: UniEvent[] = [];
@@ -1039,14 +1048,35 @@ test("should reject unknown model", () => {
   );
 });
 
-test("should route openai clientType to OpenaiClient", () => {
+test.each([
+  ["openai-compatible", "OpenaiClient"],
+  ["openai-embedding-compatible", "OpenaiEmbeddingClient"],
+])("should route %s clientType to %s", (clientType, clientName) => {
   const client = new AutoLLMClient({
     model: "unknown-model",
     apiKey: "test-key",
-    clientType: "openai-compatible",
+    clientType,
   });
 
-  expect((client as any)._client.constructor.name).toBe("OpenaiClient");
+  expect((client as any)._client.constructor.name).toBe(clientName);
+});
+
+test("should reject non-text content items for OpenAI embeddings", () => {
+  const client = new AutoLLMClient({
+    model: "unknown-model",
+    apiKey: "test-key",
+    clientType: "openai-embedding",
+  });
+  const messages: UniMessage[] = [
+    {
+      role: "user",
+      content_items: [{ type: "image_url", image_url: IMAGE }],
+    },
+  ];
+
+  expect(() => client.transformUniMessageToModelInput(messages)).toThrow(
+    "only support text",
+  );
 });
 
 test("should validate last event has usage_metadata and finish_reason", () => {
