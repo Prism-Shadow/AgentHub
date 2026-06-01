@@ -343,11 +343,13 @@ async def main():
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
-            "content_items": [{"type": "text", "text": "Hello world"}]
+            "content_items": [{"type": "text", "text": "Hello world"}],
         },
         config={},
     ):
         print(event)
+
+asyncio.run(main())
 ```
 </details>
 
@@ -369,7 +371,7 @@ async function main() {
       role: "user",
       content_items: [{ type: "text", text: "Hello world" }],
     },
-    config: {}
+    config: {},
   })) {
     console.log(event);
   }
@@ -378,7 +380,6 @@ async function main() {
 main().catch(console.error);
 ```
 </details>
-
 
 ## Concepts: UniConfig, UniMessage and UniEvent
 

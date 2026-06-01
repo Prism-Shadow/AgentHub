@@ -296,7 +296,7 @@ class OpenaiClient(LLMClient):
             for item in msg["content_items"]:
                 if item["type"] == "text":
                     msg_text += item["text"]
-            texts.append(msg_text if msg_text else " ")
+            texts.append(msg_text or " ")
 
         embedding_config = config.get("embedding_config") or {}
 

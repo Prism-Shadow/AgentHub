@@ -382,7 +382,7 @@ export class OpenaiClient extends LLMClient {
           msgText += item.text;
         }
       }
-      texts.push(msgText ? msgText : " ");
+      texts.push(msgText || " ");
     }
 
     const dimensions = options.config.embedding_config?.dimensions;
