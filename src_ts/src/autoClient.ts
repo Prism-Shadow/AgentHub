@@ -84,7 +84,7 @@ export class AutoLLMClient extends LLMClient {
       clientType.includes("claude") &&
       (clientType.includes("4-7") ||
         clientType.includes("4-8") ||
-        clientType.includes("5"))
+        clientType.includes("-5"))
     ) {
       return new Claude5Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("claude") && clientType.includes("4-6")) {

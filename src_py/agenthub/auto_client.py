@@ -54,7 +54,7 @@ class AutoLLMClient(LLMClient):
 
             return Gemini3Client(model=model, api_key=api_key, base_url=base_url)
         elif "claude" in client_type and (
-            "4-7" in client_type or "4-8" in client_type or "5" in client_type
+            "4-7" in client_type or "4-8" in client_type or "-5" in client_type
         ):  # e.g., claude-opus-4-7
             from .claude5 import Claude5Client
 
