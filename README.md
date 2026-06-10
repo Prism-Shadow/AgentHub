@@ -43,7 +43,7 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 | Model Name     | Vendor                              | Example Model ID       | Input Modalities | Output Modalities              |
 | -------------- | ----------------------------------- | ---------------------- | ---------------- | ------------------------------ |
 | Gemini 3-3.5   | Official/Google Vertex AI           | `gemini-3.5-flash`     | Text, Image      | Text, Image, Speech, Embedding |
-| Claude 4.6-4.8 | Official/Amazon Bedrock/UModelVerse | `claude-opus-4-8`      | Text, Image      | Text                           |
+| Claude 4.6-5   | Official/Amazon Bedrock/UModelVerse | `claude-opus-4-8`      | Text, Image      | Text                           |
 | GPT-5.4/5.5    | Official/UModelVerse                | `gpt-5.5`              | Text, Image      | Text, Embedding                |
 | Kimi-K2.5/K2.6 | Official/OpenRouter/SiliconFlow     | `kimi-k2.6`            | Text, Image      | Text                           |
 | DeepSeek V4    | Official/OpenRouter/SiliconFlow     | `deepseek-v4-pro`      | Text             | Text                           |
