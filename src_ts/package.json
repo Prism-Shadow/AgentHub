@@ -48,7 +48,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Prism-Shadow/AgentHub.git"
+    "url": "git+https://github.com/Prism-Shadow/agenthub.git"
   },
   "keywords": [
     "agent",
@@ -60,7 +60,7 @@
   "author": "PrismShadow",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/Prism-Shadow/AgentHub/issues"
+    "url": "https://github.com/Prism-Shadow/agenthub/issues"
   },
-  "homepage": "https://github.com/Prism-Shadow/AgentHub#readme"
+  "homepage": "https://github.com/Prism-Shadow/agenthub#readme"
 }
