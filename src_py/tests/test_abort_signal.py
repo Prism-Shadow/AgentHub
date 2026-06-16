@@ -135,6 +135,22 @@ class StreamCreationTrackingClient(MultiEventStreamingClient):
         return super()._streaming_response_internal(messages, config)
 
 
+class IncompleteStreamingClient(MultiEventStreamingClient):
+    async def _streaming_response_internal(
+        self,
+        messages: list[UniMessage],
+        config: UniConfig,
+    ) -> AsyncIterator[UniEvent]:
+        yield {
+            "role": "assistant",
+            "event_type": "delta",
+            "content_items": [{"type": "text", "text": "hello"}],
+            "usage_metadata": None,
+            "finish_reason": None,
+            "created_at": 0,
+        }
+
+
 def test_abort_signal_state_is_idempotent() -> None:
     signal = AbortSignal()
 
@@ -302,6 +318,21 @@ async def test_streaming_response_stateful_commits_partial_history_when_signal_a
     assert history[1]["content_items"] == [{"type": "text", "text": "hello"}]
     assert history[1]["usage_metadata"] is None
     assert history[1]["finish_reason"] is None
+
+
+@pytest.mark.asyncio
+async def test_streaming_response_stateful_discards_partial_history_when_non_abort_error_occurs() -> None:
+    client = IncompleteStreamingClient()
+    message: UniMessage = {"role": "user", "content_items": [{"type": "text", "text": "hello"}]}
+    stream = client.streaming_response_stateful(message=message, config={})
+
+    event = await anext(stream)
+    assert event["content_items"] == [{"type": "text", "text": "hello"}]
+
+    with pytest.raises(ValueError, match="usage_metadata"):
+        await anext(stream)
+
+    assert client.get_history() == []
 
 
 @pytest.mark.asyncio

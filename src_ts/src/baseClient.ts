@@ -217,6 +217,7 @@ export abstract class LLMClient {
     const tempMessages = [...this._history, message];
 
     const events: UniEvent[] = [];
+    let completed = false;
     try {
       for await (const event of this.streamingResponse({
         messages: tempMessages,
@@ -226,8 +227,9 @@ export abstract class LLMClient {
         events.push(event);
         yield event;
       }
+      completed = true;
     } finally {
-      if (events.length > 0) {
+      if (events.length > 0 && (completed || options.signal?.aborted === true)) {
         const assistantMessage = this.concatUniEventsToUniMessage(events);
         this._history.push(tempMessages[tempMessages.length - 1]);
         this._history.push(assistantMessage);

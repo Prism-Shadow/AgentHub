@@ -278,12 +278,14 @@ class LLMClient(ABC):
         temp_messages = self._history + [message]
 
         events: list[UniEvent] = []
+        completed = False
         try:
             async for event in self.streaming_response(messages=temp_messages, config=config, signal=signal):
                 events.append(event)
                 yield event
+            completed = True
         finally:
-            if events:
+            if events and (completed or (signal is not None and signal.aborted)):
                 assistant_message = self.concat_uni_events_to_uni_message(events)
                 self._history.append(temp_messages[-1])
                 self._history.append(assistant_message)

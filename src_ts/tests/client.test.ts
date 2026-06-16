@@ -477,6 +477,35 @@ class PartialAbortClient extends LLMClient {
   }
 }
 
+class IncompleteStreamingClient extends LLMClient {
+  constructor() {
+    super();
+    this._model = "incomplete-streaming-test";
+  }
+
+  transformUniConfigToModelConfig(config: UniConfig): UniConfig {
+    return config;
+  }
+
+  transformUniMessageToModelInput(messages: UniMessage[]): UniMessage[] {
+    return messages;
+  }
+
+  transformModelOutputToUniEvent(modelOutput: UniEvent): UniEvent {
+    return modelOutput;
+  }
+
+  async *_streamingResponseInternal(): AsyncGenerator<UniEvent> {
+    yield {
+      role: "assistant",
+      event_type: "delta",
+      content_items: [{ type: "text", text: "hello" }],
+      usage_metadata: null,
+      finish_reason: null,
+    };
+  }
+}
+
 describe("LLMClient stateful abort handling", () => {
   test("should commit partial history when signal aborts after output", async () => {
     const client = new PartialAbortClient();
@@ -509,6 +538,28 @@ describe("LLMClient stateful abort handling", () => {
     expect(history[1].content_items).toEqual([{ type: "text", text: "hello" }]);
     expect(history[1].usage_metadata).toBeNull();
     expect(history[1].finish_reason).toBeNull();
+  });
+
+  test("should discard partial history when non-abort error occurs", async () => {
+    const client = new IncompleteStreamingClient();
+    const message: UniMessage = {
+      role: "user",
+      content_items: [{ type: "text", text: "hello" }],
+    };
+    const stream = client.streamingResponseStateful({
+      message,
+      config: {},
+    });
+
+    const first = await stream.next();
+    expect(first.done).toBe(false);
+    expect(first.value?.content_items).toEqual([
+      { type: "text", text: "hello" },
+    ]);
+
+    await expect(stream.next()).rejects.toThrow("usage_metadata");
+
+    expect(client.getHistory()).toEqual([]);
   });
 });
 
