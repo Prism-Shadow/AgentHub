@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { AutoLLMClient } from "../src/autoClient";
+import { LLMClient } from "../src/baseClient";
 import { ThinkingLevel, UniMessage, UniConfig, UniEvent } from "../src/types";
 import { expect, describe, test } from "@jest/globals";
 
@@ -425,6 +426,91 @@ function checkEventIntegrity(event: UniEvent): void {
     }
   }
 }
+
+class PartialAbortClient extends LLMClient {
+  constructor() {
+    super();
+    this._model = "partial-abort-test";
+  }
+
+  transformUniConfigToModelConfig(config: UniConfig): UniConfig {
+    return config;
+  }
+
+  transformUniMessageToModelInput(messages: UniMessage[]): UniMessage[] {
+    return messages;
+  }
+
+  transformModelOutputToUniEvent(modelOutput: UniEvent): UniEvent {
+    return modelOutput;
+  }
+
+  async *_streamingResponseInternal(options: {
+    messages: UniMessage[];
+    config: UniConfig;
+    signal?: AbortSignal;
+  }): AsyncGenerator<UniEvent> {
+    yield {
+      role: "assistant",
+      event_type: "delta",
+      content_items: [{ type: "text", text: "hello" }],
+      usage_metadata: null,
+      finish_reason: null,
+    };
+
+    if (options.signal?.aborted) {
+      throw new Error("aborted");
+    }
+
+    yield {
+      role: "assistant",
+      event_type: "stop",
+      content_items: [],
+      usage_metadata: {
+        cached_tokens: null,
+        prompt_tokens: 1,
+        thoughts_tokens: null,
+        response_tokens: 1,
+      },
+      finish_reason: "stop",
+    };
+  }
+}
+
+describe("LLMClient stateful abort handling", () => {
+  test("should commit partial history when signal aborts after output", async () => {
+    const client = new PartialAbortClient();
+    const controller = new AbortController();
+    const message: UniMessage = {
+      role: "user",
+      content_items: [{ type: "text", text: "hello" }],
+    };
+    const stream = client.streamingResponseStateful({
+      message,
+      config: {},
+      signal: controller.signal,
+    });
+
+    const first = await stream.next();
+    expect(first.done).toBe(false);
+    expect(first.value?.content_items).toEqual([
+      { type: "text", text: "hello" },
+    ]);
+
+    controller.abort("stop");
+
+    await expect(stream.next()).rejects.toThrow("aborted");
+
+    const history = client.getHistory();
+    expect(history).toHaveLength(2);
+    expect(history[0].role).toBe("user");
+    expect(history[0].created_at).toBeGreaterThan(0);
+    expect(history[1].role).toBe("assistant");
+    expect(history[1].content_items).toEqual([{ type: "text", text: "hello" }]);
+    expect(history[1].usage_metadata).toBeNull();
+    expect(history[1].finish_reason).toBeNull();
+  });
+});
 
 if (AVAILABLE_MODELS.length > 0) {
   describe.each(

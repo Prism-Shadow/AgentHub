@@ -217,20 +217,21 @@ export abstract class LLMClient {
     const tempMessages = [...this._history, message];
 
     const events: UniEvent[] = [];
-    for await (const event of this.streamingResponse({
-      messages: tempMessages,
-      config,
-      signal: options.signal,
-    })) {
-      events.push(event);
-      yield event;
-    }
-
-    // tempMessages[-1] is the user message, now stamped with created_at by streamingResponse
-    if (events.length > 0) {
-      const assistantMessage = this.concatUniEventsToUniMessage(events);
-      this._history.push(tempMessages[tempMessages.length - 1]);
-      this._history.push(assistantMessage);
+    try {
+      for await (const event of this.streamingResponse({
+        messages: tempMessages,
+        config,
+        signal: options.signal,
+      })) {
+        events.push(event);
+        yield event;
+      }
+    } finally {
+      if (events.length > 0) {
+        const assistantMessage = this.concatUniEventsToUniMessage(events);
+        this._history.push(tempMessages[tempMessages.length - 1]);
+        this._history.push(assistantMessage);
+      }
     }
   }
 

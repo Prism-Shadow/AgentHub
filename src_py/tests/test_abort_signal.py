@@ -280,6 +280,31 @@ async def test_streaming_response_reuses_one_abort_waiter_for_whole_stream() -> 
 
 
 @pytest.mark.asyncio
+async def test_streaming_response_stateful_commits_partial_history_when_signal_aborts() -> None:
+    client = MultiEventStreamingClient()
+    signal = AbortSignal()
+    message: UniMessage = {"role": "user", "content_items": [{"type": "text", "text": "hello"}]}
+    stream = client.streaming_response_stateful(message=message, config={}, signal=signal)
+
+    event = await anext(stream)
+    assert event["content_items"] == [{"type": "text", "text": "hello"}]
+
+    signal.abort("stop")
+
+    with pytest.raises(asyncio.CancelledError):
+        await anext(stream)
+
+    history = client.get_history()
+    assert len(history) == 2
+    assert history[0]["role"] == "user"
+    assert history[0]["created_at"] > 0
+    assert history[1]["role"] == "assistant"
+    assert history[1]["content_items"] == [{"type": "text", "text": "hello"}]
+    assert history[1]["usage_metadata"] is None
+    assert history[1]["finish_reason"] is None
+
+
+@pytest.mark.asyncio
 async def test_streaming_response_does_not_create_stream_when_signal_is_already_aborted() -> None:
     client = StreamCreationTrackingClient()
     signal = AbortSignal()
