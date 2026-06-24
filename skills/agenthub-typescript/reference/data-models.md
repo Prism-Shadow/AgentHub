@@ -122,8 +122,8 @@ Event-only content item:
 
 Across providers a tool call streams as the same ordered sequence of events, so consumers handle every model the same way:
 
-1. **Announce (name + id first).** The first event for a tool call carries a `partial_tool_call` with a non-empty `name` and `tool_call_id`. Its `arguments` is a JSON string fragment — empty (`""`) when the provider streams arguments incrementally, or already the full arguments JSON when the provider returns the call in one shot (e.g. Gemini, which does not stream tool arguments). The tool's identity arrives with this first event.
-2. **Argument deltas.** Zero or more `delta` events follow, each carrying a `partial_tool_call` whose `arguments` is the next fragment of the arguments JSON string (`name` and `tool_call_id` are empty `""`). Concatenate the fragments in order. There may be no delta events at all — for an empty-argument call, or when the whole call already arrived in step 1.
+1. **Announce (name + id first).** The first event for a tool call carries a `partial_tool_call` whose `name` and `tool_call_id` are non-empty and whose `arguments` is a JSON **string fragment** (often `""`). The tool's identity arrives no later than the first argument bytes.
+2. **Argument deltas.** Zero or more `delta` events follow, each carrying a `partial_tool_call` whose `arguments` is the next fragment of the arguments JSON string (`name` and `tool_call_id` are empty `""`). Concatenate the fragments in order.
 3. **Complete call (last).** One final event carries a complete `tool_call` item: `name`, `tool_call_id`, and `arguments` parsed into an object. Read tool calls from these `tool_call` items; treat the `partial_tool_call` fragments as live progress only.
 
 For consecutive or parallel tool calls, each new call restarts at step 1 with its own `name` and `tool_call_id`, so one call's arguments never bleed into the next. Send each tool result back with the exact `tool_call_id` from its `tool_call`.
