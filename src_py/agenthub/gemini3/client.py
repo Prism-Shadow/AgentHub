@@ -268,7 +268,8 @@ class Gemini3Client(LLMClient):
 
         if model_output.candidates:
             candidate = model_output.candidates[0]
-            for part in candidate.content.parts if candidate.content and candidate.content.parts else []:
+            content = getattr(candidate, "content", None)
+            for part in getattr(content, "parts", None) or []:
                 if part.function_call is not None:
                     content_items.append(
                         {
