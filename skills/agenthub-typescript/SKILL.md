@@ -177,6 +177,33 @@ Event-only content item:
 
 - `partial_tool_call`: Streaming tool-call fragment with `name`, partial JSON `arguments`, and `tool_call_id`.
 
+### Tool-Call Streaming Protocol
+
+Every provider streams a tool call as the same ordered sequence of events, so consumers handle all models the same way. A single tool call is announced, then its arguments stream in, then it is delivered complete:
+
+1. **Announce (name + id first).** The first event for a tool call carries a `partial_tool_call` whose `name` and `tool_call_id` are non-empty and whose `arguments` is `""`. The tool's identity always arrives **before** any argument bytes.
+2. **Argument deltas.** Subsequent `delta` events carry `partial_tool_call` items whose `arguments` holds the next fragment of the arguments JSON **string** (`name` and `tool_call_id` are empty `""` on these fragments). Concatenate fragments in order to reconstruct the JSON.
+3. **Complete call (last).** When the arguments are complete, one final event carries a complete `tool_call` item: `name`, `tool_call_id`, and `arguments` parsed into an **object** (no longer a string).
+
+For **consecutive or parallel tool calls**, each new tool call restarts at step 1 with its own `name` and `tool_call_id` — one call's arguments never bleed into the next. So a two-tool turn streams as: announce A → arg deltas A → complete A → announce B → arg deltas B → complete B.
+
+```typescript
+// Drive a tool call from a stream: read complete calls from `tool_call` items.
+const toolCalls = [];
+for await (const event of client.streamingResponseStateful({ message, config })) {
+  for (const item of event.content_items) {
+    if (item.type === "partial_tool_call") {
+      // steps 1-2: live progress only; arguments is a partial JSON string. Do not execute yet.
+    } else if (item.type === "tool_call") {
+      // step 3: complete; arguments is a parsed object. Safe to execute.
+      toolCalls.push(item);
+    }
+  }
+}
+```
+
+Execute tools only from the complete `tool_call` items (step 3); use `partial_tool_call` items (steps 1-2) for live progress display. Send each tool result back with the exact `tool_call_id` from its `tool_call`.
+
 ## APIs
 
 `AutoLLMClient` exposes five basic APIs. Prefer the stateful stream for agent loops.
