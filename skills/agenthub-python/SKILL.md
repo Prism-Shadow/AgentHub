@@ -83,10 +83,12 @@ async def main():
             config=config
         ):
             print(event)
-            # Example printed event:
-            # {'role': 'assistant', 'event_type': 'delta',
-            #  'content_items': [{'type': 'text', 'text': 'The weather in London is 22 C.'}],
-            #  'usage_metadata': None, 'finish_reason': None, 'created_at': 1694502400000}
+            # Streams the final answer token by token, then a stop event carrying usage:
+            # {'role': 'assistant', 'event_type': 'delta', 'content_items': [{'type': 'text', 'text': 'The'}], 'usage_metadata': None, 'finish_reason': None}
+            # {'role': 'assistant', 'event_type': 'delta', 'content_items': [{'type': 'text', 'text': ' weather'}], 'usage_metadata': None, 'finish_reason': None}
+            # {'role': 'assistant', 'event_type': 'delta', 'content_items': [{'type': 'text', 'text': ' is'}], 'usage_metadata': None, 'finish_reason': None}
+            # {'role': 'assistant', 'event_type': 'delta', 'content_items': [{'type': 'text', 'text': ' 22 C.'}], 'usage_metadata': None, 'finish_reason': None}
+            # {'role': 'assistant', 'event_type': 'stop', 'content_items': [], 'usage_metadata': {'cached_tokens': 0, 'prompt_tokens': 12, 'thoughts_tokens': 0, 'response_tokens': 8}, 'finish_reason': 'stop'}
 
 
 asyncio.run(main())

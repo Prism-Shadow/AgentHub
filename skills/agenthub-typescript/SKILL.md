@@ -83,10 +83,12 @@ async function main(): Promise<void> {
       config,
     })) {
       console.log(event);
-      // Example logged event:
-      // { role: "assistant", event_type: "delta",
-      //   content_items: [{ type: "text", text: "The weather in London is 22 C." }],
-      //   usage_metadata: null, finish_reason: null, created_at: 1694502400000 }
+      // Streams the final answer token by token, then a stop event carrying usage:
+      // { role: 'assistant', event_type: 'delta', content_items: [ { type: 'text', text: 'The' } ], usage_metadata: null, finish_reason: null }
+      // { role: 'assistant', event_type: 'delta', content_items: [ { type: 'text', text: ' weather' } ], usage_metadata: null, finish_reason: null }
+      // { role: 'assistant', event_type: 'delta', content_items: [ { type: 'text', text: ' is' } ], usage_metadata: null, finish_reason: null }
+      // { role: 'assistant', event_type: 'delta', content_items: [ { type: 'text', text: ' 22 C.' } ], usage_metadata: null, finish_reason: null }
+      // { role: 'assistant', event_type: 'stop', content_items: [], usage_metadata: { cached_tokens: 0, prompt_tokens: 12, thoughts_tokens: 0, response_tokens: 8 }, finish_reason: 'stop' }
     }
   }
 }
