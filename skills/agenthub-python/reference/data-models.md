@@ -1,0 +1,129 @@
+# Data Models
+
+AgentHub uses `UniConfig`, `UniMessage`, and `UniEvent` to represent request options, conversation history, and streamed outputs across providers.
+
+## UniConfig
+
+`UniConfig` is the request config for `streaming_response` and `streaming_response_stateful`. All fields are optional.
+
+```python
+config = {
+    "max_tokens": 1024,
+    "temperature": 1.0,
+    "tools": [{
+        "name": "get_weather",
+        "description": "Get weather.",
+        "parameters": {
+            "type": "object",
+            "properties": {"location": {"type": "string", "description": "City name."}},
+            "required": ["location"],
+        },
+    }],
+    "tool_choice": "auto",
+    "thinking_summary": True,
+    "thinking_level": "high",
+    "system_prompt": "You are helpful.",
+    "prompt_caching": "enable",
+    "image_config": {"aspect_ratio": "4:3", "image_size": "1K"},
+    "tts_config": [{"voice": "Kore"}],
+    "embedding_config": {"dimensions": 768},
+    "trace_id": "agent1/conversation_001",
+}
+```
+
+Fields:
+
+- `max_tokens` (`int`): Output token limit.
+- `temperature` (`float`): Sampling temperature; support varies by model.
+- `tools` (`list[ToolSchema]`): Tools with `name`, `description`, and optional JSON Schema `parameters`.
+- `thinking_summary` (`bool`): Request a thinking summary when supported.
+- `thinking_level` (`ThinkingLevel`): `none`, `low`, `medium`, `high`, or `xhigh`.
+- `tool_choice` (`ToolChoice`): `auto`, `required`, `none`, or a list of tool names; support varies by model.
+- `system_prompt` (`str`): System instruction text.
+- `prompt_caching` (`PromptCaching`): `enable`, `disable`, or `enhance`.
+- `image_config` (`ImageConfig`): `aspect_ratio` (`1:1`, `2:3`, `3:2`, `3:4`, `4:3`, `9:16`, `16:9`, `21:9`) and `image_size` (`1K`, `2K`).
+- `tts_config` (`list[SpeakerConfig]`): Voice config; each item has `voice` and optional `speaker`.
+- `embedding_config` (`EmbeddingConfig`): Embedding config, currently `dimensions`.
+- `trace_id` (`str`): Stable ID for tracer output.
+
+## UniMessage
+
+`UniMessage` is the durable message shape used in history.
+
+```python
+message = {
+    "role": "user",
+    "content_items": [
+        {"type": "text", "text": "Hello", "phase": None, "signature": "sig"},
+        {"type": "image_url", "image_url": "https://example.com/image.jpg"},
+        {"type": "inline_data", "data": b"...", "mime_type": "image/png", "signature": "sig"},
+        {"type": "thinking", "thinking": "Reasoning", "signature": "sig"},
+        {"type": "inline_thinking", "data": b"...", "mime_type": "image/png", "signature": "sig"},
+        {"type": "tool_call", "name": "get_weather", "arguments": {"location": "Paris"}, "tool_call_id": "call_1", "signature": "sig"},
+        {"type": "tool_result", "text": "22 C", "tool_call_id": "call_1"},
+        {"type": "embedding", "embedding": [0.1, 0.2]},
+    ],
+}
+```
+
+Fields:
+
+- `role` (`Role`): `user` or `assistant`.
+- `content_items` (`list[ContentItem]`): Message payload.
+- `usage_metadata` (`UsageMetadata | None`): Optional token counts on completed assistant messages.
+- `finish_reason` (`FinishReason | None`): `stop`, `length`, `tool_call`, `unknown`, or `None`.
+- `created_at` (`int`): Unix milliseconds.
+
+Content items:
+
+- `text`: Text chunk; `phase` marks sub-stage; `signature` verifies signed content.
+- `image_url`: Image URL or data URI.
+- `inline_data`: Inline media bytes with MIME type; may carry `signature`.
+- `thinking`: Text reasoning content; may carry `signature`.
+- `inline_thinking`: Binary reasoning artifact; may carry `signature`.
+- `tool_call`: Complete model tool request with name, args, ID, and optional `signature`.
+- `tool_result`: Tool output text for a `tool_call_id`; may include image URLs.
+- `embedding`: Numeric embedding vector.
+
+Preserve `phase` and `signature`; never drop either field.
+
+## UniEvent
+
+`UniEvent` is the streamed output shape. Read token counts from `usage_metadata` here.
+
+```python
+event = {
+    "role": "assistant",
+    "event_type": "delta",
+    "content_items": [
+        {"type": "partial_tool_call", "name": "get_weather", "arguments": "{\"location\":\"Par", "tool_call_id": "call_1"}
+    ],
+    "usage_metadata": {"cached_tokens": 0, "prompt_tokens": 10, "thoughts_tokens": None, "response_tokens": 1},
+    "finish_reason": None,
+    "created_at": 1694502400000,
+}
+```
+
+Fields:
+
+- `role` (`Role`): `user` or `assistant`.
+- `event_type` (`EventType`): `start`, `delta`, `stop`, or `unused`.
+- `content_items` (`list[PartialContentItem]`): Stream payload; includes `ContentItem` plus `partial_tool_call`.
+- `usage_metadata` (`UsageMetadata | None`): Token counts: `cached_tokens`, `prompt_tokens`, `thoughts_tokens`, `response_tokens`.
+  Token math: `input = cached_tokens + prompt_tokens`; `output = thoughts_tokens + response_tokens`; treat `None` as `0`.
+- `finish_reason` (`FinishReason | None`): `stop`, `length`, `tool_call`, `unknown`, or `None`.
+- `created_at` (`int`): Unix milliseconds.
+
+Event-only content item:
+
+- `partial_tool_call`: Streaming tool-call fragment with `name`, partial JSON `arguments`, and `tool_call_id`.
+
+## Tool-Call Streaming Protocol
+
+Across providers a tool call streams as the same ordered sequence of events, so consumers handle every model the same way:
+
+1. **Announce (name + id first).** The first event for a tool call carries a `partial_tool_call` with a non-empty `name` and `tool_call_id`. Its `arguments` is a JSON string fragment — empty (`""`) when the provider streams arguments incrementally, or already the full arguments JSON when the provider returns the call in one shot (e.g. Gemini, which does not stream tool arguments). The tool's identity arrives with this first event.
+2. **Argument deltas.** Zero or more `delta` events follow, each carrying a `partial_tool_call` whose `arguments` is the next fragment of the arguments JSON string (`name` and `tool_call_id` are empty `""`). Concatenate the fragments in order. There may be no delta events at all — for an empty-argument call, or when the whole call already arrived in step 1.
+3. **Complete call (last).** One final event carries a complete `tool_call` item: `name`, `tool_call_id`, and `arguments` parsed into a dict. Read tool calls from these `tool_call` items; treat the `partial_tool_call` fragments as live progress only.
+
+For consecutive or parallel tool calls, each new call restarts at step 1 with its own `name` and `tool_call_id`, so one call's arguments never bleed into the next. Send each tool result back with the exact `tool_call_id` from its `tool_call`.
