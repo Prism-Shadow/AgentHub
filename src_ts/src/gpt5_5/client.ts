@@ -420,7 +420,7 @@ export class GPT5_5Client extends LLMClient {
               {
                 type: "tool_call",
                 name: partialToolCall.name,
-                arguments: JSON.parse(partialToolCall.arguments),
+                arguments: JSON.parse(partialToolCall.arguments || "{}"),
                 tool_call_id: partialToolCall.tool_call_id || "",
               },
             ],

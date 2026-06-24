@@ -266,15 +266,15 @@ class Gemini3Client(LLMClient):
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
 
-        if len(model_output.candidates) > 0:
+        if model_output.candidates:
             candidate = model_output.candidates[0]
-            for part in candidate.content.parts:
+            for part in candidate.content.parts if candidate.content and candidate.content.parts else []:
                 if part.function_call is not None:
                     content_items.append(
                         {
                             "type": "tool_call",
                             "name": part.function_call.name,
-                            "arguments": part.function_call.args,
+                            "arguments": part.function_call.args or {},
                             "tool_call_id": part.function_call.name,
                             "signature": part.thought_signature,
                         }

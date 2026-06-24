@@ -341,7 +341,7 @@ class GPT5_5Client(LLMClient):
                             {
                                 "type": "tool_call",
                                 "name": partial_tool_call["name"],
-                                "arguments": json.loads(partial_tool_call["arguments"]),
+                                "arguments": json.loads(partial_tool_call["arguments"] or "{}"),
                                 "tool_call_id": partial_tool_call["tool_call_id"],
                             }
                         ],
