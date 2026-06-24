@@ -26,6 +26,11 @@ function getWeather(location: string): string {
   return `Temperature in ${location}: 22 C`;
 }
 
+// Map tool names to their implementations so calls can be dispatched by name.
+const TOOLS: Record<string, (args: Record<string, any>) => string> = {
+  get_weather: (args) => getWeather(args.location as string),
+};
+
 async function main(): Promise<void> {
   const weatherTool = {
     name: "get_weather",
@@ -45,7 +50,7 @@ async function main(): Promise<void> {
   const client = new AutoLLMClient({ model: "gpt-5.5" });
   const config = { tools: [weatherTool] };
 
-  const events = [];
+  let toolCall: { name: string; arguments: Record<string, any>; tool_call_id: string } | null = null;
   for await (const event of client.streamingResponseStateful({
     message: {
       role: "user",
@@ -53,22 +58,16 @@ async function main(): Promise<void> {
     },
     config,
   })) {
-    events.push(event);
-  }
-
-  let toolCall: { name: string; arguments: Record<string, any>; tool_call_id: string } | null = null;
-  for (const event of events) {
     for (const item of event.content_items) {
       if (item.type === "tool_call") {
-        toolCall = item;
-        break;
+        toolCall = item; // collected as the stream arrives; no second pass
       }
     }
-    if (toolCall) break;
   }
 
   if (toolCall) {
-    const result = getWeather(toolCall.arguments.location as string);
+    // Dispatch by tool name instead of hardcoding the function.
+    const result = TOOLS[toolCall.name](toolCall.arguments);
 
     for await (const event of client.streamingResponseStateful({
       message: {
@@ -84,6 +83,10 @@ async function main(): Promise<void> {
       config,
     })) {
       console.log(event);
+      // Example logged event:
+      // { role: "assistant", event_type: "delta",
+      //   content_items: [{ type: "text", text: "The weather in London is 22 C." }],
+      //   usage_metadata: null, finish_reason: null, created_at: 1694502400000 }
     }
   }
 }

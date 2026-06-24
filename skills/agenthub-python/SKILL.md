@@ -30,6 +30,10 @@ def get_weather(location: str) -> str:
     return f"Temperature in {location}: 22 C"
 
 
+# Map tool names to their implementations so calls can be dispatched by name.
+TOOLS = {"get_weather": get_weather}
+
+
 async def main():
     weather_function = {
         "name": "get_weather",
@@ -49,7 +53,7 @@ async def main():
     client = AutoLLMClient(model="gpt-5.5")
     config = {"tools": [weather_function]}
 
-    events = []
+    tool_call = None
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -57,20 +61,13 @@ async def main():
         },
         config=config
     ):
-        events.append(event)
-
-    tool_call = None
-    for event in events:
         for item in event["content_items"]:
-            if item["type"] == "tool_call":
+            if item["type"] == "tool_call":  # collected as the stream arrives; no second pass
                 tool_call = item
-                break
-
-        if tool_call:
-            break
 
     if tool_call:
-        result = get_weather(**tool_call["arguments"])
+        # Dispatch by tool name instead of hardcoding the function.
+        result = TOOLS[tool_call["name"]](**tool_call["arguments"])
 
         async for event in client.streaming_response_stateful(
             message={
@@ -86,6 +83,10 @@ async def main():
             config=config
         ):
             print(event)
+            # Example printed event:
+            # {'role': 'assistant', 'event_type': 'delta',
+            #  'content_items': [{'type': 'text', 'text': 'The weather in London is 22 C.'}],
+            #  'usage_metadata': None, 'finish_reason': None, 'created_at': 1694502400000}
 
 
 asyncio.run(main())
