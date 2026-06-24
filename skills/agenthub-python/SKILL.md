@@ -91,9 +91,17 @@ async def main():
 asyncio.run(main())
 ```
 
+## Notes
+
+Agent loop rules:
+
+- Send every tool result with the exact `tool_call_id` from its originating `tool_call`. Do not invent, normalize, or reuse IDs across unrelated tool calls.
+- Preserve `thinking` and `inline_thinking` items. Do not strip `phase` or `signature` fields.
+- For embedding models, each `UniMessage` in the `messages` array produces **one embedding vector**. Within a single message, all items in `content_items` are aggregated into a single embedding. Set `embedding_config.dimensions` in the config to control vector size.
+
 ## Reference
 
 - [Model selection](reference/models.md) — model IDs, API keys, base URLs, and OpenAI-compatible routing.
 - [Data models](reference/data-models.md) — `UniConfig`, `UniMessage`, `UniEvent`, and the tool-call streaming protocol.
-- [APIs](reference/api.md) — client initialization, method signatures, and agent-loop rules.
+- [APIs](reference/api.md) — client initialization and method signatures.
 - [Tracer & Playground](reference/integrations.md) — local tracing UI and the manual chat playground.
