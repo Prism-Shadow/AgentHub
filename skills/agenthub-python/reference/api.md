@@ -1,6 +1,6 @@
-# APIs & Usage
+# APIs
 
-`AutoLLMClient` exposes five basic APIs. Prefer the stateful stream for agent loops.
+`AutoLLMClient` exposes five basic APIs. Prefer the stateful stream for agent loops. See [Basic Usage](../SKILL.md#basic-usage) for a full tool-use example.
 
 ## Initialization
 
@@ -38,80 +38,6 @@ def set_history(history: list[UniMessage]) -> None:
 
 def clear_history() -> None:
     """Clear stateful history."""
-```
-
-## Basic Usage
-
-This example asks GPT to call a weather tool, runs the tool, then sends the result back.
-
-```python
-import asyncio
-from agenthub import AutoLLMClient
-
-
-def get_weather(location: str) -> str:
-    return f"Temperature in {location}: 22 C"
-
-
-async def main():
-    weather_function = {
-        "name": "get_weather",
-        "description": "Gets the current weather for a given location.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "location": {
-                    "type": "string",
-                    "description": "The city name"
-                }
-            },
-            "required": ["location"]
-        }
-    }
-
-    client = AutoLLMClient(model="gpt-5.5")
-    config = {"tools": [weather_function]}
-
-    events = []
-    async for event in client.streaming_response_stateful(
-        message={
-            "role": "user",
-            "content_items": [{"type": "text", "text": "What's the weather in London?"}]
-        },
-        config=config
-    ):
-        events.append(event)
-
-    tool_call = None
-    for event in events:
-        for item in event["content_items"]:
-            if item["type"] == "tool_call":
-                tool_call = item
-                break
-
-        if tool_call:
-            break
-
-    if tool_call:
-        result = get_weather(**tool_call["arguments"])
-
-        async for event in client.streaming_response_stateful(
-            message={
-                "role": "user",
-                "content_items": [
-                    {
-                        "type": "tool_result",
-                        "text": result,
-                        "tool_call_id": tool_call["tool_call_id"]
-                    }
-                ]
-            },
-            config=config
-        ):
-            print(event)
-
-
-asyncio.run(main())
 ```
 
 ## Notes

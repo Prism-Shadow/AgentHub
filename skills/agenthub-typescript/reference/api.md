@@ -1,6 +1,6 @@
-# APIs & Usage
+# APIs
 
-`AutoLLMClient` exposes five basic APIs. Prefer the stateful stream for agent loops.
+`AutoLLMClient` exposes five basic APIs. Prefer the stateful stream for agent loops. See [Basic Usage](../SKILL.md#basic-usage) for a full tool-use example.
 
 ## Initialization
 
@@ -41,82 +41,6 @@ setHistory(history: UniMessage[]): void;
 
 /** Clear stateful history. */
 clearHistory(): void;
-```
-
-## Basic Usage
-
-This example asks GPT to call a weather tool, runs the tool, then sends the result back.
-
-```typescript
-import { AutoLLMClient } from "@prismshadow/agenthub";
-
-function getWeather(location: string): string {
-  return `Temperature in ${location}: 22 C`;
-}
-
-async function main(): Promise<void> {
-  const weatherTool = {
-    name: "get_weather",
-    description: "Gets the current weather for a given location.",
-    parameters: {
-      type: "object" as const,
-      properties: {
-        location: {
-          type: "string" as const,
-          description: "The city name",
-        },
-      },
-      required: ["location"],
-    },
-  };
-
-  const client = new AutoLLMClient({ model: "gpt-5.5" });
-  const config = { tools: [weatherTool] };
-
-  const events = [];
-  for await (const event of client.streamingResponseStateful({
-    message: {
-      role: "user",
-      content_items: [{ type: "text", text: "What's the weather in London?" }],
-    },
-    config,
-  })) {
-    events.push(event);
-  }
-
-  let toolCall: { name: string; arguments: Record<string, any>; tool_call_id: string } | null = null;
-  for (const event of events) {
-    for (const item of event.content_items) {
-      if (item.type === "tool_call") {
-        toolCall = item;
-        break;
-      }
-    }
-    if (toolCall) break;
-  }
-
-  if (toolCall) {
-    const result = getWeather(toolCall.arguments.location as string);
-
-    for await (const event of client.streamingResponseStateful({
-      message: {
-        role: "user",
-        content_items: [
-          {
-            type: "tool_result",
-            text: result,
-            tool_call_id: toolCall.tool_call_id,
-          },
-        ],
-      },
-      config,
-    })) {
-      console.log(event);
-    }
-  }
-}
-
-void main();
 ```
 
 ## Notes
