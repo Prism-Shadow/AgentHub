@@ -19,7 +19,6 @@ from types import SimpleNamespace
 import pytest
 
 from agenthub import AutoLLMClient, ToolCallArgumentParseError
-from agenthub.errors import parse_tool_call_arguments
 
 
 @dataclass
@@ -119,15 +118,11 @@ def _tool_stop_chunk() -> object:
     )
 
 
-def test_rejects_non_object_tool_call_arguments():
+async def _capture_tool_argument_error(stream: AsyncIterator[object]) -> ToolCallArgumentParseError:
     with pytest.raises(ToolCallArgumentParseError) as exc_info:
-        parse_tool_call_arguments("[]", "openai", "exec_command", "call_array")
-
-    parse_error = exc_info.value
-    assert parse_error.client == "openai"
-    assert parse_error.tool_name == "exec_command"
-    assert parse_error.tool_call_id == "call_array"
-    assert "expected a JSON object" in str(parse_error)
+        async for _event in stream:
+            pass
+    return exc_info.value
 
 
 @pytest.mark.asyncio
@@ -182,11 +177,7 @@ async def test_openai_compatible_clients_report_malformed_streamed_tool_call_arg
     )
 
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "Create a memo."}]}]
-    with pytest.raises(ToolCallArgumentParseError) as exc_info:
-        async for _event in client.streaming_response(messages, {}):
-            pass
-
-    parse_error = exc_info.value
+    parse_error = await _capture_tool_argument_error(client.streaming_response(messages, {}))
     assert parse_error.client == case.client_name
     assert parse_error.tool_name == "exec_command"
     assert parse_error.tool_call_id == "call_bad"
@@ -197,3 +188,31 @@ async def test_openai_compatible_clients_report_malformed_streamed_tool_call_arg
     assert "call_bad" in message
     assert "length=" in message
     assert "Unterminated string" in message
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "case",
+    OPENAI_COMPATIBLE_TOOL_STREAM_CASES,
+    ids=[case.name for case in OPENAI_COMPATIBLE_TOOL_STREAM_CASES],
+)
+async def test_openai_compatible_clients_report_non_object_streamed_tool_call_arguments(
+    case: OpenAICompatibleToolStreamCase,
+):
+    client = _create_auto_client(case)
+    _install_fake_openai_compatible_stream(
+        client,
+        [
+            _tool_delta_chunk("call_array", "exec_command", "[]"),
+            _tool_stop_chunk(),
+        ],
+    )
+
+    messages = [{"role": "user", "content_items": [{"type": "text", "text": "Create a memo."}]}]
+    parse_error = await _capture_tool_argument_error(client.streaming_response(messages, {}))
+    assert parse_error.client == case.client_name
+    assert parse_error.tool_name == "exec_command"
+    assert parse_error.tool_call_id == "call_array"
+    assert parse_error.raw_arguments_length == 2
+    assert parse_error.raw_arguments_preview == "[]"
+    assert "expected a JSON object" in str(parse_error)

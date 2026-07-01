@@ -21,7 +21,6 @@ import {
   UniEvent,
   UniMessage,
 } from "../src";
-import { parseToolCallArguments } from "../src/errors";
 
 type FakeOpenAICompatibleClient = {
   baseURL: string;
@@ -163,21 +162,17 @@ async function collectEvents(
   return events;
 }
 
-test("rejects non-object tool call arguments", () => {
+async function captureStreamError(
+  stream: AsyncIterable<UniEvent>,
+): Promise<unknown> {
   let capturedError: unknown;
   try {
-    parseToolCallArguments("[]", "openai", "exec_command", "call_array");
+    await collectEvents(stream);
   } catch (error) {
     capturedError = error;
   }
-
-  expect(capturedError).toBeInstanceOf(ToolCallArgumentParseError);
-  const parseError = capturedError as ToolCallArgumentParseError;
-  expect(parseError.client).toBe("openai");
-  expect(parseError.toolName).toBe("exec_command");
-  expect(parseError.toolCallId).toBe("call_array");
-  expect(parseError.message).toContain("expected a JSON object");
-});
+  return capturedError;
+}
 
 describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
   "OpenAI-compatible tool call streaming for $name",
@@ -219,12 +214,9 @@ describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
         toolStopChunk(),
       ]);
 
-      let capturedError: unknown;
-      try {
-        await collectEvents(client.streamingResponse({ messages, config: {} }));
-      } catch (error) {
-        capturedError = error;
-      }
+      const capturedError = await captureStreamError(
+        client.streamingResponse({ messages, config: {} }),
+      );
 
       expect(capturedError).toBeInstanceOf(ToolCallArgumentParseError);
       const parseError = capturedError as ToolCallArgumentParseError;
@@ -234,6 +226,27 @@ describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
       expect(parseError.rawArgumentsLength).toBeGreaterThan(0);
       expect(parseError.rawArgumentsPreview).toContain("create_docx.py");
       expect(parseError.message).toMatch(/Unterminated string/u);
+    });
+
+    test("reports non-object streamed tool call arguments with context", async () => {
+      const client = createAutoClient(testCase);
+      installFakeOpenAICompatibleStream(client, [
+        toolDeltaChunk("call_array", "exec_command", "[]"),
+        toolStopChunk(),
+      ]);
+
+      const capturedError = await captureStreamError(
+        client.streamingResponse({ messages, config: {} }),
+      );
+
+      expect(capturedError).toBeInstanceOf(ToolCallArgumentParseError);
+      const parseError = capturedError as ToolCallArgumentParseError;
+      expect(parseError.client).toBe(testCase.clientName);
+      expect(parseError.toolName).toBe("exec_command");
+      expect(parseError.toolCallId).toBe("call_array");
+      expect(parseError.rawArgumentsLength).toBe(2);
+      expect(parseError.rawArgumentsPreview).toBe("[]");
+      expect(parseError.message).toContain("expected a JSON object");
     });
   },
 );
