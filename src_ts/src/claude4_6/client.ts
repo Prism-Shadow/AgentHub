@@ -530,7 +530,7 @@ export class Claude4_6Client extends LLMClient {
                 name: partialToolCall.name,
                 arguments: parseToolCallArguments(
                   partialToolCall.arguments,
-                  "claude4_6",
+                  this.constructor.name,
                   partialToolCall.name || "",
                   partialToolCall.tool_call_id || "",
                 ),

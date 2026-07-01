@@ -463,7 +463,7 @@ export class KimiK2_6Client extends LLMClient {
                     name: partialToolCall.name,
                     arguments: parseToolCallArguments(
                       partialToolCall.arguments,
-                      "kimi_k2_6",
+                      this.constructor.name,
                       partialToolCall.name || "",
                       partialToolCall.tool_call_id || "",
                     ),
@@ -497,7 +497,7 @@ export class KimiK2_6Client extends LLMClient {
                 name: partialToolCall.name,
                 arguments: parseToolCallArguments(
                   partialToolCall.arguments,
-                  "kimi_k2_6",
+                  this.constructor.name,
                   partialToolCall.name || "",
                   partialToolCall.tool_call_id || "",
                 ),

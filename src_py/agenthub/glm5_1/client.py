@@ -310,7 +310,7 @@ class GLM5_1Client(LLMClient):
                                         "name": partial_tool_call["name"],
                                         "arguments": parse_tool_call_arguments(
                                             partial_tool_call["arguments"],
-                                            "glm5_1",
+                                            self.__class__.__name__,
                                             partial_tool_call["name"],
                                             partial_tool_call["tool_call_id"],
                                         ),
@@ -343,7 +343,7 @@ class GLM5_1Client(LLMClient):
                                 "name": partial_tool_call["name"],
                                 "arguments": parse_tool_call_arguments(
                                     partial_tool_call["arguments"],
-                                    "glm5_1",
+                                    self.__class__.__name__,
                                     partial_tool_call["name"],
                                     partial_tool_call["tool_call_id"],
                                 ),

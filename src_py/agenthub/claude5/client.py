@@ -405,7 +405,7 @@ class Claude5Client(LLMClient):
                                 "name": partial_tool_call["name"],
                                 "arguments": parse_tool_call_arguments(
                                     partial_tool_call["arguments"],
-                                    "claude5",
+                                    self.__class__.__name__,
                                     partial_tool_call["name"],
                                     partial_tool_call["tool_call_id"],
                                 ),

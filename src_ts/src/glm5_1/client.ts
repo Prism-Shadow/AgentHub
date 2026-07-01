@@ -388,7 +388,7 @@ export class GLM5_1Client extends LLMClient {
                     name: partialToolCall.name,
                     arguments: parseToolCallArguments(
                       partialToolCall.arguments,
-                      "glm5_1",
+                      this.constructor.name,
                       partialToolCall.name || "",
                       partialToolCall.tool_call_id || "",
                     ),
@@ -422,7 +422,7 @@ export class GLM5_1Client extends LLMClient {
                 name: partialToolCall.name,
                 arguments: parseToolCallArguments(
                   partialToolCall.arguments,
-                  "glm5_1",
+                  this.constructor.name,
                   partialToolCall.name || "",
                   partialToolCall.tool_call_id || "",
                 ),

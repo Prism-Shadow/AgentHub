@@ -434,7 +434,7 @@ export class OpenaiClient extends LLMClient {
                     name: partialToolCall.name,
                     arguments: parseToolCallArguments(
                       partialToolCall.arguments,
-                      "openai",
+                      this.constructor.name,
                       partialToolCall.name || "",
                       partialToolCall.tool_call_id || "",
                     ),
@@ -469,7 +469,7 @@ export class OpenaiClient extends LLMClient {
                 name: partialToolCall.name,
                 arguments: parseToolCallArguments(
                   partialToolCall.arguments,
-                  "openai",
+                  this.constructor.name,
                   partialToolCall.name || "",
                   partialToolCall.tool_call_id || "",
                 ),
