@@ -12,4 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { DeepSeekV4Client, ToolCallArgumentParseError } from "./client";
+export { DeepSeekV4Client } from "./client";

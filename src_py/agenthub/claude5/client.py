@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import base64
-import json
 import mimetypes
 import os
 import re
@@ -24,6 +23,7 @@ from anthropic import AsyncAnthropic, AsyncAnthropicBedrock
 from anthropic.types.beta import BetaMessageParam, BetaRawMessageStreamEvent
 
 from ..base_client import LLMClient
+from ..errors import parse_tool_call_arguments
 from ..types import (
     EventType,
     FinishReason,
@@ -403,7 +403,12 @@ class Claude5Client(LLMClient):
                             {
                                 "type": "tool_call",
                                 "name": partial_tool_call["name"],
-                                "arguments": json.loads(partial_tool_call["arguments"] or "{}"),
+                                "arguments": parse_tool_call_arguments(
+                                    partial_tool_call["arguments"],
+                                    "claude5",
+                                    partial_tool_call["name"],
+                                    partial_tool_call["tool_call_id"],
+                                ),
                                 "tool_call_id": partial_tool_call["tool_call_id"],
                             }
                         ],

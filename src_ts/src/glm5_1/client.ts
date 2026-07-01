@@ -19,6 +19,7 @@ import type {
   ChatCompletionCreateParamsStreaming,
 } from "openai/resources/chat/completions";
 import { LLMClient } from "../baseClient";
+import { parseToolCallArguments } from "../errors";
 import {
   EventType,
   FinishReason,
@@ -385,7 +386,12 @@ export class GLM5_1Client extends LLMClient {
                   {
                     type: "tool_call",
                     name: partialToolCall.name,
-                    arguments: JSON.parse(partialToolCall.arguments || "{}"),
+                    arguments: parseToolCallArguments(
+                      partialToolCall.arguments,
+                      "glm5_1",
+                      partialToolCall.name || "",
+                      partialToolCall.tool_call_id || "",
+                    ),
                     tool_call_id: partialToolCall.tool_call_id || "",
                   },
                 ],
@@ -414,7 +420,12 @@ export class GLM5_1Client extends LLMClient {
               {
                 type: "tool_call",
                 name: partialToolCall.name,
-                arguments: JSON.parse(partialToolCall.arguments || "{}"),
+                arguments: parseToolCallArguments(
+                  partialToolCall.arguments,
+                  "glm5_1",
+                  partialToolCall.name || "",
+                  partialToolCall.tool_call_id || "",
+                ),
                 tool_call_id: partialToolCall.tool_call_id || "",
               },
             ],

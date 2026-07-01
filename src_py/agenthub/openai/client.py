@@ -23,6 +23,7 @@ from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionChunk, ChatCompletionMessageParam
 
 from ..base_client import LLMClient
+from ..errors import parse_tool_call_arguments
 from ..types import (
     EventType,
     FinishReason,
@@ -325,7 +326,12 @@ class OpenaiClient(LLMClient):
                                     {
                                         "type": "tool_call",
                                         "name": partial_tool_call["name"],
-                                        "arguments": json.loads(partial_tool_call["arguments"] or "{}"),
+                                        "arguments": parse_tool_call_arguments(
+                                            partial_tool_call["arguments"],
+                                            "openai",
+                                            partial_tool_call["name"],
+                                            partial_tool_call["tool_call_id"],
+                                        ),
                                         "tool_call_id": partial_tool_call["tool_call_id"],
                                     }
                                 ],
@@ -353,7 +359,12 @@ class OpenaiClient(LLMClient):
                             {
                                 "type": "tool_call",
                                 "name": partial_tool_call["name"],
-                                "arguments": json.loads(partial_tool_call["arguments"] or "{}"),
+                                "arguments": parse_tool_call_arguments(
+                                    partial_tool_call["arguments"],
+                                    "openai",
+                                    partial_tool_call["name"],
+                                    partial_tool_call["tool_call_id"],
+                                ),
                                 "tool_call_id": partial_tool_call["tool_call_id"],
                             }
                         ],

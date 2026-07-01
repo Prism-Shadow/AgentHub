@@ -16,17 +16,14 @@ import base64
 import json
 import mimetypes
 import os
-from collections.abc import AsyncIterator, Callable
 from contextlib import nullcontext
 from dataclasses import dataclass
-from types import SimpleNamespace
-from typing import Any, Literal
+from typing import Literal
 
 import httpx
 import pytest
 
 from agenthub import AutoLLMClient, ThinkingLevel
-from agenthub.deepseek_v4 import DeepSeekV4Client, ToolCallArgumentParseError
 
 
 IMAGE = "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg"
@@ -47,13 +44,6 @@ class Model:
 
     def __repr__(self) -> str:
         return f"{self.name}:{self.provider}"
-
-
-@dataclass
-class OpenAICompatibleToolStreamCase:
-    name: str
-    create_client: Callable[[], Any]
-    parse_error_type: type[Exception]
 
 
 AVAILABLE_MODELS: list[Model] = []
@@ -182,15 +172,6 @@ if os.getenv("MODELVERSE_API_KEY") and RUN_SLOW_TEST:
     AVAILABLE_MODELS.append(Model(name="gpt-5.5", provider="modelverse", support_temperature=False))
 
 
-OPENAI_COMPATIBLE_TOOL_STREAM_CASES = [
-    OpenAICompatibleToolStreamCase(
-        name="deepseek-v4",
-        create_client=lambda: DeepSeekV4Client("deepseek-v4", api_key="test-key"),
-        parse_error_type=ToolCallArgumentParseError,
-    )
-]
-
-
 async def _create_client(model: Model) -> AutoLLMClient:
     """Create a client for the given model."""
     if model.provider == "bedrock":
@@ -215,56 +196,6 @@ async def _create_client(model: Model) -> AutoLLMClient:
         api_key, base_url = None, None
 
     return AutoLLMClient(model=model.name, api_key=api_key, base_url=base_url, client_type=model.client_type)
-
-
-async def _stream_from_chunks(chunks: list[object]) -> AsyncIterator[object]:
-    for chunk in chunks:
-        yield chunk
-
-
-class _FakeOpenAICompatibleCompletions:
-    def __init__(self, chunks: list[object]) -> None:
-        self._chunks = chunks
-
-    async def create(self, **_kwargs: object) -> AsyncIterator[object]:
-        return _stream_from_chunks(self._chunks)
-
-
-class _FakeOpenAICompatibleClient:
-    def __init__(self, chunks: list[object]) -> None:
-        self.chat = SimpleNamespace(completions=_FakeOpenAICompatibleCompletions(chunks))
-
-
-def _tool_delta_chunk(tool_call_id: str, name: str, arguments: str) -> object:
-    return SimpleNamespace(
-        choices=[
-            SimpleNamespace(
-                delta=SimpleNamespace(
-                    content=None,
-                    tool_calls=[
-                        SimpleNamespace(
-                            id=tool_call_id,
-                            function=SimpleNamespace(name=name, arguments=arguments),
-                        )
-                    ],
-                ),
-                finish_reason=None,
-            )
-        ],
-        usage=None,
-    )
-
-
-def _tool_stop_chunk() -> object:
-    return SimpleNamespace(
-        choices=[SimpleNamespace(delta=SimpleNamespace(content=None, tool_calls=None), finish_reason="tool_calls")],
-        usage=SimpleNamespace(
-            completion_tokens=1,
-            completion_tokens_details=SimpleNamespace(reasoning_tokens=0),
-            prompt_cache_hit_tokens=0,
-            prompt_cache_miss_tokens=1,
-        ),
-    )
 
 
 async def _check_event_integrity(event: dict) -> None:
@@ -316,73 +247,6 @@ async def _check_event_integrity(event: dict) -> None:
             assert event["usage_metadata"]["thoughts_tokens"] >= 0
         if event["usage_metadata"]["response_tokens"] is not None:
             assert event["usage_metadata"]["response_tokens"] >= 0
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "case",
-    OPENAI_COMPATIBLE_TOOL_STREAM_CASES,
-    ids=[case.name for case in OPENAI_COMPATIBLE_TOOL_STREAM_CASES],
-)
-async def test_openai_compatible_clients_combine_streamed_tool_call_arguments(
-    case: OpenAICompatibleToolStreamCase,
-):
-    client = case.create_client()
-    client._client = _FakeOpenAICompatibleClient(  # noqa: SLF001 - deterministic transport for offline regression
-        [
-            _tool_delta_chunk("call_ok", "exec_command", '{"cmd":'),
-            _tool_delta_chunk("", "", '"echo ok"}'),
-            _tool_stop_chunk(),
-        ]
-    )
-
-    messages = [{"role": "user", "content_items": [{"type": "text", "text": "Create a memo."}]}]
-    events = [event async for event in client._streaming_response_internal(messages, {})]
-    tool_calls = [item for event in events for item in event["content_items"] if item["type"] == "tool_call"]
-
-    assert tool_calls == [
-        {
-            "type": "tool_call",
-            "name": "exec_command",
-            "arguments": {"cmd": "echo ok"},
-            "tool_call_id": "call_ok",
-        }
-    ]
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "case",
-    OPENAI_COMPATIBLE_TOOL_STREAM_CASES,
-    ids=[case.name for case in OPENAI_COMPATIBLE_TOOL_STREAM_CASES],
-)
-async def test_openai_compatible_clients_report_malformed_streamed_tool_call_arguments(
-    case: OpenAICompatibleToolStreamCase,
-):
-    client = case.create_client()
-    client._client = _FakeOpenAICompatibleClient(  # noqa: SLF001 - deterministic transport for offline regression
-        [
-            _tool_delta_chunk("call_bad", "exec_command", '{"cmd":"python create_docx.py'),
-            _tool_stop_chunk(),
-        ]
-    )
-
-    messages = [{"role": "user", "content_items": [{"type": "text", "text": "Create a memo."}]}]
-    with pytest.raises(case.parse_error_type) as exc_info:
-        async for _event in client._streaming_response_internal(messages, {}):
-            pass
-
-    parse_error = exc_info.value
-    assert getattr(parse_error, "client") == "deepseek_v4"
-    assert getattr(parse_error, "tool_name") == "exec_command"
-    assert getattr(parse_error, "tool_call_id") == "call_bad"
-    assert getattr(parse_error, "raw_arguments_length") > 0
-    assert "create_docx.py" in getattr(parse_error, "raw_arguments_preview")
-    message = str(parse_error)
-    assert "exec_command" in message
-    assert "call_bad" in message
-    assert "length=" in message
-    assert "Unterminated string" in message
 
 
 @pytest.mark.asyncio

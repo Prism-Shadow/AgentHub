@@ -19,6 +19,7 @@ import type {
   ResponseCreateParamsStreaming,
 } from "openai/resources/responses/responses";
 import { LLMClient } from "../baseClient";
+import { parseToolCallArguments } from "../errors";
 import {
   EventType,
   FinishReason,
@@ -420,7 +421,12 @@ export class GPT5_5Client extends LLMClient {
               {
                 type: "tool_call",
                 name: partialToolCall.name,
-                arguments: JSON.parse(partialToolCall.arguments || "{}"),
+                arguments: parseToolCallArguments(
+                  partialToolCall.arguments,
+                  "gpt5_5",
+                  partialToolCall.name || "",
+                  partialToolCall.tool_call_id || "",
+                ),
                 tool_call_id: partialToolCall.tool_call_id || "",
               },
             ],
