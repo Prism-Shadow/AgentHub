@@ -23,7 +23,6 @@ from agenthub import AutoLLMClient, ToolCallArgumentParseError
 
 @dataclass
 class OpenAICompatibleToolStreamCase:
-    name: str
     expected_client: str
     model: str
     client_type: str
@@ -31,25 +30,21 @@ class OpenAICompatibleToolStreamCase:
 
 OPENAI_COMPATIBLE_TOOL_STREAM_CASES = [
     OpenAICompatibleToolStreamCase(
-        name="openai",
         expected_client="OpenaiClient",
         model="gpt-5.5",
         client_type="openai",
     ),
     OpenAICompatibleToolStreamCase(
-        name="glm5_1",
         expected_client="GLM5_1Client",
         model="glm-5.1",
         client_type="glm-5.1",
     ),
     OpenAICompatibleToolStreamCase(
-        name="kimi_k2_6",
         expected_client="KimiK2_6Client",
         model="kimi-k2.6",
         client_type="kimi-k2.6",
     ),
     OpenAICompatibleToolStreamCase(
-        name="deepseek_v4",
         expected_client="DeepSeekV4Client",
         model="deepseek-v4",
         client_type="deepseek-v4",
@@ -129,7 +124,7 @@ async def _capture_tool_argument_error(stream: AsyncIterator[object]) -> ToolCal
 @pytest.mark.parametrize(
     "case",
     OPENAI_COMPATIBLE_TOOL_STREAM_CASES,
-    ids=[case.name for case in OPENAI_COMPATIBLE_TOOL_STREAM_CASES],
+    ids=[case.client_type for case in OPENAI_COMPATIBLE_TOOL_STREAM_CASES],
 )
 async def test_openai_compatible_clients_combine_streamed_tool_call_arguments(
     case: OpenAICompatibleToolStreamCase,
@@ -162,7 +157,7 @@ async def test_openai_compatible_clients_combine_streamed_tool_call_arguments(
 @pytest.mark.parametrize(
     "case",
     OPENAI_COMPATIBLE_TOOL_STREAM_CASES,
-    ids=[case.name for case in OPENAI_COMPATIBLE_TOOL_STREAM_CASES],
+    ids=[case.client_type for case in OPENAI_COMPATIBLE_TOOL_STREAM_CASES],
 )
 async def test_openai_compatible_clients_report_malformed_streamed_tool_call_arguments(
     case: OpenAICompatibleToolStreamCase,
@@ -194,7 +189,7 @@ async def test_openai_compatible_clients_report_malformed_streamed_tool_call_arg
 @pytest.mark.parametrize(
     "case",
     OPENAI_COMPATIBLE_TOOL_STREAM_CASES,
-    ids=[case.name for case in OPENAI_COMPATIBLE_TOOL_STREAM_CASES],
+    ids=[case.client_type for case in OPENAI_COMPATIBLE_TOOL_STREAM_CASES],
 )
 async def test_openai_compatible_clients_report_non_object_streamed_tool_call_arguments(
     case: OpenAICompatibleToolStreamCase,

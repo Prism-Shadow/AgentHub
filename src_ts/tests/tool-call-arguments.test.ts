@@ -39,7 +39,6 @@ type OpenAICompatibleToolStreamClient = {
 };
 
 interface OpenAICompatibleToolStreamCase {
-  name: string;
   expectedClient: string;
   model: string;
   clientType: string;
@@ -47,25 +46,21 @@ interface OpenAICompatibleToolStreamCase {
 
 const OPENAI_COMPATIBLE_TOOL_STREAM_CASES: OpenAICompatibleToolStreamCase[] = [
   {
-    name: "openai",
     expectedClient: "OpenaiClient",
     model: "gpt-5.5",
     clientType: "openai",
   },
   {
-    name: "glm5_1",
     expectedClient: "GLM5_1Client",
     model: "glm-5.1",
     clientType: "glm-5.1",
   },
   {
-    name: "kimi_k2_6",
     expectedClient: "KimiK2_6Client",
     model: "kimi-k2.6",
     clientType: "kimi-k2.6",
   },
   {
-    name: "deepseek_v4",
     expectedClient: "DeepSeekV4Client",
     model: "deepseek-v4",
     clientType: "deepseek-v4",
@@ -175,7 +170,7 @@ async function captureStreamError(
 }
 
 describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
-  "OpenAI-compatible tool call streaming for $name",
+  "OpenAI-compatible tool call streaming for $clientType",
   (testCase) => {
     test("combines valid streamed tool call arguments", async () => {
       const client = createAutoClient(testCase);
