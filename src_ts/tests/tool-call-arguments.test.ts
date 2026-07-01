@@ -13,20 +13,15 @@
 // limitations under the License.
 
 import { expect, describe, test } from "@jest/globals";
-import { DeepSeekV4Client } from "../src/deepseek_v4";
 import {
-  parseToolCallArguments,
+  AutoLLMClient,
   ToolCallArgumentParseError,
-} from "../src/errors";
-import { GLM5_1Client } from "../src/glm5_1";
-import { KimiK2_6Client } from "../src/kimi_k2_6";
-import { OpenaiClient } from "../src/openai";
-import {
   ToolCallContentItem,
   UniConfig,
   UniEvent,
   UniMessage,
-} from "../src/types";
+} from "../src";
+import { parseToolCallArguments } from "../src/errors";
 
 type FakeOpenAICompatibleClient = {
   baseURL: string;
@@ -38,7 +33,7 @@ type FakeOpenAICompatibleClient = {
 };
 
 type OpenAICompatibleToolStreamClient = {
-  _streamingResponseInternal(options: {
+  streamingResponse(options: {
     messages: UniMessage[];
     config: UniConfig;
   }): AsyncIterable<UniEvent>;
@@ -47,33 +42,34 @@ type OpenAICompatibleToolStreamClient = {
 interface OpenAICompatibleToolStreamCase {
   name: string;
   clientName: string;
-  createClient: () => OpenAICompatibleToolStreamClient;
+  model: string;
+  clientType: string;
 }
 
 const OPENAI_COMPATIBLE_TOOL_STREAM_CASES: OpenAICompatibleToolStreamCase[] = [
   {
     name: "openai",
     clientName: "openai",
-    createClient: () =>
-      new OpenaiClient({ model: "gpt-5.5", apiKey: "test-key" }),
+    model: "gpt-5.5",
+    clientType: "openai",
   },
   {
     name: "glm5_1",
     clientName: "glm5_1",
-    createClient: () =>
-      new GLM5_1Client({ model: "glm-5.1", apiKey: "test-key" }),
+    model: "glm-5.1",
+    clientType: "glm-5.1",
   },
   {
     name: "kimi_k2_6",
     clientName: "kimi_k2_6",
-    createClient: () =>
-      new KimiK2_6Client({ model: "kimi-k2.6", apiKey: "test-key" }),
+    model: "kimi-k2.6",
+    clientType: "kimi-k2.6",
   },
   {
     name: "deepseek_v4",
     clientName: "deepseek_v4",
-    createClient: () =>
-      new DeepSeekV4Client({ model: "deepseek-v4", apiKey: "test-key" }),
+    model: "deepseek-v4",
+    clientType: "deepseek-v4",
   },
 ];
 
@@ -106,8 +102,20 @@ function installFakeOpenAICompatibleStream(
       },
     },
   };
-  (client as unknown as { _client: FakeOpenAICompatibleClient })._client =
-    fakeClient;
+  const routedClient = (
+    client as unknown as { _client: { _client: FakeOpenAICompatibleClient } }
+  )._client;
+  routedClient._client = fakeClient;
+}
+
+function createAutoClient(
+  testCase: OpenAICompatibleToolStreamCase,
+): AutoLLMClient {
+  return new AutoLLMClient({
+    model: testCase.model,
+    apiKey: "test-key",
+    clientType: testCase.clientType,
+  });
 }
 
 function toolDeltaChunk(
@@ -175,7 +183,7 @@ describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
   "OpenAI-compatible tool call streaming for $name",
   (testCase) => {
     test("combines valid streamed tool call arguments", async () => {
-      const client = testCase.createClient();
+      const client = createAutoClient(testCase);
       installFakeOpenAICompatibleStream(client, [
         toolDeltaChunk("call_ok", "exec_command", '{"cmd":'),
         toolDeltaChunk("", "", '"echo ok"}'),
@@ -183,7 +191,7 @@ describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
       ]);
 
       const events = await collectEvents(
-        client._streamingResponseInternal({ messages, config: {} }),
+        client.streamingResponse({ messages, config: {} }),
       );
       const toolCalls = events.flatMap((event) =>
         event.content_items.filter(
@@ -201,7 +209,7 @@ describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
     });
 
     test("reports malformed streamed tool call arguments with context", async () => {
-      const client = testCase.createClient();
+      const client = createAutoClient(testCase);
       installFakeOpenAICompatibleStream(client, [
         toolDeltaChunk(
           "call_bad",
@@ -213,9 +221,7 @@ describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
 
       let capturedError: unknown;
       try {
-        await collectEvents(
-          client._streamingResponseInternal({ messages, config: {} }),
-        );
+        await collectEvents(client.streamingResponse({ messages, config: {} }));
       } catch (error) {
         capturedError = error;
       }

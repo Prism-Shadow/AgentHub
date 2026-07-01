@@ -12,49 +12,54 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any
 
 import pytest
 
-from agenthub.deepseek_v4 import DeepSeekV4Client
-from agenthub.errors import ToolCallArgumentParseError, parse_tool_call_arguments
-from agenthub.glm5_1 import GLM5_1Client
-from agenthub.kimi_k2_6 import KimiK2_6Client
-from agenthub.openai import OpenaiClient
+from agenthub import AutoLLMClient, ToolCallArgumentParseError
+from agenthub.errors import parse_tool_call_arguments
 
 
 @dataclass
 class OpenAICompatibleToolStreamCase:
     name: str
     client_name: str
-    create_client: Callable[[], Any]
+    model: str
+    client_type: str
 
 
 OPENAI_COMPATIBLE_TOOL_STREAM_CASES = [
     OpenAICompatibleToolStreamCase(
         name="openai",
         client_name="openai",
-        create_client=lambda: OpenaiClient("gpt-5.5", api_key="test-key"),
+        model="gpt-5.5",
+        client_type="openai",
     ),
     OpenAICompatibleToolStreamCase(
         name="glm5_1",
         client_name="glm5_1",
-        create_client=lambda: GLM5_1Client("glm-5.1", api_key="test-key"),
+        model="glm-5.1",
+        client_type="glm-5.1",
     ),
     OpenAICompatibleToolStreamCase(
         name="kimi_k2_6",
         client_name="kimi_k2_6",
-        create_client=lambda: KimiK2_6Client("kimi-k2.6", api_key="test-key"),
+        model="kimi-k2.6",
+        client_type="kimi-k2.6",
     ),
     OpenAICompatibleToolStreamCase(
         name="deepseek_v4",
         client_name="deepseek_v4",
-        create_client=lambda: DeepSeekV4Client("deepseek-v4", api_key="test-key"),
+        model="deepseek-v4",
+        client_type="deepseek-v4",
     ),
 ]
+
+
+def _create_auto_client(case: OpenAICompatibleToolStreamCase) -> AutoLLMClient:
+    return AutoLLMClient(model=case.model, api_key="test-key", client_type=case.client_type)
 
 
 async def _stream_from_chunks(chunks: list[object]) -> AsyncIterator[object]:
@@ -74,6 +79,10 @@ class _FakeOpenAICompatibleClient:
     def __init__(self, chunks: list[object]) -> None:
         self.base_url = "https://api.test.invalid/v1"
         self.chat = SimpleNamespace(completions=_FakeOpenAICompatibleCompletions(chunks))
+
+
+def _install_fake_openai_compatible_stream(client: AutoLLMClient, chunks: list[object]) -> None:
+    client._client._client = _FakeOpenAICompatibleClient(chunks)  # noqa: SLF001
 
 
 def _tool_delta_chunk(tool_call_id: str, name: str, arguments: str) -> object:
@@ -130,17 +139,18 @@ def test_rejects_non_object_tool_call_arguments():
 async def test_openai_compatible_clients_combine_streamed_tool_call_arguments(
     case: OpenAICompatibleToolStreamCase,
 ):
-    client = case.create_client()
-    client._client = _FakeOpenAICompatibleClient(  # noqa: SLF001 - deterministic transport for offline regression
+    client = _create_auto_client(case)
+    _install_fake_openai_compatible_stream(
+        client,
         [
             _tool_delta_chunk("call_ok", "exec_command", '{"cmd":'),
             _tool_delta_chunk("", "", '"echo ok"}'),
             _tool_stop_chunk(),
-        ]
+        ],
     )
 
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "Create a memo."}]}]
-    events = [event async for event in client._streaming_response_internal(messages, {})]
+    events = [event async for event in client.streaming_response(messages, {})]
     tool_calls = [item for event in events for item in event["content_items"] if item["type"] == "tool_call"]
 
     assert tool_calls == [
@@ -162,17 +172,18 @@ async def test_openai_compatible_clients_combine_streamed_tool_call_arguments(
 async def test_openai_compatible_clients_report_malformed_streamed_tool_call_arguments(
     case: OpenAICompatibleToolStreamCase,
 ):
-    client = case.create_client()
-    client._client = _FakeOpenAICompatibleClient(  # noqa: SLF001 - deterministic transport for offline regression
+    client = _create_auto_client(case)
+    _install_fake_openai_compatible_stream(
+        client,
         [
             _tool_delta_chunk("call_bad", "exec_command", '{"cmd":"python create_docx.py'),
             _tool_stop_chunk(),
-        ]
+        ],
     )
 
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "Create a memo."}]}]
     with pytest.raises(ToolCallArgumentParseError) as exc_info:
-        async for _event in client._streaming_response_internal(messages, {}):
+        async for _event in client.streaming_response(messages, {}):
             pass
 
     parse_error = exc_info.value
