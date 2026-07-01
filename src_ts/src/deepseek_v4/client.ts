@@ -32,6 +32,69 @@ import {
   UsageMetadata,
 } from "../types";
 
+function previewToolCallArguments(raw: string): string {
+  const maxLength = 160;
+  if (raw.length <= maxLength) {
+    return raw;
+  }
+  const edgeLength = 72;
+  return `${raw.slice(0, edgeLength)}...[truncated]...${raw.slice(-edgeLength)}`;
+}
+
+export class ToolCallArgumentParseError extends Error {
+  readonly client = "deepseek_v4";
+  readonly toolName: string;
+  readonly toolCallId: string;
+  readonly rawArgumentsLength: number;
+  readonly rawArgumentsPreview: string;
+
+  constructor(args: {
+    toolName: string;
+    toolCallId: string;
+    rawArguments: string;
+    reason: string;
+  }) {
+    const preview = previewToolCallArguments(args.rawArguments);
+    super(
+      `Invalid DeepSeek V4 streamed tool call arguments for tool "${args.toolName}" ` +
+        `(tool_call_id="${args.toolCallId}", length=${args.rawArguments.length}, ` +
+        `preview=${JSON.stringify(preview)}): ${args.reason}`,
+    );
+    this.name = "ToolCallArgumentParseError";
+    this.toolName = args.toolName;
+    this.toolCallId = args.toolCallId;
+    this.rawArgumentsLength = args.rawArguments.length;
+    this.rawArgumentsPreview = preview;
+  }
+}
+
+function parseToolCallArguments(
+  rawArguments: string | undefined,
+  toolName: string,
+  toolCallId: string,
+): Record<string, unknown> {
+  const raw = rawArguments || "{}";
+  try {
+    const parsed = JSON.parse(raw);
+    if (
+      parsed !== null &&
+      typeof parsed === "object" &&
+      !Array.isArray(parsed)
+    ) {
+      return parsed as Record<string, unknown>;
+    }
+    throw new Error("expected a JSON object");
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new ToolCallArgumentParseError({
+      toolName,
+      toolCallId,
+      rawArguments: raw,
+      reason,
+    });
+  }
+}
+
 export class DeepSeekV4Client extends LLMClient {
   protected _model: string;
   private _client: OpenAI;
@@ -358,7 +421,11 @@ export class DeepSeekV4Client extends LLMClient {
                   {
                     type: "tool_call",
                     name: partialToolCall.name,
-                    arguments: JSON.parse(partialToolCall.arguments || "{}"),
+                    arguments: parseToolCallArguments(
+                      partialToolCall.arguments,
+                      partialToolCall.name,
+                      partialToolCall.tool_call_id || "",
+                    ),
                     tool_call_id: partialToolCall.tool_call_id || "",
                   },
                 ],
@@ -384,7 +451,11 @@ export class DeepSeekV4Client extends LLMClient {
               {
                 type: "tool_call",
                 name: partialToolCall.name,
-                arguments: JSON.parse(partialToolCall.arguments || "{}"),
+                arguments: parseToolCallArguments(
+                  partialToolCall.arguments,
+                  partialToolCall.name,
+                  partialToolCall.tool_call_id || "",
+                ),
                 tool_call_id: partialToolCall.tool_call_id || "",
               },
             ],

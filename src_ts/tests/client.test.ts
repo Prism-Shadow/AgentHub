@@ -13,7 +13,17 @@
 // limitations under the License.
 
 import { AutoLLMClient } from "../src/autoClient";
-import { ThinkingLevel, UniMessage, UniConfig, UniEvent } from "../src/types";
+import {
+  ThinkingLevel,
+  ToolCallContentItem,
+  UniMessage,
+  UniConfig,
+  UniEvent,
+} from "../src/types";
+import {
+  DeepSeekV4Client,
+  ToolCallArgumentParseError,
+} from "../src/deepseek_v4";
 import { expect, describe, test } from "@jest/globals";
 
 const IMAGE =
@@ -36,6 +46,20 @@ interface Model {
     | "siliconflow"
     | "openrouter"
     | "modelverse";
+}
+
+type FakeOpenAICompatibleClient = {
+  chat: {
+    completions: {
+      create: () => Promise<AsyncIterable<unknown>>;
+    };
+  };
+};
+
+interface OpenAICompatibleToolStreamCase {
+  name: string;
+  createClient: () => DeepSeekV4Client;
+  parseErrorClass: Function;
 }
 
 const AVAILABLE_MODELS: Model[] = [];
@@ -326,6 +350,15 @@ if (process.env.MODELVERSE_API_KEY && RUN_SLOW_TEST) {
   });
 }
 
+const OPENAI_COMPATIBLE_TOOL_STREAM_CASES: OpenAICompatibleToolStreamCase[] = [
+  {
+    name: "deepseek-v4",
+    createClient: () =>
+      new DeepSeekV4Client({ model: "deepseek-v4", apiKey: "test-key" }),
+    parseErrorClass: ToolCallArgumentParseError,
+  },
+];
+
 function createClient(model: Model): AutoLLMClient {
   let apiKey: string | undefined;
   let baseUrl: string | undefined;
@@ -360,6 +393,76 @@ function createClient(model: Model): AutoLLMClient {
     baseUrl,
     clientType: model.clientType,
   });
+}
+
+function streamFromChunks(chunks: unknown[]): AsyncIterable<unknown> {
+  return {
+    async *[Symbol.asyncIterator]() {
+      for (const chunk of chunks) {
+        yield chunk;
+      }
+    },
+  };
+}
+
+function installFakeOpenAICompatibleStream(
+  client: DeepSeekV4Client,
+  chunks: unknown[],
+): void {
+  const fakeClient: FakeOpenAICompatibleClient = {
+    chat: {
+      completions: {
+        create: async () => streamFromChunks(chunks),
+      },
+    },
+  };
+  (client as unknown as { _client: FakeOpenAICompatibleClient })._client =
+    fakeClient;
+}
+
+function openAICompatibleToolDeltaChunk(
+  toolCallId: string,
+  name: string,
+  args: string,
+): unknown {
+  return {
+    choices: [
+      {
+        delta: {
+          tool_calls: [
+            {
+              id: toolCallId,
+              function: { name, arguments: args },
+            },
+          ],
+        },
+        finish_reason: null,
+      },
+    ],
+    usage: null,
+  };
+}
+
+function openAICompatibleToolStopChunk(): unknown {
+  return {
+    choices: [{ delta: {}, finish_reason: "tool_calls" }],
+    usage: {
+      completion_tokens: 1,
+      completion_tokens_details: { reasoning_tokens: 0 },
+      prompt_cache_hit_tokens: 0,
+      prompt_cache_miss_tokens: 1,
+    },
+  };
+}
+
+async function collectEvents(
+  stream: AsyncIterable<UniEvent>,
+): Promise<UniEvent[]> {
+  const events: UniEvent[] = [];
+  for await (const event of stream) {
+    events.push(event);
+  }
+  return events;
 }
 
 function checkEventIntegrity(event: UniEvent): void {
@@ -425,6 +528,74 @@ function checkEventIntegrity(event: UniEvent): void {
     }
   }
 }
+
+describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
+  "OpenAI-compatible tool call streaming for $name",
+  (testCase) => {
+    const messages: UniMessage[] = [
+      {
+        role: "user",
+        content_items: [{ type: "text", text: "Create a memo." }],
+      },
+    ];
+
+    test("combines valid streamed tool call arguments", async () => {
+      const client = testCase.createClient();
+      installFakeOpenAICompatibleStream(client, [
+        openAICompatibleToolDeltaChunk("call_ok", "exec_command", '{"cmd":'),
+        openAICompatibleToolDeltaChunk("", "", '"echo ok"}'),
+        openAICompatibleToolStopChunk(),
+      ]);
+
+      const events = await collectEvents(
+        client._streamingResponseInternal({ messages, config: {} }),
+      );
+      const toolCalls = events.flatMap((event) =>
+        event.content_items.filter(
+          (item): item is ToolCallContentItem => item.type === "tool_call",
+        ),
+      );
+
+      expect(toolCalls).toHaveLength(1);
+      expect(toolCalls[0]).toEqual({
+        type: "tool_call",
+        name: "exec_command",
+        arguments: { cmd: "echo ok" },
+        tool_call_id: "call_ok",
+      });
+    });
+
+    test("reports malformed streamed tool call arguments with context", async () => {
+      const client = testCase.createClient();
+      installFakeOpenAICompatibleStream(client, [
+        openAICompatibleToolDeltaChunk(
+          "call_bad",
+          "exec_command",
+          '{"cmd":"python create_docx.py',
+        ),
+        openAICompatibleToolStopChunk(),
+      ]);
+
+      let capturedError: unknown;
+      try {
+        await collectEvents(
+          client._streamingResponseInternal({ messages, config: {} }),
+        );
+      } catch (error) {
+        capturedError = error;
+      }
+
+      expect(capturedError).toBeInstanceOf(testCase.parseErrorClass);
+      const parseError = capturedError as ToolCallArgumentParseError;
+      expect(parseError.client).toBe("deepseek_v4");
+      expect(parseError.toolName).toBe("exec_command");
+      expect(parseError.toolCallId).toBe("call_bad");
+      expect(parseError.rawArgumentsLength).toBeGreaterThan(0);
+      expect(parseError.rawArgumentsPreview).toContain("create_docx.py");
+      expect(parseError.message).toMatch(/Unterminated string/u);
+    });
+  },
+);
 
 if (AVAILABLE_MODELS.length > 0) {
   describe.each(

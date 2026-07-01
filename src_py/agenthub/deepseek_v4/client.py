@@ -34,6 +34,40 @@ from ..types import (
 )
 
 
+def _preview_tool_call_arguments(raw: str) -> str:
+    max_length = 160
+    if len(raw) <= max_length:
+        return raw
+
+    edge_length = 72
+    return f"{raw[:edge_length]}...[truncated]...{raw[-edge_length:]}"
+
+
+class ToolCallArgumentParseError(ValueError):
+    def __init__(self, tool_name: str, tool_call_id: str, raw_arguments: str, reason: str) -> None:
+        self.client = "deepseek_v4"
+        self.tool_name = tool_name
+        self.tool_call_id = tool_call_id
+        self.raw_arguments_length = len(raw_arguments)
+        self.raw_arguments_preview = _preview_tool_call_arguments(raw_arguments)
+        super().__init__(
+            "Invalid DeepSeek V4 streamed tool call arguments "
+            f'for tool "{tool_name}" (tool_call_id="{tool_call_id}", '
+            f"length={self.raw_arguments_length}, preview={self.raw_arguments_preview!r}): {reason}"
+        )
+
+
+def _parse_tool_call_arguments(raw_arguments: str | None, tool_name: str, tool_call_id: str) -> dict[str, Any]:
+    raw = raw_arguments or "{}"
+    try:
+        parsed = json.loads(raw)
+        if isinstance(parsed, dict):
+            return parsed
+        raise ValueError("expected a JSON object")
+    except (TypeError, ValueError) as exc:
+        raise ToolCallArgumentParseError(tool_name, tool_call_id, raw, str(exc)) from exc
+
+
 class DeepSeekV4Client(LLMClient):
     """DeepSeek V4-specific LLM client implementation using OpenAI-compatible Chat Completions."""
 
@@ -289,7 +323,11 @@ class DeepSeekV4Client(LLMClient):
                                     {
                                         "type": "tool_call",
                                         "name": partial_tool_call["name"],
-                                        "arguments": json.loads(partial_tool_call["arguments"] or "{}"),
+                                        "arguments": _parse_tool_call_arguments(
+                                            partial_tool_call.get("arguments"),
+                                            partial_tool_call["name"],
+                                            partial_tool_call["tool_call_id"],
+                                        ),
                                         "tool_call_id": partial_tool_call["tool_call_id"],
                                     }
                                 ],
@@ -317,7 +355,11 @@ class DeepSeekV4Client(LLMClient):
                             {
                                 "type": "tool_call",
                                 "name": partial_tool_call["name"],
-                                "arguments": json.loads(partial_tool_call["arguments"] or "{}"),
+                                "arguments": _parse_tool_call_arguments(
+                                    partial_tool_call.get("arguments"),
+                                    partial_tool_call["name"],
+                                    partial_tool_call["tool_call_id"],
+                                ),
                                 "tool_call_id": partial_tool_call["tool_call_id"],
                             }
                         ],
