@@ -14,7 +14,10 @@
 
 import { expect, describe, test } from "@jest/globals";
 import { DeepSeekV4Client } from "../src/deepseek_v4";
-import { ToolCallArgumentParseError } from "../src/errors";
+import {
+  parseToolCallArguments,
+  ToolCallArgumentParseError,
+} from "../src/errors";
 import { GLM5_1Client } from "../src/glm5_1";
 import { KimiK2_6Client } from "../src/kimi_k2_6";
 import { OpenaiClient } from "../src/openai";
@@ -151,6 +154,22 @@ async function collectEvents(
   }
   return events;
 }
+
+test("rejects non-object tool call arguments", () => {
+  let capturedError: unknown;
+  try {
+    parseToolCallArguments("[]", "openai", "exec_command", "call_array");
+  } catch (error) {
+    capturedError = error;
+  }
+
+  expect(capturedError).toBeInstanceOf(ToolCallArgumentParseError);
+  const parseError = capturedError as ToolCallArgumentParseError;
+  expect(parseError.client).toBe("openai");
+  expect(parseError.toolName).toBe("exec_command");
+  expect(parseError.toolCallId).toBe("call_array");
+  expect(parseError.message).toContain("expected a JSON object");
+});
 
 describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
   "OpenAI-compatible tool call streaming for $name",

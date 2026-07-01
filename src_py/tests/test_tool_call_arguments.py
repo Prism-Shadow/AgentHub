@@ -20,7 +20,7 @@ from typing import Any
 import pytest
 
 from agenthub.deepseek_v4 import DeepSeekV4Client
-from agenthub.errors import ToolCallArgumentParseError
+from agenthub.errors import ToolCallArgumentParseError, parse_tool_call_arguments
 from agenthub.glm5_1 import GLM5_1Client
 from agenthub.kimi_k2_6 import KimiK2_6Client
 from agenthub.openai import OpenaiClient
@@ -108,6 +108,17 @@ def _tool_stop_chunk() -> object:
             prompt_cache_miss_tokens=1,
         ),
     )
+
+
+def test_rejects_non_object_tool_call_arguments():
+    with pytest.raises(ToolCallArgumentParseError) as exc_info:
+        parse_tool_call_arguments("[]", "openai", "exec_command", "call_array")
+
+    parse_error = exc_info.value
+    assert parse_error.client == "openai"
+    assert parse_error.tool_name == "exec_command"
+    assert parse_error.tool_call_id == "call_array"
+    assert "expected a JSON object" in str(parse_error)
 
 
 @pytest.mark.asyncio
