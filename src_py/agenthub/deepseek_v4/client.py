@@ -324,7 +324,7 @@ class DeepSeekV4Client(LLMClient):
                                         "type": "tool_call",
                                         "name": partial_tool_call["name"],
                                         "arguments": _parse_tool_call_arguments(
-                                            partial_tool_call.get("arguments"),
+                                            partial_tool_call["arguments"],
                                             partial_tool_call["name"],
                                             partial_tool_call["tool_call_id"],
                                         ),
@@ -356,7 +356,7 @@ class DeepSeekV4Client(LLMClient):
                                 "type": "tool_call",
                                 "name": partial_tool_call["name"],
                                 "arguments": _parse_tool_call_arguments(
-                                    partial_tool_call.get("arguments"),
+                                    partial_tool_call["arguments"],
                                     partial_tool_call["name"],
                                     partial_tool_call["tool_call_id"],
                                 ),

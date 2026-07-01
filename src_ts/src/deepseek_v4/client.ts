@@ -423,7 +423,7 @@ export class DeepSeekV4Client extends LLMClient {
                     name: partialToolCall.name,
                     arguments: parseToolCallArguments(
                       partialToolCall.arguments,
-                      partialToolCall.name,
+                      partialToolCall.name || "",
                       partialToolCall.tool_call_id || "",
                     ),
                     tool_call_id: partialToolCall.tool_call_id || "",
@@ -453,7 +453,7 @@ export class DeepSeekV4Client extends LLMClient {
                 name: partialToolCall.name,
                 arguments: parseToolCallArguments(
                   partialToolCall.arguments,
-                  partialToolCall.name,
+                  partialToolCall.name || "",
                   partialToolCall.tool_call_id || "",
                 ),
                 tool_call_id: partialToolCall.tool_call_id || "",
