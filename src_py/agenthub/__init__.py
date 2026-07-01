@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from .auto_client import AutoLLMClient
+from .errors import ToolCallArgumentParseError
 from .types import PromptCaching, ThinkingLevel
 
 
-__all__ = ["AutoLLMClient", "PromptCaching", "ThinkingLevel"]
+__all__ = ["AutoLLMClient", "PromptCaching", "ThinkingLevel", "ToolCallArgumentParseError"]
