@@ -38,32 +38,35 @@ type OpenAICompatibleToolStreamClient = {
   }): AsyncIterable<UniEvent>;
 };
 
-type AutoClientWithOpenAICompatibleRoute = {
-  _client: {
-    constructor: { name: string };
-    _client: FakeOpenAICompatibleClient;
-  };
-};
-
 interface OpenAICompatibleToolStreamCase {
+  name: string;
+  expectedClient: string;
   model: string;
   clientType: string;
 }
 
 const OPENAI_COMPATIBLE_TOOL_STREAM_CASES: OpenAICompatibleToolStreamCase[] = [
   {
+    name: "openai",
+    expectedClient: "OpenaiClient",
     model: "gpt-5.5",
     clientType: "openai",
   },
   {
+    name: "glm5_1",
+    expectedClient: "GLM5_1Client",
     model: "glm-5.1",
     clientType: "glm-5.1",
   },
   {
+    name: "kimi_k2_6",
+    expectedClient: "KimiK2_6Client",
     model: "kimi-k2.6",
     clientType: "kimi-k2.6",
   },
   {
+    name: "deepseek_v4",
+    expectedClient: "DeepSeekV4Client",
     model: "deepseek-v4",
     clientType: "deepseek-v4",
   },
@@ -98,18 +101,10 @@ function installFakeOpenAICompatibleStream(
       },
     },
   };
-  const routedClient = getRoutedClient(client);
+  const routedClient = (
+    client as unknown as { _client: { _client: FakeOpenAICompatibleClient } }
+  )._client;
   routedClient._client = fakeClient;
-}
-
-function getRoutedClient(
-  client: OpenAICompatibleToolStreamClient,
-): AutoClientWithOpenAICompatibleRoute["_client"] {
-  return (client as unknown as AutoClientWithOpenAICompatibleRoute)._client;
-}
-
-function getRoutedClientName(client: OpenAICompatibleToolStreamClient): string {
-  return getRoutedClient(client).constructor.name;
 }
 
 function createAutoClient(
@@ -180,7 +175,7 @@ async function captureStreamError(
 }
 
 describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
-  "OpenAI-compatible tool call streaming for $clientType",
+  "OpenAI-compatible tool call streaming for $name",
   (testCase) => {
     test("combines valid streamed tool call arguments", async () => {
       const client = createAutoClient(testCase);
@@ -210,7 +205,6 @@ describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
 
     test("reports malformed streamed tool call arguments with context", async () => {
       const client = createAutoClient(testCase);
-      const expectedClient = getRoutedClientName(client);
       installFakeOpenAICompatibleStream(client, [
         toolDeltaChunk(
           "call_bad",
@@ -226,7 +220,7 @@ describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
 
       expect(capturedError).toBeInstanceOf(ToolCallArgumentParseError);
       const parseError = capturedError as ToolCallArgumentParseError;
-      expect(parseError.client).toBe(expectedClient);
+      expect(parseError.client).toBe(testCase.expectedClient);
       expect(parseError.toolName).toBe("exec_command");
       expect(parseError.toolCallId).toBe("call_bad");
       expect(parseError.rawArgumentsLength).toBeGreaterThan(0);
@@ -236,7 +230,6 @@ describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
 
     test("reports non-object streamed tool call arguments with context", async () => {
       const client = createAutoClient(testCase);
-      const expectedClient = getRoutedClientName(client);
       installFakeOpenAICompatibleStream(client, [
         toolDeltaChunk("call_array", "exec_command", "[]"),
         toolStopChunk(),
@@ -248,7 +241,7 @@ describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
 
       expect(capturedError).toBeInstanceOf(ToolCallArgumentParseError);
       const parseError = capturedError as ToolCallArgumentParseError;
-      expect(parseError.client).toBe(expectedClient);
+      expect(parseError.client).toBe(testCase.expectedClient);
       expect(parseError.toolName).toBe("exec_command");
       expect(parseError.toolCallId).toBe("call_array");
       expect(parseError.rawArgumentsLength).toBe(2);

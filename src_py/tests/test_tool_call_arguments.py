@@ -23,24 +23,34 @@ from agenthub import AutoLLMClient, ToolCallArgumentParseError
 
 @dataclass
 class OpenAICompatibleToolStreamCase:
+    name: str
+    expected_client: str
     model: str
     client_type: str
 
 
 OPENAI_COMPATIBLE_TOOL_STREAM_CASES = [
     OpenAICompatibleToolStreamCase(
+        name="openai",
+        expected_client="OpenaiClient",
         model="gpt-5.5",
         client_type="openai",
     ),
     OpenAICompatibleToolStreamCase(
+        name="glm5_1",
+        expected_client="GLM5_1Client",
         model="glm-5.1",
         client_type="glm-5.1",
     ),
     OpenAICompatibleToolStreamCase(
+        name="kimi_k2_6",
+        expected_client="KimiK2_6Client",
         model="kimi-k2.6",
         client_type="kimi-k2.6",
     ),
     OpenAICompatibleToolStreamCase(
+        name="deepseek_v4",
+        expected_client="DeepSeekV4Client",
         model="deepseek-v4",
         client_type="deepseek-v4",
     ),
@@ -72,10 +82,6 @@ class _FakeOpenAICompatibleClient:
 
 def _install_fake_openai_compatible_stream(client: AutoLLMClient, chunks: list[object]) -> None:
     client._client._client = _FakeOpenAICompatibleClient(chunks)  # noqa: SLF001
-
-
-def _routed_client_name(client: AutoLLMClient) -> str:
-    return client._client.__class__.__name__  # noqa: SLF001
 
 
 def _tool_delta_chunk(tool_call_id: str, name: str, arguments: str) -> object:
@@ -123,7 +129,7 @@ async def _capture_tool_argument_error(stream: AsyncIterator[object]) -> ToolCal
 @pytest.mark.parametrize(
     "case",
     OPENAI_COMPATIBLE_TOOL_STREAM_CASES,
-    ids=[case.client_type for case in OPENAI_COMPATIBLE_TOOL_STREAM_CASES],
+    ids=[case.name for case in OPENAI_COMPATIBLE_TOOL_STREAM_CASES],
 )
 async def test_openai_compatible_clients_combine_streamed_tool_call_arguments(
     case: OpenAICompatibleToolStreamCase,
@@ -156,13 +162,12 @@ async def test_openai_compatible_clients_combine_streamed_tool_call_arguments(
 @pytest.mark.parametrize(
     "case",
     OPENAI_COMPATIBLE_TOOL_STREAM_CASES,
-    ids=[case.client_type for case in OPENAI_COMPATIBLE_TOOL_STREAM_CASES],
+    ids=[case.name for case in OPENAI_COMPATIBLE_TOOL_STREAM_CASES],
 )
 async def test_openai_compatible_clients_report_malformed_streamed_tool_call_arguments(
     case: OpenAICompatibleToolStreamCase,
 ):
     client = _create_auto_client(case)
-    expected_client = _routed_client_name(client)
     _install_fake_openai_compatible_stream(
         client,
         [
@@ -173,7 +178,7 @@ async def test_openai_compatible_clients_report_malformed_streamed_tool_call_arg
 
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "Create a memo."}]}]
     parse_error = await _capture_tool_argument_error(client.streaming_response(messages, {}))
-    assert parse_error.client == expected_client
+    assert parse_error.client == case.expected_client
     assert parse_error.tool_name == "exec_command"
     assert parse_error.tool_call_id == "call_bad"
     assert parse_error.raw_arguments_length > 0
@@ -189,13 +194,12 @@ async def test_openai_compatible_clients_report_malformed_streamed_tool_call_arg
 @pytest.mark.parametrize(
     "case",
     OPENAI_COMPATIBLE_TOOL_STREAM_CASES,
-    ids=[case.client_type for case in OPENAI_COMPATIBLE_TOOL_STREAM_CASES],
+    ids=[case.name for case in OPENAI_COMPATIBLE_TOOL_STREAM_CASES],
 )
 async def test_openai_compatible_clients_report_non_object_streamed_tool_call_arguments(
     case: OpenAICompatibleToolStreamCase,
 ):
     client = _create_auto_client(case)
-    expected_client = _routed_client_name(client)
     _install_fake_openai_compatible_stream(
         client,
         [
@@ -206,7 +210,7 @@ async def test_openai_compatible_clients_report_non_object_streamed_tool_call_ar
 
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "Create a memo."}]}]
     parse_error = await _capture_tool_argument_error(client.streaming_response(messages, {}))
-    assert parse_error.client == expected_client
+    assert parse_error.client == case.expected_client
     assert parse_error.tool_name == "exec_command"
     assert parse_error.tool_call_id == "call_array"
     assert parse_error.raw_arguments_length == 2
