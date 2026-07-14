@@ -50,6 +50,16 @@ export class ToolCallArgumentParseError extends Error {
   }
 }
 
+/** Thrown when DeepSeek input contains an assistant turn from an incomplete stream. */
+export class EmptyAssistantResponseError extends Error {
+  constructor() {
+    super(
+      "DeepSeek assistant history contains only thinking; discard the incomplete turn before retrying.",
+    );
+    this.name = "EmptyAssistantResponseError";
+  }
+}
+
 export function parseToolCallArguments(
   rawArguments: string | undefined,
   client: string,

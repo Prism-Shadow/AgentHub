@@ -20,7 +20,7 @@ from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionChunk, ChatCompletionMessageParam
 
 from ..base_client import LLMClient
-from ..errors import parse_tool_call_arguments
+from ..errors import EmptyAssistantResponseError, parse_tool_call_arguments
 from ..types import (
     EventType,
     FinishReason,
@@ -123,6 +123,13 @@ class DeepSeekV4Client(LLMClient):
         deepseek_messages = []
 
         for msg in messages:
+            if (
+                msg["role"] == "assistant"
+                and msg["content_items"]
+                and all(item["type"] == "thinking" for item in msg["content_items"])
+            ):
+                raise EmptyAssistantResponseError()
+
             content_parts = []  # may be empty for tool results
             tool_calls = []  # may be empty for no tool calls
             thinking = ""

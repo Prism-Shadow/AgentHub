@@ -39,6 +39,15 @@ class ToolCallArgumentParseError(ValueError):
         )
 
 
+class EmptyAssistantResponseError(Exception):
+    """Raised when DeepSeek input contains an assistant turn from an incomplete stream."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "DeepSeek assistant history contains only thinking; discard the incomplete turn before retrying."
+        )
+
+
 def parse_tool_call_arguments(
     raw_arguments: str | None,
     client: str,

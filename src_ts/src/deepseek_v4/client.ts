@@ -19,7 +19,7 @@ import type {
   ChatCompletionCreateParamsStreaming,
 } from "openai/resources/chat/completions";
 import { LLMClient } from "../baseClient";
-import { parseToolCallArguments } from "../errors";
+import { EmptyAssistantResponseError, parseToolCallArguments } from "../errors";
 import {
   EventType,
   FinishReason,
@@ -147,6 +147,14 @@ export class DeepSeekV4Client extends LLMClient {
     const deepseekMessages: ChatCompletionMessageParam[] = [];
 
     for (const msg of messages) {
+      if (
+        msg.role === "assistant" &&
+        msg.content_items.length > 0 &&
+        msg.content_items.every((item) => item.type === "thinking")
+      ) {
+        throw new EmptyAssistantResponseError();
+      }
+
       const contentParts: Array<{
         type: string;
         text?: string;
