@@ -778,7 +778,8 @@ async def test_embedding(model: Model):
         ),
     ],
 )
-def test_deepseek_validates_truncated_response_before_history_commit(finish_reason, content_items, rejects):
+@pytest.mark.asyncio
+async def test_deepseek_validates_truncated_response_across_stream_modes(finish_reason, content_items, rejects):
     client = DeepSeekV4Client(model="deepseek-v4", api_key="test-key")
     events = [
         {
@@ -801,10 +802,32 @@ def test_deepseek_validates_truncated_response_before_history_commit(finish_reas
             "finish_reason": finish_reason,
         },
     ]
-    context = pytest.raises(EmptyAssistantResponseError) if rejects else nullcontext()
 
-    with context:
-        client.concat_uni_events_to_uni_message(events)
+    async def stream(_messages, _config):
+        for event in events:
+            yield event
+
+    client._streaming_response_internal = stream
+    message = {"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}
+
+    async def consume_stateless():
+        async for _event in client.streaming_response(messages=[message], config={}):
+            pass
+
+    async def consume_stateful():
+        async for _event in client.streaming_response_stateful(message=message, config={}):
+            pass
+
+    if rejects:
+        with pytest.raises(EmptyAssistantResponseError):
+            await consume_stateless()
+        with pytest.raises(EmptyAssistantResponseError):
+            await consume_stateful()
+        assert client.get_history() == []
+    else:
+        await consume_stateless()
+        await consume_stateful()
+        assert len(client.get_history()) == 2
 
 
 if __name__ == "__main__":

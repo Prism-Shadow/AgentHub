@@ -245,11 +245,12 @@ class LLMClient(ABC):
 
         self._validate_last_event(last_event)
 
+        assistant_message = self.concat_uni_events_to_uni_message(events)
+
         # Save history to file if trace_id is specified
-        if config.get("trace_id") and events:
+        if config.get("trace_id"):
             from .integration.tracer import Tracer
 
-            assistant_message = self.concat_uni_events_to_uni_message(events)
             tracer = Tracer()
             tracer.save_history(self._model, messages + [assistant_message], config["trace_id"], config)
 

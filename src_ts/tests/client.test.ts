@@ -1152,8 +1152,8 @@ const TRUNCATED_RESPONSE_CASES: TruncatedResponseCase[] = [
 ];
 
 test.each(TRUNCATED_RESPONSE_CASES)(
-  "DeepSeek $name is validated before history commit",
-  ({ finishReason, contentItems, rejects }) => {
+  "DeepSeek $name is validated across stream modes",
+  async ({ finishReason, contentItems, rejects }) => {
     const client = new DeepSeekV4Client({
       model: "deepseek-v4",
       apiKey: "test-key",
@@ -1179,12 +1179,42 @@ test.each(TRUNCATED_RESPONSE_CASES)(
         finish_reason: finishReason,
       },
     ];
-    const concat = () => client.concatUniEventsToUniMessage(events);
+    client._streamingResponseInternal = async function* (_options) {
+      yield* events;
+    };
+    const message: UniMessage = {
+      role: "user",
+      content_items: [{ type: "text", text: "Hello" }],
+    };
+    const consumeStateless = async () => {
+      for await (const _event of client.streamingResponse({
+        messages: [message],
+        config: {},
+      })) {
+        // Consume the complete stream so post-stream validation runs.
+      }
+    };
+    const consumeStateful = async () => {
+      for await (const _event of client.streamingResponseStateful({
+        message,
+        config: {},
+      })) {
+        // Consume the complete stream so history commit can run.
+      }
+    };
 
     if (rejects) {
-      expect(concat).toThrow(EmptyAssistantResponseError);
+      await expect(consumeStateless()).rejects.toThrow(
+        EmptyAssistantResponseError,
+      );
+      await expect(consumeStateful()).rejects.toThrow(
+        EmptyAssistantResponseError,
+      );
+      expect(client.getHistory()).toEqual([]);
     } else {
-      expect(concat).not.toThrow();
+      await expect(consumeStateless()).resolves.toBeUndefined();
+      await expect(consumeStateful()).resolves.toBeUndefined();
+      expect(client.getHistory()).toHaveLength(2);
     }
   },
 );
