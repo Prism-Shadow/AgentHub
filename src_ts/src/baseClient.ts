@@ -262,37 +262,28 @@ export abstract class LLMClient {
   }
 
   /**
-   * Validate that the completed response carries non-thinking content or tool calls.
+   * Validate that the completed response carries content other than thinking.
    *
-   * Model APIs reject an assistant message that carries thinking output only, so
-   * replaying such a response on the next turn would fail with a 400 error.
+   * Replaying a thinking-only assistant message on the next turn fails with a 400
+   * error, so the response is rejected as soon as the stream completes.
    *
    * @param events - All events yielded by streamingResponse
-   * @throws EmptyResponseError if no event carries non-empty non-thinking content or a tool call
+   * @throws EmptyResponseError if every content item in the response is thinking
    */
   protected _validateNonThinkingOutput(events: UniEvent[]): void {
-    for (const event of events) {
-      for (const item of event.content_items) {
-        if (
-          item.type === "thinking" ||
-          item.type === "inline_thinking" ||
-          item.type === "partial_tool_call"
-        ) {
-          continue;
-        }
-        if (item.type === "text" && !item.text) {
-          continue;
-        }
-        return;
-      }
+    const contentItems = events.flatMap((event) => event.content_items);
+    if (
+      contentItems.every(
+        (item) => item.type === "thinking" || item.type === "inline_thinking",
+      )
+    ) {
+      const finishReason =
+        events.length > 0 ? events[events.length - 1].finish_reason : null;
+      throw new EmptyResponseError({
+        client: this.constructor.name,
+        finishReason,
+      });
     }
-
-    const finishReason =
-      events.length > 0 ? events[events.length - 1].finish_reason : null;
-    throw new EmptyResponseError({
-      client: this.constructor.name,
-      finishReason,
-    });
   }
 
   /**

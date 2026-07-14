@@ -315,27 +315,21 @@ class LLMClient(ABC):
             raise ValueError(f"Last event must carry finish_reason, got: {last_event}")
 
     def _validate_non_thinking_output(self, events: list[UniEvent]) -> None:
-        """Validate that the completed response carries non-thinking content or tool calls.
+        """Validate that the completed response carries content other than thinking.
 
-        Model APIs reject an assistant message that carries thinking output only, so
-        replaying such a response on the next turn would fail with a 400 error.
+        Replaying a thinking-only assistant message on the next turn fails with a 400
+        error, so the response is rejected as soon as the stream completes.
 
         Args:
             events: All events yielded by streaming_response
 
         Raises:
-            EmptyResponseError: If no event carries non-empty non-thinking content or a tool call
+            EmptyResponseError: If every content item in the response is thinking
         """
-        for event in events:
-            for item in event["content_items"]:
-                if item["type"] in ("thinking", "inline_thinking", "partial_tool_call"):
-                    continue
-                if item["type"] == "text" and not item["text"]:
-                    continue
-                return
-
-        finish_reason = events[-1]["finish_reason"] if events else None
-        raise EmptyResponseError(self.__class__.__name__, finish_reason)
+        content_items = [item for event in events for item in event["content_items"]]
+        if all(item["type"] in ("thinking", "inline_thinking") for item in content_items):
+            finish_reason = events[-1]["finish_reason"] if events else None
+            raise EmptyResponseError(self.__class__.__name__, finish_reason)
 
     def clear_history(self) -> None:
         """Clear the message history."""

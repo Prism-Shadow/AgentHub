@@ -132,4 +132,4 @@ For consecutive or parallel tool calls, each new call restarts at step 1 with it
 
 ## Errors
 
-Errors raised by AgentHub inherit `AgentHubError`, a `ValueError` subclass, so callers can catch them together. Besides `ToolCallArgumentParseError` above, AgentHub raises `EmptyResponseError` when a model completes a response with thinking output only — no other content and no tool calls. Sending such an assistant message back on the next turn fails with a 400 error, so the response is rejected when the stream completes. The error carries `client` and `finish_reason`; retry or re-prompt instead of appending the empty message to history.
+Errors raised by AgentHub inherit `AgentHubError`, a `ValueError` subclass. `EmptyResponseError` is raised when a response finishes with thinking content only, because sending it back on the next turn fails with a 400 error. It carries `client` and `finish_reason`.
