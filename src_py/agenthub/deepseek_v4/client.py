@@ -264,7 +264,7 @@ class DeepSeekV4Client(LLMClient):
         async for event in super().streaming_response(messages, config, signal):
             events.append(event)
             yield event
-        if not config.get("trace_id") and events:
+        if not config.get("trace_id"):
             self.concat_uni_events_to_uni_message(events)
 
     def concat_uni_events_to_uni_message(self, events: list[UniEvent]) -> UniMessage:

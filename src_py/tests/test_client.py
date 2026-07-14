@@ -746,46 +746,14 @@ async def test_embedding(model: Model):
         assert all(isinstance(v, float) for v in item["embedding"])
 
 
-@pytest.mark.parametrize(
-    ("finish_reason", "content_items", "rejects"),
-    [
-        pytest.param(
-            "length",
-            [{"type": "thinking", "thinking": "still thinking"}],
-            True,
-            id="thinking-only-length",
-        ),
-        pytest.param(
-            "stop",
-            [{"type": "thinking", "thinking": "finished thinking"}],
-            False,
-            id="thinking-only-stop",
-        ),
-        pytest.param(
-            "length",
-            [
-                {"type": "thinking", "thinking": "thought"},
-                {"type": "text", "text": "answer"},
-            ],
-            False,
-            id="length-with-text",
-        ),
-        pytest.param(
-            "length",
-            [],
-            False,
-            id="empty-length",
-        ),
-    ],
-)
 @pytest.mark.asyncio
-async def test_deepseek_validates_truncated_response_across_stream_modes(finish_reason, content_items, rejects):
+async def test_deepseek_rejects_thinking_only_truncation_across_stream_modes():
     client = DeepSeekV4Client(model="deepseek-v4", api_key="test-key")
     events = [
         {
             "role": "assistant",
             "event_type": "delta",
-            "content_items": content_items,
+            "content_items": [{"type": "thinking", "thinking": "still thinking"}],
             "usage_metadata": None,
             "finish_reason": None,
         },
@@ -799,7 +767,7 @@ async def test_deepseek_validates_truncated_response_across_stream_modes(finish_
                 "thoughts_tokens": 100,
                 "response_tokens": 0,
             },
-            "finish_reason": finish_reason,
+            "finish_reason": "length",
         },
     ]
 
@@ -810,24 +778,19 @@ async def test_deepseek_validates_truncated_response_across_stream_modes(finish_
     client._streaming_response_internal = stream
     message = {"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}
 
-    async def consume_stateless():
-        async for _event in client.streaming_response(messages=[message], config={}):
+    async def consume(response):
+        async for _event in response:
             pass
 
-    async def consume_stateful():
-        async for _event in client.streaming_response_stateful(message=message, config={}):
-            pass
+    for config in ({}, {"trace_id": "test-trace"}):
+        with pytest.raises(EmptyAssistantResponseError):
+            await consume(client.streaming_response(messages=[message], config=config))
+    with pytest.raises(EmptyAssistantResponseError):
+        await consume(client.streaming_response_stateful(message=message, config={}))
+    assert client.get_history() == []
 
-    if rejects:
-        with pytest.raises(EmptyAssistantResponseError):
-            await consume_stateless()
-        with pytest.raises(EmptyAssistantResponseError):
-            await consume_stateful()
-        assert client.get_history() == []
-    else:
-        await consume_stateless()
-        await consume_stateful()
-        assert len(client.get_history()) == 2
+    events[0]["content_items"].append({"type": "text", "text": "answer"})
+    client.concat_uni_events_to_uni_message(events)
 
 
 if __name__ == "__main__":

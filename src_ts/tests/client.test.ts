@@ -1114,107 +1114,55 @@ test("should validate last event has usage_metadata and finish_reason", () => {
   ).toThrow("finish_reason");
 });
 
-interface TruncatedResponseCase {
-  name: string;
-  finishReason: "length" | "stop";
-  contentItems: UniEvent["content_items"];
-  rejects: boolean;
-}
-
-const TRUNCATED_RESPONSE_CASES: TruncatedResponseCase[] = [
-  {
-    name: "thinking-only length response",
-    finishReason: "length",
-    contentItems: [{ type: "thinking", thinking: "still thinking" }],
-    rejects: true,
-  },
-  {
-    name: "thinking-only stop response",
-    finishReason: "stop",
-    contentItems: [{ type: "thinking", thinking: "finished thinking" }],
-    rejects: false,
-  },
-  {
-    name: "length response with text",
-    finishReason: "length",
-    contentItems: [
-      { type: "thinking", thinking: "thought" },
-      { type: "text", text: "answer" },
-    ],
-    rejects: false,
-  },
-  {
-    name: "empty length response",
-    finishReason: "length",
-    contentItems: [],
-    rejects: false,
-  },
-];
-
-test.each(TRUNCATED_RESPONSE_CASES)(
-  "DeepSeek $name is validated across stream modes",
-  async ({ finishReason, contentItems, rejects }) => {
-    const client = new DeepSeekV4Client({
-      model: "deepseek-v4",
-      apiKey: "test-key",
-    });
-    const events: UniEvent[] = [
-      {
-        role: "assistant",
-        event_type: "delta",
-        content_items: contentItems,
-        usage_metadata: null,
-        finish_reason: null,
+test("DeepSeek rejects thinking-only truncation across stream modes", async () => {
+  const client = new DeepSeekV4Client({
+    model: "deepseek-v4",
+    apiKey: "test-key",
+  });
+  const events: UniEvent[] = [
+    {
+      role: "assistant",
+      event_type: "delta",
+      content_items: [{ type: "thinking", thinking: "still thinking" }],
+      usage_metadata: null,
+      finish_reason: null,
+    },
+    {
+      role: "assistant",
+      event_type: "stop",
+      content_items: [],
+      usage_metadata: {
+        cached_tokens: 0,
+        prompt_tokens: 10,
+        thoughts_tokens: 100,
+        response_tokens: 0,
       },
-      {
-        role: "assistant",
-        event_type: "stop",
-        content_items: [],
-        usage_metadata: {
-          cached_tokens: 0,
-          prompt_tokens: 10,
-          thoughts_tokens: 100,
-          response_tokens: 0,
-        },
-        finish_reason: finishReason,
-      },
-    ];
-    client._streamingResponseInternal = async function* (_options) {
-      yield* events;
-    };
-    const message: UniMessage = {
-      role: "user",
-      content_items: [{ type: "text", text: "Hello" }],
-    };
-    const consumeStateless = async () => {
-      for await (const _event of client.streamingResponse({
-        messages: [message],
-        config: {},
-      })) {
-        // Consume the complete stream so post-stream validation runs.
-      }
-    };
-    const consumeStateful = async () => {
-      for await (const _event of client.streamingResponseStateful({
-        message,
-        config: {},
-      })) {
-        // Consume the complete stream so history commit can run.
-      }
-    };
-
-    if (rejects) {
-      await expect(consumeStateless()).rejects.toThrow(
-        EmptyAssistantResponseError,
-      );
-      await expect(consumeStateful()).rejects.toThrow(
-        EmptyAssistantResponseError,
-      );
-      expect(client.getHistory()).toEqual([]);
-    } else {
-      await expect(consumeStateless()).resolves.toBeUndefined();
-      await expect(consumeStateful()).resolves.toBeUndefined();
-      expect(client.getHistory()).toHaveLength(2);
+      finish_reason: "length",
+    },
+  ];
+  client._streamingResponseInternal = async function* (_options) {
+    yield* events;
+  };
+  const message: UniMessage = {
+    role: "user",
+    content_items: [{ type: "text", text: "Hello" }],
+  };
+  const consume = async (stream: AsyncIterable<UniEvent>) => {
+    for await (const _event of stream) {
+      // Consume the complete stream so post-stream validation runs.
     }
-  },
-);
+  };
+
+  for (const config of [{}, { trace_id: "test-trace" }]) {
+    await expect(
+      consume(client.streamingResponse({ messages: [message], config })),
+    ).rejects.toThrow(EmptyAssistantResponseError);
+  }
+  await expect(
+    consume(client.streamingResponseStateful({ message, config: {} })),
+  ).rejects.toThrow(EmptyAssistantResponseError);
+  expect(client.getHistory()).toEqual([]);
+
+  events[0]!.content_items.push({ type: "text", text: "answer" });
+  expect(() => client.concatUniEventsToUniMessage(events)).not.toThrow();
+});

@@ -309,7 +309,7 @@ export class DeepSeekV4Client extends LLMClient {
       events.push(event);
       yield event;
     }
-    if (!options.config.trace_id && events.length > 0) {
+    if (!options.config.trace_id) {
       this.concatUniEventsToUniMessage(events);
     }
   }
