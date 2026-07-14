@@ -13,6 +13,8 @@
 // limitations under the License.
 
 import { AutoLLMClient } from "../src/autoClient";
+import { DeepSeekV4Client } from "../src/deepseek_v4/client";
+import { EmptyAssistantResponseError } from "../src/errors";
 import { ThinkingLevel, UniMessage, UniConfig, UniEvent } from "../src/types";
 import { expect, describe, test } from "@jest/globals";
 
@@ -1111,3 +1113,59 @@ test("should validate last event has usage_metadata and finish_reason", () => {
     LLMClient._validateLastEvent({ ...validEvent, finish_reason: null }),
   ).toThrow("finish_reason");
 });
+
+interface AssistantHistoryCase {
+  name: string;
+  client: DeepSeekV4Client;
+  contentItems: UniMessage["content_items"];
+  rejects: boolean;
+}
+
+const ASSISTANT_HISTORY_CASES: AssistantHistoryCase[] = [
+  {
+    name: "DeepSeek thinking-only assistant history",
+    client: new DeepSeekV4Client({
+      model: "deepseek-v4",
+      apiKey: "test-key",
+    }),
+    contentItems: [{ type: "thinking", thinking: "still thinking" }],
+    rejects: true,
+  },
+  {
+    name: "DeepSeek assistant history with thinking and text",
+    client: new DeepSeekV4Client({
+      model: "deepseek-v4",
+      apiKey: "test-key",
+    }),
+    contentItems: [
+      { type: "thinking", thinking: "thought" },
+      { type: "text", text: "answer" },
+    ],
+    rejects: false,
+  },
+  {
+    name: "DeepSeek empty assistant history",
+    client: new DeepSeekV4Client({
+      model: "deepseek-v4",
+      apiKey: "test-key",
+    }),
+    contentItems: [],
+    rejects: false,
+  },
+];
+
+test.each(ASSISTANT_HISTORY_CASES)(
+  "$name is validated according to client capability",
+  ({ client, contentItems, rejects }) => {
+    const transform = () =>
+      client.transformUniMessageToModelInput([
+        { role: "assistant", content_items: contentItems },
+      ]);
+
+    if (rejects) {
+      expect(transform).toThrow(EmptyAssistantResponseError);
+    } else {
+      expect(transform).not.toThrow();
+    }
+  },
+);

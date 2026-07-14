@@ -23,7 +23,8 @@ from typing import Literal
 import httpx
 import pytest
 
-from agenthub import AutoLLMClient, ThinkingLevel
+from agenthub import AutoLLMClient, EmptyAssistantResponseError, ThinkingLevel
+from agenthub.deepseek_v4.client import DeepSeekV4Client
 
 
 IMAGE = "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg"
@@ -743,6 +744,39 @@ async def test_embedding(model: Model):
     for item in embedding_items:
         assert len(item["embedding"]) == 768
         assert all(isinstance(v, float) for v in item["embedding"])
+
+
+@pytest.mark.parametrize(
+    ("client", "content_items", "rejects"),
+    [
+        pytest.param(
+            DeepSeekV4Client(model="deepseek-v4", api_key="test-key"),
+            [{"type": "thinking", "thinking": "still thinking"}],
+            True,
+            id="deepseek-thinking-only-assistant-history",
+        ),
+        pytest.param(
+            DeepSeekV4Client(model="deepseek-v4", api_key="test-key"),
+            [
+                {"type": "thinking", "thinking": "thought"},
+                {"type": "text", "text": "answer"},
+            ],
+            False,
+            id="deepseek-thinking-and-text-assistant-history",
+        ),
+        pytest.param(
+            DeepSeekV4Client(model="deepseek-v4", api_key="test-key"),
+            [],
+            False,
+            id="deepseek-empty-assistant-history",
+        ),
+    ],
+)
+def test_clients_validate_assistant_history_according_to_capability(client, content_items, rejects):
+    context = pytest.raises(EmptyAssistantResponseError) if rejects else nullcontext()
+
+    with context:
+        client.transform_uni_message_to_model_input([{"role": "assistant", "content_items": content_items}])
 
 
 if __name__ == "__main__":
