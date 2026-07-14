@@ -182,11 +182,10 @@ export abstract class LLMClient {
     }
     LLMClient._validateLastEvent(lastEvent);
 
-    const assistantMessage = this.concatUniEventsToUniMessage(events);
-
     // Save history to file if trace_id is specified
-    if (config.trace_id) {
+    if (config.trace_id && events.length > 0) {
       const { Tracer } = await import("./integration/tracer");
+      const assistantMessage = this.concatUniEventsToUniMessage(events);
       const tracer = new Tracer();
       tracer.saveHistory(
         this._model,

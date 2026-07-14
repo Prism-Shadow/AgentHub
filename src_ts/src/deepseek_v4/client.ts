@@ -299,6 +299,21 @@ export class DeepSeekV4Client extends LLMClient {
     };
   }
 
+  async *streamingResponse(options: {
+    messages: UniMessage[];
+    config: UniConfig;
+    signal?: AbortSignal;
+  }): AsyncGenerator<UniEvent> {
+    const events: UniEvent[] = [];
+    for await (const event of super.streamingResponse(options)) {
+      events.push(event);
+      yield event;
+    }
+    if (!options.config.trace_id && events.length > 0) {
+      this.concatUniEventsToUniMessage(events);
+    }
+  }
+
   concatUniEventsToUniMessage(events: UniEvent[]): UniMessage {
     const message = super.concatUniEventsToUniMessage(events);
     if (

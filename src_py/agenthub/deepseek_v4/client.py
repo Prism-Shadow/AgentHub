@@ -19,6 +19,7 @@ from typing import Any, AsyncIterator
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionChunk, ChatCompletionMessageParam
 
+from ..abort_signal import AbortSignal
 from ..base_client import LLMClient
 from ..errors import EmptyAssistantResponseError, parse_tool_call_arguments
 from ..types import (
@@ -251,6 +252,20 @@ class DeepSeekV4Client(LLMClient):
             "usage_metadata": usage_metadata,
             "finish_reason": finish_reason,
         }
+
+    async def streaming_response(
+        self,
+        messages: list[UniMessage],
+        config: UniConfig,
+        signal: AbortSignal | None = None,
+    ) -> AsyncIterator[UniEvent]:
+        """Reject invalid DeepSeek responses in stateless streams without tracing."""
+        events = []
+        async for event in super().streaming_response(messages, config, signal):
+            events.append(event)
+            yield event
+        if not config.get("trace_id") and events:
+            self.concat_uni_events_to_uni_message(events)
 
     def concat_uni_events_to_uni_message(self, events: list[UniEvent]) -> UniMessage:
         """Reject DeepSeek turns truncated before leaving the thinking phase."""
