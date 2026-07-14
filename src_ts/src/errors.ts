@@ -87,16 +87,9 @@ export function parseToolCallArguments(
   toolCallId: string,
 ): Record<string, unknown> {
   const raw = rawArguments || "{}";
+  let parsed: unknown;
   try {
-    const parsed = JSON.parse(raw);
-    if (
-      parsed !== null &&
-      typeof parsed === "object" &&
-      !Array.isArray(parsed)
-    ) {
-      return parsed as Record<string, unknown>;
-    }
-    throw new Error("expected a JSON object");
+    parsed = JSON.parse(raw);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     throw new ToolCallArgumentParseError({
@@ -107,4 +100,16 @@ export function parseToolCallArguments(
       reason,
     });
   }
+
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new ToolCallArgumentParseError({
+      client,
+      toolName,
+      toolCallId,
+      rawArguments: raw,
+      reason: "expected a JSON object",
+    });
+  }
+
+  return parsed as Record<string, unknown>;
 }

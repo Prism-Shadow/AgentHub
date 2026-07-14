@@ -132,4 +132,7 @@ For consecutive or parallel tool calls, each new call restarts at step 1 with it
 
 ## Errors
 
-Errors thrown by AgentHub inherit `AgentHubError`, an `Error` subclass. `EmptyResponseError` is thrown when a response finishes with thinking content only, because sending it back on the next turn fails with a 400 error. It carries `client` and `finishReason`.
+Errors thrown by AgentHub inherit `AgentHubError`, an `Error` subclass:
+
+- `ToolCallArgumentParseError` — streamed tool-call arguments were malformed or not a JSON object. It carries `client`, `toolName`, `toolCallId`, `rawArgumentsLength`, and `rawArgumentsPreview`.
+- `EmptyResponseError` — the response finished with thinking content only, which fails with a 400 error when sent back on the next turn. It carries `client` and `finishReason`.

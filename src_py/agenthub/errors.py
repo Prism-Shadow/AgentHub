@@ -69,8 +69,10 @@ def parse_tool_call_arguments(
     raw = raw_arguments or "{}"
     try:
         parsed = json.loads(raw)
-        if isinstance(parsed, dict):
-            return parsed
-        raise ValueError("expected a JSON object")
     except (TypeError, ValueError) as exc:
         raise ToolCallArgumentParseError(client, tool_name, tool_call_id, raw, str(exc)) from exc
+
+    if not isinstance(parsed, dict):
+        raise ToolCallArgumentParseError(client, tool_name, tool_call_id, raw, "expected a JSON object")
+
+    return parsed
