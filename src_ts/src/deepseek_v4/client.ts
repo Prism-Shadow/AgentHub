@@ -147,14 +147,6 @@ export class DeepSeekV4Client extends LLMClient {
     const deepseekMessages: ChatCompletionMessageParam[] = [];
 
     for (const msg of messages) {
-      if (
-        msg.role === "assistant" &&
-        msg.content_items.length > 0 &&
-        msg.content_items.every((item) => item.type === "thinking")
-      ) {
-        throw new EmptyAssistantResponseError();
-      }
-
       const contentParts: Array<{
         type: string;
         text?: string;
@@ -305,6 +297,18 @@ export class DeepSeekV4Client extends LLMClient {
       usage_metadata: usageMetadata,
       finish_reason: finishReason,
     };
+  }
+
+  concatUniEventsToUniMessage(events: UniEvent[]): UniMessage {
+    const message = super.concatUniEventsToUniMessage(events);
+    if (
+      message.finish_reason === "length" &&
+      message.content_items.length > 0 &&
+      message.content_items.every((item) => item.type === "thinking")
+    ) {
+      throw new EmptyAssistantResponseError();
+    }
+    return message;
   }
 
   async *_streamingResponseInternal(options: {

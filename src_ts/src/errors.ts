@@ -50,11 +50,11 @@ export class ToolCallArgumentParseError extends Error {
   }
 }
 
-/** Thrown when DeepSeek input contains an assistant turn from an incomplete stream. */
+/** Thrown when DeepSeek reaches the output token limit while still thinking. */
 export class EmptyAssistantResponseError extends Error {
   constructor() {
     super(
-      "DeepSeek assistant history contains only thinking; discard the incomplete turn before retrying.",
+      "DeepSeek reached the output token limit before producing content or tool calls.",
     );
     this.name = "EmptyAssistantResponseError";
   }

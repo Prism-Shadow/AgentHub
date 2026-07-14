@@ -747,36 +747,64 @@ async def test_embedding(model: Model):
 
 
 @pytest.mark.parametrize(
-    ("client", "content_items", "rejects"),
+    ("finish_reason", "content_items", "rejects"),
     [
         pytest.param(
-            DeepSeekV4Client(model="deepseek-v4", api_key="test-key"),
+            "length",
             [{"type": "thinking", "thinking": "still thinking"}],
             True,
-            id="deepseek-thinking-only-assistant-history",
+            id="thinking-only-length",
         ),
         pytest.param(
-            DeepSeekV4Client(model="deepseek-v4", api_key="test-key"),
+            "stop",
+            [{"type": "thinking", "thinking": "finished thinking"}],
+            False,
+            id="thinking-only-stop",
+        ),
+        pytest.param(
+            "length",
             [
                 {"type": "thinking", "thinking": "thought"},
                 {"type": "text", "text": "answer"},
             ],
             False,
-            id="deepseek-thinking-and-text-assistant-history",
+            id="length-with-text",
         ),
         pytest.param(
-            DeepSeekV4Client(model="deepseek-v4", api_key="test-key"),
+            "length",
             [],
             False,
-            id="deepseek-empty-assistant-history",
+            id="empty-length",
         ),
     ],
 )
-def test_clients_validate_assistant_history_according_to_capability(client, content_items, rejects):
+def test_deepseek_validates_truncated_response_before_history_commit(finish_reason, content_items, rejects):
+    client = DeepSeekV4Client(model="deepseek-v4", api_key="test-key")
+    events = [
+        {
+            "role": "assistant",
+            "event_type": "delta",
+            "content_items": content_items,
+            "usage_metadata": None,
+            "finish_reason": None,
+        },
+        {
+            "role": "assistant",
+            "event_type": "stop",
+            "content_items": [],
+            "usage_metadata": {
+                "cached_tokens": 0,
+                "prompt_tokens": 10,
+                "thoughts_tokens": 100,
+                "response_tokens": 0,
+            },
+            "finish_reason": finish_reason,
+        },
+    ]
     context = pytest.raises(EmptyAssistantResponseError) if rejects else nullcontext()
 
     with context:
-        client.transform_uni_message_to_model_input([{"role": "assistant", "content_items": content_items}])
+        client.concat_uni_events_to_uni_message(events)
 
 
 if __name__ == "__main__":

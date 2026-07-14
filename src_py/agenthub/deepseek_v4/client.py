@@ -123,13 +123,6 @@ class DeepSeekV4Client(LLMClient):
         deepseek_messages = []
 
         for msg in messages:
-            if (
-                msg["role"] == "assistant"
-                and msg["content_items"]
-                and all(item["type"] == "thinking" for item in msg["content_items"])
-            ):
-                raise EmptyAssistantResponseError()
-
             content_parts = []  # may be empty for tool results
             tool_calls = []  # may be empty for no tool calls
             thinking = ""
@@ -258,6 +251,17 @@ class DeepSeekV4Client(LLMClient):
             "usage_metadata": usage_metadata,
             "finish_reason": finish_reason,
         }
+
+    def concat_uni_events_to_uni_message(self, events: list[UniEvent]) -> UniMessage:
+        """Reject DeepSeek turns truncated before leaving the thinking phase."""
+        message = super().concat_uni_events_to_uni_message(events)
+        if (
+            message.get("finish_reason") == "length"
+            and message["content_items"]
+            and all(item["type"] == "thinking" for item in message["content_items"])
+        ):
+            raise EmptyAssistantResponseError()
+        return message
 
     async def _streaming_response_internal(
         self,

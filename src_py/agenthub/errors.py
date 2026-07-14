@@ -40,12 +40,10 @@ class ToolCallArgumentParseError(ValueError):
 
 
 class EmptyAssistantResponseError(Exception):
-    """Raised when DeepSeek input contains an assistant turn from an incomplete stream."""
+    """Raised when DeepSeek reaches the output token limit while still thinking."""
 
     def __init__(self) -> None:
-        super().__init__(
-            "DeepSeek assistant history contains only thinking; discard the incomplete turn before retrying."
-        )
+        super().__init__("DeepSeek reached the output token limit before producing content or tool calls.")
 
 
 def parse_tool_call_arguments(

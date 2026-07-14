@@ -1114,29 +1114,29 @@ test("should validate last event has usage_metadata and finish_reason", () => {
   ).toThrow("finish_reason");
 });
 
-interface AssistantHistoryCase {
+interface TruncatedResponseCase {
   name: string;
-  client: DeepSeekV4Client;
-  contentItems: UniMessage["content_items"];
+  finishReason: "length" | "stop";
+  contentItems: UniEvent["content_items"];
   rejects: boolean;
 }
 
-const ASSISTANT_HISTORY_CASES: AssistantHistoryCase[] = [
+const TRUNCATED_RESPONSE_CASES: TruncatedResponseCase[] = [
   {
-    name: "DeepSeek thinking-only assistant history",
-    client: new DeepSeekV4Client({
-      model: "deepseek-v4",
-      apiKey: "test-key",
-    }),
+    name: "thinking-only length response",
+    finishReason: "length",
     contentItems: [{ type: "thinking", thinking: "still thinking" }],
     rejects: true,
   },
   {
-    name: "DeepSeek assistant history with thinking and text",
-    client: new DeepSeekV4Client({
-      model: "deepseek-v4",
-      apiKey: "test-key",
-    }),
+    name: "thinking-only stop response",
+    finishReason: "stop",
+    contentItems: [{ type: "thinking", thinking: "finished thinking" }],
+    rejects: false,
+  },
+  {
+    name: "length response with text",
+    finishReason: "length",
     contentItems: [
       { type: "thinking", thinking: "thought" },
       { type: "text", text: "answer" },
@@ -1144,28 +1144,47 @@ const ASSISTANT_HISTORY_CASES: AssistantHistoryCase[] = [
     rejects: false,
   },
   {
-    name: "DeepSeek empty assistant history",
-    client: new DeepSeekV4Client({
-      model: "deepseek-v4",
-      apiKey: "test-key",
-    }),
+    name: "empty length response",
+    finishReason: "length",
     contentItems: [],
     rejects: false,
   },
 ];
 
-test.each(ASSISTANT_HISTORY_CASES)(
-  "$name is validated according to client capability",
-  ({ client, contentItems, rejects }) => {
-    const transform = () =>
-      client.transformUniMessageToModelInput([
-        { role: "assistant", content_items: contentItems },
-      ]);
+test.each(TRUNCATED_RESPONSE_CASES)(
+  "DeepSeek $name is validated before history commit",
+  ({ finishReason, contentItems, rejects }) => {
+    const client = new DeepSeekV4Client({
+      model: "deepseek-v4",
+      apiKey: "test-key",
+    });
+    const events: UniEvent[] = [
+      {
+        role: "assistant",
+        event_type: "delta",
+        content_items: contentItems,
+        usage_metadata: null,
+        finish_reason: null,
+      },
+      {
+        role: "assistant",
+        event_type: "stop",
+        content_items: [],
+        usage_metadata: {
+          cached_tokens: 0,
+          prompt_tokens: 10,
+          thoughts_tokens: 100,
+          response_tokens: 0,
+        },
+        finish_reason: finishReason,
+      },
+    ];
+    const concat = () => client.concatUniEventsToUniMessage(events);
 
     if (rejects) {
-      expect(transform).toThrow(EmptyAssistantResponseError);
+      expect(concat).toThrow(EmptyAssistantResponseError);
     } else {
-      expect(transform).not.toThrow();
+      expect(concat).not.toThrow();
     }
   },
 );
