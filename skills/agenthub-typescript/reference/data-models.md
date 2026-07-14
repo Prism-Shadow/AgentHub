@@ -129,3 +129,7 @@ Across providers a tool call streams as the same ordered sequence of events, so 
 The final `arguments` value must parse to a JSON object. If the streamed JSON is malformed, truncated, or parses to a non-object value such as an array, AgentHub raises `ToolCallArgumentParseError` instead of yielding a complete `tool_call`. The error carries `client`, `toolName`, `toolCallId`, `rawArgumentsLength`, and `rawArgumentsPreview` so the caller can log the bad model output and retry or re-prompt without executing a tool from partial arguments.
 
 For consecutive or parallel tool calls, each new call restarts at step 1 with its own `name` and `tool_call_id`, so one call's arguments never bleed into the next. Send each tool result back with the exact `tool_call_id` from its `tool_call`.
+
+## Errors
+
+Errors thrown by AgentHub inherit `AgentHubError`, an `Error` subclass, so callers can catch them together. Besides `ToolCallArgumentParseError` above, AgentHub throws `EmptyResponseError` when a reasoning model (OpenAI-compatible, GPT-5.5, GLM-5.1, Kimi-K2.6, and DeepSeek V4 clients) completes a response with thinking output only — no other content and no tool calls. Sending such an assistant message back on the next turn fails with a 400 error, so the response is rejected when the stream completes. The error carries `client` and `finishReason`; retry or re-prompt instead of appending the empty message to history.

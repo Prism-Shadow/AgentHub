@@ -38,6 +38,8 @@ from ..types import (
 class GPT5_5Client(LLMClient):
     """GPT-5.5-specific LLM client implementation."""
 
+    _requires_non_thinking_output = True
+
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
         """Initialize GPT-5.5 client with model and API key."""
         self._model = model

@@ -38,6 +38,8 @@ from ..types import (
 class DeepSeekV4Client(LLMClient):
     """DeepSeek V4-specific LLM client implementation using OpenAI-compatible Chat Completions."""
 
+    _requires_non_thinking_output = True
+
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
         """Initialize DeepSeek client with model, API key, and base URL."""
         self._model = model

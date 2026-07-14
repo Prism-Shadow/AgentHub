@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { EmptyResponseError } from "./errors";
 import {
   FinishReason,
   ContentItem,
@@ -30,6 +31,9 @@ import {
 export abstract class LLMClient {
   protected _model: string;
   private _history: UniMessage[];
+  // Clients that round-trip reasoning output (`reasoning`/`reasoning_content`) set this to
+  // true: their APIs reject an assistant turn that carries thinking only with a 400 error.
+  protected _requiresNonThinkingOutput: boolean = false;
 
   constructor() {
     this._model = "";
@@ -181,6 +185,7 @@ export abstract class LLMClient {
       yield event;
     }
     LLMClient._validateLastEvent(lastEvent);
+    this._validateNonThinkingOutput(events);
 
     // Save history to file if trace_id is specified
     if (config.trace_id && events.length > 0) {
@@ -257,6 +262,45 @@ export abstract class LLMClient {
         `Last event must carry finish_reason, got: ${JSON.stringify(lastEvent)}`,
       );
     }
+  }
+
+  /**
+   * Validate that the completed response carries non-thinking content or tool calls.
+   *
+   * Only enforced for clients with _requiresNonThinkingOutput. Their APIs reject an
+   * assistant message that carries thinking output only, so replaying such a response
+   * on the next turn would fail with a 400 error.
+   *
+   * @param events - All events yielded by streamingResponse
+   * @throws EmptyResponseError if no event carries non-empty non-thinking content or a tool call
+   */
+  protected _validateNonThinkingOutput(events: UniEvent[]): void {
+    if (!this._requiresNonThinkingOutput) {
+      return;
+    }
+
+    for (const event of events) {
+      for (const item of event.content_items) {
+        if (
+          item.type === "thinking" ||
+          item.type === "inline_thinking" ||
+          item.type === "partial_tool_call"
+        ) {
+          continue;
+        }
+        if (item.type === "text" && !item.text) {
+          continue;
+        }
+        return;
+      }
+    }
+
+    const finishReason =
+      events.length > 0 ? events[events.length - 1].finish_reason : null;
+    throw new EmptyResponseError({
+      client: this.constructor.name,
+      finishReason,
+    });
   }
 
   /**

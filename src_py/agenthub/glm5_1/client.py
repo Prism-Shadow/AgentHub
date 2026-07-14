@@ -39,6 +39,8 @@ from ..utils import fix_openrouter_usage_metadata
 class GLM5_1Client(LLMClient):
     """GLM-5.1-specific LLM client implementation using OpenAI-compatible API."""
 
+    _requires_non_thinking_output = True
+
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
         """Initialize GLM-5.1 client with model and API key."""
         self._model = model

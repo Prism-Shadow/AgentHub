@@ -19,6 +19,7 @@ from contextlib import suppress
 from typing import Any, AsyncIterator
 
 from .abort_signal import AbortSignal
+from .errors import EmptyResponseError
 from .types import (
     ContentItem,
     FinishReason,
@@ -39,6 +40,9 @@ class LLMClient(ABC):
 
     _model: str
     _history: list[UniMessage] = []
+    # Clients that round-trip reasoning output (`reasoning`/`reasoning_content`) set this to
+    # True: their APIs reject an assistant turn that carries thinking only with a 400 error.
+    _requires_non_thinking_output: bool = False
 
     @abstractmethod
     def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:
@@ -244,6 +248,7 @@ class LLMClient(ABC):
             await stream.aclose()
 
         self._validate_last_event(last_event)
+        self._validate_non_thinking_output(events)
 
         # Save history to file if trace_id is specified
         if config.get("trace_id") and events:
@@ -311,6 +316,33 @@ class LLMClient(ABC):
 
         if last_event["finish_reason"] is None:
             raise ValueError(f"Last event must carry finish_reason, got: {last_event}")
+
+    def _validate_non_thinking_output(self, events: list[UniEvent]) -> None:
+        """Validate that the completed response carries non-thinking content or tool calls.
+
+        Only enforced for clients with _requires_non_thinking_output. Their APIs reject an
+        assistant message that carries thinking output only, so replaying such a response
+        on the next turn would fail with a 400 error.
+
+        Args:
+            events: All events yielded by streaming_response
+
+        Raises:
+            EmptyResponseError: If no event carries non-empty non-thinking content or a tool call
+        """
+        if not self._requires_non_thinking_output:
+            return
+
+        for event in events:
+            for item in event["content_items"]:
+                if item["type"] in ("thinking", "inline_thinking", "partial_tool_call"):
+                    continue
+                if item["type"] == "text" and not item["text"]:
+                    continue
+                return
+
+        finish_reason = events[-1]["finish_reason"] if events else None
+        raise EmptyResponseError(self.__class__.__name__, finish_reason)
 
     def clear_history(self) -> None:
         """Clear the message history."""

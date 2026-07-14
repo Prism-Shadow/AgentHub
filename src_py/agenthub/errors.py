@@ -25,7 +25,28 @@ def _preview_tool_call_arguments(raw: str) -> str:
     return f"{raw[:edge_length]}...[truncated]...{raw[-edge_length:]}"
 
 
-class ToolCallArgumentParseError(ValueError):
+class AgentHubError(ValueError):
+    """Base class for errors raised by AgentHub clients."""
+
+
+class EmptyResponseError(AgentHubError):
+    """Raised when a completed response carries no non-thinking content and no tool calls.
+
+    Reasoning models (`reasoning`/`reasoning_content`) occasionally finish a turn with
+    thinking output only; replaying such an assistant message on the next turn fails
+    with a 400 error, so the response is rejected as soon as the stream completes.
+    """
+
+    def __init__(self, client: str, finish_reason: str | None) -> None:
+        self.client = client
+        self.finish_reason = finish_reason
+        super().__init__(
+            f"Response from {client} finished (finish_reason={finish_reason!r}) with no non-thinking "
+            f"content and no tool calls; sending it back on the next turn would fail with a 400 error."
+        )
+
+
+class ToolCallArgumentParseError(AgentHubError):
     def __init__(self, client: str, tool_name: str, tool_call_id: str, raw_arguments: str, reason: str) -> None:
         self.client = client
         self.tool_name = tool_name

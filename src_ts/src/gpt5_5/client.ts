@@ -38,6 +38,7 @@ import {
  */
 export class GPT5_5Client extends LLMClient {
   protected _model: string;
+  protected _requiresNonThinkingOutput = true;
   private _client: OpenAI;
 
   /**
