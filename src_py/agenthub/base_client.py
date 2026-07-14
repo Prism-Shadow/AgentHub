@@ -40,9 +40,6 @@ class LLMClient(ABC):
 
     _model: str
     _history: list[UniMessage] = []
-    # Clients that round-trip reasoning output (`reasoning`/`reasoning_content`) set this to
-    # True: their APIs reject an assistant turn that carries thinking only with a 400 error.
-    _requires_non_thinking_output: bool = False
 
     @abstractmethod
     def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:
@@ -320,9 +317,8 @@ class LLMClient(ABC):
     def _validate_non_thinking_output(self, events: list[UniEvent]) -> None:
         """Validate that the completed response carries non-thinking content or tool calls.
 
-        Only enforced for clients with _requires_non_thinking_output. Their APIs reject an
-        assistant message that carries thinking output only, so replaying such a response
-        on the next turn would fail with a 400 error.
+        Model APIs reject an assistant message that carries thinking output only, so
+        replaying such a response on the next turn would fail with a 400 error.
 
         Args:
             events: All events yielded by streaming_response
@@ -330,9 +326,6 @@ class LLMClient(ABC):
         Raises:
             EmptyResponseError: If no event carries non-empty non-thinking content or a tool call
         """
-        if not self._requires_non_thinking_output:
-            return
-
         for event in events:
             for item in event["content_items"]:
                 if item["type"] in ("thinking", "inline_thinking", "partial_tool_call"):

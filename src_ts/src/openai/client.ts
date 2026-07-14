@@ -39,7 +39,6 @@ import { fixOpenrouterUsageMetadata } from "../utils";
  */
 export class OpenaiClient extends LLMClient {
   protected _model: string;
-  protected _requiresNonThinkingOutput = true;
   private _client: OpenAI;
 
   /**

@@ -41,8 +41,6 @@ from ..utils import fix_openrouter_usage_metadata
 class OpenaiClient(LLMClient):
     """OpenAI Chat Completions-compatible client implementation."""
 
-    _requires_non_thinking_output = True
-
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
         """Initialize OpenAI-compatible chat client with model, API key, and base URL."""
         self._model = model

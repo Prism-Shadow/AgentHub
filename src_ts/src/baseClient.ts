@@ -31,9 +31,6 @@ import {
 export abstract class LLMClient {
   protected _model: string;
   private _history: UniMessage[];
-  // Clients that round-trip reasoning output (`reasoning`/`reasoning_content`) set this to
-  // true: their APIs reject an assistant turn that carries thinking only with a 400 error.
-  protected _requiresNonThinkingOutput: boolean = false;
 
   constructor() {
     this._model = "";
@@ -267,18 +264,13 @@ export abstract class LLMClient {
   /**
    * Validate that the completed response carries non-thinking content or tool calls.
    *
-   * Only enforced for clients with _requiresNonThinkingOutput. Their APIs reject an
-   * assistant message that carries thinking output only, so replaying such a response
-   * on the next turn would fail with a 400 error.
+   * Model APIs reject an assistant message that carries thinking output only, so
+   * replaying such a response on the next turn would fail with a 400 error.
    *
    * @param events - All events yielded by streamingResponse
    * @throws EmptyResponseError if no event carries non-empty non-thinking content or a tool call
    */
   protected _validateNonThinkingOutput(events: UniEvent[]): void {
-    if (!this._requiresNonThinkingOutput) {
-      return;
-    }
-
     for (const event of events) {
       for (const item of event.content_items) {
         if (

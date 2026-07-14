@@ -42,8 +42,6 @@ from ..utils import fix_openrouter_usage_metadata
 class KimiK2_6Client(LLMClient):
     """Kimi K2.6-specific LLM client implementation using OpenAI-compatible API."""
 
-    _requires_non_thinking_output = True
-
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
         """Initialize Kimi K2.6 client with model and API key."""
         self._model = model

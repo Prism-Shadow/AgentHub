@@ -31,9 +31,9 @@ export class AgentHubError extends Error {
 /**
  * Raised when a completed response carries no non-thinking content and no tool calls.
  *
- * Reasoning models (`reasoning`/`reasoning_content`) occasionally finish a turn with
- * thinking output only; replaying such an assistant message on the next turn fails
- * with a 400 error, so the response is rejected as soon as the stream completes.
+ * Models occasionally finish a turn with thinking output only (reasoning models in
+ * particular); replaying such an assistant message on the next turn fails with a 400
+ * error, so the response is rejected as soon as the stream completes.
  */
 export class EmptyResponseError extends AgentHubError {
   readonly client: string;

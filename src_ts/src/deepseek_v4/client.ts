@@ -35,7 +35,6 @@ import {
 
 export class DeepSeekV4Client extends LLMClient {
   protected _model: string;
-  protected _requiresNonThinkingOutput = true;
   private _client: OpenAI;
 
   constructor(options: {

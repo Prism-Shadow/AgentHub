@@ -2,7 +2,7 @@
 
 Here, we record the addition and removal times of models, major functional updates, bug fixes, and release times of key versions.
 
-- [2026-07-14] Raise `EmptyResponseError` when a reasoning model completes a response with thinking output only, since sending it back would fail with a 400 error. It and `ToolCallArgumentParseError` now inherit the new `AgentHubError` base class.
+- [2026-07-14] Raise `EmptyResponseError` when a model completes a response with thinking output only, since sending it back would fail with a 400 error. It and `ToolCallArgumentParseError` now inherit the new `AgentHubError` base class.
 
 - [2026-06-10] Support Claude 5 models.
 
