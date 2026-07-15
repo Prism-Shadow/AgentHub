@@ -40,10 +40,7 @@ class EmptyResponseError(AgentHubError):
     def __init__(self, client: str, finish_reason: str | None) -> None:
         self.client = client
         self.finish_reason = finish_reason
-        super().__init__(
-            f"Response from {client} finished (finish_reason={finish_reason!r}) with no non-thinking "
-            f"content and no tool calls; sending it back on the next turn would fail with a 400 error."
-        )
+        super().__init__(f"{client} returned no content other than thinking (finish_reason={finish_reason!r}).")
 
 
 class ToolCallArgumentParseError(AgentHubError):

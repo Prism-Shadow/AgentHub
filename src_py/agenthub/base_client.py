@@ -326,8 +326,10 @@ class LLMClient(ABC):
         Raises:
             EmptyResponseError: If every content item in the response is thinking
         """
-        content_items = [item for event in events for item in event["content_items"]]
-        if all(item["type"] in ("thinking", "inline_thinking") for item in content_items):
+        thinking_only = all(
+            item["type"] in ("thinking", "inline_thinking") for event in events for item in event["content_items"]
+        )
+        if thinking_only:
             finish_reason = events[-1]["finish_reason"] if events else None
             raise EmptyResponseError(self.__class__.__name__, finish_reason)
 

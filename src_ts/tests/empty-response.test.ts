@@ -175,8 +175,7 @@ describe.each(REASONING_STREAM_CASES)(
       const emptyError = capturedError as EmptyResponseError;
       expect(emptyError.client).toBe(testCase.expectedClient);
       expect(emptyError.finishReason).toBe("stop");
-      expect(emptyError.message).toContain("no non-thinking content");
-      expect(emptyError.message).toContain("400");
+      expect(emptyError.message).toContain("no content other than thinking");
     });
 
     test("rejects responses without any content", async () => {

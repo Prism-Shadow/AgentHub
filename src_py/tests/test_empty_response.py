@@ -131,9 +131,7 @@ async def test_reasoning_clients_reject_thinking_only_response(case: ReasoningSt
     empty_error = exc_info.value
     assert empty_error.client == case.expected_client
     assert empty_error.finish_reason == "stop"
-    message = str(empty_error)
-    assert "no non-thinking content" in message
-    assert "400" in message
+    assert "no content other than thinking" in str(empty_error)
 
 
 @pytest.mark.asyncio

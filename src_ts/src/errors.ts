@@ -41,9 +41,8 @@ export class EmptyResponseError extends AgentHubError {
 
   constructor(args: { client: string; finishReason: string | null }) {
     super(
-      `Response from ${args.client} finished (finish_reason=${JSON.stringify(args.finishReason)}) ` +
-        `with no non-thinking content and no tool calls; sending it back on the next turn would ` +
-        `fail with a 400 error.`,
+      `${args.client} returned no content other than thinking ` +
+        `(finish_reason=${JSON.stringify(args.finishReason)}).`,
     );
     this.name = "EmptyResponseError";
     this.client = args.client;

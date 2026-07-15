@@ -271,12 +271,12 @@ export abstract class LLMClient {
    * @throws EmptyResponseError if every content item in the response is thinking
    */
   protected _validateNonThinkingOutput(events: UniEvent[]): void {
-    const contentItems = events.flatMap((event) => event.content_items);
-    if (
-      contentItems.every(
+    const thinkingOnly = events.every((event) =>
+      event.content_items.every(
         (item) => item.type === "thinking" || item.type === "inline_thinking",
-      )
-    ) {
+      ),
+    );
+    if (thinkingOnly) {
       const finishReason =
         events.length > 0 ? events[events.length - 1].finish_reason : null;
       throw new EmptyResponseError({
