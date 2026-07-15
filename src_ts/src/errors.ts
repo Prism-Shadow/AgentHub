@@ -21,6 +21,25 @@ function previewToolCallArguments(raw: string): string {
   return `${raw.slice(0, edgeLength)}...[truncated]...${raw.slice(-edgeLength)}`;
 }
 
+function describeJsonValue(value: unknown): string {
+  if (value === null) {
+    return "null";
+  }
+  if (Array.isArray(value)) {
+    return "an array";
+  }
+  if (typeof value === "string") {
+    return "a string";
+  }
+  if (typeof value === "number") {
+    return "a number";
+  }
+  if (typeof value === "boolean") {
+    return "a boolean";
+  }
+  return typeof value;
+}
+
 export class AgentHubError extends Error {
   constructor(message: string) {
     super(message);
@@ -107,7 +126,7 @@ export function parseToolCallArguments(
       toolName,
       toolCallId,
       rawArguments: raw,
-      reason: "expected a JSON object",
+      reason: `expected a JSON object, got ${describeJsonValue(parsed)}`,
     });
   }
 
