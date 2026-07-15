@@ -21,7 +21,36 @@ function previewToolCallArguments(raw: string): string {
   return `${raw.slice(0, edgeLength)}...[truncated]...${raw.slice(-edgeLength)}`;
 }
 
-export class ToolCallArgumentParseError extends Error {
+export class AgentHubError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AgentHubError";
+  }
+}
+
+/**
+ * Raised when a completed response carries no non-thinking content and no tool calls.
+ *
+ * Models occasionally finish a turn with thinking output only (reasoning models in
+ * particular); replaying such an assistant message on the next turn fails with a 400
+ * error, so the response is rejected as soon as the stream completes.
+ */
+export class EmptyResponseError extends AgentHubError {
+  readonly client: string;
+  readonly finishReason: string | null;
+
+  constructor(args: { client: string; finishReason: string | null }) {
+    super(
+      `${args.client} returned no content other than thinking ` +
+        `(finish_reason=${JSON.stringify(args.finishReason)}).`,
+    );
+    this.name = "EmptyResponseError";
+    this.client = args.client;
+    this.finishReason = args.finishReason;
+  }
+}
+
+export class ToolCallArgumentParseError extends AgentHubError {
   readonly client: string;
   readonly toolName: string;
   readonly toolCallId: string;
@@ -57,16 +86,9 @@ export function parseToolCallArguments(
   toolCallId: string,
 ): Record<string, unknown> {
   const raw = rawArguments || "{}";
+  let parsed: unknown;
   try {
-    const parsed = JSON.parse(raw);
-    if (
-      parsed !== null &&
-      typeof parsed === "object" &&
-      !Array.isArray(parsed)
-    ) {
-      return parsed as Record<string, unknown>;
-    }
-    throw new Error("expected a JSON object");
+    parsed = JSON.parse(raw);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     throw new ToolCallArgumentParseError({
@@ -77,4 +99,16 @@ export function parseToolCallArguments(
       reason,
     });
   }
+
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new ToolCallArgumentParseError({
+      client,
+      toolName,
+      toolCallId,
+      rawArguments: raw,
+      reason: "Expected a JSON object.",
+    });
+  }
+
+  return parsed as Record<string, unknown>;
 }

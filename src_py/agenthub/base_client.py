@@ -19,6 +19,7 @@ from contextlib import suppress
 from typing import Any, AsyncIterator
 
 from .abort_signal import AbortSignal
+from .errors import EmptyResponseError
 from .types import (
     ContentItem,
     FinishReason,
@@ -244,6 +245,7 @@ class LLMClient(ABC):
             await stream.aclose()
 
         self._validate_last_event(last_event)
+        self._validate_non_thinking_output(events)
 
         # Save history to file if trace_id is specified
         if config.get("trace_id") and events:
@@ -311,6 +313,25 @@ class LLMClient(ABC):
 
         if last_event["finish_reason"] is None:
             raise ValueError(f"Last event must carry finish_reason, got: {last_event}")
+
+    def _validate_non_thinking_output(self, events: list[UniEvent]) -> None:
+        """Validate that the completed response carries content other than thinking.
+
+        Replaying a thinking-only assistant message on the next turn fails with a 400
+        error, so the response is rejected as soon as the stream completes.
+
+        Args:
+            events: All events yielded by streaming_response
+
+        Raises:
+            EmptyResponseError: If every content item in the response is thinking
+        """
+        thinking_only = all(
+            item["type"] in ("thinking", "inline_thinking") for event in events for item in event["content_items"]
+        )
+        if thinking_only:
+            finish_reason = events[-1]["finish_reason"] if events else None
+            raise EmptyResponseError(self.__class__.__name__, finish_reason)
 
     def clear_history(self) -> None:
         """Clear the message history."""

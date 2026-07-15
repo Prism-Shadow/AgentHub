@@ -129,3 +129,10 @@ Across providers a tool call streams as the same ordered sequence of events, so 
 The final `arguments` value must parse to a JSON object. If the streamed JSON is malformed, truncated, or parses to a non-object value such as an array, AgentHub raises `ToolCallArgumentParseError` instead of yielding a complete `tool_call`. The error carries `client`, `toolName`, `toolCallId`, `rawArgumentsLength`, and `rawArgumentsPreview` so the caller can log the bad model output and retry or re-prompt without executing a tool from partial arguments.
 
 For consecutive or parallel tool calls, each new call restarts at step 1 with its own `name` and `tool_call_id`, so one call's arguments never bleed into the next. Send each tool result back with the exact `tool_call_id` from its `tool_call`.
+
+## Errors
+
+Errors thrown by AgentHub inherit `AgentHubError`, an `Error` subclass:
+
+- `ToolCallArgumentParseError` — streamed tool-call arguments were malformed or not a JSON object. It carries `client`, `toolName`, `toolCallId`, `rawArgumentsLength`, and `rawArgumentsPreview`.
+- `EmptyResponseError` — the response finished with thinking content only, which fails with a 400 error when sent back on the next turn. It carries `client` and `finishReason`.

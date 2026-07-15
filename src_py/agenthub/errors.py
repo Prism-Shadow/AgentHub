@@ -25,7 +25,25 @@ def _preview_tool_call_arguments(raw: str) -> str:
     return f"{raw[:edge_length]}...[truncated]...{raw[-edge_length:]}"
 
 
-class ToolCallArgumentParseError(ValueError):
+class AgentHubError(ValueError):
+    """Base class for errors raised by AgentHub clients."""
+
+
+class EmptyResponseError(AgentHubError):
+    """Raised when a completed response carries no non-thinking content and no tool calls.
+
+    Models occasionally finish a turn with thinking output only (reasoning models in
+    particular); replaying such an assistant message on the next turn fails with a 400
+    error, so the response is rejected as soon as the stream completes.
+    """
+
+    def __init__(self, client: str, finish_reason: str | None) -> None:
+        self.client = client
+        self.finish_reason = finish_reason
+        super().__init__(f"{client} returned no content other than thinking (finish_reason={finish_reason!r}).")
+
+
+class ToolCallArgumentParseError(AgentHubError):
     def __init__(self, client: str, tool_name: str, tool_call_id: str, raw_arguments: str, reason: str) -> None:
         self.client = client
         self.tool_name = tool_name
@@ -48,8 +66,10 @@ def parse_tool_call_arguments(
     raw = raw_arguments or "{}"
     try:
         parsed = json.loads(raw)
-        if isinstance(parsed, dict):
-            return parsed
-        raise ValueError("expected a JSON object")
     except (TypeError, ValueError) as exc:
         raise ToolCallArgumentParseError(client, tool_name, tool_call_id, raw, str(exc)) from exc
+
+    if not isinstance(parsed, dict):
+        raise ToolCallArgumentParseError(client, tool_name, tool_call_id, raw, "Expected a JSON object.")
+
+    return parsed

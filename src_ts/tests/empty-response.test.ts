@@ -14,9 +14,11 @@
 
 import { expect, describe, test } from "@jest/globals";
 import {
+  AgentHubError,
   AutoLLMClient,
+  EmptyResponseError,
+  TextContentItem,
   ToolCallArgumentParseError,
-  ToolCallContentItem,
   UniConfig,
   UniEvent,
   UniMessage,
@@ -31,20 +33,20 @@ type FakeOpenAICompatibleClient = {
   };
 };
 
-type OpenAICompatibleToolStreamClient = {
+type ReasoningStreamClient = {
   streamingResponse(options: {
     messages: UniMessage[];
     config: UniConfig;
   }): AsyncIterable<UniEvent>;
 };
 
-interface OpenAICompatibleToolStreamCase {
+interface ReasoningStreamCase {
   expectedClient: string;
   model: string;
   clientType: string;
 }
 
-const OPENAI_COMPATIBLE_TOOL_STREAM_CASES: OpenAICompatibleToolStreamCase[] = [
+const REASONING_STREAM_CASES: ReasoningStreamCase[] = [
   {
     expectedClient: "OpenaiClient",
     model: "gpt-5.5",
@@ -85,7 +87,7 @@ function streamFromChunks(chunks: unknown[]): AsyncIterable<unknown> {
 }
 
 function installFakeOpenAICompatibleStream(
-  client: OpenAICompatibleToolStreamClient,
+  client: ReasoningStreamClient,
   chunks: unknown[],
 ): void {
   const fakeClient: FakeOpenAICompatibleClient = {
@@ -102,9 +104,7 @@ function installFakeOpenAICompatibleStream(
   routedClient._client = fakeClient;
 }
 
-function createAutoClient(
-  testCase: OpenAICompatibleToolStreamCase,
-): AutoLLMClient {
+function createAutoClient(testCase: ReasoningStreamCase): AutoLLMClient {
   return new AutoLLMClient({
     model: testCase.model,
     apiKey: "test-key",
@@ -112,35 +112,23 @@ function createAutoClient(
   });
 }
 
-function toolDeltaChunk(
-  toolCallId: string,
-  name: string,
-  args: string,
-): unknown {
+function deltaChunk(delta: {
+  content?: string;
+  reasoning_content?: string;
+}): unknown {
   return {
-    choices: [
-      {
-        delta: {
-          tool_calls: [
-            {
-              id: toolCallId,
-              function: { name, arguments: args },
-            },
-          ],
-        },
-        finish_reason: null,
-      },
-    ],
+    choices: [{ delta, finish_reason: null }],
     usage: null,
   };
 }
 
-function toolStopChunk(): unknown {
+function stopChunk(finishReason: string): unknown {
   return {
-    choices: [{ delta: {}, finish_reason: "tool_calls" }],
+    choices: [{ delta: {}, finish_reason: finishReason }],
     usage: {
+      prompt_tokens: 1,
       completion_tokens: 1,
-      completion_tokens_details: { reasoning_tokens: 0 },
+      completion_tokens_details: { reasoning_tokens: 1 },
       prompt_cache_hit_tokens: 0,
       prompt_cache_miss_tokens: 1,
     },
@@ -169,79 +157,72 @@ async function captureStreamError(
   return capturedError;
 }
 
-describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
-  "OpenAI-compatible tool call streaming for $clientType",
+describe.each(REASONING_STREAM_CASES)(
+  "Reasoning output validation for $clientType",
   (testCase) => {
-    test("combines valid streamed tool call arguments", async () => {
+    test("rejects thinking-only responses", async () => {
       const client = createAutoClient(testCase);
       installFakeOpenAICompatibleStream(client, [
-        toolDeltaChunk("call_ok", "exec_command", '{"cmd":'),
-        toolDeltaChunk("", "", '"echo ok"}'),
-        toolStopChunk(),
+        deltaChunk({ reasoning_content: "Let me think about the memo." }),
+        stopChunk("stop"),
+      ]);
+
+      const capturedError = await captureStreamError(
+        client.streamingResponse({ messages, config: {} }),
+      );
+
+      expect(capturedError).toBeInstanceOf(EmptyResponseError);
+      const emptyError = capturedError as EmptyResponseError;
+      expect(emptyError.client).toBe(testCase.expectedClient);
+      expect(emptyError.finishReason).toBe("stop");
+      expect(emptyError.message).toContain("no content other than thinking");
+    });
+
+    test("rejects responses without any content", async () => {
+      const client = createAutoClient(testCase);
+      installFakeOpenAICompatibleStream(client, [stopChunk("length")]);
+
+      const capturedError = await captureStreamError(
+        client.streamingResponse({ messages, config: {} }),
+      );
+
+      expect(capturedError).toBeInstanceOf(EmptyResponseError);
+      expect((capturedError as EmptyResponseError).finishReason).toBe("length");
+    });
+
+    test("accepts responses with text content", async () => {
+      const client = createAutoClient(testCase);
+      installFakeOpenAICompatibleStream(client, [
+        deltaChunk({ reasoning_content: "Let me think about the memo." }),
+        deltaChunk({ content: "Here is the memo." }),
+        stopChunk("stop"),
       ]);
 
       const events = await collectEvents(
         client.streamingResponse({ messages, config: {} }),
       );
-      const toolCalls = events.flatMap((event) =>
-        event.content_items.filter(
-          (item): item is ToolCallContentItem => item.type === "tool_call",
-        ),
+      const texts = events.flatMap((event) =>
+        event.content_items
+          .filter((item): item is TextContentItem => item.type === "text")
+          .map((item) => item.text),
       );
-
-      expect(toolCalls).toHaveLength(1);
-      expect(toolCalls[0]).toEqual({
-        type: "tool_call",
-        name: "exec_command",
-        arguments: { cmd: "echo ok" },
-        tool_call_id: "call_ok",
-      });
-    });
-
-    test("reports malformed streamed tool call arguments with context", async () => {
-      const client = createAutoClient(testCase);
-      installFakeOpenAICompatibleStream(client, [
-        toolDeltaChunk(
-          "call_bad",
-          "exec_command",
-          '{"cmd":"python create_docx.py',
-        ),
-        toolStopChunk(),
-      ]);
-
-      const capturedError = await captureStreamError(
-        client.streamingResponse({ messages, config: {} }),
-      );
-
-      expect(capturedError).toBeInstanceOf(ToolCallArgumentParseError);
-      const parseError = capturedError as ToolCallArgumentParseError;
-      expect(parseError.client).toBe(testCase.expectedClient);
-      expect(parseError.toolName).toBe("exec_command");
-      expect(parseError.toolCallId).toBe("call_bad");
-      expect(parseError.rawArgumentsLength).toBeGreaterThan(0);
-      expect(parseError.rawArgumentsPreview).toContain("create_docx.py");
-      expect(parseError.message).toMatch(/Unterminated string/u);
-    });
-
-    test("reports non-object streamed tool call arguments with context", async () => {
-      const client = createAutoClient(testCase);
-      installFakeOpenAICompatibleStream(client, [
-        toolDeltaChunk("call_array", "exec_command", "[]"),
-        toolStopChunk(),
-      ]);
-
-      const capturedError = await captureStreamError(
-        client.streamingResponse({ messages, config: {} }),
-      );
-
-      expect(capturedError).toBeInstanceOf(ToolCallArgumentParseError);
-      const parseError = capturedError as ToolCallArgumentParseError;
-      expect(parseError.client).toBe(testCase.expectedClient);
-      expect(parseError.toolName).toBe("exec_command");
-      expect(parseError.toolCallId).toBe("call_array");
-      expect(parseError.rawArgumentsLength).toBe(2);
-      expect(parseError.rawArgumentsPreview).toBe("[]");
-      expect(parseError.message).toContain("Expected a JSON object.");
+      expect(texts).toEqual(["Here is the memo."]);
     });
   },
 );
+
+test("AgentHub errors share the AgentHubError base class", () => {
+  const emptyError = new EmptyResponseError({
+    client: "OpenaiClient",
+    finishReason: "stop",
+  });
+  expect(emptyError).toBeInstanceOf(AgentHubError);
+  const parseError = new ToolCallArgumentParseError({
+    client: "OpenaiClient",
+    toolName: "exec_command",
+    toolCallId: "call_ok",
+    rawArguments: "[]",
+    reason: "Expected a JSON object.",
+  });
+  expect(parseError).toBeInstanceOf(AgentHubError);
+});

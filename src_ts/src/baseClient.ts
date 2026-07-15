@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { EmptyResponseError } from "./errors";
 import {
   FinishReason,
   ContentItem,
@@ -181,6 +182,7 @@ export abstract class LLMClient {
       yield event;
     }
     LLMClient._validateLastEvent(lastEvent);
+    this._validateNonThinkingOutput(events);
 
     // Save history to file if trace_id is specified
     if (config.trace_id && events.length > 0) {
@@ -256,6 +258,31 @@ export abstract class LLMClient {
       throw new Error(
         `Last event must carry finish_reason, got: ${JSON.stringify(lastEvent)}`,
       );
+    }
+  }
+
+  /**
+   * Validate that the completed response carries content other than thinking.
+   *
+   * Replaying a thinking-only assistant message on the next turn fails with a 400
+   * error, so the response is rejected as soon as the stream completes.
+   *
+   * @param events - All events yielded by streamingResponse
+   * @throws EmptyResponseError if every content item in the response is thinking
+   */
+  protected _validateNonThinkingOutput(events: UniEvent[]): void {
+    const thinkingOnly = events.every((event) =>
+      event.content_items.every(
+        (item) => item.type === "thinking" || item.type === "inline_thinking",
+      ),
+    );
+    if (thinkingOnly) {
+      const finishReason =
+        events.length > 0 ? events[events.length - 1].finish_reason : null;
+      throw new EmptyResponseError({
+        client: this.constructor.name,
+        finishReason,
+      });
     }
   }
 
