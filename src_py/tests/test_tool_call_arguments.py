@@ -210,4 +210,4 @@ async def test_openai_compatible_clients_report_non_object_streamed_tool_call_ar
     assert parse_error.tool_call_id == "call_array"
     assert parse_error.raw_arguments_length == 2
     assert parse_error.raw_arguments_preview == "[]"
-    assert "expected a JSON object, got an array" in str(parse_error)
+    assert "Expected a JSON object." in str(parse_error)

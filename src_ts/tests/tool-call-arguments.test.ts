@@ -241,9 +241,7 @@ describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
       expect(parseError.toolCallId).toBe("call_array");
       expect(parseError.rawArgumentsLength).toBe(2);
       expect(parseError.rawArgumentsPreview).toBe("[]");
-      expect(parseError.message).toContain(
-        "expected a JSON object, got an array",
-      );
+      expect(parseError.message).toContain("Expected a JSON object.");
     });
   },
 );

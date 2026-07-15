@@ -25,20 +25,6 @@ def _preview_tool_call_arguments(raw: str) -> str:
     return f"{raw[:edge_length]}...[truncated]...{raw[-edge_length:]}"
 
 
-def _describe_json_value(value: Any) -> str:
-    if isinstance(value, bool):
-        return "a boolean"
-    if isinstance(value, (int, float)):
-        return "a number"
-    if isinstance(value, str):
-        return "a string"
-    if isinstance(value, list):
-        return "an array"
-    if value is None:
-        return "null"
-    return type(value).__name__
-
-
 class AgentHubError(ValueError):
     """Base class for errors raised by AgentHub clients."""
 
@@ -87,8 +73,6 @@ def parse_tool_call_arguments(
         raise ToolCallArgumentParseError(client, tool_name, tool_call_id, raw, str(exc)) from exc
 
     if not isinstance(parsed, dict):
-        raise ToolCallArgumentParseError(
-            client, tool_name, tool_call_id, raw, f"expected a JSON object, got {_describe_json_value(parsed)}"
-        )
+        raise ToolCallArgumentParseError(client, tool_name, tool_call_id, raw, "Expected a JSON object.")
 
     return parsed

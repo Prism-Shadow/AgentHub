@@ -223,7 +223,7 @@ test("AgentHub errors share the AgentHubError base class", () => {
     toolName: "exec_command",
     toolCallId: "call_ok",
     rawArguments: "[]",
-    reason: "expected a JSON object",
+    reason: "Expected a JSON object.",
   });
   expect(parseError).toBeInstanceOf(AgentHubError);
 });
