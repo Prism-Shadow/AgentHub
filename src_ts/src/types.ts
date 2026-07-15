@@ -37,14 +37,7 @@ export type Role = "user" | "assistant";
 export type EventType = "start" | "delta" | "stop" | "unused";
 export type FinishReason = "stop" | "length" | "tool_call" | "unknown";
 export type AspectRatio =
-  | "1:1"
-  | "2:3"
-  | "3:2"
-  | "3:4"
-  | "4:3"
-  | "9:16"
-  | "16:9"
-  | "21:9";
+  "1:1" | "2:3" | "3:2" | "3:4" | "4:3" | "9:16" | "16:9" | "21:9";
 export type ImageSize = "1K" | "2K";
 
 export interface TextContentItem {
