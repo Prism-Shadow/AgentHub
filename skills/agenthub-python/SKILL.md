@@ -101,6 +101,7 @@ Agent loop rules:
 - Send every tool result with the exact `tool_call_id` from its originating `tool_call`. Do not invent, normalize, or reuse IDs across unrelated tool calls.
 - If streamed tool-call arguments cannot be parsed, AgentHub raises `ToolCallArgumentParseError`. Do not execute the tool from partial arguments; let the agent runtime retry or re-prompt the model.
 - Preserve `thinking` and `inline_thinking` items. Do not strip `phase` or `signature` fields.
+- Do not accumulate `usage_metadata` across events. Take the latest `usage_metadata` as the usage of the current request.
 - For embedding models, each `UniMessage` in the `messages` array produces **one embedding vector**. Within a single message, all items in `content_items` are aggregated into a single embedding. Set `embedding_config.dimensions` in the config to control vector size.
 
 ## Reference
