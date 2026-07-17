@@ -355,6 +355,9 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 
+# Raw LLM API captures used as implementation reference (see skills/agenthub-dev)
+api_captures/
+
 # Conversation monitor cache
 cache/
 generated_image*
