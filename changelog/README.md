@@ -1,7 +1,7 @@
 # Changelog Details
 
-One file per entry in [../CHANGELOG.md](../CHANGELOG.md). The root file keeps a single brief line per change; the full story lives here.
+The root [../CHANGELOG.md](../CHANGELOG.md) keeps one brief line per release. Each release owns a folder here:
 
-- File name: `YYYY-MM-DD-short-slug.md`, matching the entry date.
-- Content: what changed and why, affected modules, and decisions worth keeping (protocol differences, config mappings, migration notes).
-- Link the root entry to its file: `- [YYYY-MM-DD] Brief description. ([details](changelog/YYYY-MM-DD-short-slug.md))`
+- `<version>/README.md` — the release summary: one brief line per change, each linking its detail file, e.g. `- [YYYY-MM-DD] Brief description. ([details](YYYY-MM-DD-short-slug.md))`
+- `<version>/YYYY-MM-DD-short-slug.md` — one detail file per entry, named by the entry date: what changed and why, affected modules, and decisions worth keeping (protocol differences, config mappings, migration notes).
+- Changes not yet released go into the upcoming version's folder; during release preparation, rename the folder if the number changed and add the release line to the root file.
