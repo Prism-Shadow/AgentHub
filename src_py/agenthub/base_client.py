@@ -104,6 +104,8 @@ class LLMClient(ABC):
                 last_fidelity = (content_items[-1].get("fidelity") or {}) if content_items else {}
                 item_fidelity = item.get("fidelity") or {}
                 if item["type"] == "text":
+                    # a delta that announces a phase always starts a new item, even when the
+                    # phase is unchanged; phaseless deltas merge until a signature finishes it
                     if (
                         content_items
                         and content_items[-1]["type"] == "text"

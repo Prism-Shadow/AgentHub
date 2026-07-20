@@ -103,6 +103,8 @@ export abstract class LLMClient {
         if (item.type === "text") {
           const lastItem = contentItems[contentItems.length - 1];
           const itemFidelity = item.fidelity ?? {};
+          // a delta that announces a phase always starts a new item, even when the
+          // phase is unchanged; phaseless deltas merge until a signature finishes it
           if (
             lastItem &&
             lastItem.type === "text" &&

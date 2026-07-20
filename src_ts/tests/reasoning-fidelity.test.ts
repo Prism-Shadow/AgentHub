@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { expect, describe, test } from "@jest/globals";
-import { AutoLLMClient, UniEvent, UniMessage } from "../src";
+import { AutoLLMClient, TextContentItem, UniEvent, UniMessage } from "../src";
 
 type FakeOpenAICompatibleClient = {
   baseURL: string;
@@ -232,3 +232,41 @@ describe.each(REASONING_REPLAY_CASES)(
     });
   },
 );
+
+function textDeltaEvent(text: string, phase?: string): UniEvent {
+  const item: TextContentItem = { type: "text", text };
+  if (phase !== undefined) {
+    item.fidelity = { phase };
+  }
+
+  return {
+    role: "assistant",
+    event_type: "delta",
+    content_items: [item],
+    usage_metadata: null,
+    finish_reason: null,
+  };
+}
+
+test("concatenation starts a new text item for each phase", () => {
+  const client = createAutoClient(REASONING_REPLAY_CASES[0]);
+  const message = client.concatUniEventsToUniMessage([
+    textDeltaEvent("", "commentary"),
+    textDeltaEvent("Thinking out loud."),
+    textDeltaEvent("", "answer"),
+    textDeltaEvent("Here is"),
+    textDeltaEvent(" the memo."),
+    textDeltaEvent("", "answer"),
+    textDeltaEvent("Appendix."),
+  ]);
+
+  expect(message.content_items).toEqual([
+    {
+      type: "text",
+      text: "Thinking out loud.",
+      fidelity: { phase: "commentary" },
+    },
+    { type: "text", text: "Here is the memo.", fidelity: { phase: "answer" } },
+    { type: "text", text: "Appendix.", fidelity: { phase: "answer" } },
+  ]);
+});

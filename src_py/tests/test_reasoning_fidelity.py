@@ -204,3 +204,38 @@ async def test_replay_of_thinking_without_fidelity_sends_both_fields(case: Reaso
     replayed_message = model_input[-1]
     assert replayed_message["reasoning_content"] == "Let me think."
     assert replayed_message["reasoning"] == "Let me think."
+
+
+def _text_delta_event(text: str, phase: str | None = None) -> dict[str, Any]:
+    item: dict[str, Any] = {"type": "text", "text": text}
+    if phase is not None:
+        item["fidelity"] = {"phase": phase}
+
+    return {
+        "role": "assistant",
+        "event_type": "delta",
+        "content_items": [item],
+        "usage_metadata": None,
+        "finish_reason": None,
+    }
+
+
+def test_concat_starts_a_new_text_item_for_each_phase():
+    client = _create_auto_client(REASONING_REPLAY_CASES[0])
+    message = client.concat_uni_events_to_uni_message(
+        [
+            _text_delta_event("", phase="commentary"),
+            _text_delta_event("Thinking out loud."),
+            _text_delta_event("", phase="answer"),
+            _text_delta_event("Here is"),
+            _text_delta_event(" the memo."),
+            _text_delta_event("", phase="answer"),
+            _text_delta_event("Appendix."),
+        ]
+    )
+
+    assert message["content_items"] == [
+        {"type": "text", "text": "Thinking out loud.", "fidelity": {"phase": "commentary"}},
+        {"type": "text", "text": "Here is the memo.", "fidelity": {"phase": "answer"}},
+        {"type": "text", "text": "Appendix.", "fidelity": {"phase": "answer"}},
+    ]
