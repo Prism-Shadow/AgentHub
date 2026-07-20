@@ -269,13 +269,13 @@ export class Claude4_6Client extends LLMClient {
           if (item.thinking === REDACTED_THINKING) {
             contentBlocks.push({
               type: "redacted_thinking",
-              data: item.signature,
+              data: item.fidelity?.signature,
             });
           } else {
             contentBlocks.push({
               type: "thinking",
               thinking: item.thinking,
-              signature: item.signature,
+              signature: item.fidelity?.signature,
             });
           }
         } else if (item.type === "tool_call") {
@@ -346,7 +346,7 @@ export class Claude4_6Client extends LLMClient {
         contentItems.push({
           type: "thinking",
           thinking: REDACTED_THINKING,
-          signature: block.data,
+          fidelity: { signature: block.data },
         });
       }
     } else if (claudeEventType === "content_block_delta") {
@@ -367,7 +367,7 @@ export class Claude4_6Client extends LLMClient {
         contentItems.push({
           type: "thinking",
           thinking: "",
-          signature: delta.signature,
+          fidelity: { signature: delta.signature },
         });
       }
     } else if (claudeEventType === "content_block_stop") {

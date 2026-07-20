@@ -26,7 +26,9 @@ from google.oauth2 import service_account
 
 from ..base_client import LLMClient
 from ..types import (
+    ContentItem,
     EventType,
+    Fidelity,
     FinishReason,
     PartialContentItem,
     PromptCaching,
@@ -188,6 +190,19 @@ class Gemini3Client(LLMClient):
 
         return types.GenerateContentConfig(**config_params) if config_params else None
 
+    @staticmethod
+    def _part_fidelity(part: types.Part) -> dict[str, Fidelity]:
+        """Wrap a part's thought signature as a fidelity payload, or nothing when absent."""
+        if part.thought_signature is None:
+            return {}
+
+        return {"fidelity": {"signature": part.thought_signature}}
+
+    @staticmethod
+    def _item_thought_signature(item: ContentItem) -> str | bytes | None:
+        """Read the thought signature recorded in an item's fidelity payload."""
+        return (item.get("fidelity") or {}).get("signature")
+
     async def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[types.Content]:
         """
         Transform universal message format to Gemini's Content format.
@@ -204,26 +219,34 @@ class Gemini3Client(LLMClient):
             parts = []
             for item in msg["content_items"]:
                 if item["type"] == "text":
-                    parts.append(types.Part(text=item["text"], thought_signature=item.get("signature")))
+                    parts.append(types.Part(text=item["text"], thought_signature=self._item_thought_signature(item)))
                 elif item["type"] == "image_url":
                     image_url = item["image_url"]
                     image_data = await self._get_image_bytes_and_mime_type(image_url)
                     parts.append(types.Part.from_bytes(**image_data))
                 elif item["type"] == "inline_data":
                     inline_data = types.Blob(data=item["data"], mime_type=item["mime_type"])
-                    parts.append(types.Part(inline_data=inline_data, thought_signature=item.get("signature")))
+                    parts.append(
+                        types.Part(inline_data=inline_data, thought_signature=self._item_thought_signature(item))
+                    )
                 elif item["type"] == "thinking":
                     parts.append(
-                        types.Part(text=item["thinking"], thought=True, thought_signature=item.get("signature"))
+                        types.Part(
+                            text=item["thinking"], thought=True, thought_signature=self._item_thought_signature(item)
+                        )
                     )
                 elif item["type"] == "inline_thinking":
                     inline_data = types.Blob(data=item["data"], mime_type=item["mime_type"])
                     parts.append(
-                        types.Part(inline_data=inline_data, thought=True, thought_signature=item.get("signature"))
+                        types.Part(
+                            inline_data=inline_data, thought=True, thought_signature=self._item_thought_signature(item)
+                        )
                     )
                 elif item["type"] == "tool_call":
                     function_call = types.FunctionCall(name=item["name"], args=item["arguments"])
-                    parts.append(types.Part(function_call=function_call, thought_signature=item.get("signature")))
+                    parts.append(
+                        types.Part(function_call=function_call, thought_signature=self._item_thought_signature(item))
+                    )
                 elif item["type"] == "tool_result":
                     if "tool_call_id" not in item:
                         raise ValueError("tool_call_id is required for tool result.")
@@ -277,21 +300,19 @@ class Gemini3Client(LLMClient):
                             "name": part.function_call.name,
                             "arguments": part.function_call.args or {},
                             "tool_call_id": part.function_call.name,
-                            "signature": part.thought_signature,
+                            **self._part_fidelity(part),
                         }
                     )
                 elif part.thought:
                     if part.text is not None:
-                        content_items.append(
-                            {"type": "thinking", "thinking": part.text, "signature": part.thought_signature}
-                        )
+                        content_items.append({"type": "thinking", "thinking": part.text, **self._part_fidelity(part)})
                     elif part.inline_data is not None:
                         content_items.append(
                             {
                                 "type": "inline_thinking",
                                 "data": part.inline_data.data,
                                 "mime_type": part.inline_data.mime_type,
-                                "signature": part.thought_signature,
+                                **self._part_fidelity(part),
                             }
                         )
                 elif part.inline_data is not None:
@@ -300,11 +321,11 @@ class Gemini3Client(LLMClient):
                             "type": "inline_data",
                             "data": part.inline_data.data,
                             "mime_type": part.inline_data.mime_type,
-                            "signature": part.thought_signature,
+                            **self._part_fidelity(part),
                         }
                     )
                 elif part.text is not None:
-                    content_items.append({"type": "text", "text": part.text, "signature": part.thought_signature})
+                    content_items.append({"type": "text", "text": part.text, **self._part_fidelity(part)})
                 else:
                     raise ValueError(f"Unknown output: {part}")
 
@@ -415,7 +436,7 @@ class Gemini3Client(LLMClient):
                                 "name": item["name"],
                                 "arguments": json.dumps(item["arguments"], ensure_ascii=False),
                                 "tool_call_id": item["tool_call_id"],
-                                "signature": item.get("signature"),
+                                "fidelity": item.get("fidelity"),
                             }
                         ],
                         "usage_metadata": None,

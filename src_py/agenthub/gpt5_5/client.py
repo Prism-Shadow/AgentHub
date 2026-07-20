@@ -120,12 +120,13 @@ class GPT5_5Client(LLMClient):
 
             for item in msg["content_items"]:
                 if item["type"] == "text":
-                    if msg["role"] == "assistant" and item.get("phase"):  # split different phases
-                        if last_phase is not None and content_items:
+                    phase = (item.get("fidelity") or {}).get("phase")
+                    if msg["role"] == "assistant" and phase:  # split different phases
+                        if last_phase is not None and last_phase != phase and content_items:
                             input_list.append({"role": msg["role"], "content": content_items, "phase": last_phase})
                             content_items = []
 
-                        last_phase = item["phase"]
+                        last_phase = phase
 
                     if msg["role"] == "user":
                         content_items.append({"type": "input_text", "text": item["text"]})
@@ -134,15 +135,15 @@ class GPT5_5Client(LLMClient):
                 elif item["type"] == "image_url":
                     content_items.append({"type": "input_image", "image_url": item["image_url"]})
                 elif item["type"] == "thinking":
-                    signature = json.loads(item["signature"])
+                    fidelity = item["fidelity"]
                     input_list.append(
                         {
                             "type": "reasoning",
-                            "id": signature["id"],
+                            "id": fidelity["id"],
                             "summary": [{"type": "summary_text", "text": item["thinking"]}]
                             if item["thinking"]
                             else [],
-                            "encrypted_content": signature["encrypted_content"],
+                            "encrypted_content": fidelity["encrypted_content"],
                         }
                     )
                 elif item["type"] == "tool_call":
@@ -217,16 +218,16 @@ class GPT5_5Client(LLMClient):
             # adding the following thinking item leads to 400 invalid request error, why?
             # elif model_output.item.type == "reasoning":
             #     event_type = "delta"
-            #     signature = {
+            #     fidelity = {
             #         "id": model_output.item.id,
             #         "encrypted_content": model_output.item.encrypted_content,
             #     }
-            #     content_items.append({"type": "thinking", "thinking": "", "signature": json.dumps(signature)})
+            #     content_items.append({"type": "thinking", "thinking": "", "fidelity": fidelity})
             elif model_output.item.type == "message":
                 if hasattr(model_output.item, "phase"):
                     event_type = "delta"
                     content_items.append(
-                        {"type": "text", "text": "", "phase": getattr(model_output.item, "phase", None)}
+                        {"type": "text", "text": "", "fidelity": {"phase": getattr(model_output.item, "phase", None)}}
                     )
                 else:
                     event_type = "unused"
@@ -237,11 +238,11 @@ class GPT5_5Client(LLMClient):
             # not sure about the signature of openai, need to check
             if model_output.item.type == "reasoning":
                 event_type = "delta"
-                signature = {
+                fidelity = {
                     "id": model_output.item.id,
                     "encrypted_content": model_output.item.encrypted_content,
                 }
-                content_items.append({"type": "thinking", "thinking": "", "signature": json.dumps(signature)})
+                content_items.append({"type": "thinking", "thinking": "", "fidelity": fidelity})
             else:
                 event_type = "unused"
 

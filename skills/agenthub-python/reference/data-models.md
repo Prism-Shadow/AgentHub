@@ -54,12 +54,12 @@ Fields:
 message = {
     "role": "user",
     "content_items": [
-        {"type": "text", "text": "Hello", "phase": None, "signature": "sig"},
+        {"type": "text", "text": "Hello", "fidelity": {"phase": "commentary"}},
         {"type": "image_url", "image_url": "https://example.com/image.jpg"},
-        {"type": "inline_data", "data": b"...", "mime_type": "image/png", "signature": "sig"},
-        {"type": "thinking", "thinking": "Reasoning", "signature": "sig"},
-        {"type": "inline_thinking", "data": b"...", "mime_type": "image/png", "signature": "sig"},
-        {"type": "tool_call", "name": "get_weather", "arguments": {"location": "Paris"}, "tool_call_id": "call_1", "signature": "sig"},
+        {"type": "inline_data", "data": b"...", "mime_type": "image/png", "fidelity": {"signature": "sig"}},
+        {"type": "thinking", "thinking": "Reasoning", "fidelity": {"signature": "sig"}},
+        {"type": "inline_thinking", "data": b"...", "mime_type": "image/png", "fidelity": {"signature": "sig"}},
+        {"type": "tool_call", "name": "get_weather", "arguments": {"location": "Paris"}, "tool_call_id": "call_1", "fidelity": {"signature": "sig"}},
         {"type": "tool_result", "text": "22 C", "tool_call_id": "call_1"},
         {"type": "embedding", "embedding": [0.1, 0.2]},
     ],
@@ -76,16 +76,16 @@ Fields:
 
 Content items:
 
-- `text`: Text chunk; `phase` marks sub-stage; `signature` verifies signed content.
+- `text`: Text chunk; may carry `fidelity`.
 - `image_url`: Image URL or data URI.
-- `inline_data`: Inline media bytes with MIME type; may carry `signature`.
-- `thinking`: Text reasoning content; may carry `signature`.
-- `inline_thinking`: Binary reasoning artifact; may carry `signature`.
-- `tool_call`: Complete model tool request with name, args, ID, and optional `signature`.
+- `inline_data`: Inline media bytes with MIME type; may carry `fidelity`.
+- `thinking`: Text reasoning content; may carry `fidelity`.
+- `inline_thinking`: Binary reasoning artifact; may carry `fidelity`.
+- `tool_call`: Complete model tool request with name, args, ID, and optional `fidelity`.
 - `tool_result`: Tool output text for a `tool_call_id`; may include image URLs.
 - `embedding`: Numeric embedding vector.
 
-Preserve `phase` and `signature`; never drop either field.
+`fidelity` is an arbitrary JSON object of wire-level data the client recorded to reproduce the original message on replay — thinking signatures, phase labels, the upstream reasoning field name, and the like. It is opaque: pass it back unchanged, never modify or drop it.
 
 ## UniEvent
 

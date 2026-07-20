@@ -201,7 +201,15 @@ class DeepSeekV4Client(LLMClient):
 
             if getattr(delta, "reasoning_content", None):
                 event_type = "delta"
-                content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning_content")})
+                # record the wire field so a replay through another OpenAI-compatible
+                # client reproduces the exact field DeepSeek produced
+                content_items.append(
+                    {
+                        "type": "thinking",
+                        "thinking": getattr(delta, "reasoning_content"),
+                        "fidelity": {"reasoning_field": "reasoning_content"},
+                    }
+                )
 
             if delta.content:
                 event_type = "delta"

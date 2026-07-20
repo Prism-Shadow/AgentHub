@@ -44,7 +44,7 @@ CHANGELOG.md                      Brief one-line entries linking into changelog/
   - Any difference between generations, even a single key name, means a separate folder per generation (e.g. `claude4_6/` vs `claude5/`).
   - Only an identical wire protocol may share a folder; name it after the newest generation (rename and reroute if needed). This is how `claude5/` serves Claude 4.7, 4.8, and 5.
 - `auto_client.py` / `autoClient.ts` route model names by explicit version matching only, never a bare substring like `"claude" in model`.
-- Conversion must be bijective: a wire message converted to `UniMessage`/`UniEvent` and back must reproduce the original exactly, including thinking signatures, phase labels, and tool-call IDs. Verify against the captured exchange.
+- Conversion must be bijective: a wire message converted to `UniMessage`/`UniEvent` and back must reproduce the original exactly, including `fidelity` payloads (thinking signatures, phase labels, reasoning field names) and tool-call IDs. Verify against the captured exchange.
 - `UniConfig` keys rarely map one-to-one onto provider config keys. **Stop and ask**: list every non-obvious mapping and confirm it with the user before coding. Never decide silently.
 - Implement Python and TypeScript together with identical behavior.
 

@@ -156,9 +156,14 @@ export class GPT5_5Client extends LLMClient {
 
       for (const item of msg.content_items) {
         if (item.type === "text") {
-          if (msg.role === "assistant" && item.phase) {
+          const phase = item.fidelity?.phase;
+          if (msg.role === "assistant" && phase) {
             // split different phases
-            if (lastPhase !== null && contentItems.length > 0) {
+            if (
+              lastPhase !== null &&
+              lastPhase !== phase &&
+              contentItems.length > 0
+            ) {
               inputList.push({
                 role: msg.role,
                 content: contentItems,
@@ -166,7 +171,7 @@ export class GPT5_5Client extends LLMClient {
               });
               contentItems = [];
             }
-            lastPhase = item.phase;
+            lastPhase = phase;
           }
           if (msg.role === "user") {
             contentItems.push({ type: "input_text", text: item.text });
@@ -179,15 +184,14 @@ export class GPT5_5Client extends LLMClient {
             image_url: item.image_url,
           });
         } else if (item.type === "thinking") {
-          const signatureStr = item.signature || "{}";
-          const signature = JSON.parse(signatureStr);
+          const fidelity = item.fidelity ?? {};
           inputList.push({
             type: "reasoning",
-            id: signature.id,
+            id: fidelity.id,
             summary: item.thinking
               ? [{ type: "summary_text", text: item.thinking }]
               : [],
-            encrypted_content: signature.encrypted_content,
+            encrypted_content: fidelity.encrypted_content,
           });
         } else if (item.type === "tool_call") {
           inputList.push({
@@ -263,21 +267,21 @@ export class GPT5_5Client extends LLMClient {
         // adding the following thinking item leads to 400 invalid request error, why?
         // } else if (item.type === "reasoning") {
         //   eventType = "delta";
-        //   const signature = {
+        //   const fidelity = {
         //     id: item.id,
         //     encrypted_content: item.encrypted_content,
         //   };
         //   contentItems.push({
         //     type: "thinking",
         //     thinking: "",
-        //     signature: JSON.stringify(signature),
+        //     fidelity,
         //   });
       } else if (item.type === "message") {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const phase = (item as any).phase as string | undefined;
         if (phase != null) {
           eventType = "delta";
-          contentItems.push({ type: "text", text: "", phase });
+          contentItems.push({ type: "text", text: "", fidelity: { phase } });
         } else {
           eventType = "unused";
         }
@@ -289,14 +293,14 @@ export class GPT5_5Client extends LLMClient {
       const item = modelOutput.item;
       if (item.type === "reasoning") {
         eventType = "delta";
-        const signature = {
+        const fidelity = {
           id: item.id,
           encrypted_content: item.encrypted_content,
         };
         contentItems.push({
           type: "thinking",
           thinking: "",
-          signature: JSON.stringify(signature),
+          fidelity,
         });
       } else {
         eventType = "unused";

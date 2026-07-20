@@ -42,12 +42,16 @@ FinishReason = Literal["stop", "length", "tool_call", "unknown"]
 AspectRatio = Literal["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"]
 ImageSize = Literal["1K", "2K"]
 
+# Arbitrary JSON-style payload of wire-fidelity data recorded by a client, such as
+# thinking signatures, phase labels, or the upstream reasoning field name. Opaque to
+# consumers: pass it back unchanged so a replay reproduces the original wire message.
+Fidelity = dict[str, Any]
+
 
 class TextContentItem(TypedDict):
     type: Literal["text"]
     text: str
-    phase: NotRequired[str | None]
-    signature: NotRequired[str | bytes]
+    fidelity: NotRequired[Fidelity]
 
 
 class ImageContentItem(TypedDict):
@@ -59,20 +63,20 @@ class InlineDataContentItem(TypedDict):
     type: Literal["inline_data"]
     data: bytes
     mime_type: str
-    signature: NotRequired[str | bytes]
+    fidelity: NotRequired[Fidelity]
 
 
 class ThinkingContentItem(TypedDict):
     type: Literal["thinking"]
     thinking: str
-    signature: NotRequired[str | bytes]
+    fidelity: NotRequired[Fidelity]
 
 
 class InlineThinkingContentItem(TypedDict):
     type: Literal["inline_thinking"]
     data: bytes
     mime_type: str
-    signature: NotRequired[str | bytes]
+    fidelity: NotRequired[Fidelity]
 
 
 class ToolCallContentItem(TypedDict):
@@ -80,7 +84,7 @@ class ToolCallContentItem(TypedDict):
     name: str
     arguments: dict[str, Any]
     tool_call_id: str
-    signature: NotRequired[str | bytes]
+    fidelity: NotRequired[Fidelity]
 
 
 class PartialToolCallContentItem(TypedDict):
@@ -88,7 +92,7 @@ class PartialToolCallContentItem(TypedDict):
     name: str
     arguments: str
     tool_call_id: str
-    signature: NotRequired[str | bytes]
+    fidelity: NotRequired[Fidelity]
 
 
 class ToolResultContentItem(TypedDict):

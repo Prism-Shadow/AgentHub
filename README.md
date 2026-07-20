@@ -433,7 +433,7 @@ Example UniMessage:
     {"type": "text", "text": "How are you doing?"},
     {"type": "image_url", "image_url": "https://example.com/image.jpg"},
     {"type": "inline_data", "mime_type": "image/jpeg", "data": "base64-encoded-image"},
-    {"type": "thinking", "thinking": "I am thinking.", "signature": "0x123456"},
+    {"type": "thinking", "thinking": "I am thinking.", "fidelity": {"signature": "0x123456"}},
     {"type": "inline_thinking", "mime_type": "image/jpeg", "data": "base64-encoded-image"},
     {"type": "tool_call", "name": "math", "arguments": {"expression": "2 + 3"}, "tool_call_id": "123"},
     {"type": "tool_result", "text": "2 + 3 = 5", "images": [], "tool_call_id": "123"}
