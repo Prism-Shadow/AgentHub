@@ -19,6 +19,7 @@ import type {
   ChatCompletionCreateParamsStreaming,
 } from "openai/resources/chat/completions";
 import { LLMClient } from "../baseClient";
+import { parseToolCallArguments } from "../errors";
 import {
   EventType,
   FinishReason,
@@ -229,10 +230,13 @@ export class DeepSeekV4Client extends LLMClient {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((delta as any)?.reasoning_content) {
         eventType = "delta";
+        // record the wire field so a replay through another OpenAI-compatible
+        // client reproduces the exact field DeepSeek produced
         contentItems.push({
           type: "thinking",
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           thinking: (delta as any).reasoning_content,
+          fidelity: { reasoning_field: "reasoning_content" },
         });
       }
 
@@ -358,7 +362,12 @@ export class DeepSeekV4Client extends LLMClient {
                   {
                     type: "tool_call",
                     name: partialToolCall.name,
-                    arguments: JSON.parse(partialToolCall.arguments || "{}"),
+                    arguments: parseToolCallArguments(
+                      partialToolCall.arguments,
+                      this.constructor.name,
+                      partialToolCall.name || "",
+                      partialToolCall.tool_call_id || "",
+                    ),
                     tool_call_id: partialToolCall.tool_call_id || "",
                   },
                 ],
@@ -384,7 +393,12 @@ export class DeepSeekV4Client extends LLMClient {
               {
                 type: "tool_call",
                 name: partialToolCall.name,
-                arguments: JSON.parse(partialToolCall.arguments || "{}"),
+                arguments: parseToolCallArguments(
+                  partialToolCall.arguments,
+                  this.constructor.name,
+                  partialToolCall.name || "",
+                  partialToolCall.tool_call_id || "",
+                ),
                 tool_call_id: partialToolCall.tool_call_id || "",
               },
             ],

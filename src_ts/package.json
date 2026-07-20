@@ -1,6 +1,6 @@
 {
   "name": "@prismshadow/agenthub",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "description": "AgentHub is the LLM API Hub for the Agent era, built for high-precision autonomous agents.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -48,7 +48,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Prism-Shadow/AgentHub.git"
+    "url": "git+https://github.com/Prism-Shadow/agenthub.git"
   },
   "keywords": [
     "agent",
@@ -60,7 +60,7 @@
   "author": "PrismShadow",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/Prism-Shadow/AgentHub/issues"
+    "url": "https://github.com/Prism-Shadow/agenthub/issues"
   },
-  "homepage": "https://github.com/Prism-Shadow/AgentHub#readme"
+  "homepage": "https://github.com/Prism-Shadow/agenthub#readme"
 }

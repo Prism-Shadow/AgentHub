@@ -47,12 +47,19 @@ export type AspectRatio =
   | "21:9";
 export type ImageSize = "1K" | "2K";
 
+/**
+ * Arbitrary JSON-style payload of wire-fidelity data recorded by a client,
+ * such as thinking signatures, phase labels, or the upstream reasoning field
+ * name. Opaque to consumers: pass it back unchanged so a replay reproduces
+ * the original wire message.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Fidelity = Record<string, any>;
+
 export interface TextContentItem {
   type: "text";
   text: string;
-  phase?: string | null;
-  // signature is always base64 encode string in typescript
-  signature?: string;
+  fidelity?: Fidelity;
 }
 
 export interface ImageContentItem {
@@ -64,20 +71,20 @@ export interface InlineDataContentItem {
   type: "inline_data";
   data: Buffer;
   mime_type: string;
-  signature?: string;
+  fidelity?: Fidelity;
 }
 
 export interface ThinkingContentItem {
   type: "thinking";
   thinking: string;
-  signature?: string;
+  fidelity?: Fidelity;
 }
 
 export interface InlineThinkingContentItem {
   type: "inline_thinking";
   data: Buffer;
   mime_type: string;
-  signature?: string;
+  fidelity?: Fidelity;
 }
 
 export interface ToolCallContentItem {
@@ -86,7 +93,7 @@ export interface ToolCallContentItem {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   arguments: Record<string, any>;
   tool_call_id: string;
-  signature?: string;
+  fidelity?: Fidelity;
 }
 
 export interface PartialToolCallContentItem {
@@ -94,7 +101,7 @@ export interface PartialToolCallContentItem {
   name: string;
   arguments: string;
   tool_call_id: string;
-  signature?: string;
+  fidelity?: Fidelity;
 }
 
 export interface ToolResultContentItem {

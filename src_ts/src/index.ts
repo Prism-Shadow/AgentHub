@@ -13,4 +13,9 @@
 // limitations under the License.
 
 export { AutoLLMClient } from "./autoClient";
+export {
+  AgentHubError,
+  EmptyResponseError,
+  ToolCallArgumentParseError,
+} from "./errors";
 export * from "./types";

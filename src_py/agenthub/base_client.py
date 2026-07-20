@@ -19,6 +19,7 @@ from contextlib import suppress
 from typing import Any, AsyncIterator
 
 from .abort_signal import AbortSignal
+from .errors import EmptyResponseError
 from .types import (
     ContentItem,
     FinishReason,
@@ -100,28 +101,40 @@ class LLMClient(ABC):
         for event in events:
             # Merge content_items from all events
             for item in event["content_items"]:
+                last_fidelity = (content_items[-1].get("fidelity") or {}) if content_items else {}
+                item_fidelity = item.get("fidelity") or {}
                 if item["type"] == "text":
+                    # a delta announcing a different phase starts a new item; same-phase and
+                    # phaseless deltas merge until a signature finishes the item
                     if (
                         content_items
                         and content_items[-1]["type"] == "text"
-                        and content_items[-1].get("signature") is None  # no signature yet
-                        and item.get("phase") is None  # no new phase
+                        and last_fidelity.get("signature") is None  # not finished by a signature yet
+                        and (
+                            item_fidelity.get("phase") is None  # phaseless deltas continue the item
+                            or item_fidelity.get("phase") == last_fidelity.get("phase")  # same phase merges
+                        )
                     ):
                         content_items[-1]["text"] += item["text"]
-                        if "signature" in item:  # finish the current item if signature is not None
-                            content_items[-1]["signature"] = item["signature"]
-                    elif item["text"] or item.get("phase") is not None:  # text or new phase starts an item
+                        if item_fidelity:  # a signature finishes the current item
+                            content_items[-1]["fidelity"] = {**last_fidelity, **item_fidelity}
+                    elif item["text"] or item_fidelity.get("phase") is not None:  # text or new phase starts an item
                         content_items.append(item.copy())
                 elif item["type"] == "thinking":
+                    # a new item starts only when the open item's fidelity is non-empty and
+                    # differs from the incoming delta's; everything else merges into it
                     if (
                         content_items
                         and content_items[-1]["type"] == "thinking"
-                        and content_items[-1].get("signature") is None  # no signature yet
+                        and (
+                            not last_fidelity  # not finished by fidelity yet
+                            or last_fidelity == item_fidelity  # a run of equal fidelity is one item
+                        )
                     ):
                         content_items[-1]["thinking"] += item["thinking"]
-                        if "signature" in item:  # finish the current item if signature is not None
-                            content_items[-1]["signature"] = item["signature"]
-                    elif item["thinking"] or item.get("signature"):  # omit empty thinking items
+                        if item_fidelity:  # fidelity finishes the current item
+                            content_items[-1]["fidelity"] = item_fidelity
+                    elif item["thinking"] or item_fidelity:  # omit empty thinking items
                         content_items.append(item.copy())
                 elif item["type"] == "partial_tool_call":
                     # Skip partial_tool_call items - they should already be converted to tool_call
@@ -244,6 +257,7 @@ class LLMClient(ABC):
             await stream.aclose()
 
         self._validate_last_event(last_event)
+        self._validate_non_thinking_output(events)
 
         # Save history to file if trace_id is specified
         if config.get("trace_id") and events:
@@ -311,6 +325,25 @@ class LLMClient(ABC):
 
         if last_event["finish_reason"] is None:
             raise ValueError(f"Last event must carry finish_reason, got: {last_event}")
+
+    def _validate_non_thinking_output(self, events: list[UniEvent]) -> None:
+        """Validate that the completed response carries content other than thinking.
+
+        Replaying a thinking-only assistant message on the next turn fails with a 400
+        error, so the response is rejected as soon as the stream completes.
+
+        Args:
+            events: All events yielded by streaming_response
+
+        Raises:
+            EmptyResponseError: If every content item in the response is thinking
+        """
+        thinking_only = all(
+            item["type"] in ("thinking", "inline_thinking") for event in events for item in event["content_items"]
+        )
+        if thinking_only:
+            finish_reason = events[-1]["finish_reason"] if events else None
+            raise EmptyResponseError(self.__class__.__name__, finish_reason)
 
     def clear_history(self) -> None:
         """Clear the message history."""

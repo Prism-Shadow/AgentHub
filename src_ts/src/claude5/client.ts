@@ -20,6 +20,7 @@ import {
 } from "@anthropic-ai/sdk/resources/beta/messages";
 import { Stream } from "@anthropic-ai/sdk/core/streaming";
 import { LLMClient } from "../baseClient";
+import { parseToolCallArguments } from "../errors";
 import {
   EventType,
   FinishReason,
@@ -36,15 +37,15 @@ import {
 const REDACTED_THINKING = "_REDACTED_THINKING";
 
 /**
- * Claude 4.8-specific LLM client implementation.
+ * Claude 5-specific LLM client implementation.
  */
-export class Claude4_8Client extends LLMClient {
+export class Claude5Client extends LLMClient {
   protected _model: string;
   private _client: Anthropic | AnthropicBedrock;
   private _use_bedrock: boolean;
 
   /**
-   * Initialize Claude 4.8 client with model and API key.
+   * Initialize Claude 5 client with model and API key.
    */
   constructor(options: {
     model: string;
@@ -270,13 +271,13 @@ export class Claude4_8Client extends LLMClient {
           if (item.thinking === REDACTED_THINKING) {
             contentBlocks.push({
               type: "redacted_thinking",
-              data: item.signature,
+              data: item.fidelity?.signature,
             });
           } else {
             contentBlocks.push({
               type: "thinking",
               thinking: item.thinking,
-              signature: item.signature,
+              signature: item.fidelity?.signature,
             });
           }
         } else if (item.type === "tool_call") {
@@ -347,7 +348,7 @@ export class Claude4_8Client extends LLMClient {
         contentItems.push({
           type: "thinking",
           thinking: REDACTED_THINKING,
-          signature: block.data,
+          fidelity: { signature: block.data },
         });
       }
     } else if (claudeEventType === "content_block_delta") {
@@ -368,7 +369,7 @@ export class Claude4_8Client extends LLMClient {
         contentItems.push({
           type: "thinking",
           thinking: "",
-          signature: delta.signature,
+          fidelity: { signature: delta.signature },
         });
       }
     } else if (claudeEventType === "content_block_stop") {
@@ -529,7 +530,12 @@ export class Claude4_8Client extends LLMClient {
               {
                 type: "tool_call",
                 name: partialToolCall.name,
-                arguments: JSON.parse(partialToolCall.arguments),
+                arguments: parseToolCallArguments(
+                  partialToolCall.arguments,
+                  this.constructor.name,
+                  partialToolCall.name || "",
+                  partialToolCall.tool_call_id || "",
+                ),
                 tool_call_id: partialToolCall.tool_call_id || "",
               },
             ],

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import base64
-import json
 import mimetypes
 import os
 import re
@@ -24,6 +23,7 @@ from anthropic import AsyncAnthropic, AsyncAnthropicBedrock
 from anthropic.types.beta import BetaMessageParam, BetaRawMessageStreamEvent
 
 from ..base_client import LLMClient
+from ..errors import parse_tool_call_arguments
 from ..types import (
     EventType,
     FinishReason,
@@ -204,10 +204,14 @@ class Claude4_6Client(LLMClient):
                     content_blocks.append(await self._convert_image_url_to_source(item["image_url"]))
                 elif item["type"] == "thinking":
                     if item["thinking"] == REDACTED_THINKING:
-                        content_blocks.append({"type": "redacted_thinking", "data": item["signature"]})
+                        content_blocks.append({"type": "redacted_thinking", "data": item["fidelity"]["signature"]})
                     else:
                         content_blocks.append(
-                            {"type": "thinking", "thinking": item["thinking"], "signature": item["signature"]}
+                            {
+                                "type": "thinking",
+                                "thinking": item["thinking"],
+                                "signature": item["fidelity"]["signature"],
+                            }
                         )
                 elif item["type"] == "tool_call":
                     content_blocks.append(
@@ -263,7 +267,9 @@ class Claude4_6Client(LLMClient):
                     {"type": "partial_tool_call", "name": block.name, "arguments": "", "tool_call_id": block.id}
                 )
             elif block.type == "redacted_thinking":
-                content_items.append({"type": "thinking", "thinking": REDACTED_THINKING, "signature": block.data})
+                content_items.append(
+                    {"type": "thinking", "thinking": REDACTED_THINKING, "fidelity": {"signature": block.data}}
+                )
 
         elif claude_event_type == "content_block_delta":
             event_type = "delta"
@@ -277,7 +283,7 @@ class Claude4_6Client(LLMClient):
                     {"type": "partial_tool_call", "name": "", "arguments": delta.partial_json, "tool_call_id": ""}
                 )
             elif delta.type == "signature_delta":
-                content_items.append({"type": "thinking", "thinking": "", "signature": delta.signature})
+                content_items.append({"type": "thinking", "thinking": "", "fidelity": {"signature": delta.signature}})
 
         elif claude_event_type == "content_block_stop":
             event_type = "stop"
@@ -403,7 +409,12 @@ class Claude4_6Client(LLMClient):
                             {
                                 "type": "tool_call",
                                 "name": partial_tool_call["name"],
-                                "arguments": json.loads(partial_tool_call["arguments"]),
+                                "arguments": parse_tool_call_arguments(
+                                    partial_tool_call["arguments"],
+                                    self.__class__.__name__,
+                                    partial_tool_call["name"],
+                                    partial_tool_call["tool_call_id"],
+                                ),
                                 "tool_call_id": partial_tool_call["tool_call_id"],
                             }
                         ],

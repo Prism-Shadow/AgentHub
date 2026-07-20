@@ -15,7 +15,7 @@
 import { LLMClient } from "./baseClient";
 import { Gemini3Client } from "./gemini3";
 import { Claude4_6Client } from "./claude4_6";
-import { Claude4_8Client } from "./claude4_8";
+import { Claude5Client } from "./claude5";
 import { GPT5_5Client } from "./gpt5_5";
 import { GLM5_1Client } from "./glm5_1";
 import { KimiK2_6Client } from "./kimi_k2_6";
@@ -82,9 +82,11 @@ export class AutoLLMClient extends LLMClient {
       return new Gemini3Client({ model, apiKey, baseUrl });
     } else if (
       clientType.includes("claude") &&
-      (clientType.includes("4-7") || clientType.includes("4-8"))
+      (clientType.includes("4-7") ||
+        clientType.includes("4-8") ||
+        clientType.includes("-5"))
     ) {
-      return new Claude4_8Client({ model, apiKey, baseUrl });
+      return new Claude5Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("claude") && clientType.includes("4-6")) {
       return new Claude4_6Client({ model, apiKey, baseUrl });
     } else if (
@@ -106,12 +108,15 @@ export class AutoLLMClient extends LLMClient {
       clientType.includes("embedding")
     ) {
       return new OpenaiEmbeddingClient({ model, apiKey, baseUrl });
-    } else if (clientType.includes("openai")) {
+    } else if (
+      clientType.includes("openai") &&
+      !clientType.includes("embedding")
+    ) {
       return new OpenaiClient({ model, apiKey, baseUrl });
     } else {
       throw new Error(
         `${clientType} is not supported. ` +
-          "Supported client types: gemini-3, claude-4-8, claude-4-7, claude-4-6, gpt-5.5, gpt-5.4, glm-5.1, kimi-k2.6, kimi-k2.5, deepseek-v4, openai-embedding, openai.",
+          "Supported client types: gemini-3, claude-5, claude-4-8, claude-4-7, claude-4-6, gpt-5.5, gpt-5.4, glm-5.1, kimi-k2.6, kimi-k2.5, deepseek-v4, openai-embedding, openai.",
       );
     }
   }

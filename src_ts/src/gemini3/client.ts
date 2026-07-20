@@ -40,6 +40,7 @@ import * as path from "path";
 import { LLMClient } from "../baseClient";
 import {
   EventType,
+  Fidelity,
   FinishReason,
   PartialContentItem,
   PromptCaching,
@@ -50,6 +51,25 @@ import {
   UniMessage,
   UsageMetadata,
 } from "../types";
+
+/**
+ * Wrap a part's thought signature as a fidelity payload, or nothing when absent.
+ */
+function partFidelity(part: Part): { fidelity?: Fidelity } {
+  if (part.thoughtSignature == null) {
+    return {};
+  }
+  return { fidelity: { signature: part.thoughtSignature } };
+}
+
+/**
+ * Read the thought signature recorded in an item's fidelity payload.
+ */
+function itemThoughtSignature(item: {
+  fidelity?: Fidelity;
+}): string | undefined {
+  return item.fidelity?.signature;
+}
 
 /**
  * Gemini 3-specific LLM client implementation.
@@ -312,7 +332,7 @@ export class Gemini3Client extends LLMClient {
         if (item.type === "text") {
           parts.push({
             text: item.text,
-            thoughtSignature: item.signature as string | undefined,
+            thoughtSignature: itemThoughtSignature(item),
           } as Part);
         } else if (item.type === "image_url") {
           const urlValue = item.image_url;
@@ -332,13 +352,13 @@ export class Gemini3Client extends LLMClient {
               mimeType: item.mime_type,
               data: item.data.toString("base64"),
             },
-            thoughtSignature: item.signature as string | undefined,
+            thoughtSignature: itemThoughtSignature(item),
           } as Part);
         } else if (item.type === "thinking") {
           parts.push({
             text: item.thinking,
             thought: true,
-            thoughtSignature: item.signature as string | undefined,
+            thoughtSignature: itemThoughtSignature(item),
           } as Part);
         } else if (item.type === "inline_thinking") {
           parts.push({
@@ -347,7 +367,7 @@ export class Gemini3Client extends LLMClient {
               data: item.data.toString("base64"),
             },
             thought: true,
-            thoughtSignature: item.signature as string | undefined,
+            thoughtSignature: itemThoughtSignature(item),
           } as Part);
         } else if (item.type === "tool_call") {
           const functionCall: FunctionCall = {
@@ -356,7 +376,7 @@ export class Gemini3Client extends LLMClient {
           };
           parts.push({
             functionCall: functionCall,
-            thoughtSignature: item.signature as string | undefined,
+            thoughtSignature: itemThoughtSignature(item),
           } as Part);
         } else if (item.type === "tool_result") {
           if (!item.tool_call_id) {
@@ -426,21 +446,21 @@ export class Gemini3Client extends LLMClient {
             name: part.functionCall.name || "",
             arguments: part.functionCall.args || {},
             tool_call_id: part.functionCall.name || "",
-            signature: part.thoughtSignature as string | undefined,
+            ...partFidelity(part),
           });
         } else if (part.thought) {
           if (part.text !== undefined) {
             contentItems.push({
               type: "thinking",
               thinking: part.text,
-              signature: part.thoughtSignature as string | undefined,
+              ...partFidelity(part),
             });
           } else if (part.inlineData) {
             contentItems.push({
               type: "inline_thinking",
               data: Buffer.from(part.inlineData.data || "", "base64"),
               mime_type: part.inlineData.mimeType || "application/octet-stream",
-              signature: part.thoughtSignature as string | undefined,
+              ...partFidelity(part),
             });
           }
         } else if (part.inlineData) {
@@ -448,13 +468,13 @@ export class Gemini3Client extends LLMClient {
             type: "inline_data",
             data: Buffer.from(part.inlineData.data || "", "base64"),
             mime_type: part.inlineData.mimeType || "application/octet-stream",
-            signature: part.thoughtSignature as string | undefined,
+            ...partFidelity(part),
           });
         } else if (part.text !== undefined) {
           contentItems.push({
             type: "text",
             text: part.text,
-            signature: part.thoughtSignature as string | undefined,
+            ...partFidelity(part),
           });
         } else {
           throw new Error(`Unknown output: ${JSON.stringify(part)}`);
@@ -596,7 +616,7 @@ export class Gemini3Client extends LLMClient {
                 name: item.name,
                 arguments: JSON.stringify(item.arguments),
                 tool_call_id: item.tool_call_id,
-                signature: item.signature,
+                fidelity: item.fidelity,
               },
             ],
             usage_metadata: null,

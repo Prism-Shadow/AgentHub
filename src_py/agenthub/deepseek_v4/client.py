@@ -20,6 +20,7 @@ from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionChunk, ChatCompletionMessageParam
 
 from ..base_client import LLMClient
+from ..errors import parse_tool_call_arguments
 from ..types import (
     EventType,
     FinishReason,
@@ -200,7 +201,15 @@ class DeepSeekV4Client(LLMClient):
 
             if getattr(delta, "reasoning_content", None):
                 event_type = "delta"
-                content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning_content")})
+                # record the wire field so a replay through another OpenAI-compatible
+                # client reproduces the exact field DeepSeek produced
+                content_items.append(
+                    {
+                        "type": "thinking",
+                        "thinking": getattr(delta, "reasoning_content"),
+                        "fidelity": {"reasoning_field": "reasoning_content"},
+                    }
+                )
 
             if delta.content:
                 event_type = "delta"
@@ -289,7 +298,12 @@ class DeepSeekV4Client(LLMClient):
                                     {
                                         "type": "tool_call",
                                         "name": partial_tool_call["name"],
-                                        "arguments": json.loads(partial_tool_call["arguments"] or "{}"),
+                                        "arguments": parse_tool_call_arguments(
+                                            partial_tool_call["arguments"],
+                                            self.__class__.__name__,
+                                            partial_tool_call["name"],
+                                            partial_tool_call["tool_call_id"],
+                                        ),
                                         "tool_call_id": partial_tool_call["tool_call_id"],
                                     }
                                 ],
@@ -317,7 +331,12 @@ class DeepSeekV4Client(LLMClient):
                             {
                                 "type": "tool_call",
                                 "name": partial_tool_call["name"],
-                                "arguments": json.loads(partial_tool_call["arguments"] or "{}"),
+                                "arguments": parse_tool_call_arguments(
+                                    partial_tool_call["arguments"],
+                                    self.__class__.__name__,
+                                    partial_tool_call["name"],
+                                    partial_tool_call["tool_call_id"],
+                                ),
                                 "tool_call_id": partial_tool_call["tool_call_id"],
                             }
                         ],

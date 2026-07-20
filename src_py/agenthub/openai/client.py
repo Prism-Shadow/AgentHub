@@ -23,6 +23,7 @@ from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionChunk, ChatCompletionMessageParam
 
 from ..base_client import LLMClient
+from ..errors import parse_tool_call_arguments
 from ..types import (
     EventType,
     FinishReason,
@@ -128,6 +129,7 @@ class OpenaiClient(LLMClient):
             content_parts = []  # may be empty for tool results
             tool_calls = []  # may be empty for no tool calls
             thinking = ""
+            thinking_fields: set[str | None] = set()
             for item in msg["content_items"]:
                 if item["type"] == "text":
                     content_parts.append({"type": "text", "text": item["text"]})
@@ -136,6 +138,7 @@ class OpenaiClient(LLMClient):
                     content_parts.append({"type": "image_url", "image_url": {"url": base64_image}})
                 elif item["type"] == "thinking":
                     thinking += item["thinking"]
+                    thinking_fields.add((item.get("fidelity") or {}).get("reasoning_field"))
                 elif item["type"] == "tool_call":
                     tool_calls.append(
                         {
@@ -181,8 +184,15 @@ class OpenaiClient(LLMClient):
                 message["tool_calls"] = tool_calls
 
             if thinking:
-                message["reasoning_content"] = thinking  # vLLM & siliconflow compatibility
-                message["reasoning"] = thinking  # openrouter compatibility
+                # send thinking back through the exact field the upstream produced (recorded
+                # in the item fidelity); servers may reject the spelling they did not emit
+                if thinking_fields == {"reasoning_content"}:
+                    message["reasoning_content"] = thinking
+                elif thinking_fields == {"reasoning"}:
+                    message["reasoning"] = thinking
+                else:
+                    message["reasoning_content"] = thinking  # vLLM & siliconflow compatibility
+                    message["reasoning"] = thinking  # openrouter compatibility
 
             # message may be empty for tool results
             if len(message.keys()) > 1:
@@ -213,15 +223,29 @@ class OpenaiClient(LLMClient):
                 event_type = "delta"
                 content_items.append({"type": "text", "text": delta.content})
 
-            # vLLM & siliconflow compatibility
-            if getattr(delta, "reasoning_content", None):
+            # the thinking field name differs by server: vLLM & siliconflow use reasoning_content
+            # while openrouter uses reasoning; record the wire field that carried each delta
+            # so a replay can reproduce exactly the field the upstream produced
+            reasoning_content = getattr(delta, "reasoning_content", None)
+            reasoning = getattr(delta, "reasoning", None)
+            if reasoning_content and reasoning:
                 event_type = "delta"
-                content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning_content")})
-
-            # openrouter compatibility
-            elif getattr(delta, "reasoning", None):
+                # ambiguous origin: record no fidelity so a replay sends both fields back
+                content_items.append({"type": "thinking", "thinking": reasoning_content})
+            elif reasoning_content:
                 event_type = "delta"
-                content_items.append({"type": "thinking", "thinking": getattr(delta, "reasoning")})
+                content_items.append(
+                    {
+                        "type": "thinking",
+                        "thinking": reasoning_content,
+                        "fidelity": {"reasoning_field": "reasoning_content"},
+                    }
+                )
+            elif reasoning:
+                event_type = "delta"
+                content_items.append(
+                    {"type": "thinking", "thinking": reasoning, "fidelity": {"reasoning_field": "reasoning"}}
+                )
 
             if delta.tool_calls:
                 for tool_call in delta.tool_calls:
@@ -325,7 +349,12 @@ class OpenaiClient(LLMClient):
                                     {
                                         "type": "tool_call",
                                         "name": partial_tool_call["name"],
-                                        "arguments": json.loads(partial_tool_call["arguments"] or "{}"),
+                                        "arguments": parse_tool_call_arguments(
+                                            partial_tool_call["arguments"],
+                                            self.__class__.__name__,
+                                            partial_tool_call["name"],
+                                            partial_tool_call["tool_call_id"],
+                                        ),
                                         "tool_call_id": partial_tool_call["tool_call_id"],
                                     }
                                 ],
@@ -353,7 +382,12 @@ class OpenaiClient(LLMClient):
                             {
                                 "type": "tool_call",
                                 "name": partial_tool_call["name"],
-                                "arguments": json.loads(partial_tool_call["arguments"] or "{}"),
+                                "arguments": parse_tool_call_arguments(
+                                    partial_tool_call["arguments"],
+                                    self.__class__.__name__,
+                                    partial_tool_call["name"],
+                                    partial_tool_call["tool_call_id"],
+                                ),
                                 "tool_call_id": partial_tool_call["tool_call_id"],
                             }
                         ],

@@ -15,6 +15,7 @@ The `docs/` folder contains detailed guides on various GPT-5.5 features:
 - [images-vision.md](./docs/images-vision.md) - Image and vision capabilities
 - [latest-model.md](./docs/latest-model.md) - Latest model features and updates
 - [migrate-to-responses.md](./docs/migrate-to-responses.md) - Migration guide to Responses API
+- [reasoning.md](./docs/reasoning.md) - Reasoning effort, summaries, encrypted reasoning, and the `phase` parameter
 - [text.md](./docs/text.md) - Text generation and completion
 
 ## Examples
