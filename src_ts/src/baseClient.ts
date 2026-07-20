@@ -120,6 +120,8 @@ export abstract class LLMClient {
           }
         } else if (item.type === "thinking") {
           const lastItem = contentItems[contentItems.length - 1];
+          // a new item starts only when the open item's fidelity is non-empty and
+          // differs from the incoming delta's; everything else merges into it
           if (
             lastItem &&
             lastItem.type === "thinking" &&

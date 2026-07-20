@@ -116,6 +116,8 @@ class LLMClient(ABC):
                     elif item["text"] or item_fidelity.get("phase") is not None:  # text or new phase starts an item
                         content_items.append(item.copy())
                 elif item["type"] == "thinking":
+                    # a new item starts only when the open item's fidelity is non-empty and
+                    # differs from the incoming delta's; everything else merges into it
                     if (
                         content_items
                         and content_items[-1]["type"] == "thinking"
