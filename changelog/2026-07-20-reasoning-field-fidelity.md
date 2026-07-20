@@ -27,7 +27,7 @@ On receive, the OpenAI-compatible clients record the wire field name that carrie
 
 `concat_uni_events_to_uni_message` / `concatUniEventsToUniMessage` now key on `fidelity`:
 
-- text: an incoming `fidelity.phase` starts a new item; an incoming fidelity payload (e.g. a signature) merges into the open item's fidelity and finishes it.
+- text: a phase change starts a new item (same-phase and phaseless deltas merge, per the GPT-5.5 `phase` guide); an incoming fidelity payload (e.g. a signature) merges into the open item's fidelity and finishes it.
 - thinking: an incoming fidelity payload finishes the open item (Claude signature deltas, GPT-5.5 reasoning markers), and a run of deltas carrying **equal** fidelity concatenates into one item (the OpenAI-compatible per-delta `reasoning_field` tags).
 
 ## Breaking change

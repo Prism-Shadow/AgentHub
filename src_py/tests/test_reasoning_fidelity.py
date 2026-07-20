@@ -220,22 +220,25 @@ def _text_delta_event(text: str, phase: str | None = None) -> dict[str, Any]:
     }
 
 
-def test_concat_starts_a_new_text_item_for_each_phase():
+def test_concat_splits_text_items_only_on_phase_change():
     client = _create_auto_client(REASONING_REPLAY_CASES[0])
     message = client.concat_uni_events_to_uni_message(
         [
             _text_delta_event("", phase="commentary"),
-            _text_delta_event("Thinking out loud."),
-            _text_delta_event("", phase="answer"),
-            _text_delta_event("Here is"),
-            _text_delta_event(" the memo."),
-            _text_delta_event("", phase="answer"),
-            _text_delta_event("Appendix."),
+            _text_delta_event("I'll inspect the logs."),
+            _text_delta_event("", phase="final_answer"),
+            _text_delta_event("Root cause:"),
+            _text_delta_event(" cache invalidation race."),
+            _text_delta_event("", phase="final_answer"),
+            _text_delta_event(" Remediation follows."),
         ]
     )
 
     assert message["content_items"] == [
-        {"type": "text", "text": "Thinking out loud.", "fidelity": {"phase": "commentary"}},
-        {"type": "text", "text": "Here is the memo.", "fidelity": {"phase": "answer"}},
-        {"type": "text", "text": "Appendix.", "fidelity": {"phase": "answer"}},
+        {"type": "text", "text": "I'll inspect the logs.", "fidelity": {"phase": "commentary"}},
+        {
+            "type": "text",
+            "text": "Root cause: cache invalidation race. Remediation follows.",
+            "fidelity": {"phase": "final_answer"},
+        },
     ]

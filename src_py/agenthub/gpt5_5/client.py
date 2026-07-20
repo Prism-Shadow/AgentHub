@@ -122,7 +122,7 @@ class GPT5_5Client(LLMClient):
                 if item["type"] == "text":
                     phase = (item.get("fidelity") or {}).get("phase")
                     if msg["role"] == "assistant" and phase:  # split different phases
-                        if last_phase is not None and content_items:
+                        if last_phase is not None and last_phase != phase and content_items:
                             input_list.append({"role": msg["role"], "content": content_items, "phase": last_phase})
                             content_items = []
 

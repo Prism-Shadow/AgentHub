@@ -248,25 +248,28 @@ function textDeltaEvent(text: string, phase?: string): UniEvent {
   };
 }
 
-test("concatenation starts a new text item for each phase", () => {
+test("concatenation splits text items only on phase change", () => {
   const client = createAutoClient(REASONING_REPLAY_CASES[0]);
   const message = client.concatUniEventsToUniMessage([
     textDeltaEvent("", "commentary"),
-    textDeltaEvent("Thinking out loud."),
-    textDeltaEvent("", "answer"),
-    textDeltaEvent("Here is"),
-    textDeltaEvent(" the memo."),
-    textDeltaEvent("", "answer"),
-    textDeltaEvent("Appendix."),
+    textDeltaEvent("I'll inspect the logs."),
+    textDeltaEvent("", "final_answer"),
+    textDeltaEvent("Root cause:"),
+    textDeltaEvent(" cache invalidation race."),
+    textDeltaEvent("", "final_answer"),
+    textDeltaEvent(" Remediation follows."),
   ]);
 
   expect(message.content_items).toEqual([
     {
       type: "text",
-      text: "Thinking out loud.",
+      text: "I'll inspect the logs.",
       fidelity: { phase: "commentary" },
     },
-    { type: "text", text: "Here is the memo.", fidelity: { phase: "answer" } },
-    { type: "text", text: "Appendix.", fidelity: { phase: "answer" } },
+    {
+      type: "text",
+      text: "Root cause: cache invalidation race. Remediation follows.",
+      fidelity: { phase: "final_answer" },
+    },
   ]);
 });

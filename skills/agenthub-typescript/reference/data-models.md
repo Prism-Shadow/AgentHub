@@ -54,7 +54,7 @@ Fields:
 const message = {
   role: "user",
   content_items: [
-    { type: "text", text: "Hello", fidelity: { phase: "planning" } },
+    { type: "text", text: "Hello", fidelity: { phase: "commentary" } },
     { type: "image_url", image_url: "https://example.com/image.jpg" },
     { type: "inline_data", data: Buffer.from("..."), mime_type: "image/png", fidelity: { signature: "sig" } },
     { type: "thinking", thinking: "Reasoning", fidelity: { signature: "sig" } },

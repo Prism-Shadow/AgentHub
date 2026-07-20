@@ -159,7 +159,11 @@ export class GPT5_5Client extends LLMClient {
           const phase = item.fidelity?.phase;
           if (msg.role === "assistant" && phase) {
             // split different phases
-            if (lastPhase !== null && contentItems.length > 0) {
+            if (
+              lastPhase !== null &&
+              lastPhase !== phase &&
+              contentItems.length > 0
+            ) {
               inputList.push({
                 role: msg.role,
                 content: contentItems,
