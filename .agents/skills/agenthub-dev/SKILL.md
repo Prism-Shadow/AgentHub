@@ -18,8 +18,8 @@ src_ts/src/<protocol>/            TypeScript client, mirrors the Python folder
 src_ts/src/autoClient.ts          TypeScript routing, mirrors auto_client.py
 src_py/tests/test_client.py       Parameterized e2e tests (env-gated AVAILABLE_MODELS)
 src_ts/tests/client.test.ts       Same for TypeScript
-changelog/<version>/              Detail files for that release, one per CHANGELOG.md entry
-CHANGELOG.md                      Brief one-line entries linking into changelog/
+changelog/<version>/              Release summary (README.md) plus one detail file per entry
+CHANGELOG.md                      One brief line per release linking into changelog/
 ```
 
 ## Stage 1 — Sync official docs into `llmsdk_docs/`
@@ -60,5 +60,5 @@ CHANGELOG.md                      Brief one-line entries linking into changelog/
 ## Record and ship
 
 - Write `changelog/<version>/YYYY-MM-DD-<slug>.md` (folder of the upcoming release) with the specifics: protocol differences found, config mapping decisions, notable capture findings.
-- Add one brief line at the top of `CHANGELOG.md` linking to that file. The root file keeps a single line per change.
+- Add one brief line at the top of that version's `changelog/<version>/README.md` linking to the file; the root `CHANGELOG.md` keeps one line per release, added at release preparation.
 - Commit on a feature branch and open a PR with `gh pr create --base dev`; direct pushes to `dev` are rejected.
