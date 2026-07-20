@@ -2,7 +2,7 @@
 
 Here, we record the addition and removal times of models, major functional updates, bug fixes, and release times of key versions. Each entry keeps one brief line; the full details of a change live in a file under [changelog/](changelog/).
 
-- [2026-07-20] OpenAI-compatible clients now record whether the upstream streamed thinking as `reasoning_content` or `reasoning` and replay exactly that field, instead of always sending both. ([details](changelog/2026-07-20-reasoning-field-fidelity.md))
+- [2026-07-20] Content items now carry an opaque `fidelity` payload that absorbs the former `signature`/`phase` fields (breaking), and OpenAI-compatible clients use it to replay thinking through exactly the reasoning field the upstream produced instead of always sending both spellings. ([details](changelog/2026-07-20-reasoning-field-fidelity.md))
 
 - [2026-07-17] Add the `agenthub-dev` skill that fixes the model-support development workflow, and the `changelog/` details directory. ([details](changelog/2026-07-17-agenthub-dev-skill.md))
 

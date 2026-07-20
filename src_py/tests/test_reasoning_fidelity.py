@@ -128,7 +128,11 @@ async def test_replay_preserves_reasoning_content_field(case: ReasoningReplayCas
     history_message, replayed_message = await _run_turn_and_replay(client)
     thinking_items = [item for item in history_message["content_items"] if item["type"] == "thinking"]
     assert thinking_items == [
-        {"type": "thinking", "thinking": "Let me think about the memo.", "signature": "reasoning_content"}
+        {
+            "type": "thinking",
+            "thinking": "Let me think about the memo.",
+            "fidelity": {"reasoning_field": "reasoning_content"},
+        }
     ]
     assert replayed_message["reasoning_content"] == "Let me think about the memo."
     assert "reasoning" not in replayed_message
@@ -151,7 +155,11 @@ async def test_replay_preserves_reasoning_field(case: ReasoningReplayCase):
     history_message, replayed_message = await _run_turn_and_replay(client)
     thinking_items = [item for item in history_message["content_items"] if item["type"] == "thinking"]
     assert thinking_items == [
-        {"type": "thinking", "thinking": "Let me think about the memo.", "signature": "reasoning"}
+        {
+            "type": "thinking",
+            "thinking": "Let me think about the memo.",
+            "fidelity": {"reasoning_field": "reasoning"},
+        }
     ]
     assert replayed_message["reasoning"] == "Let me think about the memo."
     assert "reasoning_content" not in replayed_message
@@ -179,7 +187,7 @@ async def test_replay_keeps_both_fields_when_origin_is_ambiguous(case: Reasoning
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("case", REASONING_REPLAY_CASES, ids=[case.client_type for case in REASONING_REPLAY_CASES])
-async def test_replay_of_unsigned_thinking_sends_both_fields(case: ReasoningReplayCase):
+async def test_replay_of_thinking_without_fidelity_sends_both_fields(case: ReasoningReplayCase):
     client = _create_auto_client(case)
     history = [
         _user_message(),

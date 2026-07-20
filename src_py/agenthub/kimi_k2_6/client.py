@@ -144,7 +144,7 @@ class KimiK2_6Client(LLMClient):
             content_parts = []  # may be empty for tool results
             tool_calls = []  # may be empty for no tool calls
             thinking = ""
-            thinking_signatures: set[str | bytes | None] = set()
+            thinking_fields: set[str | None] = set()
             for item in msg["content_items"]:
                 if item["type"] == "text":
                     content_parts.append({"type": "text", "text": item["text"]})
@@ -153,7 +153,7 @@ class KimiK2_6Client(LLMClient):
                     content_parts.append({"type": "image_url", "image_url": {"url": base64_image}})
                 elif item["type"] == "thinking":
                     thinking += item["thinking"]
-                    thinking_signatures.add(item.get("signature"))
+                    thinking_fields.add((item.get("fidelity") or {}).get("reasoning_field"))
                 elif item["type"] == "tool_call":
                     tool_calls.append(
                         {
@@ -200,10 +200,10 @@ class KimiK2_6Client(LLMClient):
 
             if thinking:
                 # send thinking back through the exact field the upstream produced (recorded
-                # in the item signature); servers may reject the spelling they did not emit
-                if thinking_signatures == {"reasoning_content"}:
+                # in the item fidelity); servers may reject the spelling they did not emit
+                if thinking_fields == {"reasoning_content"}:
                     message["reasoning_content"] = thinking
-                elif thinking_signatures == {"reasoning"}:
+                elif thinking_fields == {"reasoning"}:
                     message["reasoning"] = thinking
                 else:
                     message["reasoning_content"] = thinking  # vLLM & siliconflow compatibility
@@ -239,22 +239,28 @@ class KimiK2_6Client(LLMClient):
                 content_items.append({"type": "text", "text": delta.content})
 
             # the thinking field name differs by server: vLLM & siliconflow use reasoning_content
-            # while openrouter uses reasoning; sign each delta with the wire field that carried
-            # it so a replay can reproduce exactly the field the upstream produced
+            # while openrouter uses reasoning; record the wire field that carried each delta
+            # so a replay can reproduce exactly the field the upstream produced
             reasoning_content = getattr(delta, "reasoning_content", None)
             reasoning = getattr(delta, "reasoning", None)
             if reasoning_content and reasoning:
                 event_type = "delta"
-                # ambiguous origin: leave the item unsigned so a replay sends both fields back
+                # ambiguous origin: record no fidelity so a replay sends both fields back
                 content_items.append({"type": "thinking", "thinking": reasoning_content})
             elif reasoning_content:
                 event_type = "delta"
                 content_items.append(
-                    {"type": "thinking", "thinking": reasoning_content, "signature": "reasoning_content"}
+                    {
+                        "type": "thinking",
+                        "thinking": reasoning_content,
+                        "fidelity": {"reasoning_field": "reasoning_content"},
+                    }
                 )
             elif reasoning:
                 event_type = "delta"
-                content_items.append({"type": "thinking", "thinking": reasoning, "signature": "reasoning"})
+                content_items.append(
+                    {"type": "thinking", "thinking": reasoning, "fidelity": {"reasoning_field": "reasoning"}}
+                )
 
             if delta.tool_calls:
                 event_type = "delta"

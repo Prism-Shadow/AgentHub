@@ -15,12 +15,6 @@
 from .types import UsageMetadata
 
 
-# Signatures that OpenAI Chat Completions-compatible clients stamp on thinking items to
-# record which wire field (reasoning_content vs. reasoning) carried the model reasoning,
-# so that a replayed message reproduces exactly the field the upstream produced.
-REASONING_FIELD_SIGNATURES = ("reasoning_content", "reasoning")
-
-
 def fix_openrouter_usage_metadata(usage_metadata: UsageMetadata, base_url: str) -> UsageMetadata:
     """
     Fix the usage metadata for OpenRouter.

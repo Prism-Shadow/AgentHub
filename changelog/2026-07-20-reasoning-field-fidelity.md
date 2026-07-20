@@ -1,7 +1,39 @@
-# Replay the exact reasoning field the upstream produced
+# Add the `fidelity` field and replay the exact reasoning field the upstream produced
 
-- Problem: OpenAI Chat Completions-compatible servers spell the thinking field differently — vLLM & SiliconFlow stream `reasoning_content` while OpenRouter streams `reasoning` — and when sending assistant history back, the `openai`, `glm5_1`, and `kimi_k2_6` clients always set **both** fields on the message. Strict upstreams reject the spelling they did not emit (e.g. a server that returned `reasoning_content` refuses a request containing `reasoning`), breaking multi-turn conversations.
-- Fix: on receive, these clients (plus `deepseek_v4`, which only ever reads `reasoning_content`) now stamp each thinking delta's `signature` with the wire field name that carried it. On send, the message conversion replays the thinking through exactly that field. This keeps the wire round-trip bijective: what the upstream produced is what it gets back.
-- Fallbacks preserve the old maximum-compatibility behavior: thinking items without a reasoning-field signature (hand-written histories, histories recorded before this change, or foreign-protocol signatures), mixed signatures within one message, and the ambiguous case where a chunk carries both fields at once (such deltas stay unsigned) all still send both spellings.
-- `concat_uni_events_to_uni_message` / `concatUniEventsToUniMessage` now merge consecutive thinking deltas that carry the **same** reasoning-field signature (`REASONING_FIELD_SIGNATURES` in `utils`) into one item; previously any signature closed the item. The relaxation is scoped to these two signature values, so Claude/Gemini/GPT signature handling is untouched.
-- Tests: new offline fake-stream suites `src_py/tests/test_reasoning_fidelity.py` and `src_ts/tests/reasoning-fidelity.test.ts` cover both field spellings, the ambiguous both-fields case, and the unsigned-history fallback across the `openai`, `glm5_1`, and `kimi_k2_6` clients.
+## The bug
+
+OpenAI Chat Completions-compatible servers spell the streamed thinking field differently — vLLM & SiliconFlow use `reasoning_content` while OpenRouter uses `reasoning` — and when sending assistant history back, the `openai`, `glm5_1`, and `kimi_k2_6` clients always set **both** fields on the message. Strict upstreams reject the spelling they did not emit (e.g. a server that returned `reasoning_content` refuses a request containing `reasoning`), breaking multi-turn conversations.
+
+## The `fidelity` field
+
+Fixing this needs a place to record which wire field carried the thinking. Rather than overloading `signature`, content items now carry a single dedicated field:
+
+- `fidelity` (`dict[str, Any]` / `Record<string, any>`, optional) — an arbitrary JSON-style object of wire-level data a client records to reproduce the original message on replay. Opaque to consumers: pass it back unchanged.
+
+It replaces and absorbs the former item-level `signature` and `phase` fields:
+
+| Client | Old | New |
+| --- | --- | --- |
+| `claude5` / `claude4_6` | `signature: <sig>` on thinking (also holds redacted-thinking data) | `fidelity: {"signature": <sig>}` |
+| `gemini3` | `signature: <thought_signature>` on text / thinking / inline / tool_call items (key present even when `None`) | `fidelity: {"signature": <thought_signature>}`, omitted entirely when absent |
+| `gpt5_5` | `signature: json.dumps({"id": ..., "encrypted_content": ...})` on thinking; `phase: <p>` on text | `fidelity: {"id": ..., "encrypted_content": ...}` (no more JSON-in-a-string); `fidelity: {"phase": <p>}` |
+| `openai` / `glm5_1` / `kimi_k2_6` / `deepseek_v4` | nothing recorded; both reasoning spellings sent back | `fidelity: {"reasoning_field": "reasoning_content" \| "reasoning"}` per thinking delta |
+
+## The reasoning-field fix
+
+On receive, the OpenAI-compatible clients record the wire field name that carried each thinking delta. On send, the message conversion replays the thinking through exactly that field. Fallbacks keep the old maximum-compatibility behavior: thinking without a recorded `reasoning_field` (hand-written histories, foreign-protocol fidelity), mixed fields within one message, and the ambiguous case where one chunk carries both spellings (such deltas record no fidelity) all still send both fields.
+
+## Concatenation rules
+
+`concat_uni_events_to_uni_message` / `concatUniEventsToUniMessage` now key on `fidelity`:
+
+- text: an incoming `fidelity.phase` starts a new item; an incoming fidelity payload (e.g. a signature) merges into the open item's fidelity and finishes it.
+- thinking: an incoming fidelity payload finishes the open item (Claude signature deltas, GPT-5.5 reasoning markers), and a run of deltas carrying **equal** fidelity concatenates into one item (the OpenAI-compatible per-delta `reasoning_field` tags).
+
+## Breaking change
+
+Histories recorded by earlier versions carry `signature` / `phase` at the top level of content items; clients no longer read those fields. To replay an old history, move each item's `signature`/`phase` into `fidelity` (`{"signature": ...}` for Claude/Gemini, `{"id": ..., "encrypted_content": ...}` parsed from the GPT-5.5 JSON string, `{"phase": ...}` for GPT-5.5 text).
+
+## Tests
+
+Offline fake-stream suites `src_py/tests/test_reasoning_fidelity.py` and `src_ts/tests/reasoning-fidelity.test.ts` cover both reasoning field spellings, the ambiguous both-fields case, and the no-fidelity fallback across the `openai`, `glm5_1`, and `kimi_k2_6` clients.

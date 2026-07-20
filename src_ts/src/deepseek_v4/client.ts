@@ -230,13 +230,13 @@ export class DeepSeekV4Client extends LLMClient {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((delta as any)?.reasoning_content) {
         eventType = "delta";
-        // sign the delta with the wire field so a replay through another
-        // OpenAI-compatible client reproduces the exact field DeepSeek produced
+        // record the wire field so a replay through another OpenAI-compatible
+        // client reproduces the exact field DeepSeek produced
         contentItems.push({
           type: "thinking",
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           thinking: (delta as any).reasoning_content,
-          signature: "reasoning_content",
+          fidelity: { reasoning_field: "reasoning_content" },
         });
       }
 

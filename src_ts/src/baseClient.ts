@@ -14,6 +14,7 @@
 
 import { EmptyResponseError } from "./errors";
 import {
+  Fidelity,
   FinishReason,
   ContentItem,
   UniConfig,
@@ -21,7 +22,22 @@ import {
   UniMessage,
   UsageMetadata,
 } from "./types";
-import { REASONING_FIELD_SIGNATURES } from "./utils";
+
+/**
+ * Whether a content item carries a non-empty fidelity payload.
+ */
+function hasFidelity(fidelity?: Fidelity): boolean {
+  return fidelity != null && Object.keys(fidelity).length > 0;
+}
+
+/**
+ * Compare two fidelity payloads by value. Fidelity dicts are built with a
+ * stable key order by each client, so JSON serialization is a faithful
+ * equality check.
+ */
+function fidelityEquals(a?: Fidelity, b?: Fidelity): boolean {
+  return JSON.stringify(a ?? {}) === JSON.stringify(b ?? {});
+}
 
 /**
  * Abstract base class for LLM clients.
@@ -86,17 +102,19 @@ export abstract class LLMClient {
       for (const item of event.content_items) {
         if (item.type === "text") {
           const lastItem = contentItems[contentItems.length - 1];
+          const itemFidelity = item.fidelity ?? {};
           if (
             lastItem &&
             lastItem.type === "text" &&
-            lastItem.signature == null && // no signature yet
-            item.phase == null // no new phase
+            lastItem.fidelity?.signature == null && // not finished by a signature yet
+            itemFidelity.phase == null // no new phase
           ) {
             lastItem.text += item.text;
-            if (item.signature) {
-              lastItem.signature = item.signature;
+            if (hasFidelity(item.fidelity)) {
+              // a signature finishes the current item
+              lastItem.fidelity = { ...lastItem.fidelity, ...item.fidelity };
             }
-          } else if (item.text || item.phase != null) {
+          } else if (item.text || itemFidelity.phase != null) {
             // text or new phase starts an item
             contentItems.push({ ...item });
           }
@@ -105,18 +123,16 @@ export abstract class LLMClient {
           if (
             lastItem &&
             lastItem.type === "thinking" &&
-            (lastItem.signature == null || // no signature yet
-              // reasoning-field signatures tag every delta of a run, so equal
-              // tags continue the same item (see REASONING_FIELD_SIGNATURES)
-              (item.signature != null &&
-                REASONING_FIELD_SIGNATURES.includes(item.signature) &&
-                lastItem.signature === item.signature))
+            (!hasFidelity(lastItem.fidelity) || // not finished by fidelity yet
+              // a run of equal fidelity is one item
+              fidelityEquals(lastItem.fidelity, item.fidelity))
           ) {
             lastItem.thinking += item.thinking;
-            if (item.signature) {
-              lastItem.signature = item.signature;
+            if (hasFidelity(item.fidelity)) {
+              // fidelity finishes the current item
+              lastItem.fidelity = item.fidelity;
             }
-          } else if (item.thinking || item.signature) {
+          } else if (item.thinking || hasFidelity(item.fidelity)) {
             contentItems.push({ ...item });
           }
         } else if (item.type === "partial_tool_call") {

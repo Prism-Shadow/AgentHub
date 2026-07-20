@@ -157,7 +157,7 @@ describe.each(REASONING_REPLAY_CASES)(
         {
           type: "thinking",
           thinking: "Let me think about the memo.",
-          signature: "reasoning_content",
+          fidelity: { reasoning_field: "reasoning_content" },
         },
       ]);
       expect(replayedMessage.reasoning_content).toBe(
@@ -181,7 +181,7 @@ describe.each(REASONING_REPLAY_CASES)(
         {
           type: "thinking",
           thinking: "Let me think about the memo.",
-          signature: "reasoning",
+          fidelity: { reasoning_field: "reasoning" },
         },
       ]);
       expect(replayedMessage.reasoning).toBe("Let me think about the memo.");
@@ -208,7 +208,7 @@ describe.each(REASONING_REPLAY_CASES)(
       expect(replayedMessage.reasoning).toBe("Let me think.");
     });
 
-    test("replay of unsigned thinking sends both fields", async () => {
+    test("replay of thinking without fidelity sends both fields", async () => {
       const client = createAutoClient(testCase);
       const history: UniMessage[] = [
         userMessage(),
