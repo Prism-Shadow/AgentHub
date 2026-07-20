@@ -15,6 +15,17 @@
 import { UsageMetadata } from "./types";
 
 /**
+ * Signatures that OpenAI Chat Completions-compatible clients stamp on thinking
+ * items to record which wire field (reasoning_content vs. reasoning) carried
+ * the model reasoning, so that a replayed message reproduces exactly the field
+ * the upstream produced.
+ */
+export const REASONING_FIELD_SIGNATURES: readonly string[] = [
+  "reasoning_content",
+  "reasoning",
+];
+
+/**
  * Fix the usage metadata for OpenRouter.
  *
  * OpenRouter occasionally does not include the reasoning tokens to the completion tokens.

@@ -28,6 +28,7 @@ from .types import (
     UniMessage,
     UsageMetadata,
 )
+from .utils import REASONING_FIELD_SIGNATURES
 
 
 class LLMClient(ABC):
@@ -117,7 +118,15 @@ class LLMClient(ABC):
                     if (
                         content_items
                         and content_items[-1]["type"] == "thinking"
-                        and content_items[-1].get("signature") is None  # no signature yet
+                        and (
+                            content_items[-1].get("signature") is None  # no signature yet
+                            # reasoning-field signatures tag every delta of a run, so equal
+                            # tags continue the same item (see REASONING_FIELD_SIGNATURES)
+                            or (
+                                item.get("signature") in REASONING_FIELD_SIGNATURES
+                                and content_items[-1].get("signature") == item.get("signature")
+                            )
+                        )
                     ):
                         content_items[-1]["thinking"] += item["thinking"]
                         if "signature" in item:  # finish the current item if signature is not None

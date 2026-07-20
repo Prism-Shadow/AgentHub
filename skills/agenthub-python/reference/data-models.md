@@ -79,7 +79,7 @@ Content items:
 - `text`: Text chunk; `phase` marks sub-stage; `signature` verifies signed content.
 - `image_url`: Image URL or data URI.
 - `inline_data`: Inline media bytes with MIME type; may carry `signature`.
-- `thinking`: Text reasoning content; may carry `signature`.
+- `thinking`: Text reasoning content; may carry `signature`. OpenAI-compatible clients record the upstream wire field name (`reasoning_content` or `reasoning`) here so a replay reproduces the exact field.
 - `inline_thinking`: Binary reasoning artifact; may carry `signature`.
 - `tool_call`: Complete model tool request with name, args, ID, and optional `signature`.
 - `tool_result`: Tool output text for a `tool_call_id`; may include image URLs.

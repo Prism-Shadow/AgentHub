@@ -159,6 +159,7 @@ export class GLM5_1Client extends LLMClient {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const toolCalls: any[] = [];
       let thinking = "";
+      const thinkingSignatures = new Set<string | undefined>();
 
       for (const item of msg.content_items) {
         if (item.type === "text") {
@@ -167,6 +168,7 @@ export class GLM5_1Client extends LLMClient {
           throw new Error("GLM-5 does not support image inputs.");
         } else if (item.type === "thinking") {
           thinking += item.thinking;
+          thinkingSignatures.add(item.signature);
         } else if (item.type === "tool_call") {
           toolCalls.push({
             id: item.tool_call_id,
@@ -208,8 +210,22 @@ export class GLM5_1Client extends LLMClient {
       }
 
       if (thinking) {
-        message.reasoning_content = thinking;
-        message.reasoning = thinking;
+        // send thinking back through the exact field the upstream produced (recorded
+        // in the item signature); servers may reject the spelling they did not emit
+        if (
+          thinkingSignatures.size === 1 &&
+          thinkingSignatures.has("reasoning_content")
+        ) {
+          message.reasoning_content = thinking;
+        } else if (
+          thinkingSignatures.size === 1 &&
+          thinkingSignatures.has("reasoning")
+        ) {
+          message.reasoning = thinking;
+        } else {
+          message.reasoning_content = thinking; // vLLM & siliconflow compatibility
+          message.reasoning = thinking; // openrouter compatibility
+        }
       }
 
       if (Object.keys(message).length > 1) {
@@ -238,24 +254,31 @@ export class GLM5_1Client extends LLMClient {
         contentItems.push({ type: "text", text: delta.content });
       }
 
-      // vLLM & siliconflow compatibility
+      // the thinking field name differs by server: vLLM & siliconflow use
+      // reasoning_content while openrouter uses reasoning; sign each delta with
+      // the wire field that carried it so a replay can reproduce exactly the
+      // field the upstream produced
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((delta as any)?.reasoning_content) {
+      const reasoningContent = (delta as any)?.reasoning_content;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const reasoning = (delta as any)?.reasoning;
+      if (reasoningContent && reasoning) {
+        eventType = "delta";
+        // ambiguous origin: leave the item unsigned so a replay sends both fields back
+        contentItems.push({ type: "thinking", thinking: reasoningContent });
+      } else if (reasoningContent) {
         eventType = "delta";
         contentItems.push({
           type: "thinking",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          thinking: (delta as any).reasoning_content,
+          thinking: reasoningContent,
+          signature: "reasoning_content",
         });
-      }
-      // openrouter compatibility
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      else if ((delta as any)?.reasoning) {
+      } else if (reasoning) {
         eventType = "delta";
         contentItems.push({
           type: "thinking",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          thinking: (delta as any).reasoning,
+          thinking: reasoning,
+          signature: "reasoning",
         });
       }
 

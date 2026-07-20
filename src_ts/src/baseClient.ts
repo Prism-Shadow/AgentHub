@@ -21,6 +21,7 @@ import {
   UniMessage,
   UsageMetadata,
 } from "./types";
+import { REASONING_FIELD_SIGNATURES } from "./utils";
 
 /**
  * Abstract base class for LLM clients.
@@ -104,7 +105,12 @@ export abstract class LLMClient {
           if (
             lastItem &&
             lastItem.type === "thinking" &&
-            lastItem.signature == null
+            (lastItem.signature == null || // no signature yet
+              // reasoning-field signatures tag every delta of a run, so equal
+              // tags continue the same item (see REASONING_FIELD_SIGNATURES)
+              (item.signature != null &&
+                REASONING_FIELD_SIGNATURES.includes(item.signature) &&
+                lastItem.signature === item.signature))
           ) {
             lastItem.thinking += item.thinking;
             if (item.signature) {
