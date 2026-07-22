@@ -54,12 +54,18 @@ CHANGELOG.md                      One brief line per release linking into change
 ## Stage 4 — Verify
 
 - Register the model in the env-gated `AVAILABLE_MODELS` lists of both test files with correct capability flags. Do not add model-specific test functions or files.
+- `AVAILABLE_MODELS` keeps only the newest version of each model family per provider block (e.g. gemini-3.6-flash, not gemini-3.5-flash or 3.5-flash-lite as well). When a newer generation lands, replace the older entry — the old client folder stays supported and routed (see Stage 3) but is no longer e2e-tested.
 - Static checks: `make lint` in `src_py/`; `npm run lint` and `npm run build` in `src_ts/`.
 - Run only the new model's e2e tests; the full suites are slow and spend real API quota:
-  - Within a model family, run only the newest version (e.g. glm-5.2, not glm-5.1 as well); older versions stay covered by CI.
   - `cd src_py && uv run pytest -vvv tests/test_client.py -k "<model-name>"`
   - `cd src_ts && npm run test -- -t "<model-name>"`
 - Leave unrelated tests to CI.
+
+## Supported-model registry
+
+- `src_py/agenthub/registry.py` / `src_ts/src/registry.ts` list the supported models as entries of (model, base_url, client) plus input/output modalities, context window, and USD-stored pricing keyed by AgentHub's usage buckets. Keep both languages identical; the registry unit test constructs every entry through `AutoLLMClient`.
+- For OpenRouter-hosted entries, pull authoritative data from the live models API `GET https://openrouter.ai/api/v1/models` (docs: https://openrouter.ai/docs/api/api-reference/models/list-all-models-and-their-properties): `pricing.prompt`/`completion` are USD per token (multiply by 1e6), plus `context_length` and `architecture.input_modalities`/`output_modalities`. The API lists chat models only — embedding models are absent and must be checked via their model pages.
+- SiliconFlow publishes no pricing API; declare official CNY list prices with the `cny()` initializer (converted to USD storage at 7 CNY/USD).
 
 ## Record and ship
 

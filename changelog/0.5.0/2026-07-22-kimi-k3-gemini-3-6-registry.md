@@ -73,6 +73,14 @@
 - Gemini 3.6 generation rejects `temperature` via `UnsupportedParameterError`; old
   `gemini3/` client and its models are left untouched.
 
+## Test-matrix policy
+
+- `AVAILABLE_MODELS` now keeps only the newest version of each model family per provider
+  block: gemini-3.6-flash replaces gemini-3.5-flash and 3.5-flash-lite (Vertex included),
+  glm-5.2 replaces glm-5.1 (official, OpenRouter, SiliconFlow), and kimi-k3 replaces
+  kimi-k2.6 (official, OpenRouter; SiliconFlow keeps Kimi-K2.6 as its newest available
+  Kimi). Older clients stay supported and routed but are no longer e2e-tested.
+
 ## Policy changes recorded in the dev skill
 
 - When old and new generations differ, keep the old model's client and routing and add a

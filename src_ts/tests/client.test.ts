@@ -42,16 +42,6 @@ interface Model {
 const AVAILABLE_MODELS: Model[] = [];
 
 if (process.env.GEMINI_API_KEY) {
-  AVAILABLE_MODELS.push({
-    name: "gemini-3.5-flash",
-    supportTextGeneration: true,
-    supportTemperature: true,
-    supportImageUnderstanding: true,
-    supportImageGeneration: false,
-    supportAudioGeneration: false,
-    supportEmbedding: false,
-    provider: "official",
-  });
 
   AVAILABLE_MODELS.push({
     name: "gemini-3.6-flash",
@@ -64,16 +54,6 @@ if (process.env.GEMINI_API_KEY) {
     provider: "official",
   });
 
-  AVAILABLE_MODELS.push({
-    name: "gemini-3.5-flash-lite",
-    supportTextGeneration: true,
-    supportTemperature: false,
-    supportImageUnderstanding: true,
-    supportImageGeneration: false,
-    supportAudioGeneration: false,
-    supportEmbedding: false,
-    provider: "official",
-  });
 
   AVAILABLE_MODELS.push({
     name: "gemini-3.1-flash-image",
@@ -158,31 +138,11 @@ if (process.env.ZAI_API_KEY) {
     supportEmbedding: false,
     provider: "official",
   });
-  AVAILABLE_MODELS.push({
-    name: "glm-5.1",
-    supportTextGeneration: true,
-    supportTemperature: true,
-    supportImageUnderstanding: false,
-    supportImageGeneration: false,
-    supportAudioGeneration: false,
-    supportEmbedding: false,
-    provider: "official",
-  });
 }
 
 if (process.env.MOONSHOT_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "kimi-k3",
-    supportTextGeneration: true,
-    supportTemperature: false,
-    supportImageUnderstanding: true,
-    supportImageGeneration: false,
-    supportAudioGeneration: false,
-    supportEmbedding: false,
-    provider: "official",
-  });
-  AVAILABLE_MODELS.push({
-    name: "kimi-k2.6",
     supportTextGeneration: true,
     supportTemperature: false,
     supportImageUnderstanding: true,
@@ -221,9 +181,9 @@ if (process.env.BEDROCK_API_KEY) {
 
 if (process.env.VERTEX_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "gemini-3.5-flash",
+    name: "gemini-3.6-flash",
     supportTextGeneration: true,
-    supportTemperature: true,
+    supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -268,16 +228,6 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
-    name: "z-ai/glm-5.1",
-    supportTextGeneration: true,
-    supportTemperature: true,
-    supportImageUnderstanding: false,
-    supportImageGeneration: false,
-    supportAudioGeneration: false,
-    supportEmbedding: false,
-    provider: "openrouter",
-  });
-  AVAILABLE_MODELS.push({
     name: "qwen/qwen3.6-35b-a3b",
     supportTextGeneration: true,
     supportTemperature: true,
@@ -309,31 +259,11 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     supportEmbedding: false,
     provider: "openrouter",
   });
-  AVAILABLE_MODELS.push({
-    name: "moonshotai/kimi-k2.6",
-    supportTextGeneration: true,
-    supportTemperature: false,
-    supportImageUnderstanding: true,
-    supportImageGeneration: false,
-    supportAudioGeneration: false,
-    supportEmbedding: false,
-    provider: "openrouter",
-  });
 }
 
 if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
     name: "zai-org/GLM-5.2",
-    supportTextGeneration: true,
-    supportTemperature: true,
-    supportImageUnderstanding: false,
-    supportImageGeneration: false,
-    supportAudioGeneration: false,
-    supportEmbedding: false,
-    provider: "siliconflow",
-  });
-  AVAILABLE_MODELS.push({
-    name: "Pro/zai-org/GLM-5.1",
     supportTextGeneration: true,
     supportTemperature: true,
     supportImageUnderstanding: false,

@@ -49,9 +49,7 @@ class Model:
 AVAILABLE_MODELS: list[Model] = []
 
 if os.getenv("GEMINI_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="gemini-3.5-flash"))
     AVAILABLE_MODELS.append(Model(name="gemini-3.6-flash", support_temperature=False))
-    AVAILABLE_MODELS.append(Model(name="gemini-3.5-flash-lite", support_temperature=False))
     AVAILABLE_MODELS.append(
         Model(
             name="gemini-3.1-flash-image",
@@ -98,11 +96,9 @@ if os.getenv("OPENAI_API_KEY"):
 
 if os.getenv("ZAI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="glm-5.2", support_image_understanding=False))
-    AVAILABLE_MODELS.append(Model(name="glm-5.1", support_image_understanding=False))
 
 if os.getenv("MOONSHOT_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="kimi-k3", support_temperature=False))
-    AVAILABLE_MODELS.append(Model(name="kimi-k2.6", support_temperature=False))
 
 if os.getenv("DEEPSEEK_API_KEY"):
     AVAILABLE_MODELS.append(
@@ -113,7 +109,7 @@ if os.getenv("BEDROCK_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="global.anthropic.claude-sonnet-4-6", provider="bedrock"))
 
 if os.getenv("VERTEX_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="gemini-3.5-flash", provider="vertex"))
+    AVAILABLE_MODELS.append(Model(name="gemini-3.6-flash", provider="vertex", support_temperature=False))
     AVAILABLE_MODELS.append(
         Model(
             name="gemini-3.1-flash-image",
@@ -139,7 +135,6 @@ RUN_SLOW_TEST = os.getenv("RUN_SLOW_TEST", "0") == "1"
 
 if os.getenv("OPENROUTER_API_KEY") and RUN_SLOW_TEST:
     AVAILABLE_MODELS.append(Model(name="z-ai/glm-5.2", provider="openrouter", support_image_understanding=False))
-    AVAILABLE_MODELS.append(Model(name="z-ai/glm-5.1", provider="openrouter", support_image_understanding=False))
     AVAILABLE_MODELS.append(Model(name="qwen/qwen3.6-35b-a3b", provider="openrouter", client_type="openai"))
     AVAILABLE_MODELS.append(
         Model(
@@ -153,13 +148,9 @@ if os.getenv("OPENROUTER_API_KEY") and RUN_SLOW_TEST:
         )
     )
     AVAILABLE_MODELS.append(Model(name="moonshotai/kimi-k3", provider="openrouter", support_temperature=False))
-    AVAILABLE_MODELS.append(Model(name="moonshotai/kimi-k2.6", provider="openrouter", support_temperature=False))
 
 if os.getenv("SILICONFLOW_API_KEY") and RUN_SLOW_TEST:
     AVAILABLE_MODELS.append(Model(name="zai-org/GLM-5.2", provider="siliconflow", support_image_understanding=False))
-    AVAILABLE_MODELS.append(
-        Model(name="Pro/zai-org/GLM-5.1", provider="siliconflow", support_image_understanding=False)
-    )
     AVAILABLE_MODELS.append(Model(name="Qwen/Qwen3.6-35B-A3B", provider="siliconflow", client_type="openai"))
     AVAILABLE_MODELS.append(Model(name="Pro/moonshotai/Kimi-K2.6", provider="siliconflow", support_temperature=False))
     AVAILABLE_MODELS.append(
