@@ -105,7 +105,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     input_modalities: ["Text", "Image", "Video", "Audio"],
     output_modalities: ["Text"],
     context_window: 1048576,
-    pricing: usd(0.3, 2.5),
+    pricing: usd(0.3, 2.5, 0.03),
   },
   {
     model: "gemini-3.5-flash",

@@ -110,7 +110,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text", "Image", "Video", "Audio"],
         "output_modalities": ["Text"],
         "context_window": 1048576,
-        "pricing": _usd(0.3, 2.5),
+        "pricing": _usd(0.3, 2.5, cached=0.03),
     },
     {
         "model": "gemini-3.5-flash",

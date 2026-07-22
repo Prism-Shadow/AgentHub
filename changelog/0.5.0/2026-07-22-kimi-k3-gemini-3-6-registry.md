@@ -36,7 +36,7 @@
   the vendor's output price), stored in USD and multiplied by 7 when CNY is requested;
   CNY-denominated official list prices are declared with a `cny()` initializer that
   converts at 7 CNY/USD on write. Gemini cache-hit prices from the official pricing page
-  (gemini-3.5-flash-lite publishes no standard-tier cache-read price and carries none). `qwen/qwen3-embedding-4b` stays listed (embedding models are absent from
+  (gemini-3.6-flash $0.15, gemini-3.5-flash-lite $0.03). `qwen/qwen3-embedding-4b` stays listed (embedding models are absent from
   OpenRouter's chat-only `/models` API but the model page is live). Every newly added entry
   passed a live streaming smoke call, except the official Anthropic entries, which could
   not be smoke-tested locally (invalid local `ANTHROPIC_API_KEY`; their ids and prices were
