@@ -20,7 +20,7 @@ from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionChunk, ChatCompletionMessageParam
 
 from ..base_client import LLMClient
-from ..errors import parse_tool_call_arguments
+from ..errors import UnsupportedParameterError, parse_tool_call_arguments
 from ..types import (
     EventType,
     FinishReason,
@@ -63,7 +63,9 @@ class GLM5_1Client(LLMClient):
         if tool_choice == "auto":
             return "auto"
         else:
-            raise ValueError("GLM only supports 'auto' for tool_choice.")
+            raise UnsupportedParameterError(
+                self.__class__.__name__, "tool_choice", "GLM only supports 'auto' for tool_choice."
+            )
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """
@@ -96,7 +98,9 @@ class GLM5_1Client(LLMClient):
             glm_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
 
         if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
-            raise ValueError("prompt_caching must be ENABLE for GLM.")
+            raise UnsupportedParameterError(
+                self.__class__.__name__, "prompt_caching", "prompt_caching must be ENABLE for GLM."
+            )
 
         return glm_config
 

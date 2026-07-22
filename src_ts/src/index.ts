@@ -17,5 +17,13 @@ export {
   AgentHubError,
   EmptyResponseError,
   ToolCallArgumentParseError,
+  UnsupportedParameterError,
 } from "./errors";
+export {
+  listSupportedModels,
+  Currency,
+  Modality,
+  ModelPricing,
+  SupportedModel,
+} from "./registry";
 export * from "./types";

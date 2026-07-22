@@ -20,7 +20,10 @@ import type {
   ChatCompletionCreateParamsStreaming,
 } from "openai/resources/chat/completions";
 import { LLMClient } from "../baseClient";
-import { parseToolCallArguments } from "../errors";
+import {
+  parseToolCallArguments,
+  UnsupportedParameterError,
+} from "../errors";
 import {
   EventType,
   FinishReason,
@@ -155,7 +158,11 @@ export class OpenaiClient extends LLMClient {
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE
     ) {
-      throw new Error("prompt_caching must be ENABLE for OpenAI.");
+      throw new UnsupportedParameterError({
+        client: this.constructor.name,
+        parameter: "prompt_caching",
+        message: "prompt_caching must be ENABLE for OpenAI.",
+      });
     }
 
     return openaiConfig;

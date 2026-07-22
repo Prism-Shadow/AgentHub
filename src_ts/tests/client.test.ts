@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { AutoLLMClient } from "../src/autoClient";
+import { listSupportedModels } from "../src/registry";
 import { ThinkingLevel, UniMessage, UniConfig, UniEvent } from "../src/types";
 import { expect, describe, test } from "@jest/globals";
 
@@ -41,10 +42,11 @@ interface Model {
 const AVAILABLE_MODELS: Model[] = [];
 
 if (process.env.GEMINI_API_KEY) {
+
   AVAILABLE_MODELS.push({
-    name: "gemini-3.5-flash",
+    name: "gemini-3.6-flash",
     supportTextGeneration: true,
-    supportTemperature: true,
+    supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -52,8 +54,9 @@ if (process.env.GEMINI_API_KEY) {
     provider: "official",
   });
 
+
   AVAILABLE_MODELS.push({
-    name: "gemini-3.1-flash-image-preview",
+    name: "gemini-3.1-flash-image",
     supportTextGeneration: false,
     supportTemperature: false,
     supportImageUnderstanding: false,
@@ -126,7 +129,7 @@ if (process.env.OPENAI_API_KEY) {
 
 if (process.env.ZAI_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "glm-5.1",
+    name: "glm-5.2",
     supportTextGeneration: true,
     supportTemperature: true,
     supportImageUnderstanding: false,
@@ -139,7 +142,7 @@ if (process.env.ZAI_API_KEY) {
 
 if (process.env.MOONSHOT_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "kimi-k2.6",
+    name: "kimi-k3",
     supportTextGeneration: true,
     supportTemperature: false,
     supportImageUnderstanding: true,
@@ -178,9 +181,9 @@ if (process.env.BEDROCK_API_KEY) {
 
 if (process.env.VERTEX_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "gemini-3.5-flash",
+    name: "gemini-3.6-flash",
     supportTextGeneration: true,
-    supportTemperature: true,
+    supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -189,7 +192,7 @@ if (process.env.VERTEX_API_KEY) {
   });
 
   AVAILABLE_MODELS.push({
-    name: "gemini-3.1-flash-image-preview",
+    name: "gemini-3.1-flash-image",
     supportTextGeneration: false,
     supportTemperature: false,
     supportImageUnderstanding: false,
@@ -215,7 +218,7 @@ const RUN_SLOW_TEST = process.env.RUN_SLOW_TEST === "1";
 
 if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
-    name: "z-ai/glm-5.1",
+    name: "z-ai/glm-5.2",
     supportTextGeneration: true,
     supportTemperature: true,
     supportImageUnderstanding: false,
@@ -247,7 +250,7 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
-    name: "moonshotai/kimi-k2.6",
+    name: "moonshotai/kimi-k3",
     supportTextGeneration: true,
     supportTemperature: false,
     supportImageUnderstanding: true,
@@ -260,7 +263,7 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
 
 if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
-    name: "Pro/zai-org/GLM-5.1",
+    name: "zai-org/GLM-5.2",
     supportTextGeneration: true,
     supportTemperature: true,
     supportImageUnderstanding: false,
@@ -1046,6 +1049,51 @@ test("should reject unknown model", () => {
   expect(() => new AutoLLMClient({ model: "unknown-model" })).toThrow(
     "not supported",
   );
+});
+
+test("should list supported model entries", () => {
+  const entries = listSupportedModels();
+  const kimi = entries.find((entry) => entry.model === "kimi-k3");
+  expect(kimi).toBeDefined();
+  expect(kimi?.base_url).toBe("https://api.moonshot.cn/v1");
+  expect(kimi?.client).toBe("kimi-k3");
+  expect(kimi?.context_window).toBe(1048576);
+  expect(kimi?.input_modalities).toEqual(["Text", "Image"]);
+  expect(kimi?.output_modalities).toEqual(["Text"]);
+  // stored in USD (official CNY prices pre-converted at 7 CNY/USD)
+  expect(kimi?.pricing).toEqual({
+    currency: "USD",
+    prompt_tokens: 2.857143,
+    thoughts_tokens: 14.285714,
+    response_tokens: 14.285714,
+    cached_tokens: 0.285714,
+  });
+
+  const kimiCny = listSupportedModels("CNY").find(
+    (entry) => entry.model === "kimi-k3",
+  );
+  expect(kimiCny?.pricing?.currency).toBe("CNY");
+  expect(kimiCny?.pricing?.prompt_tokens).toBeCloseTo(20.0, 3);
+  expect(kimiCny?.pricing?.thoughts_tokens).toBeCloseTo(100.0, 3);
+  expect(kimiCny?.pricing?.response_tokens).toBeCloseTo(100.0, 3);
+  expect(kimiCny?.pricing?.cached_tokens).toBeCloseTo(2.0, 3);
+
+  const glm52 = entries.find((entry) => entry.model === "z-ai/glm-5.2");
+  expect(glm52?.base_url).toBe("https://openrouter.ai/api/v1");
+  expect(glm52?.client).toBe("glm-5.2");
+
+  for (const entry of entries) {
+    expect(entry.input_modalities.length).toBeGreaterThan(0);
+    expect(entry.output_modalities.length).toBeGreaterThan(0);
+    const client = new AutoLLMClient({
+      model: entry.model,
+      apiKey: "test-key",
+      baseUrl: entry.base_url,
+      clientType: entry.client,
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((client as any)._client).toBeDefined();
+  }
 });
 
 test.each([
