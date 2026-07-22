@@ -20,7 +20,10 @@ import type {
   ChatCompletionCreateParamsStreaming,
 } from "openai/resources/chat/completions";
 import { LLMClient } from "../baseClient";
-import { parseToolCallArguments } from "../errors";
+import {
+  parseToolCallArguments,
+  UnsupportedParameterError,
+} from "../errors";
 import {
   EventType,
   FinishReason,
@@ -129,7 +132,11 @@ export class KimiK2_6Client extends LLMClient {
     } else if (toolChoice === "none") {
       return "none";
     } else {
-      throw new Error('Kimi only supports "auto" and "none" for tool_choice.');
+      throw new UnsupportedParameterError({
+        client: this.constructor.name,
+        parameter: "tool_choice",
+        message: 'Kimi only supports "auto" and "none" for tool_choice.',
+      });
     }
   }
 
@@ -150,7 +157,11 @@ export class KimiK2_6Client extends LLMClient {
     }
 
     if (config.temperature !== undefined && config.temperature !== 1.0) {
-      throw new Error("Kimi does not support setting temperature.");
+      throw new UnsupportedParameterError({
+        client: this.constructor.name,
+        parameter: "temperature",
+        message: "Kimi does not support setting temperature.",
+      });
     }
 
     if (config.thinking_level !== undefined) {
@@ -178,7 +189,11 @@ export class KimiK2_6Client extends LLMClient {
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE
     ) {
-      throw new Error("prompt_caching must be ENABLE for Kimi.");
+      throw new UnsupportedParameterError({
+        client: this.constructor.name,
+        parameter: "prompt_caching",
+        message: "prompt_caching must be ENABLE for Kimi.",
+      });
     }
 
     if (config.trace_id !== undefined) {

@@ -23,7 +23,7 @@ from typing import Literal
 import httpx
 import pytest
 
-from agenthub import AutoLLMClient, ThinkingLevel
+from agenthub import AutoLLMClient, ThinkingLevel, list_supported_models
 
 
 IMAGE = "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg"
@@ -49,10 +49,10 @@ class Model:
 AVAILABLE_MODELS: list[Model] = []
 
 if os.getenv("GEMINI_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="gemini-3.5-flash"))
+    AVAILABLE_MODELS.append(Model(name="gemini-3.6-flash", support_temperature=False))
     AVAILABLE_MODELS.append(
         Model(
-            name="gemini-3.1-flash-image-preview",
+            name="gemini-3.1-flash-image",
             support_text=False,
             support_temperature=False,
             support_image_understanding=False,
@@ -95,10 +95,10 @@ if os.getenv("OPENAI_API_KEY"):
     )
 
 if os.getenv("ZAI_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="glm-5.1", support_image_understanding=False))
+    AVAILABLE_MODELS.append(Model(name="glm-5.2", support_image_understanding=False))
 
 if os.getenv("MOONSHOT_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="kimi-k2.6", support_temperature=False))
+    AVAILABLE_MODELS.append(Model(name="kimi-k3", support_temperature=False))
 
 if os.getenv("DEEPSEEK_API_KEY"):
     AVAILABLE_MODELS.append(
@@ -109,10 +109,10 @@ if os.getenv("BEDROCK_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="global.anthropic.claude-sonnet-4-6", provider="bedrock"))
 
 if os.getenv("VERTEX_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="gemini-3.5-flash", provider="vertex"))
+    AVAILABLE_MODELS.append(Model(name="gemini-3.6-flash", provider="vertex", support_temperature=False))
     AVAILABLE_MODELS.append(
         Model(
-            name="gemini-3.1-flash-image-preview",
+            name="gemini-3.1-flash-image",
             provider="vertex",
             support_text=False,
             support_temperature=False,
@@ -134,7 +134,7 @@ if os.getenv("VERTEX_API_KEY"):
 RUN_SLOW_TEST = os.getenv("RUN_SLOW_TEST", "0") == "1"
 
 if os.getenv("OPENROUTER_API_KEY") and RUN_SLOW_TEST:
-    AVAILABLE_MODELS.append(Model(name="z-ai/glm-5.1", provider="openrouter", support_image_understanding=False))
+    AVAILABLE_MODELS.append(Model(name="z-ai/glm-5.2", provider="openrouter", support_image_understanding=False))
     AVAILABLE_MODELS.append(Model(name="qwen/qwen3.6-35b-a3b", provider="openrouter", client_type="openai"))
     AVAILABLE_MODELS.append(
         Model(
@@ -147,12 +147,10 @@ if os.getenv("OPENROUTER_API_KEY") and RUN_SLOW_TEST:
             client_type="openai-embedding",
         )
     )
-    AVAILABLE_MODELS.append(Model(name="moonshotai/kimi-k2.6", provider="openrouter", support_temperature=False))
+    AVAILABLE_MODELS.append(Model(name="moonshotai/kimi-k3", provider="openrouter", support_temperature=False))
 
 if os.getenv("SILICONFLOW_API_KEY") and RUN_SLOW_TEST:
-    AVAILABLE_MODELS.append(
-        Model(name="Pro/zai-org/GLM-5.1", provider="siliconflow", support_image_understanding=False)
-    )
+    AVAILABLE_MODELS.append(Model(name="zai-org/GLM-5.2", provider="siliconflow", support_image_understanding=False))
     AVAILABLE_MODELS.append(Model(name="Qwen/Qwen3.6-35B-A3B", provider="siliconflow", client_type="openai"))
     AVAILABLE_MODELS.append(Model(name="Pro/moonshotai/Kimi-K2.6", provider="siliconflow", support_temperature=False))
     AVAILABLE_MODELS.append(
@@ -394,6 +392,44 @@ async def test_unknown_model():
     """Test that unknown models raise ValueError."""
     with pytest.raises(ValueError, match="not support"):
         AutoLLMClient(model="unknown-model")
+
+
+@pytest.mark.asyncio
+async def test_list_supported_models():
+    """Test that the registry lists model entries accepted by AutoLLMClient."""
+    entries = list_supported_models()
+    kimi = next(entry for entry in entries if entry["model"] == "kimi-k3")
+    assert kimi["base_url"] == "https://api.moonshot.cn/v1"
+    assert kimi["client"] == "kimi-k3"
+    assert kimi["context_window"] == 1048576
+    assert kimi["input_modalities"] == ["Text", "Image"]
+    assert kimi["output_modalities"] == ["Text"]
+    # stored in USD (official CNY prices pre-converted at 7 CNY/USD)
+    assert kimi["pricing"] == {
+        "currency": "USD",
+        "prompt_tokens": 2.857143,
+        "thoughts_tokens": 14.285714,
+        "response_tokens": 14.285714,
+        "cached_tokens": 0.285714,
+    }
+
+    kimi_cny = next(entry for entry in list_supported_models(currency="CNY") if entry["model"] == "kimi-k3")
+    assert kimi_cny["pricing"]["currency"] == "CNY"
+    assert kimi_cny["pricing"]["prompt_tokens"] == pytest.approx(20.0, abs=1e-4)
+    assert kimi_cny["pricing"]["thoughts_tokens"] == pytest.approx(100.0, abs=1e-4)
+    assert kimi_cny["pricing"]["response_tokens"] == pytest.approx(100.0, abs=1e-4)
+    assert kimi_cny["pricing"]["cached_tokens"] == pytest.approx(2.0, abs=1e-4)
+
+    glm_5_2 = next(entry for entry in entries if entry["model"] == "z-ai/glm-5.2")
+    assert glm_5_2["base_url"] == "https://openrouter.ai/api/v1"
+    assert glm_5_2["client"] == "glm-5.2"
+
+    for entry in entries:
+        assert {"model", "base_url", "client", "input_modalities", "output_modalities"} <= set(entry)
+        client = AutoLLMClient(
+            model=entry["model"], api_key="test-key", base_url=entry["base_url"], client_type=entry["client"]
+        )
+        assert client._client is not None
 
 
 @pytest.mark.asyncio

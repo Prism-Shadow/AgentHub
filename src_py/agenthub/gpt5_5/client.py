@@ -20,7 +20,7 @@ from openai import AsyncOpenAI
 from openai.types.responses import ResponseInputParam, ResponseStreamEvent
 
 from ..base_client import LLMClient
-from ..errors import parse_tool_call_arguments
+from ..errors import UnsupportedParameterError, parse_tool_call_arguments
 from ..types import (
     EventType,
     FinishReason,
@@ -84,7 +84,9 @@ class GPT5_5Client(LLMClient):
             openai_config["max_output_tokens"] = config["max_tokens"]
 
         if config.get("temperature") is not None and config["temperature"] != 1.0:
-            raise ValueError("GPT-5.5 does not support setting temperature.")
+            raise UnsupportedParameterError(
+                self.__class__.__name__, "temperature", "GPT-5.5 does not support setting temperature."
+            )
 
         if config.get("thinking_level") is not None:
             openai_config["reasoning"] = {"effort": self._convert_thinking_level_to_effort(config["thinking_level"])}
@@ -98,7 +100,9 @@ class GPT5_5Client(LLMClient):
             openai_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
 
         if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
-            raise ValueError("prompt_caching must be ENABLE for GPT-5.5.")
+            raise UnsupportedParameterError(
+                self.__class__.__name__, "prompt_caching", "prompt_caching must be ENABLE for GPT-5.5."
+            )
 
         return openai_config
 

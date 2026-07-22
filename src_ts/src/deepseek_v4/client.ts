@@ -19,7 +19,10 @@ import type {
   ChatCompletionCreateParamsStreaming,
 } from "openai/resources/chat/completions";
 import { LLMClient } from "../baseClient";
-import { parseToolCallArguments } from "../errors";
+import {
+  parseToolCallArguments,
+  UnsupportedParameterError,
+} from "../errors";
 import {
   EventType,
   FinishReason,
@@ -81,9 +84,11 @@ export class DeepSeekV4Client extends LLMClient {
     if (toolChoice === "auto" || toolChoice === "none") {
       return toolChoice;
     }
-    throw new Error(
-      'DeepSeek V4 only supports "auto" and "none" for tool_choice.',
-    );
+    throw new UnsupportedParameterError({
+      client: this.constructor.name,
+      parameter: "tool_choice",
+      message: 'DeepSeek V4 only supports "auto" and "none" for tool_choice.',
+    });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -100,7 +105,11 @@ export class DeepSeekV4Client extends LLMClient {
     }
 
     if (config.temperature !== undefined && config.temperature !== 1.0) {
-      throw new Error("DeepSeek V4 does not support setting temperature.");
+      throw new UnsupportedParameterError({
+        client: this.constructor.name,
+        parameter: "temperature",
+        message: "DeepSeek V4 does not support setting temperature.",
+      });
     }
 
     if (config.thinking_level !== undefined) {
@@ -134,7 +143,11 @@ export class DeepSeekV4Client extends LLMClient {
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE
     ) {
-      throw new Error("prompt_caching must be ENABLE for DeepSeek.");
+      throw new UnsupportedParameterError({
+        client: this.constructor.name,
+        parameter: "prompt_caching",
+        message: "prompt_caching must be ENABLE for DeepSeek.",
+      });
     }
 
     return deepseekConfig;

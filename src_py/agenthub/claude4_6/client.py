@@ -23,7 +23,7 @@ from anthropic import AsyncAnthropic, AsyncAnthropicBedrock
 from anthropic.types.beta import BetaMessageParam, BetaRawMessageStreamEvent
 
 from ..base_client import LLMClient
-from ..errors import parse_tool_call_arguments
+from ..errors import UnsupportedParameterError, parse_tool_call_arguments
 from ..types import (
     EventType,
     FinishReason,
@@ -118,7 +118,9 @@ class Claude4_6Client(LLMClient):
         """Convert ToolChoice to Claude's tool_choice format."""
         if isinstance(tool_choice, list):
             if len(tool_choice) > 1:
-                raise ValueError("Claude supports only one tool choice.")
+                raise UnsupportedParameterError(
+                    self.__class__.__name__, "tool_choice", "Claude supports only one tool choice."
+                )
 
             return {"type": "any", "name": tool_choice[0]}
         elif tool_choice == "none":

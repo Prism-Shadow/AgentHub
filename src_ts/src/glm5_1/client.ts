@@ -19,7 +19,10 @@ import type {
   ChatCompletionCreateParamsStreaming,
 } from "openai/resources/chat/completions";
 import { LLMClient } from "../baseClient";
-import { parseToolCallArguments } from "../errors";
+import {
+  parseToolCallArguments,
+  UnsupportedParameterError,
+} from "../errors";
 import {
   EventType,
   FinishReason,
@@ -86,7 +89,11 @@ export class GLM5_1Client extends LLMClient {
     if (toolChoice === "auto") {
       return "auto";
     } else {
-      throw new Error('GLM only supports "auto" for tool_choice.');
+      throw new UnsupportedParameterError({
+        client: this.constructor.name,
+        parameter: "tool_choice",
+        message: 'GLM only supports "auto" for tool_choice.',
+      });
     }
   }
 
@@ -135,7 +142,11 @@ export class GLM5_1Client extends LLMClient {
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE
     ) {
-      throw new Error("prompt_caching must be ENABLE for GLM.");
+      throw new UnsupportedParameterError({
+        client: this.constructor.name,
+        parameter: "prompt_caching",
+        message: "prompt_caching must be ENABLE for GLM.",
+      });
     }
 
     return glmConfig;

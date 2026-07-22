@@ -29,6 +29,20 @@ class AgentHubError(ValueError):
     """Base class for errors raised by AgentHub clients."""
 
 
+class UnsupportedParameterError(AgentHubError):
+    """Raised when a UniConfig parameter value is not supported by the target model client.
+
+    Thinking levels never raise this by design: every client maps each ThinkingLevel
+    onto the closest level the model supports. Parameters such as temperature and
+    tool_choice may reject unsupported values with this error.
+    """
+
+    def __init__(self, client: str, parameter: str, message: str) -> None:
+        self.client = client
+        self.parameter = parameter
+        super().__init__(message)
+
+
 class EmptyResponseError(AgentHubError):
     """Raised when a completed response carries no non-thinking content and no tool calls.
 

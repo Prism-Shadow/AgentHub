@@ -18,8 +18,8 @@ src_ts/src/<protocol>/            TypeScript client, mirrors the Python folder
 src_ts/src/autoClient.ts          TypeScript routing, mirrors auto_client.py
 src_py/tests/test_client.py       Parameterized e2e tests (env-gated AVAILABLE_MODELS)
 src_ts/tests/client.test.ts       Same for TypeScript
-changelog/                        One detail file per CHANGELOG.md entry
-CHANGELOG.md                      Brief one-line entries linking into changelog/
+changelog/<version>/              Release summary (README.md) plus one detail file per entry
+CHANGELOG.md                      One brief line per release linking into changelog/
 ```
 
 ## Stage 1 — Sync official docs into `llmsdk_docs/`
@@ -43,22 +43,32 @@ CHANGELOG.md                      Brief one-line entries linking into changelog/
 - One folder per wire protocol, named after the newest model generation that uses it. Diff the new protocol (capture + docs) against the closest existing folder:
   - Any difference between generations, even a single key name, means a separate folder per generation (e.g. `claude4_6/` vs `claude5/`).
   - Only an identical wire protocol may share a folder; name it after the newest generation (rename and reroute if needed). This is how `claude5/` serves Claude 4.7, 4.8, and 5.
+  - When the old and new generations' implementations differ, keep the old model supported: leave its client folder and routing in place and add a new client folder for the new model. Never delete or rewire away an old model's client unless the user explicitly instructs it.
 - `auto_client.py` / `autoClient.ts` route model names by explicit version matching only, never a bare substring like `"claude" in model`.
 - Conversion must be bijective: a wire message converted to `UniMessage`/`UniEvent` and back must reproduce the original exactly, including `fidelity` payloads (thinking signatures, phase labels, reasoning field names) and tool-call IDs. Verify against the captured exchange.
 - `UniConfig` keys rarely map one-to-one onto provider config keys. **Stop and ask**: list every non-obvious mapping and confirm it with the user before coding. Never decide silently.
+- Every `ThinkingLevel` must stay usable on every client — never raise for a thinking level. Map each level to the closest level the model supports and degrade silently when a level has no exact equivalent (e.g. `gemini3` maps `NONE` to `MINIMAL`; `kimi_k3` maps `NONE` to `low` because K3 cannot disable reasoning).
+- `temperature` and `tool_choice` (and other unsupported parameter values, e.g. `prompt_caching`) may reject with an exception, but must raise the AgentHub-specific `UnsupportedParameterError` from `errors.py` / `errors.ts`, never a bare `ValueError`/`Error`. Keep the message wording consistent with existing clients (containing "not support").
 - Implement Python and TypeScript together with identical behavior.
 
 ## Stage 4 — Verify
 
 - Register the model in the env-gated `AVAILABLE_MODELS` lists of both test files with correct capability flags. Do not add model-specific test functions or files.
+- `AVAILABLE_MODELS` keeps only the newest version of each model family per provider block (e.g. gemini-3.6-flash, not gemini-3.5-flash or 3.5-flash-lite as well). When a newer generation lands, replace the older entry — the old client folder stays supported and routed (see Stage 3) but is no longer e2e-tested.
 - Static checks: `make lint` in `src_py/`; `npm run lint` and `npm run build` in `src_ts/`.
 - Run only the new model's e2e tests; the full suites are slow and spend real API quota:
   - `cd src_py && uv run pytest -vvv tests/test_client.py -k "<model-name>"`
   - `cd src_ts && npm run test -- -t "<model-name>"`
 - Leave unrelated tests to CI.
 
+## Supported-model registry
+
+- `src_py/agenthub/registry.py` / `src_ts/src/registry.ts` list the supported models as entries of (model, base_url, client) plus input/output modalities, context window, and USD-stored pricing keyed by AgentHub's usage buckets. Keep both languages identical; the registry unit test constructs every entry through `AutoLLMClient`.
+- For OpenRouter-hosted entries, pull authoritative data from the live models API `GET https://openrouter.ai/api/v1/models` (docs: https://openrouter.ai/docs/api/api-reference/models/list-all-models-and-their-properties): `pricing.prompt`/`completion` are USD per token (multiply by 1e6), plus `context_length` and `architecture.input_modalities`/`output_modalities`. The API lists chat models only — embedding models are absent and must be checked via their model pages.
+- SiliconFlow publishes no pricing API; declare official CNY list prices with the `cny()` initializer (converted to USD storage at 7 CNY/USD).
+
 ## Record and ship
 
-- Write `changelog/YYYY-MM-DD-<slug>.md` with the specifics: protocol differences found, config mapping decisions, notable capture findings.
-- Add one brief line at the top of `CHANGELOG.md` linking to that file. The root file keeps a single line per change.
+- Write `changelog/<version>/YYYY-MM-DD-<slug>.md` (folder of the upcoming release) with the specifics: protocol differences found, config mapping decisions, notable capture findings.
+- Add one brief line at the top of that version's `changelog/<version>/README.md` linking to the file; the root `CHANGELOG.md` keeps one line per release, added at release preparation.
 - Commit on a feature branch and open a PR with `gh pr create --base dev`; direct pushes to `dev` are rejected.
