@@ -1111,21 +1111,40 @@ test("should reject unknown model", () => {
   );
 });
 
-test("should list supported (model, base_url, client) triples", () => {
+test("should list supported model entries", () => {
   const entries = listSupportedModels();
-  expect(entries).toContainEqual({
-    model: "kimi-k3",
-    base_url: "https://api.moonshot.cn/v1",
-    client: "kimi-k3",
-  });
-  expect(entries).toContainEqual({
-    model: "z-ai/glm-5.2",
-    base_url: "https://openrouter.ai/api/v1",
-    client: "glm-5.1",
+  const kimi = entries.find((entry) => entry.model === "kimi-k3");
+  expect(kimi).toBeDefined();
+  expect(kimi?.base_url).toBe("https://api.moonshot.cn/v1");
+  expect(kimi?.client).toBe("kimi-k3");
+  expect(kimi?.context_window).toBe(1048576);
+  expect(kimi?.input_modalities).toEqual(["Text", "Image"]);
+  expect(kimi?.output_modalities).toEqual(["Text"]);
+  // official CNY prices convert to USD at 7 CNY/USD by default
+  expect(kimi?.pricing).toEqual({
+    currency: "USD",
+    input: Math.round((20 / 7) * 1e6) / 1e6,
+    output: Math.round((100 / 7) * 1e6) / 1e6,
+    cached_input: Math.round((2 / 7) * 1e6) / 1e6,
   });
 
+  const kimiCny = listSupportedModels("CNY").find(
+    (entry) => entry.model === "kimi-k3",
+  );
+  expect(kimiCny?.pricing).toEqual({
+    currency: "CNY",
+    input: 20.0,
+    output: 100.0,
+    cached_input: 2.0,
+  });
+
+  const glm52 = entries.find((entry) => entry.model === "z-ai/glm-5.2");
+  expect(glm52?.base_url).toBe("https://openrouter.ai/api/v1");
+  expect(glm52?.client).toBe("glm-5.1");
+
   for (const entry of entries) {
-    expect(Object.keys(entry).sort()).toEqual(["base_url", "client", "model"]);
+    expect(entry.input_modalities.length).toBeGreaterThan(0);
+    expect(entry.output_modalities.length).toBeGreaterThan(0);
     const client = new AutoLLMClient({
       model: entry.model,
       apiKey: "test-key",

@@ -14,14 +14,17 @@
 
 from .auto_client import AutoLLMClient
 from .errors import AgentHubError, EmptyResponseError, ToolCallArgumentParseError, UnsupportedParameterError
-from .registry import SupportedModel, list_supported_models
+from .registry import Currency, Modality, ModelPricing, SupportedModel, list_supported_models
 from .types import PromptCaching, ThinkingLevel
 
 
 __all__ = [
     "AgentHubError",
     "AutoLLMClient",
+    "Currency",
     "EmptyResponseError",
+    "Modality",
+    "ModelPricing",
     "PromptCaching",
     "SupportedModel",
     "ThinkingLevel",

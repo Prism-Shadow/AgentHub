@@ -50,7 +50,8 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 | GLM-5.1/5.2    | Official/OpenRouter/SiliconFlow     | `glm-5.1`              | Text             | Text                           |
 | Qwen3.6        | OpenRouter/SiliconFlow/vLLM         | `qwen/qwen3.6-35b-a3b` | Text, Image      | Text, Embedding                |
 
-The full machine-readable list is available as `(model, base_url, client)` triples via
+The full machine-readable list — model, base URL, client, input/output modalities, context
+window, and per-million-token pricing in USD or CNY — is available via
 `agenthub.list_supported_models()` (Python) / `listSupportedModels()` (TypeScript).
 
 ## Installation

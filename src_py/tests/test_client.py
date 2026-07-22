@@ -404,13 +404,31 @@ async def test_unknown_model():
 
 @pytest.mark.asyncio
 async def test_list_supported_models():
-    """Test that the registry lists (model, base_url, client) triples accepted by AutoLLMClient."""
+    """Test that the registry lists model entries accepted by AutoLLMClient."""
     entries = list_supported_models()
-    assert {"model": "kimi-k3", "base_url": "https://api.moonshot.cn/v1", "client": "kimi-k3"} in entries
-    assert {"model": "z-ai/glm-5.2", "base_url": "https://openrouter.ai/api/v1", "client": "glm-5.1"} in entries
+    kimi = next(entry for entry in entries if entry["model"] == "kimi-k3")
+    assert kimi["base_url"] == "https://api.moonshot.cn/v1"
+    assert kimi["client"] == "kimi-k3"
+    assert kimi["context_window"] == 1048576
+    assert kimi["input_modalities"] == ["Text", "Image"]
+    assert kimi["output_modalities"] == ["Text"]
+    # official CNY prices convert to USD at 7 CNY/USD by default
+    assert kimi["pricing"] == {
+        "currency": "USD",
+        "input": round(20 / 7, 6),
+        "output": round(100 / 7, 6),
+        "cached_input": round(2 / 7, 6),
+    }
+
+    kimi_cny = next(entry for entry in list_supported_models(currency="CNY") if entry["model"] == "kimi-k3")
+    assert kimi_cny["pricing"] == {"currency": "CNY", "input": 20.0, "output": 100.0, "cached_input": 2.0}
+
+    glm_5_2 = next(entry for entry in entries if entry["model"] == "z-ai/glm-5.2")
+    assert glm_5_2["base_url"] == "https://openrouter.ai/api/v1"
+    assert glm_5_2["client"] == "glm-5.1"
 
     for entry in entries:
-        assert set(entry) == {"model", "base_url", "client"}
+        assert {"model", "base_url", "client", "input_modalities", "output_modalities"} <= set(entry)
         client = AutoLLMClient(
             model=entry["model"], api_key="test-key", base_url=entry["base_url"], client_type=entry["client"]
         )

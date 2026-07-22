@@ -5,10 +5,21 @@
 - New `kimi_k3/` clients (Python and TypeScript) for Moonshot's `kimi-k3`.
 - New `gemini3_6/` clients for the Gemini 3.6 protocol generation: `gemini-3.6-flash` and
   `gemini-3.5-flash-lite` (which belongs to this generation despite its 3.5 name).
-- New supported-model registry: `agenthub.list_supported_models()` / `listSupportedModels()`
-  returns `(model, base_url, client)` triples covering official endpoints plus OpenRouter and
-  SiliconFlow (including `z-ai/glm-5.2`, `zai-org/GLM-5.2`, and `moonshotai/kimi-k3`). The
-  triple maps directly onto the `AutoLLMClient` constructor.
+- New supported-model registry: `agenthub.list_supported_models(currency="USD"|"CNY")` /
+  `listSupportedModels(currency)` returns one entry per supported (model, platform) pair:
+  the `(model, base_url, client)` triple (mapping directly onto the `AutoLLMClient`
+  constructor) plus input/output modalities (Text/Image/Video/Audio/Embed), context window,
+  and per-million-token list pricing stored in the vendor's official currency and converted
+  at 7 CNY/USD on request. Covers official endpoints plus OpenRouter and SiliconFlow
+  (including `z-ai/glm-5.2`, `zai-org/GLM-5.2`, `moonshotai/kimi-k3`, and the OpenRouter
+  entries from the AgentHub app catalog: Claude/GPT/Gemini/MiniMax/Grok/Step/Hy3/MiMo/
+  Nemotron via the generic OpenAI client, DeepSeek via its native client). OpenRouter
+  prices, context windows, and modality flags were pulled from the live `/models` API;
+  SiliconFlow prices from the vendors' official CNY price lists. Modalities record what is
+  usable through the routed AgentHub client, not the raw upstream capability. Every newly
+  added entry passed a live streaming smoke call, except the official Anthropic entries,
+  which could not be smoke-tested locally (invalid local `ANTHROPIC_API_KEY`; their ids and
+  prices were verified via the OpenRouter passthrough listings).
 - New `UnsupportedParameterError` (subclass of `AgentHubError`, hence still a `ValueError` in
   Python) raised for unsupported `temperature`/`tool_choice`/`prompt_caching` values across
   all clients; messages are unchanged, so existing `except ValueError` / message matching

@@ -19,5 +19,11 @@ export {
   ToolCallArgumentParseError,
   UnsupportedParameterError,
 } from "./errors";
-export { listSupportedModels, SupportedModel } from "./registry";
+export {
+  listSupportedModels,
+  Currency,
+  Modality,
+  ModelPricing,
+  SupportedModel,
+} from "./registry";
 export * from "./types";

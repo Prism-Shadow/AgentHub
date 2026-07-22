@@ -43,10 +43,12 @@ def clear_history() -> None:
 ## Module-level helpers
 
 ```python
-def list_supported_models() -> list[SupportedModel]:
-    """List supported models as (model, base_url, client) triples covering official
-    endpoints plus OpenRouter and SiliconFlow; the triple maps onto the AutoLLMClient
-    constructor (model, base_url, client_type)."""
+def list_supported_models(currency: Literal["USD", "CNY"] = "USD") -> list[SupportedModel]:
+    """List supported models covering official endpoints plus OpenRouter and SiliconFlow.
+    Each entry carries (model, base_url, client) - mapping onto the AutoLLMClient
+    constructor (model, base_url, client_type) - plus input/output modalities
+    (Text/Image/Video/Audio/Embed), context_window, and per-million-token pricing in the
+    requested currency (official list prices, converted at 7 CNY/USD)."""
 ```
 
 ## Errors
