@@ -33,8 +33,10 @@
   usable through the routed AgentHub client, not the raw upstream capability, and are
   written inline per entry. Pricing keys mirror AgentHub's usage buckets (`cached_tokens`,
   `prompt_tokens`, `thoughts_tokens`, `response_tokens`; thoughts and response both carry
-  the vendor's output price), stored pre-converted in USD and multiplied by 7 when CNY is
-  requested. `qwen/qwen3-embedding-4b` stays listed (embedding models are absent from
+  the vendor's output price), stored in USD and multiplied by 7 when CNY is requested;
+  CNY-denominated official list prices are declared with a `cny()` initializer that
+  converts at 7 CNY/USD on write. Gemini cache-hit prices from the official pricing page
+  (gemini-3.5-flash-lite publishes no standard-tier cache-read price and carries none). `qwen/qwen3-embedding-4b` stays listed (embedding models are absent from
   OpenRouter's chat-only `/models` API but the model page is live). Every newly added entry
   passed a live streaming smoke call, except the official Anthropic entries, which could
   not be smoke-tested locally (invalid local `ANTHROPIC_API_KEY`; their ids and prices were

@@ -74,6 +74,15 @@ function usd(prompt: number, output: number, cached?: number): ModelPricing {
   };
 }
 
+/**
+ * Declare a CNY-denominated official list price; storage stays USD (converted
+ * at 7 CNY/USD).
+ */
+function cny(prompt: number, output: number, cached?: number): ModelPricing {
+  const rate = (v: number): number => Math.round((v / CNY_PER_USD) * 1e6) / 1e6;
+  return usd(rate(prompt), rate(output), cached !== undefined ? rate(cached) : undefined);
+}
+
 // Prices in USD per million tokens (official CNY prices pre-converted at
 // 7 CNY/USD); platform data (context windows, OpenRouter USD prices, modality
 // flags) verified against the live /models APIs on 2026-07-22, SiliconFlow CNY
@@ -87,7 +96,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     input_modalities: ["Text", "Image", "Video", "Audio"],
     output_modalities: ["Text"],
     context_window: 1048576,
-    pricing: usd(1.5, 7.5),
+    pricing: usd(1.5, 7.5, 0.15),
   },
   {
     model: "gemini-3.5-flash-lite",
@@ -206,7 +215,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1048576,
-    pricing: usd(2.857143, 14.285714, 0.285714),
+    pricing: cny(20.0, 100.0, 2.0),
   },
   {
     model: "kimi-k2.6",
@@ -215,7 +224,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 262144,
-    pricing: usd(0.928571, 3.857143, 0.157143),
+    pricing: cny(6.5, 27.0, 1.1),
   },
   {
     model: "deepseek-v4-flash",
@@ -224,7 +233,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     input_modalities: ["Text"],
     output_modalities: ["Text"],
     context_window: 1000000,
-    pricing: usd(0.142857, 0.285714, 0.002857),
+    pricing: cny(1.0, 2.0, 0.02),
   },
   {
     model: "deepseek-v4-pro",
@@ -233,7 +242,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     input_modalities: ["Text"],
     output_modalities: ["Text"],
     context_window: 1000000,
-    pricing: usd(0.428571, 0.857143, 0.003571),
+    pricing: cny(3.0, 6.0, 0.025),
   },
   // OpenRouter (USD prices, context windows and modality flags from the live /models API)
   {
@@ -442,7 +451,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     input_modalities: ["Text"],
     output_modalities: ["Text"],
     context_window: 1000000,
-    pricing: usd(0.142857, 0.285714, 0.002857),
+    pricing: cny(1.0, 2.0, 0.02),
   },
   {
     model: "deepseek-ai/DeepSeek-V4-Pro",
@@ -451,7 +460,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     input_modalities: ["Text"],
     output_modalities: ["Text"],
     context_window: 1000000,
-    pricing: usd(1.714286, 3.428571, 0.014286),
+    pricing: cny(12.0, 24.0, 0.1),
   },
   {
     model: "meituan-longcat/LongCat-2.0",
@@ -460,7 +469,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     input_modalities: ["Text"],
     output_modalities: ["Text"],
     context_window: 1000000,
-    pricing: usd(0.714286, 2.857143, 0.014286),
+    pricing: cny(5.0, 20.0, 0.1),
   },
   {
     model: "moonshotai/Kimi-K2.7-Code",
@@ -469,7 +478,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 262144,
-    pricing: usd(0.928571, 3.857143, 0.185714),
+    pricing: cny(6.5, 27.0, 1.3),
   },
   {
     model: "zai-org/GLM-5.2",
@@ -478,7 +487,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     input_modalities: ["Text"],
     output_modalities: ["Text"],
     context_window: 1000000,
-    pricing: usd(1.142857, 4.0, 0.285714),
+    pricing: cny(8.0, 28.0, 2.0),
   },
   {
     model: "Pro/zai-org/GLM-5.1",

@@ -56,6 +56,7 @@ CHANGELOG.md                      One brief line per release linking into change
 - Register the model in the env-gated `AVAILABLE_MODELS` lists of both test files with correct capability flags. Do not add model-specific test functions or files.
 - Static checks: `make lint` in `src_py/`; `npm run lint` and `npm run build` in `src_ts/`.
 - Run only the new model's e2e tests; the full suites are slow and spend real API quota:
+  - Within a model family, run only the newest version (e.g. glm-5.2, not glm-5.1 as well); older versions stay covered by CI.
   - `cd src_py && uv run pytest -vvv tests/test_client.py -k "<model-name>"`
   - `cd src_ts && npm run test -- -t "<model-name>"`
 - Leave unrelated tests to CI.

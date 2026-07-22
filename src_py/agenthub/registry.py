@@ -80,6 +80,15 @@ def _usd(prompt: float, output: float, cached: float | None = None) -> ModelPric
     return pricing
 
 
+def _cny(prompt: float, output: float, cached: float | None = None) -> ModelPricing:
+    """Declare a CNY-denominated official list price; storage stays USD (converted at 7 CNY/USD)."""
+
+    def rate(value: float) -> float:
+        return round(value / _CNY_PER_USD, 6)
+
+    return _usd(rate(prompt), rate(output), rate(cached) if cached is not None else None)
+
+
 # Prices in USD per million tokens (official CNY prices pre-converted at 7 CNY/USD); platform
 # data (context windows, OpenRouter USD prices, modality flags) verified against the live
 # /models APIs on 2026-07-22, SiliconFlow CNY prices from the vendors' official price lists.
@@ -92,7 +101,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text", "Image", "Video", "Audio"],
         "output_modalities": ["Text"],
         "context_window": 1048576,
-        "pricing": _usd(1.5, 7.5),
+        "pricing": _usd(1.5, 7.5, cached=0.15),
     },
     {
         "model": "gemini-3.5-flash-lite",
@@ -211,7 +220,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1048576,
-        "pricing": _usd(2.857143, 14.285714, cached=0.285714),
+        "pricing": _cny(20.0, 100.0, cached=2.0),
     },
     {
         "model": "kimi-k2.6",
@@ -220,7 +229,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 262144,
-        "pricing": _usd(0.928571, 3.857143, cached=0.157143),
+        "pricing": _cny(6.5, 27.0, cached=1.1),
     },
     {
         "model": "deepseek-v4-flash",
@@ -229,7 +238,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _usd(0.142857, 0.285714, cached=0.002857),
+        "pricing": _cny(1.0, 2.0, cached=0.02),
     },
     {
         "model": "deepseek-v4-pro",
@@ -238,7 +247,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _usd(0.428571, 0.857143, cached=0.003571),
+        "pricing": _cny(3.0, 6.0, cached=0.025),
     },
     # OpenRouter (USD prices, context windows and modality flags from the live /models API)
     {
@@ -447,7 +456,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _usd(0.142857, 0.285714, cached=0.002857),
+        "pricing": _cny(1.0, 2.0, cached=0.02),
     },
     {
         "model": "deepseek-ai/DeepSeek-V4-Pro",
@@ -456,7 +465,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _usd(1.714286, 3.428571, cached=0.014286),
+        "pricing": _cny(12.0, 24.0, cached=0.1),
     },
     {
         "model": "meituan-longcat/LongCat-2.0",
@@ -465,7 +474,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _usd(0.714286, 2.857143, cached=0.014286),
+        "pricing": _cny(5.0, 20.0, cached=0.1),
     },
     {
         "model": "moonshotai/Kimi-K2.7-Code",
@@ -474,7 +483,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 262144,
-        "pricing": _usd(0.928571, 3.857143, cached=0.185714),
+        "pricing": _cny(6.5, 27.0, cached=1.3),
     },
     {
         "model": "zai-org/GLM-5.2",
@@ -483,7 +492,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _usd(1.142857, 4.0, cached=0.285714),
+        "pricing": _cny(8.0, 28.0, cached=2.0),
     },
     {
         "model": "Pro/zai-org/GLM-5.1",
