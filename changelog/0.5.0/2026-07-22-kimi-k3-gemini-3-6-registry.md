@@ -5,6 +5,20 @@
 - New `kimi_k3/` clients (Python and TypeScript) for Moonshot's `kimi-k3`.
 - New `gemini3_6/` clients for the Gemini 3.6 protocol generation: `gemini-3.6-flash` and
   `gemini-3.5-flash-lite` (which belongs to this generation despite its 3.5 name).
+- New `glm5_2/` clients for Z.AI's GLM-5.2 (`glm5_1/` stays untouched): adds the top-level
+  `reasoning_effort` parameter next to the `extra_body.thinking` config. Mapping is 1:1
+  because the official schema documents server-side compatibility mapping (`low`/`medium`
+  map to `high`, `xhigh` to `max`): NONE keeps `thinking={"type": "disabled"}` and sends no
+  effort, LOW/MEDIUM/HIGH/XHIGH send `reasoning_effort` `low`/`medium`/`high`/`xhigh` with
+  `thinking={"type": "enabled", "clear_thinking": false}` (preserved thinking; the client
+  replays `reasoning_content` unmodified). `tool_choice` stays auto-only and temperature
+  passes through, as in GLM-5.1. Verified against live captures on the official endpoint
+  (including a thinking-disabled probe) plus OpenRouter and SiliconFlow; the gateway
+  `glm-5.2` ids now auto-route to the new client.
+- Gemini image endpoint migration: `gemini-3.1-flash-image-preview` is deprecated and
+  replaced by `gemini-3.1-flash-image` (`gemini-3-pro-image-preview` likewise becomes
+  `gemini-3-pro-image`) across the registry, tests, and skill references; image generation
+  re-verified live on the new endpoint.
 - New supported-model registry: `agenthub.list_supported_models(currency="USD"|"CNY")` /
   `listSupportedModels(currency)` returns one entry per supported (model, platform) pair:
   the `(model, base_url, client)` triple (mapping directly onto the `AutoLLMClient`
@@ -16,10 +30,15 @@
   Nemotron via the generic OpenAI client, DeepSeek via its native client). OpenRouter
   prices, context windows, and modality flags were pulled from the live `/models` API;
   SiliconFlow prices from the vendors' official CNY price lists. Modalities record what is
-  usable through the routed AgentHub client, not the raw upstream capability. Every newly
-  added entry passed a live streaming smoke call, except the official Anthropic entries,
-  which could not be smoke-tested locally (invalid local `ANTHROPIC_API_KEY`; their ids and
-  prices were verified via the OpenRouter passthrough listings).
+  usable through the routed AgentHub client, not the raw upstream capability, and are
+  written inline per entry. Pricing keys mirror AgentHub's usage buckets (`cached_tokens`,
+  `prompt_tokens`, `thoughts_tokens`, `response_tokens`; thoughts and response both carry
+  the vendor's output price), stored pre-converted in USD and multiplied by 7 when CNY is
+  requested. `qwen/qwen3-embedding-4b` stays listed (embedding models are absent from
+  OpenRouter's chat-only `/models` API but the model page is live). Every newly added entry
+  passed a live streaming smoke call, except the official Anthropic entries, which could
+  not be smoke-tested locally (invalid local `ANTHROPIC_API_KEY`; their ids and prices were
+  verified via the OpenRouter passthrough listings).
 - New `UnsupportedParameterError` (subclass of `AgentHubError`, hence still a `ValueError` in
   Python) raised for unsupported `temperature`/`tool_choice`/`prompt_caching` values across
   all clients; messages are unchanged, so existing `except ValueError` / message matching

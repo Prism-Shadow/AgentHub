@@ -76,7 +76,7 @@ if (process.env.GEMINI_API_KEY) {
   });
 
   AVAILABLE_MODELS.push({
-    name: "gemini-3.1-flash-image-preview",
+    name: "gemini-3.1-flash-image",
     supportTextGeneration: false,
     supportTemperature: false,
     supportImageUnderstanding: false,
@@ -148,6 +148,16 @@ if (process.env.OPENAI_API_KEY) {
 }
 
 if (process.env.ZAI_API_KEY) {
+  AVAILABLE_MODELS.push({
+    name: "glm-5.2",
+    supportTextGeneration: true,
+    supportTemperature: true,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    supportEmbedding: false,
+    provider: "official",
+  });
   AVAILABLE_MODELS.push({
     name: "glm-5.1",
     supportTextGeneration: true,
@@ -222,7 +232,7 @@ if (process.env.VERTEX_API_KEY) {
   });
 
   AVAILABLE_MODELS.push({
-    name: "gemini-3.1-flash-image-preview",
+    name: "gemini-3.1-flash-image",
     supportTextGeneration: false,
     supportTemperature: false,
     supportImageUnderstanding: false,
@@ -1120,27 +1130,27 @@ test("should list supported model entries", () => {
   expect(kimi?.context_window).toBe(1048576);
   expect(kimi?.input_modalities).toEqual(["Text", "Image"]);
   expect(kimi?.output_modalities).toEqual(["Text"]);
-  // official CNY prices convert to USD at 7 CNY/USD by default
+  // stored in USD (official CNY prices pre-converted at 7 CNY/USD)
   expect(kimi?.pricing).toEqual({
     currency: "USD",
-    input: Math.round((20 / 7) * 1e6) / 1e6,
-    output: Math.round((100 / 7) * 1e6) / 1e6,
-    cached_input: Math.round((2 / 7) * 1e6) / 1e6,
+    prompt_tokens: 2.857143,
+    thoughts_tokens: 14.285714,
+    response_tokens: 14.285714,
+    cached_tokens: 0.285714,
   });
 
   const kimiCny = listSupportedModels("CNY").find(
     (entry) => entry.model === "kimi-k3",
   );
-  expect(kimiCny?.pricing).toEqual({
-    currency: "CNY",
-    input: 20.0,
-    output: 100.0,
-    cached_input: 2.0,
-  });
+  expect(kimiCny?.pricing?.currency).toBe("CNY");
+  expect(kimiCny?.pricing?.prompt_tokens).toBeCloseTo(20.0, 3);
+  expect(kimiCny?.pricing?.thoughts_tokens).toBeCloseTo(100.0, 3);
+  expect(kimiCny?.pricing?.response_tokens).toBeCloseTo(100.0, 3);
+  expect(kimiCny?.pricing?.cached_tokens).toBeCloseTo(2.0, 3);
 
   const glm52 = entries.find((entry) => entry.model === "z-ai/glm-5.2");
   expect(glm52?.base_url).toBe("https://openrouter.ai/api/v1");
-  expect(glm52?.client).toBe("glm-5.1");
+  expect(glm52?.client).toBe("glm-5.2");
 
   for (const entry of entries) {
     expect(entry.input_modalities.length).toBeGreaterThan(0);

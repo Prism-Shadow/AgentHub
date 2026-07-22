@@ -54,7 +54,7 @@ if os.getenv("GEMINI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="gemini-3.5-flash-lite", support_temperature=False))
     AVAILABLE_MODELS.append(
         Model(
-            name="gemini-3.1-flash-image-preview",
+            name="gemini-3.1-flash-image",
             support_text=False,
             support_temperature=False,
             support_image_understanding=False,
@@ -97,6 +97,7 @@ if os.getenv("OPENAI_API_KEY"):
     )
 
 if os.getenv("ZAI_API_KEY"):
+    AVAILABLE_MODELS.append(Model(name="glm-5.2", support_image_understanding=False))
     AVAILABLE_MODELS.append(Model(name="glm-5.1", support_image_understanding=False))
 
 if os.getenv("MOONSHOT_API_KEY"):
@@ -115,7 +116,7 @@ if os.getenv("VERTEX_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="gemini-3.5-flash", provider="vertex"))
     AVAILABLE_MODELS.append(
         Model(
-            name="gemini-3.1-flash-image-preview",
+            name="gemini-3.1-flash-image",
             provider="vertex",
             support_text=False,
             support_temperature=False,
@@ -412,20 +413,25 @@ async def test_list_supported_models():
     assert kimi["context_window"] == 1048576
     assert kimi["input_modalities"] == ["Text", "Image"]
     assert kimi["output_modalities"] == ["Text"]
-    # official CNY prices convert to USD at 7 CNY/USD by default
+    # stored in USD (official CNY prices pre-converted at 7 CNY/USD)
     assert kimi["pricing"] == {
         "currency": "USD",
-        "input": round(20 / 7, 6),
-        "output": round(100 / 7, 6),
-        "cached_input": round(2 / 7, 6),
+        "prompt_tokens": 2.857143,
+        "thoughts_tokens": 14.285714,
+        "response_tokens": 14.285714,
+        "cached_tokens": 0.285714,
     }
 
     kimi_cny = next(entry for entry in list_supported_models(currency="CNY") if entry["model"] == "kimi-k3")
-    assert kimi_cny["pricing"] == {"currency": "CNY", "input": 20.0, "output": 100.0, "cached_input": 2.0}
+    assert kimi_cny["pricing"]["currency"] == "CNY"
+    assert kimi_cny["pricing"]["prompt_tokens"] == pytest.approx(20.0, abs=1e-4)
+    assert kimi_cny["pricing"]["thoughts_tokens"] == pytest.approx(100.0, abs=1e-4)
+    assert kimi_cny["pricing"]["response_tokens"] == pytest.approx(100.0, abs=1e-4)
+    assert kimi_cny["pricing"]["cached_tokens"] == pytest.approx(2.0, abs=1e-4)
 
     glm_5_2 = next(entry for entry in entries if entry["model"] == "z-ai/glm-5.2")
     assert glm_5_2["base_url"] == "https://openrouter.ai/api/v1"
-    assert glm_5_2["client"] == "glm-5.1"
+    assert glm_5_2["client"] == "glm-5.2"
 
     for entry in entries:
         assert {"model", "base_url", "client", "input_modalities", "output_modalities"} <= set(entry)

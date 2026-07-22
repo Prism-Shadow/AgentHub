@@ -20,17 +20,19 @@ Currency = Literal["USD", "CNY"]
 
 
 class ModelPricing(TypedDict):
-    """List prices per million tokens, in the currency requested from list_supported_models.
+    """List prices per million tokens for AgentHub's usage buckets.
 
-    ``cached_input`` is the vendor's cache-hit price; ``cache_write`` is only present for
-    vendors that bill cache writes separately (e.g. Anthropic at 1.25x input).
+    Keys mirror ``usage_metadata``: ``cached_tokens`` (cache-hit price, absent when the
+    platform publishes none), ``prompt_tokens`` (non-cached input), and
+    ``thoughts_tokens``/``response_tokens``, which both carry the vendor's output price.
+    Values are in the currency requested from ``list_supported_models``.
     """
 
     currency: Currency
-    input: float
-    output: float
-    cached_input: NotRequired[float]
-    cache_write: NotRequired[float]
+    prompt_tokens: float
+    thoughts_tokens: float
+    response_tokens: float
+    cached_tokens: NotRequired[float]
 
 
 class SupportedModel(TypedDict):
@@ -60,45 +62,35 @@ _DEEPSEEK = "https://api.deepseek.com"
 _OPENROUTER = "https://openrouter.ai/api/v1"
 _SILICONFLOW = "https://api.siliconflow.cn/v1"
 
-# Display convention shared with the AgentHub apps: official CNY prices convert at 7 CNY/USD
-# so a currency switch shows exactly the vendor's published numbers.
+# Display convention shared with the AgentHub apps: prices are stored in USD (official CNY
+# list prices pre-converted at 7 CNY/USD), so requesting CNY shows the vendor's numbers.
 _CNY_PER_USD = 7.0
 
 
-def _usd(
-    input: float, output: float, cached_input: float | None = None, cache_write: float | None = None
-) -> ModelPricing:
-    pricing: ModelPricing = {"currency": "USD", "input": input, "output": output}
-    if cached_input is not None:
-        pricing["cached_input"] = cached_input
-    if cache_write is not None:
-        pricing["cache_write"] = cache_write
+def _usd(prompt: float, output: float, cached: float | None = None) -> ModelPricing:
+    # thoughts and response tokens are both billed at the vendor's output price
+    pricing: ModelPricing = {
+        "currency": "USD",
+        "prompt_tokens": prompt,
+        "thoughts_tokens": output,
+        "response_tokens": output,
+    }
+    if cached is not None:
+        pricing["cached_tokens"] = cached
     return pricing
 
 
-def _cny(
-    input: float, output: float, cached_input: float | None = None, cache_write: float | None = None
-) -> ModelPricing:
-    pricing = _usd(input, output, cached_input, cache_write)
-    pricing["currency"] = "CNY"
-    return pricing
-
-
-_TEXT: list[Modality] = ["Text"]
-_TEXT_IMAGE: list[Modality] = ["Text", "Image"]
-_GEMINI_INPUTS: list[Modality] = ["Text", "Image", "Video", "Audio"]
-
-# Entries store pricing in the vendor's official pricing currency; platform data (context
-# windows, OpenRouter USD prices) verified against the live /models APIs on 2026-07-22,
-# SiliconFlow CNY prices from the vendors' official price lists.
+# Prices in USD per million tokens (official CNY prices pre-converted at 7 CNY/USD); platform
+# data (context windows, OpenRouter USD prices, modality flags) verified against the live
+# /models APIs on 2026-07-22, SiliconFlow CNY prices from the vendors' official price lists.
 _SUPPORTED_MODELS: list[SupportedModel] = [
     # official vendor endpoints
     {
         "model": "gemini-3.6-flash",
         "base_url": _GOOGLE,
         "client": "gemini-3.6",
-        "input_modalities": _GEMINI_INPUTS,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image", "Video", "Audio"],
+        "output_modalities": ["Text"],
         "context_window": 1048576,
         "pricing": _usd(1.5, 7.5),
     },
@@ -106,8 +98,8 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "model": "gemini-3.5-flash-lite",
         "base_url": _GOOGLE,
         "client": "gemini-3.6",
-        "input_modalities": _GEMINI_INPUTS,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image", "Video", "Audio"],
+        "output_modalities": ["Text"],
         "context_window": 1048576,
         "pricing": _usd(0.3, 2.5),
     },
@@ -115,227 +107,236 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "model": "gemini-3.5-flash",
         "base_url": _GOOGLE,
         "client": "gemini-3",
-        "input_modalities": _GEMINI_INPUTS,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image", "Video", "Audio"],
+        "output_modalities": ["Text"],
         "context_window": 1048576,
-        "pricing": _usd(1.5, 9.0, cached_input=0.15),
+        "pricing": _usd(1.5, 9.0, cached=0.15),
     },
     {
-        "model": "gemini-3.1-flash-image-preview",
+        "model": "gemini-3.1-flash-image",
         "base_url": _GOOGLE,
         "client": "gemini-3",
-        "input_modalities": _TEXT_IMAGE,
+        "input_modalities": ["Text", "Image"],
         "output_modalities": ["Image"],
     },
     {
         "model": "gemini-3.1-flash-tts-preview",
         "base_url": _GOOGLE,
         "client": "gemini-3",
-        "input_modalities": _TEXT,
+        "input_modalities": ["Text"],
         "output_modalities": ["Audio"],
     },
     {
         "model": "gemini-embedding-2",
         "base_url": _GOOGLE,
         "client": "gemini-3",
-        "input_modalities": _TEXT,
+        "input_modalities": ["Text"],
         "output_modalities": ["Embed"],
     },
     {
         "model": "claude-fable-5",
         "base_url": _ANTHROPIC,
         "client": "claude-5",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _usd(10.0, 50.0, cached_input=1.0, cache_write=12.5),
+        "pricing": _usd(10.0, 50.0, cached=1.0),
     },
     {
         "model": "claude-sonnet-5",
         "base_url": _ANTHROPIC,
         "client": "claude-5",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _usd(2.0, 10.0, cached_input=0.2, cache_write=2.5),
+        "pricing": _usd(2.0, 10.0, cached=0.2),
     },
     {
         "model": "claude-opus-4-8",
         "base_url": _ANTHROPIC,
         "client": "claude-5",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _usd(5.0, 25.0, cached_input=0.5, cache_write=6.25),
+        "pricing": _usd(5.0, 25.0, cached=0.5),
     },
     {
         "model": "claude-sonnet-4-6",
         "base_url": _ANTHROPIC,
         "client": "claude-4-6",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _usd(3.0, 15.0, cached_input=0.3, cache_write=3.75),
+        "pricing": _usd(3.0, 15.0, cached=0.3),
     },
     {
         "model": "gpt-5.5",
         "base_url": _OPENAI,
         "client": "gpt-5.5",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 1050000,
-        "pricing": _usd(5.0, 30.0, cached_input=0.5),
+        "pricing": _usd(5.0, 30.0, cached=0.5),
     },
     {
         "model": "text-embedding-3-large",
         "base_url": _OPENAI,
         "client": "openai-embedding",
-        "input_modalities": _TEXT,
+        "input_modalities": ["Text"],
         "output_modalities": ["Embed"],
         "pricing": _usd(0.13, 0.0),
+    },
+    {
+        "model": "glm-5.2",
+        "base_url": _ZAI,
+        "client": "glm-5.2",
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
+        "context_window": 1000000,
+        "pricing": _usd(1.4, 4.4, cached=0.26),
     },
     {
         "model": "glm-5.1",
         "base_url": _ZAI,
         "client": "glm-5.1",
-        "input_modalities": _TEXT,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
         "context_window": 200000,
-        "pricing": _usd(1.4, 4.4, cached_input=0.26),
+        "pricing": _usd(1.4, 4.4, cached=0.26),
     },
     {
         "model": "kimi-k3",
         "base_url": _MOONSHOT,
         "client": "kimi-k3",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 1048576,
-        "pricing": _cny(20.0, 100.0, cached_input=2.0),
+        "pricing": _usd(2.857143, 14.285714, cached=0.285714),
     },
     {
         "model": "kimi-k2.6",
         "base_url": _MOONSHOT,
         "client": "kimi-k2.6",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 262144,
-        "pricing": _cny(6.5, 27.0, cached_input=1.1),
+        "pricing": _usd(0.928571, 3.857143, cached=0.157143),
     },
     {
         "model": "deepseek-v4-flash",
         "base_url": _DEEPSEEK,
         "client": "deepseek-v4",
-        "input_modalities": _TEXT,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _cny(1.0, 2.0, cached_input=0.02),
+        "pricing": _usd(0.142857, 0.285714, cached=0.002857),
     },
     {
         "model": "deepseek-v4-pro",
         "base_url": _DEEPSEEK,
         "client": "deepseek-v4",
-        "input_modalities": _TEXT,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _cny(3.0, 6.0, cached_input=0.025),
+        "pricing": _usd(0.428571, 0.857143, cached=0.003571),
     },
     # OpenRouter (USD prices, context windows and modality flags from the live /models API)
     {
         "model": "anthropic/claude-fable-5",
         "base_url": _OPENROUTER,
         "client": "openai",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _usd(10.0, 50.0, cached_input=1.0, cache_write=12.5),
+        "pricing": _usd(10.0, 50.0, cached=1.0),
     },
     {
         "model": "anthropic/claude-opus-4.8",
         "base_url": _OPENROUTER,
         "client": "openai",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _usd(5.0, 25.0, cached_input=0.5, cache_write=6.25),
+        "pricing": _usd(5.0, 25.0, cached=0.5),
     },
     {
         "model": "anthropic/claude-opus-4.7",
         "base_url": _OPENROUTER,
         "client": "openai",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _usd(5.0, 25.0, cached_input=0.5, cache_write=6.25),
+        "pricing": _usd(5.0, 25.0, cached=0.5),
     },
     {
         "model": "anthropic/claude-sonnet-5",
         "base_url": _OPENROUTER,
         "client": "openai",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _usd(2.0, 10.0, cached_input=0.2, cache_write=2.5),
+        "pricing": _usd(2.0, 10.0, cached=0.2),
     },
     {
         "model": "deepseek/deepseek-v4-flash",
         "base_url": _OPENROUTER,
         "client": "deepseek-v4",
-        "input_modalities": _TEXT,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
         "context_window": 1048576,
-        "pricing": _usd(0.098, 0.196, cached_input=0.0196),
+        "pricing": _usd(0.098, 0.196, cached=0.0196),
     },
     {
         "model": "deepseek/deepseek-v4-pro",
         "base_url": _OPENROUTER,
         "client": "deepseek-v4",
-        "input_modalities": _TEXT,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
         "context_window": 1048576,
-        "pricing": _usd(0.435, 0.87, cached_input=0.003625),
+        "pricing": _usd(0.435, 0.87, cached=0.003625),
     },
     {
         "model": "google/gemini-3.5-flash",
         "base_url": _OPENROUTER,
         "client": "openai",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 1048576,
-        "pricing": _usd(1.5, 9.0, cached_input=0.15),
+        "pricing": _usd(1.5, 9.0, cached=0.15),
     },
     {
         "model": "minimax/minimax-m3",
         "base_url": _OPENROUTER,
         "client": "openai",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 1048576,
-        "pricing": _usd(0.3, 1.2, cached_input=0.06),
+        "pricing": _usd(0.3, 1.2, cached=0.06),
     },
     {
         "model": "moonshotai/kimi-k3",
         "base_url": _OPENROUTER,
         "client": "kimi-k3",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 1048576,
-        "pricing": _usd(3.0, 15.0, cached_input=0.3),
+        "pricing": _usd(3.0, 15.0, cached=0.3),
     },
     {
         "model": "moonshotai/kimi-k2.6",
         "base_url": _OPENROUTER,
         "client": "kimi-k2.6",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 262144,
-        "pricing": _usd(0.684, 3.42, cached_input=0.144),
+        "pricing": _usd(0.684, 3.42, cached=0.144),
     },
     {
         "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
         "base_url": _OPENROUTER,
         "client": "openai",
-        "input_modalities": _TEXT,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
         "context_window": 1000000,
         "pricing": _usd(0.0, 0.0),
     },
@@ -343,181 +344,194 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "model": "openai/gpt-5.6-sol",
         "base_url": _OPENROUTER,
         "client": "openai",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 1050000,
-        "pricing": _usd(5.0, 30.0, cached_input=0.5, cache_write=6.25),
+        "pricing": _usd(5.0, 30.0, cached=0.5),
     },
     {
         "model": "openai/gpt-5.6-terra",
         "base_url": _OPENROUTER,
         "client": "openai",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 1050000,
-        "pricing": _usd(2.5, 15.0, cached_input=0.25, cache_write=3.125),
+        "pricing": _usd(2.5, 15.0, cached=0.25),
     },
     {
         "model": "openai/gpt-5.5",
         "base_url": _OPENROUTER,
         "client": "openai",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 1050000,
-        "pricing": _usd(5.0, 30.0, cached_input=0.5),
+        "pricing": _usd(5.0, 30.0, cached=0.5),
     },
     {
         "model": "qwen/qwen3.6-35b-a3b",
         "base_url": _OPENROUTER,
         "client": "openai",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 262144,
         "pricing": _usd(0.14, 1.0),
+    },
+    {
+        "model": "qwen/qwen3-embedding-4b",
+        "base_url": _OPENROUTER,
+        "client": "openai-embedding",
+        "input_modalities": ["Text"],
+        "output_modalities": ["Embed"],
+        "context_window": 32768,
+        "pricing": _usd(0.02, 0.0),
     },
     {
         "model": "stepfun/step-3.7-flash",
         "base_url": _OPENROUTER,
         "client": "openai",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 262144,
-        "pricing": _usd(0.2, 1.15, cached_input=0.04),
+        "pricing": _usd(0.2, 1.15, cached=0.04),
     },
     {
         "model": "tencent/hy3",
         "base_url": _OPENROUTER,
         "client": "openai",
-        "input_modalities": _TEXT,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
         "context_window": 262144,
-        "pricing": _usd(0.14, 0.58, cached_input=0.035),
+        "pricing": _usd(0.14, 0.58, cached=0.035),
     },
     {
         "model": "x-ai/grok-4.5",
         "base_url": _OPENROUTER,
         "client": "openai",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 500000,
-        "pricing": _usd(2.0, 6.0, cached_input=0.3),
+        "pricing": _usd(2.0, 6.0, cached=0.3),
     },
     {
         "model": "xiaomi/mimo-v2.5",
         "base_url": _OPENROUTER,
         "client": "openai",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 1050000,
-        "pricing": _usd(0.14, 0.28, cached_input=0.0028),
+        "pricing": _usd(0.14, 0.28, cached=0.0028),
     },
     {
         "model": "z-ai/glm-5.2",
         "base_url": _OPENROUTER,
-        "client": "glm-5.1",
-        "input_modalities": _TEXT,
-        "output_modalities": _TEXT,
+        "client": "glm-5.2",
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
         "context_window": 1048576,
-        "pricing": _usd(0.8204, 2.5784, cached_input=0.15236),
+        "pricing": _usd(0.8204, 2.5784, cached=0.15236),
     },
     {
         "model": "z-ai/glm-5.1",
         "base_url": _OPENROUTER,
         "client": "glm-5.1",
-        "input_modalities": _TEXT,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
         "context_window": 204800,
-        "pricing": _usd(0.966, 3.036, cached_input=0.1794),
+        "pricing": _usd(0.966, 3.036, cached=0.1794),
     },
-    # SiliconFlow (official CNY price list; the platform publishes no pricing API)
+    # SiliconFlow (official CNY price lists pre-converted to USD; no public pricing API)
     {
         "model": "deepseek-ai/DeepSeek-V4-Flash",
         "base_url": _SILICONFLOW,
         "client": "deepseek-v4",
-        "input_modalities": _TEXT,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _cny(1.0, 2.0, cached_input=0.02),
+        "pricing": _usd(0.142857, 0.285714, cached=0.002857),
     },
     {
         "model": "deepseek-ai/DeepSeek-V4-Pro",
         "base_url": _SILICONFLOW,
         "client": "deepseek-v4",
-        "input_modalities": _TEXT,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _cny(12.0, 24.0, cached_input=0.1),
+        "pricing": _usd(1.714286, 3.428571, cached=0.014286),
     },
     {
         "model": "meituan-longcat/LongCat-2.0",
         "base_url": _SILICONFLOW,
         "client": "openai",
-        "input_modalities": _TEXT,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _cny(5.0, 20.0, cached_input=0.1),
+        "pricing": _usd(0.714286, 2.857143, cached=0.014286),
     },
     {
         "model": "moonshotai/Kimi-K2.7-Code",
         "base_url": _SILICONFLOW,
         "client": "openai",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 262144,
-        "pricing": _cny(6.5, 27.0, cached_input=1.3),
+        "pricing": _usd(0.928571, 3.857143, cached=0.185714),
     },
     {
         "model": "zai-org/GLM-5.2",
         "base_url": _SILICONFLOW,
-        "client": "glm-5.1",
-        "input_modalities": _TEXT,
-        "output_modalities": _TEXT,
+        "client": "glm-5.2",
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _cny(8.0, 28.0, cached_input=2.0),
+        "pricing": _usd(1.142857, 4.0, cached=0.285714),
     },
     {
         "model": "Pro/zai-org/GLM-5.1",
         "base_url": _SILICONFLOW,
         "client": "glm-5.1",
-        "input_modalities": _TEXT,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
         "context_window": 200000,
     },
     {
         "model": "Pro/moonshotai/Kimi-K2.6",
         "base_url": _SILICONFLOW,
         "client": "kimi-k2.6",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 262144,
     },
     {
         "model": "Qwen/Qwen3.6-35B-A3B",
         "base_url": _SILICONFLOW,
         "client": "openai",
-        "input_modalities": _TEXT_IMAGE,
-        "output_modalities": _TEXT,
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
         "context_window": 262144,
     },
     {
         "model": "Qwen/Qwen3-Embedding-8B",
         "base_url": _SILICONFLOW,
         "client": "openai-embedding",
-        "input_modalities": _TEXT,
+        "input_modalities": ["Text"],
         "output_modalities": ["Embed"],
     },
 ]
 
 
 def _convert_pricing(pricing: ModelPricing, currency: Currency) -> ModelPricing:
-    if pricing["currency"] == currency:
+    if currency == "USD":
         return dict(pricing)
 
-    rate = _CNY_PER_USD if currency == "CNY" else 1 / _CNY_PER_USD
-    converted: ModelPricing = {"currency": currency, "input": 0.0, "output": 0.0}
-    for key in ("input", "output", "cached_input", "cache_write"):
+    converted: ModelPricing = {
+        "currency": "CNY",
+        "prompt_tokens": 0.0,
+        "thoughts_tokens": 0.0,
+        "response_tokens": 0.0,
+    }
+    for key in ("prompt_tokens", "thoughts_tokens", "response_tokens", "cached_tokens"):
         if key in pricing:
-            converted[key] = round(pricing[key] * rate, 6)
+            converted[key] = round(pricing[key] * _CNY_PER_USD, 6)
     return converted
 
 
@@ -526,8 +540,9 @@ def list_supported_models(currency: Currency = "USD") -> list[SupportedModel]:
 
     Covers the official vendor endpoints plus the OpenRouter and SiliconFlow platforms;
     ``client`` is the ``client_type`` token that routes the model to its protocol client.
-    Prices are returned per million tokens in ``currency`` ("USD" or "CNY", converted at
-    7 CNY/USD from the vendor's official price list).
+    Prices are per million tokens for AgentHub's usage buckets (cached_tokens,
+    prompt_tokens, thoughts_tokens, response_tokens), stored in USD and converted to
+    ``currency`` at 7 CNY/USD on request.
     """
     entries: list[SupportedModel] = []
     for entry in _SUPPORTED_MODELS:
