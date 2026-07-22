@@ -43,9 +43,12 @@ CHANGELOG.md                      One brief line per release linking into change
 - One folder per wire protocol, named after the newest model generation that uses it. Diff the new protocol (capture + docs) against the closest existing folder:
   - Any difference between generations, even a single key name, means a separate folder per generation (e.g. `claude4_6/` vs `claude5/`).
   - Only an identical wire protocol may share a folder; name it after the newest generation (rename and reroute if needed). This is how `claude5/` serves Claude 4.7, 4.8, and 5.
+  - When the old and new generations' implementations differ, keep the old model supported: leave its client folder and routing in place and add a new client folder for the new model. Never delete or rewire away an old model's client unless the user explicitly instructs it.
 - `auto_client.py` / `autoClient.ts` route model names by explicit version matching only, never a bare substring like `"claude" in model`.
 - Conversion must be bijective: a wire message converted to `UniMessage`/`UniEvent` and back must reproduce the original exactly, including `fidelity` payloads (thinking signatures, phase labels, reasoning field names) and tool-call IDs. Verify against the captured exchange.
 - `UniConfig` keys rarely map one-to-one onto provider config keys. **Stop and ask**: list every non-obvious mapping and confirm it with the user before coding. Never decide silently.
+- Every `ThinkingLevel` must stay usable on every client — never raise for a thinking level. Map each level to the closest level the model supports and degrade silently when a level has no exact equivalent (e.g. `gemini3` maps `NONE` to `MINIMAL`; `kimi_k3` maps `NONE` to `low` because K3 cannot disable reasoning).
+- `temperature` and `tool_choice` (and other unsupported parameter values, e.g. `prompt_caching`) may reject with an exception, but must raise the AgentHub-specific `UnsupportedParameterError` from `errors.py` / `errors.ts`, never a bare `ValueError`/`Error`. Keep the message wording consistent with existing clients (containing "not support").
 - Implement Python and TypeScript together with identical behavior.
 
 ## Stage 4 — Verify

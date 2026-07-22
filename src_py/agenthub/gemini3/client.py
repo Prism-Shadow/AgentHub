@@ -25,6 +25,7 @@ from google.genai import types
 from google.oauth2 import service_account
 
 from ..base_client import LLMClient
+from ..errors import UnsupportedParameterError
 from ..types import (
     ContentItem,
     EventType,
@@ -148,7 +149,9 @@ class Gemini3Client(LLMClient):
                 config_params["tool_config"] = types.ToolConfig(function_calling_config=tool_config)
 
         if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
-            raise ValueError("prompt_caching must be ENABLE for Gemini 3.")
+            raise UnsupportedParameterError(
+                self.__class__.__name__, "prompt_caching", "prompt_caching must be ENABLE for Gemini 3."
+            )
 
         if config.get("image_config") is not None:
             config_params["image_config"] = types.ImageConfig(**config["image_config"])

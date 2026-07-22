@@ -14,11 +14,13 @@
 
 import { LLMClient } from "./baseClient";
 import { Gemini3Client } from "./gemini3";
+import { Gemini3_6Client } from "./gemini3_6";
 import { Claude4_6Client } from "./claude4_6";
 import { Claude5Client } from "./claude5";
 import { GPT5_5Client } from "./gpt5_5";
 import { GLM5_1Client } from "./glm5_1";
 import { KimiK2_6Client } from "./kimi_k2_6";
+import { KimiK3Client } from "./kimi_k3";
 import { OpenaiClient } from "./openai";
 import { OpenaiEmbeddingClient } from "./openai_embedding";
 import { DeepSeekV4Client } from "./deepseek_v4";
@@ -75,7 +77,14 @@ export class AutoLLMClient extends LLMClient {
       model.toLowerCase()
     ).toLowerCase();
 
+    // gemini-3.6 must be matched before the broader gemini-3 prefix below
     if (
+      clientType.includes("gemini-3.6") ||
+      clientType.includes("gemini-3.5-flash-lite")
+    ) {
+      // gemini-3.5-flash-lite shares the sampling-parameter deprecation with gemini-3.6
+      return new Gemini3_6Client({ model, apiKey, baseUrl });
+    } else if (
       clientType.includes("gemini-3") ||
       clientType.includes("gemini-embedding")
     ) {
@@ -96,6 +105,8 @@ export class AutoLLMClient extends LLMClient {
       return new GPT5_5Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("glm-5") || clientType.includes("glm-5.1")) {
       return new GLM5_1Client({ model, apiKey, baseUrl });
+    } else if (clientType.includes("kimi-k3")) {
+      return new KimiK3Client({ model, apiKey, baseUrl });
     } else if (
       clientType.includes("kimi-k2.5") ||
       clientType.includes("kimi-k2.6")
@@ -116,7 +127,7 @@ export class AutoLLMClient extends LLMClient {
     } else {
       throw new Error(
         `${clientType} is not supported. ` +
-          "Supported client types: gemini-3, claude-5, claude-4-8, claude-4-7, claude-4-6, gpt-5.5, gpt-5.4, glm-5.1, kimi-k2.6, kimi-k2.5, deepseek-v4, openai-embedding, openai.",
+          "Supported client types: gemini-3.6, gemini-3, claude-5, claude-4-8, claude-4-7, claude-4-6, gpt-5.5, gpt-5.4, glm-5.1, kimi-k3, kimi-k2.6, kimi-k2.5, deepseek-v4, openai-embedding, openai.",
       );
     }
   }

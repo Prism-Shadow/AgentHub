@@ -23,7 +23,7 @@ from anthropic import AsyncAnthropic, AsyncAnthropicBedrock
 from anthropic.types.beta import BetaMessageParam, BetaRawMessageStreamEvent
 
 from ..base_client import LLMClient
-from ..errors import parse_tool_call_arguments
+from ..errors import UnsupportedParameterError, parse_tool_call_arguments
 from ..types import (
     EventType,
     FinishReason,
@@ -118,7 +118,9 @@ class Claude5Client(LLMClient):
         """Convert ToolChoice to Claude's tool_choice format."""
         if isinstance(tool_choice, list):
             if len(tool_choice) > 1:
-                raise ValueError("Claude supports only one tool choice.")
+                raise UnsupportedParameterError(
+                    self.__class__.__name__, "tool_choice", "Claude supports only one tool choice."
+                )
 
             return {"type": "any", "name": tool_choice[0]}
         elif tool_choice == "none":
@@ -149,7 +151,9 @@ class Claude5Client(LLMClient):
             claude_config["max_tokens"] = 64000  # Claude requires max_tokens to be specified
 
         if config.get("temperature") is not None and config["temperature"] != 1.0:
-            raise ValueError("Claude 4.8 does not support setting temperature.")
+            raise UnsupportedParameterError(
+                self.__class__.__name__, "temperature", "Claude 4.8 does not support setting temperature."
+            )
 
         if config.get("thinking_level") is not None:
             claude_config.update(self._convert_thinking_level_to_thinking_config(config["thinking_level"]))

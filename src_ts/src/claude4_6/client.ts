@@ -20,7 +20,10 @@ import {
 } from "@anthropic-ai/sdk/resources/beta/messages";
 import { Stream } from "@anthropic-ai/sdk/core/streaming";
 import { LLMClient } from "../baseClient";
-import { parseToolCallArguments } from "../errors";
+import {
+  parseToolCallArguments,
+  UnsupportedParameterError,
+} from "../errors";
 import {
   EventType,
   FinishReason,
@@ -169,7 +172,11 @@ export class Claude4_6Client extends LLMClient {
   private _convertToolChoice(toolChoice: ToolChoice): any {
     if (Array.isArray(toolChoice)) {
       if (toolChoice.length > 1) {
-        throw new Error("Claude supports only one tool choice.");
+        throw new UnsupportedParameterError({
+          client: this.constructor.name,
+          parameter: "tool_choice",
+          message: "Claude supports only one tool choice.",
+        });
       }
       return { type: "any", name: toolChoice[0] };
     } else if (toolChoice === "none") {

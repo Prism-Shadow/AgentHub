@@ -23,7 +23,7 @@ from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionChunk, ChatCompletionMessageParam
 
 from ..base_client import LLMClient
-from ..errors import parse_tool_call_arguments
+from ..errors import UnsupportedParameterError, parse_tool_call_arguments
 from ..types import (
     EventType,
     FinishReason,
@@ -88,7 +88,9 @@ class KimiK2_6Client(LLMClient):
         elif tool_choice == "none":
             return "none"
         else:
-            raise ValueError("Kimi only supports 'auto' and 'none' for tool_choice.")
+            raise UnsupportedParameterError(
+                self.__class__.__name__, "tool_choice", "Kimi only supports 'auto' and 'none' for tool_choice."
+            )
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """
@@ -106,7 +108,9 @@ class KimiK2_6Client(LLMClient):
             kimi_config["max_completion_tokens"] = config["max_tokens"]
 
         if config.get("temperature") is not None and config["temperature"] != 1.0:
-            raise ValueError("Kimi does not support setting temperature.")
+            raise UnsupportedParameterError(
+                self.__class__.__name__, "temperature", "Kimi does not support setting temperature."
+            )
 
         if config.get("thinking_level") is not None:
             thinking_config = self._convert_thinking_level_to_config(config["thinking_level"])
@@ -119,7 +123,9 @@ class KimiK2_6Client(LLMClient):
             kimi_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
 
         if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
-            raise ValueError("prompt_caching must be ENABLE for Kimi.")
+            raise UnsupportedParameterError(
+                self.__class__.__name__, "prompt_caching", "prompt_caching must be ENABLE for Kimi."
+            )
 
         if config.get("trace_id") is not None:  # use trace_id as the prompt cache key
             kimi_config["prompt_cache_key"] = config["trace_id"]

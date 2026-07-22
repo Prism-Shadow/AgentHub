@@ -39,3 +39,19 @@ def set_history(history: list[UniMessage]) -> None:
 def clear_history() -> None:
     """Clear stateful history."""
 ```
+
+## Module-level helpers
+
+```python
+def list_supported_models() -> list[SupportedModel]:
+    """List supported models as (model, base_url, client) triples covering official
+    endpoints plus OpenRouter and SiliconFlow; the triple maps onto the AutoLLMClient
+    constructor (model, base_url, client_type)."""
+```
+
+## Errors
+
+All AgentHub errors subclass `AgentHubError` (a `ValueError`). Unsupported `UniConfig`
+values (e.g. `temperature` or `tool_choice` on models that reject them) raise
+`UnsupportedParameterError`, which carries `client` and `parameter` attributes. Thinking
+levels never raise: every client maps each `ThinkingLevel` to the closest supported level.

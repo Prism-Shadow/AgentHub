@@ -47,7 +47,14 @@ class AutoLLMClient(LLMClient):
     ) -> LLMClient:
         """Create the appropriate client for the given model."""
         client_type = (client_type or os.getenv("CLIENT_TYPE", model)).lower()
+        # gemini-3.6 must be matched before the broader gemini-3 prefix below
         if any(
+            prefix in client_type for prefix in ("gemini-3.6", "gemini-3.5-flash-lite")
+        ):  # e.g., gemini-3.6-flash; gemini-3.5-flash-lite shares the sampling-parameter deprecation
+            from .gemini3_6 import Gemini3_6Client
+
+            return Gemini3_6Client(model=model, api_key=api_key, base_url=base_url)
+        elif any(
             prefix in client_type for prefix in ("gemini-3", "gemini-embedding")
         ):  # e.g., gemini-3-flash-preview, gemini-embedding-2
             from .gemini3 import Gemini3Client
@@ -71,6 +78,10 @@ class AutoLLMClient(LLMClient):
             from .glm5_1 import GLM5_1Client
 
             return GLM5_1Client(model=model, api_key=api_key, base_url=base_url)
+        elif "kimi-k3" in client_type:
+            from .kimi_k3 import KimiK3Client
+
+            return KimiK3Client(model=model, api_key=api_key, base_url=base_url)
         elif "kimi-k2.5" in client_type or "kimi-k2.6" in client_type:
             from .kimi_k2_6 import KimiK2_6Client
 
@@ -90,7 +101,7 @@ class AutoLLMClient(LLMClient):
         else:
             raise ValueError(
                 f"{client_type} is not supported. "
-                "Supported client types: gemini-3, claude-5, claude-4-8, claude-4-7, claude-4-6, gpt-5.5, gpt-5.4, glm-5.1, kimi-k2.6, kimi-k2.5, deepseek-v4, openai-embedding, openai."
+                "Supported client types: gemini-3.6, gemini-3, claude-5, claude-4-8, claude-4-7, claude-4-6, gpt-5.5, gpt-5.4, glm-5.1, kimi-k3, kimi-k2.6, kimi-k2.5, deepseek-v4, openai-embedding, openai."
             )
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:

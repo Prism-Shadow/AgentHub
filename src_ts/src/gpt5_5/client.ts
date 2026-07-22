@@ -19,7 +19,10 @@ import type {
   ResponseCreateParamsStreaming,
 } from "openai/resources/responses/responses";
 import { LLMClient } from "../baseClient";
-import { parseToolCallArguments } from "../errors";
+import {
+  parseToolCallArguments,
+  UnsupportedParameterError,
+} from "../errors";
 import {
   EventType,
   FinishReason,
@@ -106,7 +109,11 @@ export class GPT5_5Client extends LLMClient {
     }
 
     if (config.temperature !== undefined && config.temperature !== 1.0) {
-      throw new Error("GPT-5.5 does not support setting temperature.");
+      throw new UnsupportedParameterError({
+        client: this.constructor.name,
+        parameter: "temperature",
+        message: "GPT-5.5 does not support setting temperature.",
+      });
     }
 
     if (config.thinking_level !== undefined) {
@@ -133,7 +140,11 @@ export class GPT5_5Client extends LLMClient {
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE
     ) {
-      throw new Error("prompt_caching must be ENABLE for GPT-5.5.");
+      throw new UnsupportedParameterError({
+        client: this.constructor.name,
+        parameter: "prompt_caching",
+        message: "prompt_caching must be ENABLE for GPT-5.5.",
+      });
     }
 
     return openaiConfig;

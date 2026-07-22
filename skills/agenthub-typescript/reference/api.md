@@ -42,3 +42,21 @@ setHistory(history: UniMessage[]): void;
 /** Clear stateful history. */
 clearHistory(): void;
 ```
+
+## Module-level helpers
+
+```typescript
+/**
+ * List supported models as (model, base_url, client) triples covering official
+ * endpoints plus OpenRouter and SiliconFlow; the triple maps onto the
+ * AutoLLMClient constructor (model, baseUrl, clientType).
+ */
+function listSupportedModels(): SupportedModel[];
+```
+
+## Errors
+
+All AgentHub errors subclass `AgentHubError`. Unsupported `UniConfig` values (e.g.
+`temperature` or `tool_choice` on models that reject them) throw
+`UnsupportedParameterError`, which carries `client` and `parameter` fields. Thinking
+levels never throw: every client maps each `ThinkingLevel` to the closest supported level.

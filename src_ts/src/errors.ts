@@ -29,6 +29,25 @@ export class AgentHubError extends Error {
 }
 
 /**
+ * Raised when a UniConfig parameter value is not supported by the target model client.
+ *
+ * Thinking levels never raise this by design: every client maps each ThinkingLevel
+ * onto the closest level the model supports. Parameters such as temperature and
+ * tool_choice may reject unsupported values with this error.
+ */
+export class UnsupportedParameterError extends AgentHubError {
+  readonly client: string;
+  readonly parameter: string;
+
+  constructor(args: { client: string; parameter: string; message: string }) {
+    super(args.message);
+    this.name = "UnsupportedParameterError";
+    this.client = args.client;
+    this.parameter = args.parameter;
+  }
+}
+
+/**
  * Raised when a completed response carries no non-thinking content and no tool calls.
  *
  * Models occasionally finish a turn with thinking output only (reasoning models in

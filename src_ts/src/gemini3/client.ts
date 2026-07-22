@@ -38,6 +38,7 @@ import {
 } from "@google/genai";
 import * as path from "path";
 import { LLMClient } from "../baseClient";
+import { UnsupportedParameterError } from "../errors";
 import {
   EventType,
   Fidelity,
@@ -256,7 +257,11 @@ export class Gemini3Client extends LLMClient {
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE
     ) {
-      throw new Error("prompt_caching must be ENABLE for Gemini 3.");
+      throw new UnsupportedParameterError({
+        client: this.constructor.name,
+        parameter: "prompt_caching",
+        message: "prompt_caching must be ENABLE for Gemini 3.",
+      });
     }
 
     if (config.image_config !== undefined) {

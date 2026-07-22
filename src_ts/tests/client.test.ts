@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { AutoLLMClient } from "../src/autoClient";
+import { listSupportedModels } from "../src/registry";
 import { ThinkingLevel, UniMessage, UniConfig, UniEvent } from "../src/types";
 import { expect, describe, test } from "@jest/globals";
 
@@ -45,6 +46,28 @@ if (process.env.GEMINI_API_KEY) {
     name: "gemini-3.5-flash",
     supportTextGeneration: true,
     supportTemperature: true,
+    supportImageUnderstanding: true,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    supportEmbedding: false,
+    provider: "official",
+  });
+
+  AVAILABLE_MODELS.push({
+    name: "gemini-3.6-flash",
+    supportTextGeneration: true,
+    supportTemperature: false,
+    supportImageUnderstanding: true,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    supportEmbedding: false,
+    provider: "official",
+  });
+
+  AVAILABLE_MODELS.push({
+    name: "gemini-3.5-flash-lite",
+    supportTextGeneration: true,
+    supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -139,6 +162,16 @@ if (process.env.ZAI_API_KEY) {
 
 if (process.env.MOONSHOT_API_KEY) {
   AVAILABLE_MODELS.push({
+    name: "kimi-k3",
+    supportTextGeneration: true,
+    supportTemperature: false,
+    supportImageUnderstanding: true,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    supportEmbedding: false,
+    provider: "official",
+  });
+  AVAILABLE_MODELS.push({
     name: "kimi-k2.6",
     supportTextGeneration: true,
     supportTemperature: false,
@@ -215,6 +248,16 @@ const RUN_SLOW_TEST = process.env.RUN_SLOW_TEST === "1";
 
 if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
+    name: "z-ai/glm-5.2",
+    supportTextGeneration: true,
+    supportTemperature: true,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    supportEmbedding: false,
+    provider: "openrouter",
+  });
+  AVAILABLE_MODELS.push({
     name: "z-ai/glm-5.1",
     supportTextGeneration: true,
     supportTemperature: true,
@@ -247,6 +290,16 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
+    name: "moonshotai/kimi-k3",
+    supportTextGeneration: true,
+    supportTemperature: false,
+    supportImageUnderstanding: true,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    supportEmbedding: false,
+    provider: "openrouter",
+  });
+  AVAILABLE_MODELS.push({
     name: "moonshotai/kimi-k2.6",
     supportTextGeneration: true,
     supportTemperature: false,
@@ -259,6 +312,16 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
 }
 
 if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
+  AVAILABLE_MODELS.push({
+    name: "zai-org/GLM-5.2",
+    supportTextGeneration: true,
+    supportTemperature: true,
+    supportImageUnderstanding: false,
+    supportImageGeneration: false,
+    supportAudioGeneration: false,
+    supportEmbedding: false,
+    provider: "siliconflow",
+  });
   AVAILABLE_MODELS.push({
     name: "Pro/zai-org/GLM-5.1",
     supportTextGeneration: true,
@@ -1046,6 +1109,32 @@ test("should reject unknown model", () => {
   expect(() => new AutoLLMClient({ model: "unknown-model" })).toThrow(
     "not supported",
   );
+});
+
+test("should list supported (model, base_url, client) triples", () => {
+  const entries = listSupportedModels();
+  expect(entries).toContainEqual({
+    model: "kimi-k3",
+    base_url: "https://api.moonshot.cn/v1",
+    client: "kimi-k3",
+  });
+  expect(entries).toContainEqual({
+    model: "z-ai/glm-5.2",
+    base_url: "https://openrouter.ai/api/v1",
+    client: "glm-5.1",
+  });
+
+  for (const entry of entries) {
+    expect(Object.keys(entry).sort()).toEqual(["base_url", "client", "model"]);
+    const client = new AutoLLMClient({
+      model: entry.model,
+      apiKey: "test-key",
+      baseUrl: entry.base_url,
+      clientType: entry.client,
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((client as any)._client).toBeDefined();
+  }
 });
 
 test.each([
