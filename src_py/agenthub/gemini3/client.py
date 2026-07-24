@@ -92,8 +92,40 @@ class Gemini3Client(LLMClient):
 
         return {"data": image_bytes, "mime_type": mime_type}
 
+    # Gemini thinking levels from weakest to strongest, used to pick the
+    # closest supported level when a model rejects the requested one.
+    _GEMINI_LEVEL_ORDER = (
+        types.ThinkingLevel.MINIMAL,
+        types.ThinkingLevel.LOW,
+        types.ThinkingLevel.MEDIUM,
+        types.ThinkingLevel.HIGH,
+    )
+
+    def _supported_thinking_levels(self) -> tuple[types.ThinkingLevel, ...]:
+        """Thinking levels the target model accepts (llmsdk_docs/gemini3/docs/thinking.md).
+
+        An empty tuple means the model rejects the thinking_level parameter
+        entirely, so it must be omitted from the request.
+        """
+        if "gemini-2.5" in self._model:
+            # The vendor table claims low/medium/high, but the live API rejects
+            # every thinking_level value for the 2.5 series (verified 2026-07-24).
+            return ()
+        if "-image" in self._model:
+            return (types.ThinkingLevel.MINIMAL, types.ThinkingLevel.HIGH)
+        if "gemini-3-pro" in self._model:
+            # The only pro generation without "medium".
+            return (types.ThinkingLevel.LOW, types.ThinkingLevel.HIGH)
+        if "-pro" in self._model:
+            # Every pro generation rejects "minimal"; matching broadly keeps
+            # future pro models on the safe side (clamping a level the model
+            # would have accepted costs a little accuracy, forwarding an
+            # unsupported one is a 400).
+            return (types.ThinkingLevel.LOW, types.ThinkingLevel.MEDIUM, types.ThinkingLevel.HIGH)
+        return self._GEMINI_LEVEL_ORDER
+
     def _convert_thinking_level(self, thinking_level: ThinkingLevel | None) -> types.ThinkingLevel | None:
-        """Convert ThinkingLevel enum to Gemini's ThinkingLevel."""
+        """Convert ThinkingLevel enum to the closest Gemini ThinkingLevel the model supports."""
         mapping = {
             ThinkingLevel.NONE: types.ThinkingLevel.MINIMAL,
             ThinkingLevel.LOW: types.ThinkingLevel.LOW,
@@ -101,7 +133,26 @@ class Gemini3Client(LLMClient):
             ThinkingLevel.HIGH: types.ThinkingLevel.HIGH,
             ThinkingLevel.XHIGH: types.ThinkingLevel.HIGH,
         }
-        return mapping.get(thinking_level)
+        level = mapping.get(thinking_level)
+        if level is None:
+            return None
+        supported = self._supported_thinking_levels()
+        if not supported:
+            # The model takes no thinking_level at all; drop the parameter and
+            # let the model use its default instead of forwarding a 400.
+            return None
+        if level in supported:
+            return level
+        # Degrade silently to the nearest supported level; ties round up,
+        # e.g. MEDIUM becomes HIGH on gemini-3-pro.
+        index = self._GEMINI_LEVEL_ORDER.index(level)
+        return min(
+            supported,
+            key=lambda candidate: (
+                abs(self._GEMINI_LEVEL_ORDER.index(candidate) - index),
+                -self._GEMINI_LEVEL_ORDER.index(candidate),
+            ),
+        )
 
     def _convert_tool_choice(self, tool_choice: ToolChoice) -> types.FunctionCallingConfig:
         """Convert ToolChoice to Gemini's tool config."""

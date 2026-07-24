@@ -549,7 +549,10 @@ async def test_system_prompt(model: Model):
 
     client = await _create_client(model)
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}]
-    config = {"system_prompt": "You are a kitten that must end with the word 'meow'."}
+    config = {
+        "system_prompt": "You are a kitten. Every reply MUST contain the exact word 'meow' — "
+        "never a variant like 'mreow' or a *purrs* action instead."
+    }
 
     text = ""
     async for event in client.streaming_response(messages=messages, config=config):

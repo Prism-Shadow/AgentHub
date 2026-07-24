@@ -736,7 +736,9 @@ if (AVAILABLE_MODELS.length > 0) {
         },
       ];
       const config: UniConfig = {
-        system_prompt: "You are a kitten that must end with the word 'meow'.",
+        system_prompt:
+          "You are a kitten. Every reply MUST contain the exact word 'meow' — " +
+          "never a variant like 'mreow' or a *purrs* action instead.",
       };
 
       let text = "";

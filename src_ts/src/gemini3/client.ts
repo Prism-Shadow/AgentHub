@@ -162,7 +162,51 @@ export class Gemini3Client extends LLMClient {
   }
 
   /**
-   * Convert ThinkingLevel enum to Gemini's ThinkingLevel.
+   * Gemini thinking levels from weakest to strongest, used to pick the
+   * closest supported level when a model rejects the requested one.
+   */
+  private static readonly GEMINI_LEVEL_ORDER: GeminiThinkingLevel[] = [
+    GeminiThinkingLevel.MINIMAL,
+    GeminiThinkingLevel.LOW,
+    GeminiThinkingLevel.MEDIUM,
+    GeminiThinkingLevel.HIGH,
+  ];
+
+  /**
+   * Thinking levels the target model accepts (llmsdk_docs/gemini3/docs/thinking.md).
+   *
+   * An empty array means the model rejects the thinking_level parameter
+   * entirely, so it must be omitted from the request.
+   */
+  private _supportedThinkingLevels(): GeminiThinkingLevel[] {
+    if (this._model.includes("gemini-2.5")) {
+      // The vendor table claims low/medium/high, but the live API rejects
+      // every thinking_level value for the 2.5 series (verified 2026-07-24).
+      return [];
+    }
+    if (this._model.includes("-image")) {
+      return [GeminiThinkingLevel.MINIMAL, GeminiThinkingLevel.HIGH];
+    }
+    if (this._model.includes("gemini-3-pro")) {
+      // The only pro generation without "medium".
+      return [GeminiThinkingLevel.LOW, GeminiThinkingLevel.HIGH];
+    }
+    if (this._model.includes("-pro")) {
+      // Every pro generation rejects "minimal"; matching broadly keeps
+      // future pro models on the safe side (clamping a level the model
+      // would have accepted costs a little accuracy, forwarding an
+      // unsupported one is a 400).
+      return [
+        GeminiThinkingLevel.LOW,
+        GeminiThinkingLevel.MEDIUM,
+        GeminiThinkingLevel.HIGH,
+      ];
+    }
+    return Gemini3Client.GEMINI_LEVEL_ORDER;
+  }
+
+  /**
+   * Convert ThinkingLevel enum to the closest Gemini ThinkingLevel the model supports.
    */
   private _convertThinkingLevel(
     thinkingLevel: ThinkingLevel | undefined,
@@ -176,7 +220,32 @@ export class Gemini3Client extends LLMClient {
       [ThinkingLevel.HIGH]: GeminiThinkingLevel.HIGH,
       [ThinkingLevel.XHIGH]: GeminiThinkingLevel.HIGH,
     };
-    return mapping[thinkingLevel];
+    const level = mapping[thinkingLevel];
+    if (level === undefined) {
+      return undefined;
+    }
+    const supported = this._supportedThinkingLevels();
+    if (supported.length === 0) {
+      // The model takes no thinking_level at all; drop the parameter and
+      // let the model use its default instead of forwarding a 400.
+      return undefined;
+    }
+    if (supported.includes(level)) {
+      return level;
+    }
+    // Degrade silently to the nearest supported level; ties round up,
+    // e.g. MEDIUM becomes HIGH on gemini-3-pro. `supported` is non-empty
+    // here, so the initial-value-less reduce cannot throw.
+    const order = Gemini3Client.GEMINI_LEVEL_ORDER;
+    const index = order.indexOf(level);
+    return supported.reduce((best, candidate) => {
+      const bestDistance = Math.abs(order.indexOf(best) - index);
+      const candidateDistance = Math.abs(order.indexOf(candidate) - index);
+      if (candidateDistance !== bestDistance) {
+        return candidateDistance < bestDistance ? candidate : best;
+      }
+      return order.indexOf(candidate) > order.indexOf(best) ? candidate : best;
+    });
   }
 
   /**
