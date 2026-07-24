@@ -162,7 +162,38 @@ export class Gemini3Client extends LLMClient {
   }
 
   /**
-   * Convert ThinkingLevel enum to Gemini's ThinkingLevel.
+   * Gemini thinking levels from weakest to strongest, used to pick the
+   * closest supported level when a model rejects the requested one.
+   */
+  private static readonly GEMINI_LEVEL_ORDER: GeminiThinkingLevel[] = [
+    GeminiThinkingLevel.MINIMAL,
+    GeminiThinkingLevel.LOW,
+    GeminiThinkingLevel.MEDIUM,
+    GeminiThinkingLevel.HIGH,
+  ];
+
+  /**
+   * Thinking levels the target model accepts (llmsdk_docs/gemini3/docs/thinking.md).
+   */
+  private _supportedThinkingLevels(): GeminiThinkingLevel[] {
+    if (this._model.includes("-image")) {
+      return [GeminiThinkingLevel.MINIMAL, GeminiThinkingLevel.HIGH];
+    }
+    if (this._model.includes("gemini-3.1-pro")) {
+      return [
+        GeminiThinkingLevel.LOW,
+        GeminiThinkingLevel.MEDIUM,
+        GeminiThinkingLevel.HIGH,
+      ];
+    }
+    if (this._model.includes("gemini-3-pro")) {
+      return [GeminiThinkingLevel.LOW, GeminiThinkingLevel.HIGH];
+    }
+    return Gemini3Client.GEMINI_LEVEL_ORDER;
+  }
+
+  /**
+   * Convert ThinkingLevel enum to the closest Gemini ThinkingLevel the model supports.
    */
   private _convertThinkingLevel(
     thinkingLevel: ThinkingLevel | undefined,
@@ -176,7 +207,23 @@ export class Gemini3Client extends LLMClient {
       [ThinkingLevel.HIGH]: GeminiThinkingLevel.HIGH,
       [ThinkingLevel.XHIGH]: GeminiThinkingLevel.HIGH,
     };
-    return mapping[thinkingLevel];
+    const level = mapping[thinkingLevel];
+    const supported = this._supportedThinkingLevels();
+    if (level === undefined || supported.includes(level)) {
+      return level;
+    }
+    // Degrade silently to the nearest supported level; ties round up,
+    // e.g. MEDIUM becomes HIGH on gemini-3-pro.
+    const order = Gemini3Client.GEMINI_LEVEL_ORDER;
+    const index = order.indexOf(level);
+    return supported.reduce((best, candidate) => {
+      const bestDistance = Math.abs(order.indexOf(best) - index);
+      const candidateDistance = Math.abs(order.indexOf(candidate) - index);
+      if (candidateDistance !== bestDistance) {
+        return candidateDistance < bestDistance ? candidate : best;
+      }
+      return order.indexOf(candidate) > order.indexOf(best) ? candidate : best;
+    });
   }
 
   /**
