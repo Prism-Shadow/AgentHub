@@ -23,7 +23,7 @@ from typing import Literal
 import httpx
 import pytest
 
-from agenthub import AutoLLMClient, ThinkingLevel, list_supported_models
+from agenthub import AutoLLMClient, PromptCaching, ThinkingLevel, UnsupportedParameterError, list_supported_models
 
 
 IMAGE = "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg"
@@ -41,6 +41,7 @@ class Model:
     support_embedding: bool = False
     provider: Literal["official", "bedrock", "vertex", "siliconflow", "openrouter", "modelverse"] = "official"
     client_type: str | None = None
+    requires_explicit_tool_prompt: bool = False
 
     def __repr__(self) -> str:
         return f"{self.name}:{self.provider}"
@@ -99,6 +100,9 @@ if os.getenv("ZAI_API_KEY"):
 
 if os.getenv("MOONSHOT_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="kimi-k3", support_temperature=False))
+
+if os.getenv("MINIMAX_API_KEY"):
+    AVAILABLE_MODELS.append(Model(name="MiniMax-M3", client_type="minimax-m3", requires_explicit_tool_prompt=True))
 
 if os.getenv("DEEPSEEK_API_KEY"):
     AVAILABLE_MODELS.append(
@@ -395,9 +399,322 @@ async def test_unknown_model():
 
 
 @pytest.mark.asyncio
-async def test_list_supported_models():
+async def test_list_supported_models(monkeypatch: pytest.MonkeyPatch):
     """Test that the registry lists model entries accepted by AutoLLMClient."""
     entries = list_supported_models()
+    minimax_model_names = ["MiniMax-M3", "MiniMax-M2.7", "MiniMax-M2.7-highspeed"]
+    minimax_entries = [entry for entry in entries if entry["base_url"] == "https://api.minimax.io/v1"]
+    assert [entry["model"] for entry in minimax_entries] == minimax_model_names
+    assert minimax_entries[0] == {
+        "model": "MiniMax-M3",
+        "base_url": "https://api.minimax.io/v1",
+        "client": "minimax-m3",
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
+        "context_window": 1000000,
+    }
+    assert minimax_entries[1] == {
+        "model": "MiniMax-M2.7",
+        "base_url": "https://api.minimax.io/v1",
+        "client": "minimax-m3",
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
+        "context_window": 204800,
+        "pricing": {
+            "currency": "USD",
+            "prompt_tokens": 0.3,
+            "thoughts_tokens": 1.2,
+            "response_tokens": 1.2,
+            "cached_tokens": 0.06,
+        },
+    }
+    assert minimax_entries[2] == {
+        "model": "MiniMax-M2.7-highspeed",
+        "base_url": "https://api.minimax.io/v1",
+        "client": "minimax-m3",
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
+        "context_window": 204800,
+        "pricing": {
+            "currency": "USD",
+            "prompt_tokens": 0.6,
+            "thoughts_tokens": 2.4,
+            "response_tokens": 2.4,
+            "cached_tokens": 0.06,
+        },
+    }
+
+    minimax_clients = {model: AutoLLMClient(model=model, api_key="test-key") for model in minimax_model_names}
+    assert all(client._client.__class__.__name__ == "MiniMaxM3Client" for client in minimax_clients.values())
+    explicit_protocol_client = AutoLLMClient(model="MiniMax-M2.7", api_key="test-key", client_type="minimax-m3")
+    assert explicit_protocol_client._client.__class__.__name__ == "MiniMaxM3Client"
+    monkeypatch.setenv("CLIENT_TYPE", "")
+    empty_env_client = AutoLLMClient(model="MiniMax-M2.7", api_key="test-key")
+    assert empty_env_client._client.__class__.__name__ == "MiniMaxM3Client"
+    for invalid_client_type in ("minimax-m2.7", "minimax-m2.7-highspeed"):
+        with pytest.raises(ValueError, match="not support"):
+            AutoLLMClient(model="custom-model", api_key="test-key", client_type=invalid_client_type)
+    for invalid_model in ("MiniMax-M2.7-preview", "MiniMax-M2.5"):
+        with pytest.raises(ValueError, match="not support"):
+            AutoLLMClient(model=invalid_model, api_key="test-key")
+
+    minimax_m3 = minimax_clients["MiniMax-M3"]
+    assert minimax_m3.transform_uni_config_to_model_config({"thinking_level": ThinkingLevel.NONE})["reasoning"] == {
+        "effort": "none"
+    }
+    assert "prompt_caching" not in minimax_m3.transform_uni_config_to_model_config(
+        {"prompt_caching": PromptCaching.ENABLE}
+    )
+    for prompt_caching in (PromptCaching.DISABLE, PromptCaching.ENHANCE):
+        with pytest.raises(UnsupportedParameterError, match="does not support"):
+            minimax_m3.transform_uni_config_to_model_config({"prompt_caching": prompt_caching})
+    for tool_choice in ("required", ["lookup"]):
+        with pytest.raises(UnsupportedParameterError, match="does not support"):
+            minimax_m3.transform_uni_config_to_model_config({"tool_choice": tool_choice})
+
+    reasoning_wire_item = {
+        "id": "reasoning-1",
+        "status": "completed",
+        "summary": [],
+        "content": [{"type": "reasoning_text", "text": "reasoning"}],
+        "type": "reasoning",
+    }
+    function_wire_item = {
+        "id": "function-1",
+        "status": "completed",
+        "type": "function_call",
+        "call_id": "call-1",
+        "name": "lookup",
+        "arguments": '{"城市": "上海"}',
+    }
+    ordered_input = minimax_m3.transform_uni_message_to_model_input(
+        [
+            {
+                "role": "assistant",
+                "content_items": [
+                    {"type": "text", "text": "before"},
+                    {
+                        "type": "thinking",
+                        "thinking": "reasoning",
+                        "fidelity": {"wire_item": reasoning_wire_item},
+                    },
+                    {
+                        "type": "tool_call",
+                        "name": "lookup",
+                        "arguments": {"城市": "上海"},
+                        "tool_call_id": "call-1",
+                        "fidelity": {"wire_item": function_wire_item},
+                    },
+                    {"type": "text", "text": "after"},
+                ],
+            }
+        ]
+    )
+    assert ordered_input == [
+        {"role": "assistant", "content": [{"type": "output_text", "text": "before"}]},
+        reasoning_wire_item,
+        function_wire_item,
+        {"role": "assistant", "content": [{"type": "output_text", "text": "after"}]},
+    ]
+
+    message_wire_item = {
+        "id": "message-1",
+        "type": "message",
+        "status": "completed",
+        "role": "assistant",
+        "content": [
+            {
+                "type": "output_text",
+                "text": "exact response",
+                "annotations": [],
+                "logprobs": None,
+            }
+        ],
+        "phase": None,
+    }
+    message_events = [
+        minimax_m3.transform_model_output_to_uni_event(
+            {
+                "type": "response.output_text.delta",
+                "item_id": "message-1",
+                "output_index": 0,
+                "content_index": 0,
+                "delta": "exact response",
+            }
+        ),
+        minimax_m3.transform_model_output_to_uni_event(
+            {"type": "response.output_item.done", "output_index": 0, "item": message_wire_item}
+        ),
+    ]
+    replay_message = minimax_m3.concat_uni_events_to_uni_message(message_events)
+    assert replay_message["content_items"] == [
+        {
+            "type": "text",
+            "text": "exact response",
+            "fidelity": {"phase": "message-1", "wire_item": message_wire_item},
+        }
+    ]
+    assert minimax_m3.transform_uni_message_to_model_input([replay_message]) == [message_wire_item]
+
+    second_function_wire_item = {
+        **function_wire_item,
+        "id": "function-2",
+        "call_id": "call-2",
+        "arguments": '{"城市": "北京"}',
+    }
+    function_events = [
+        minimax_m3.transform_model_output_to_uni_event(
+            {"type": "response.output_item.done", "output_index": index, "item": wire_item}
+        )
+        for index, wire_item in enumerate((function_wire_item, second_function_wire_item))
+    ]
+    replay_functions = minimax_m3.concat_uni_events_to_uni_message(function_events)
+    assert minimax_m3.transform_uni_message_to_model_input([replay_functions]) == [
+        function_wire_item,
+        second_function_wire_item,
+    ]
+
+    changed_arguments_input = minimax_m3.transform_uni_message_to_model_input(
+        [
+            {
+                "role": "assistant",
+                "content_items": [
+                    {
+                        "type": "tool_call",
+                        "name": "lookup",
+                        "arguments": {"value": True},
+                        "tool_call_id": "call-bool",
+                        "fidelity": {
+                            "wire_item": {
+                                "id": "function-bool",
+                                "status": "completed",
+                                "type": "function_call",
+                                "call_id": "call-bool",
+                                "name": "lookup",
+                                "arguments": '{"value":1}',
+                            }
+                        },
+                    }
+                ],
+            }
+        ]
+    )
+    assert changed_arguments_input[0]["arguments"] == '{"value":true}'
+
+    with pytest.raises(ValueError, match="valid id, summary, and content"):
+        minimax_m3.transform_uni_message_to_model_input(
+            [
+                {
+                    "role": "assistant",
+                    "content_items": [
+                        {
+                            "type": "thinking",
+                            "thinking": "invalid",
+                            "fidelity": {
+                                "wire_item": {
+                                    "id": 123,
+                                    "type": "reasoning",
+                                    "summary": "invalid",
+                                    "content": [],
+                                }
+                            },
+                        }
+                    ],
+                }
+            ]
+        )
+
+    completed_event = minimax_m3.transform_model_output_to_uni_event(
+        {
+            "type": "response.completed",
+            "response": {
+                "output": [function_wire_item, second_function_wire_item],
+                "usage": {
+                    "input_tokens": 10,
+                    "input_tokens_details": {"cached_tokens": 2},
+                    "output_tokens": 6,
+                    "output_tokens_details": {"reasoning_tokens": 1},
+                },
+            },
+        }
+    )
+    assert completed_event["finish_reason"] == "tool_call"
+    assert completed_event["usage_metadata"] == {
+        "cached_tokens": 2,
+        "prompt_tokens": 8,
+        "thoughts_tokens": 1,
+        "response_tokens": 5,
+    }
+
+    partial_start = minimax_m3.transform_model_output_to_uni_event(
+        {
+            "type": "response.output_item.added",
+            "output_index": 3,
+            "item": {
+                "id": "function-partial",
+                "type": "function_call",
+                "call_id": "call-partial",
+                "name": "lookup",
+                "arguments": "",
+            },
+        }
+    )
+    partial_delta = minimax_m3.transform_model_output_to_uni_event(
+        {
+            "type": "response.function_call_arguments.delta",
+            "item_id": "function-partial",
+            "output_index": 3,
+            "delta": '{"value":1}',
+        }
+    )
+    assert partial_start["content_items"][0]["fidelity"] == {
+        "item_id": "function-partial",
+        "output_index": 3,
+    }
+    assert partial_delta["content_items"][0]["fidelity"] == {
+        "item_id": "function-partial",
+        "output_index": 3,
+    }
+
+    incomplete_event = minimax_m3.transform_model_output_to_uni_event(
+        {
+            "type": "response.incomplete",
+            "response": {
+                "output": [],
+                "usage": None,
+                "incomplete_details": {"reason": "max_output_tokens"},
+            },
+        }
+    )
+    assert incomplete_event["finish_reason"] == "length"
+    with pytest.raises(RuntimeError, match="provider_failure"):
+        minimax_m3.transform_model_output_to_uni_event(
+            {
+                "type": "response.failed",
+                "response": {
+                    "id": "response-1",
+                    "error": {"code": "provider_failure", "message": "failed"},
+                },
+            }
+        )
+    with pytest.raises(RuntimeError, match="bad_request"):
+        minimax_m3.transform_model_output_to_uni_event(
+            {"type": "error", "error": {"code": "bad_request", "message": "invalid"}}
+        )
+
+    expected_m2_7_efforts = {
+        ThinkingLevel.NONE: "low",
+        ThinkingLevel.LOW: "low",
+        ThinkingLevel.MEDIUM: "medium",
+        ThinkingLevel.HIGH: "high",
+        ThinkingLevel.XHIGH: "high",
+    }
+    for model in (*minimax_model_names[1:], "minimax-m2.7", "minimax-m2.7-highspeed"):
+        client = minimax_clients.get(model) or AutoLLMClient(model=model, api_key="test-key")
+        for thinking_level, effort in expected_m2_7_efforts.items():
+            config = client.transform_uni_config_to_model_config({"thinking_level": thinking_level})
+            assert config["reasoning"] == {"effort": effort}
+
     kimi = next(entry for entry in entries if entry["model"] == "kimi-k3")
     assert kimi["base_url"] == "https://api.moonshot.cn/v1"
     assert kimi["client"] == "kimi-k3"
@@ -495,10 +812,19 @@ async def test_tool_use(model: Model):
     }
 
     config = {"tools": [weather_tool]}
+    tool_name = None
+    tool_arguments = {}
     tool_call_id = None
     partial_tool_call_data = {}
 
-    message1 = {"role": "user", "content_items": [{"type": "text", "text": "What is the weather in San Francisco?"}]}
+    tool_prompt = "What is the weather in San Francisco?"
+    if model.requires_explicit_tool_prompt:
+        tool_prompt = (
+            "You must invoke get_weather exactly once with location San Francisco. "
+            "Your only allowed action before the tool result is that function call; return no text before its result. "
+            "After the result is provided, answer using the returned weather."
+        )
+    message1 = {"role": "user", "content_items": [{"type": "text", "text": tool_prompt}]}
     async for event in client.streaming_response_stateful(message=message1, config=config):
         await _check_event_integrity(event)
         for item in event["content_items"]:
@@ -641,7 +967,9 @@ async def test_tool_result_with_image(model: Model):
     # Define a tool that returns an image
     image_tool = {
         "name": "get_image",
-        "description": "Get an image URL",
+        "description": (
+            "Retrieve an image URL for a numeric seed." if model.requires_explicit_tool_prompt else "Get an image URL"
+        ),
         "parameters": {
             "type": "object",
             "properties": {
@@ -655,12 +983,16 @@ async def test_tool_result_with_image(model: Model):
     }
 
     config = {"tools": [image_tool]}
+    tool_name = None
     tool_call_id = None
 
-    message1 = {
-        "role": "user",
-        "content_items": [{"type": "text", "text": "Get me a random image and describe it briefly."}],
-    }
+    tool_prompt = "Get me a random image and describe it briefly."
+    if model.requires_explicit_tool_prompt:
+        tool_prompt = (
+            "You must invoke the get_image function exactly once with seed 42. "
+            "Your only allowed action in this turn is that function call; return no text before its result."
+        )
+    message1 = {"role": "user", "content_items": [{"type": "text", "text": tool_prompt}]}
     async for event in client.streaming_response_stateful(message=message1, config=config):
         await _check_event_integrity(event)
         for item in event["content_items"]:
@@ -676,7 +1008,11 @@ async def test_tool_result_with_image(model: Model):
         "content_items": [
             {
                 "type": "tool_result",
-                "text": "Here is the result image:",
+                "text": (
+                    "Here is the result image. Describe it briefly."
+                    if model.requires_explicit_tool_prompt
+                    else "Here is the result image:"
+                ),
                 "images": [IMAGE],
                 "tool_call_id": tool_call_id,
             }

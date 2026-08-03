@@ -16,6 +16,7 @@ To use a specific model, please refer to its dedicated README:
 - **[GLM-5.2](./glm5_2/README.md)** - Z.AI's GLM-5.2 API documentation (reasoning_effort, thinking modes, tool streaming)
 - **[GPT-5.5](./gpt5_5/README.md)** - OpenAI's GPT-5.5 API documentation and examples
 - **[Kimi K3](./kimi_k3/README.md)** - Moonshot's Kimi K3 API documentation (reasoning_effort, tool calling, vision, caching)
+- **[MiniMax M-series](./minimax_m3/README.md)** - Responses API-compatible documentation for MiniMax M3 and M2.7, plus Token Plan Subscription Key integration
 
 Each model directory contains:
 - `docs/` - Detailed documentation for the model's features and capabilities

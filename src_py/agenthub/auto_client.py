@@ -46,7 +46,14 @@ class AutoLLMClient(LLMClient):
         self, model: str, api_key: str | None = None, base_url: str | None = None, client_type: str | None = None
     ) -> LLMClient:
         """Create the appropriate client for the given model."""
-        client_type = (client_type or os.getenv("CLIENT_TYPE", model)).lower()
+        explicit_client_type = client_type or os.getenv("CLIENT_TYPE")
+        client_type = (explicit_client_type or model).lower()
+        if client_type == "minimax-m3" or (
+            not explicit_client_type and client_type in ("minimax-m2.7", "minimax-m2.7-highspeed")
+        ):
+            from .minimax_m3 import MiniMaxM3Client
+
+            return MiniMaxM3Client(model=model, api_key=api_key, base_url=base_url)
         # gemini-3.6 must be matched before the broader gemini-3 prefix below
         if any(
             prefix in client_type for prefix in ("gemini-3.6", "gemini-3.5-flash-lite")
@@ -105,7 +112,10 @@ class AutoLLMClient(LLMClient):
         else:
             raise ValueError(
                 f"{client_type} is not supported. "
-                "Supported client types: gemini-3.6, gemini-3, claude-5, claude-4-8, claude-4-7, claude-4-6, gpt-5.5, gpt-5.4, glm-5.2, glm-5.1, kimi-k3, kimi-k2.6, kimi-k2.5, deepseek-v4, openai-embedding, openai."
+                "Supported client types: minimax-m3, gemini-3.6, gemini-3, "
+                "claude-5, claude-4-8, claude-4-7, claude-4-6, gpt-5.5, gpt-5.4, glm-5.2, glm-5.1, kimi-k3, "
+                "kimi-k2.6, kimi-k2.5, "
+                "deepseek-v4, openai-embedding, openai."
             )
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:
