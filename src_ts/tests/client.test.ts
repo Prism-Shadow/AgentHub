@@ -1115,122 +1115,46 @@ test("should list supported model entries", () => {
   const minimaxEntries = entries.filter(
     (entry) => entry.base_url === "https://api.minimax.io/v1",
   );
-  expect(minimaxEntries.map((entry) => entry.model)).toEqual([
-    "MiniMax-M3",
-    "MiniMax-M2.7",
-    "MiniMax-M2.7-highspeed",
+  expect(minimaxEntries).toEqual([
+    {
+      model: "MiniMax-M3",
+      base_url: "https://api.minimax.io/v1",
+      client: "minimax-m3",
+      input_modalities: ["Text", "Image"],
+      output_modalities: ["Text"],
+      context_window: 1000000,
+    },
   ]);
-  expect(minimaxEntries[0]).toEqual({
-    model: "MiniMax-M3",
-    base_url: "https://api.minimax.io/v1",
-    client: "minimax-m3",
-    input_modalities: ["Text", "Image"],
-    output_modalities: ["Text"],
-    context_window: 1000000,
-  });
-  expect(minimaxEntries[1]).toEqual({
-    model: "MiniMax-M2.7",
-    base_url: "https://api.minimax.io/v1",
-    client: "minimax-m3",
-    input_modalities: ["Text"],
-    output_modalities: ["Text"],
-    context_window: 204800,
-    pricing: {
-      currency: "USD",
-      prompt_tokens: 0.3,
-      thoughts_tokens: 1.2,
-      response_tokens: 1.2,
-      cached_tokens: 0.06,
-    },
-  });
-  expect(minimaxEntries[2]).toEqual({
-    model: "MiniMax-M2.7-highspeed",
-    base_url: "https://api.minimax.io/v1",
-    client: "minimax-m3",
-    input_modalities: ["Text"],
-    output_modalities: ["Text"],
-    context_window: 204800,
-    pricing: {
-      currency: "USD",
-      prompt_tokens: 0.6,
-      thoughts_tokens: 2.4,
-      response_tokens: 2.4,
-      cached_tokens: 0.06,
-    },
-  });
-
-  const clientImplementationName = (client: AutoLLMClient): string =>
-    (
-      client as unknown as {
-        _client: { constructor: { name: string } };
-      }
-    )._client.constructor.name;
-
-  for (const model of [
-    "MiniMax-M3",
-    "MiniMax-M2.7",
-    "MiniMax-M2.7-highspeed",
-  ]) {
-    const modelRoutedClient = new AutoLLMClient({
-      model,
-      apiKey: "test-key",
-    });
-    expect(clientImplementationName(modelRoutedClient)).toBe(
-      "MiniMaxM3Client",
-    );
-  }
-  const protocolRoutedClient = new AutoLLMClient({
-    model: "MiniMax-M2.7",
-    apiKey: "test-key",
-    clientType: "minimax-m3",
-  });
-  expect(clientImplementationName(protocolRoutedClient)).toBe(
-    "MiniMaxM3Client",
-  );
-  const previousClientType = process.env.CLIENT_TYPE;
-  process.env.CLIENT_TYPE = "";
-  try {
-    const emptyEnvClient = new AutoLLMClient({
-      model: "MiniMax-M2.7",
-      apiKey: "test-key",
-    });
-    expect(clientImplementationName(emptyEnvClient)).toBe("MiniMaxM3Client");
-  } finally {
-    if (previousClientType === undefined) {
-      delete process.env.CLIENT_TYPE;
-    } else {
-      process.env.CLIENT_TYPE = previousClientType;
-    }
-  }
-  for (const clientType of ["minimax-m2.7", "minimax-m2.7-highspeed"]) {
-    expect(
-      () =>
-        new AutoLLMClient({
-          model: "custom-minimax-model",
-          apiKey: "test-key",
-          clientType,
-        }),
-    ).toThrow("not supported");
-  }
-  for (const model of ["MiniMax-M2.7-preview", "MiniMax-M2.5"]) {
-    expect(
-      () =>
-        new AutoLLMClient({
-          model,
-          apiKey: "test-key",
-        }),
-    ).toThrow("not supported");
-  }
 
   const minimaxM3 = new AutoLLMClient({
     model: "MiniMax-M3",
     apiKey: "test-key",
   });
-  expect(
-    minimaxM3.transformUniConfigToModelConfig({
-      thinking_level: ThinkingLevel.NONE,
-    }).reasoning,
-  ).toEqual({ effort: "none" });
+  for (const clientType of [undefined, "minimax-m3"]) {
+    expect(
+      () =>
+        new AutoLLMClient({
+          model: "MiniMax-M3-preview",
+          apiKey: "test-key",
+          clientType,
+        }),
+    ).toThrow("not supported");
+  }
+
+  const m3ThinkingEfforts = [
+    [ThinkingLevel.NONE, "none"],
+    [ThinkingLevel.LOW, "low"],
+    [ThinkingLevel.MEDIUM, "medium"],
+    [ThinkingLevel.HIGH, "high"],
+    [ThinkingLevel.XHIGH, "high"],
+  ] as const;
+  for (const [thinkingLevel, effort] of m3ThinkingEfforts) {
+    expect(
+      minimaxM3.transformUniConfigToModelConfig({
+        thinking_level: thinkingLevel,
+      }).reasoning,
+    ).toEqual({ effort });
+  }
   expect(
     minimaxM3.transformUniConfigToModelConfig({
       prompt_caching: PromptCaching.ENABLE,
@@ -1494,28 +1418,6 @@ test("should list supported model entries", () => {
     }),
   ).toThrow("bad_request");
 
-  const m27ThinkingEfforts = [
-    [ThinkingLevel.NONE, "low"],
-    [ThinkingLevel.LOW, "low"],
-    [ThinkingLevel.MEDIUM, "medium"],
-    [ThinkingLevel.HIGH, "high"],
-    [ThinkingLevel.XHIGH, "high"],
-  ] as const;
-  for (const model of [
-    "MiniMax-M2.7",
-    "MiniMax-M2.7-highspeed",
-    "minimax-m2.7",
-    "minimax-m2.7-highspeed",
-  ]) {
-    const client = new AutoLLMClient({ model, apiKey: "test-key" });
-    for (const [thinkingLevel, effort] of m27ThinkingEfforts) {
-      expect(
-        client.transformUniConfigToModelConfig({
-          thinking_level: thinkingLevel,
-        }).reasoning,
-      ).toEqual({ effort });
-    }
-  }
 
   for (const entry of entries) {
     expect(entry.input_modalities.length).toBeGreaterThan(0);

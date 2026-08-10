@@ -1,6 +1,6 @@
-# MiniMax M-series SDK Documentation
+# MiniMax M3 SDK Documentation
 
-This directory contains an official-documentation snapshot for the Responses API-compatible protocol shared by MiniMax M3 and the MiniMax M2.7 family, plus Token Plan authentication.
+This directory contains the official-documentation snapshot used to implement MiniMax M3 Responses API support and Token Plan authentication.
 
 ## Quick Start
 

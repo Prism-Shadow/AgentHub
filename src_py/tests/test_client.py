@@ -399,69 +399,37 @@ async def test_unknown_model():
 
 
 @pytest.mark.asyncio
-async def test_list_supported_models(monkeypatch: pytest.MonkeyPatch):
+async def test_list_supported_models():
     """Test that the registry lists model entries accepted by AutoLLMClient."""
     entries = list_supported_models()
-    minimax_model_names = ["MiniMax-M3", "MiniMax-M2.7", "MiniMax-M2.7-highspeed"]
     minimax_entries = [entry for entry in entries if entry["base_url"] == "https://api.minimax.io/v1"]
-    assert [entry["model"] for entry in minimax_entries] == minimax_model_names
-    assert minimax_entries[0] == {
-        "model": "MiniMax-M3",
-        "base_url": "https://api.minimax.io/v1",
-        "client": "minimax-m3",
-        "input_modalities": ["Text", "Image"],
-        "output_modalities": ["Text"],
-        "context_window": 1000000,
-    }
-    assert minimax_entries[1] == {
-        "model": "MiniMax-M2.7",
-        "base_url": "https://api.minimax.io/v1",
-        "client": "minimax-m3",
-        "input_modalities": ["Text"],
-        "output_modalities": ["Text"],
-        "context_window": 204800,
-        "pricing": {
-            "currency": "USD",
-            "prompt_tokens": 0.3,
-            "thoughts_tokens": 1.2,
-            "response_tokens": 1.2,
-            "cached_tokens": 0.06,
-        },
-    }
-    assert minimax_entries[2] == {
-        "model": "MiniMax-M2.7-highspeed",
-        "base_url": "https://api.minimax.io/v1",
-        "client": "minimax-m3",
-        "input_modalities": ["Text"],
-        "output_modalities": ["Text"],
-        "context_window": 204800,
-        "pricing": {
-            "currency": "USD",
-            "prompt_tokens": 0.6,
-            "thoughts_tokens": 2.4,
-            "response_tokens": 2.4,
-            "cached_tokens": 0.06,
-        },
-    }
+    assert minimax_entries == [
+        {
+            "model": "MiniMax-M3",
+            "base_url": "https://api.minimax.io/v1",
+            "client": "minimax-m3",
+            "input_modalities": ["Text", "Image"],
+            "output_modalities": ["Text"],
+            "context_window": 1000000,
+        }
+    ]
 
-    minimax_clients = {model: AutoLLMClient(model=model, api_key="test-key") for model in minimax_model_names}
-    assert all(client._client.__class__.__name__ == "MiniMaxM3Client" for client in minimax_clients.values())
-    explicit_protocol_client = AutoLLMClient(model="MiniMax-M2.7", api_key="test-key", client_type="minimax-m3")
-    assert explicit_protocol_client._client.__class__.__name__ == "MiniMaxM3Client"
-    monkeypatch.setenv("CLIENT_TYPE", "")
-    empty_env_client = AutoLLMClient(model="MiniMax-M2.7", api_key="test-key")
-    assert empty_env_client._client.__class__.__name__ == "MiniMaxM3Client"
-    for invalid_client_type in ("minimax-m2.7", "minimax-m2.7-highspeed"):
+    minimax_m3 = AutoLLMClient(model="MiniMax-M3", api_key="test-key")
+    assert minimax_m3._client.__class__.__name__ == "MiniMaxM3Client"
+    for client_type in (None, "minimax-m3"):
         with pytest.raises(ValueError, match="not support"):
-            AutoLLMClient(model="custom-model", api_key="test-key", client_type=invalid_client_type)
-    for invalid_model in ("MiniMax-M2.7-preview", "MiniMax-M2.5"):
-        with pytest.raises(ValueError, match="not support"):
-            AutoLLMClient(model=invalid_model, api_key="test-key")
+            AutoLLMClient(model="MiniMax-M3-preview", api_key="test-key", client_type=client_type)
 
-    minimax_m3 = minimax_clients["MiniMax-M3"]
-    assert minimax_m3.transform_uni_config_to_model_config({"thinking_level": ThinkingLevel.NONE})["reasoning"] == {
-        "effort": "none"
+    expected_m3_efforts = {
+        ThinkingLevel.NONE: "none",
+        ThinkingLevel.LOW: "low",
+        ThinkingLevel.MEDIUM: "medium",
+        ThinkingLevel.HIGH: "high",
+        ThinkingLevel.XHIGH: "high",
     }
+    for thinking_level, effort in expected_m3_efforts.items():
+        config = minimax_m3.transform_uni_config_to_model_config({"thinking_level": thinking_level})
+        assert config["reasoning"] == {"effort": effort}
     assert "prompt_caching" not in minimax_m3.transform_uni_config_to_model_config(
         {"prompt_caching": PromptCaching.ENABLE}
     )
@@ -701,19 +669,6 @@ async def test_list_supported_models(monkeypatch: pytest.MonkeyPatch):
         minimax_m3.transform_model_output_to_uni_event(
             {"type": "error", "error": {"code": "bad_request", "message": "invalid"}}
         )
-
-    expected_m2_7_efforts = {
-        ThinkingLevel.NONE: "low",
-        ThinkingLevel.LOW: "low",
-        ThinkingLevel.MEDIUM: "medium",
-        ThinkingLevel.HIGH: "high",
-        ThinkingLevel.XHIGH: "high",
-    }
-    for model in (*minimax_model_names[1:], "minimax-m2.7", "minimax-m2.7-highspeed"):
-        client = minimax_clients.get(model) or AutoLLMClient(model=model, api_key="test-key")
-        for thinking_level, effort in expected_m2_7_efforts.items():
-            config = client.transform_uni_config_to_model_config({"thinking_level": thinking_level})
-            assert config["reasoning"] == {"effort": effort}
 
     kimi = next(entry for entry in entries if entry["model"] == "kimi-k3")
     assert kimi["base_url"] == "https://api.moonshot.cn/v1"

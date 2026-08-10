@@ -20,16 +20,6 @@ from .base_client import LLMClient
 from .types import UniConfig, UniEvent, UniMessage
 
 
-_MINIMAX_RESPONSES_CLIENT_TYPE = "minimax-m3"
-_MINIMAX_RESPONSES_MODEL_IDS = frozenset(
-    {
-        "minimax-m3",
-        "minimax-m2.7",
-        "minimax-m2.7-highspeed",
-    }
-)
-
-
 class AutoLLMClient(LLMClient):
     """
     Auto-routing LLM client that dispatches to appropriate model-specific client.
@@ -56,11 +46,8 @@ class AutoLLMClient(LLMClient):
         self, model: str, api_key: str | None = None, base_url: str | None = None, client_type: str | None = None
     ) -> LLMClient:
         """Create the appropriate client for the given model."""
-        explicit_client_type = client_type or os.getenv("CLIENT_TYPE")
-        client_type = (explicit_client_type or model).lower()
-        is_minimax_responses_client = client_type == _MINIMAX_RESPONSES_CLIENT_TYPE
-        is_minimax_responses_model = not explicit_client_type and client_type in _MINIMAX_RESPONSES_MODEL_IDS
-        if is_minimax_responses_client or is_minimax_responses_model:
+        client_type = (client_type or os.getenv("CLIENT_TYPE") or model).lower()
+        if client_type == "minimax-m3":
             from .minimax_m3 import MiniMaxM3Client
 
             return MiniMaxM3Client(model=model, api_key=api_key, base_url=base_url)

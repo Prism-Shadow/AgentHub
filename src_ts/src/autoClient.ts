@@ -28,13 +28,6 @@ import { DeepSeekV4Client } from "./deepseek_v4";
 import { MiniMaxM3Client } from "./minimax_m3";
 import { UniConfig, UniEvent, UniMessage } from "./types";
 
-const MINIMAX_RESPONSES_CLIENT_TYPE = "minimax-m3";
-const MINIMAX_RESPONSES_MODEL_IDS = new Set([
-  "minimax-m3",
-  "minimax-m2.7",
-  "minimax-m2.7-highspeed",
-]);
-
 /**
  * Auto-routing LLM client that dispatches to appropriate model-specific client.
  *
@@ -80,14 +73,9 @@ export class AutoLLMClient extends LLMClient {
     baseUrl?: string | null,
     clientType?: string | null,
   ): LLMClient {
-    const explicitClientType = clientType || process.env.CLIENT_TYPE;
-    clientType = (explicitClientType || model).toLowerCase();
-    const isMiniMaxResponsesClient =
-      clientType === MINIMAX_RESPONSES_CLIENT_TYPE;
-    const isMiniMaxResponsesModel =
-      !explicitClientType && MINIMAX_RESPONSES_MODEL_IDS.has(clientType);
+    clientType = (clientType || process.env.CLIENT_TYPE || model).toLowerCase();
 
-    if (isMiniMaxResponsesClient || isMiniMaxResponsesModel) {
+    if (clientType === "minimax-m3") {
       return new MiniMaxM3Client({ model, apiKey, baseUrl });
     }
     // gemini-3.6 must be matched before the broader gemini-3 prefix below

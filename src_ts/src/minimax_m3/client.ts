@@ -35,10 +35,6 @@ import {
 } from "../types";
 
 const DEFAULT_BASE_URL = "https://api.minimax.io/v1";
-const MINIMAX_M2_7_MODELS = new Set([
-  "minimax-m2.7",
-  "minimax-m2.7-highspeed",
-]);
 
 type JsonValue = string | number | boolean | null | JsonValue[] | JsonObject;
 
@@ -274,7 +270,7 @@ function responseFailure(response: Response): Error {
   );
 }
 
-/** MiniMax M-series client using MiniMax's Responses API. */
+/** MiniMax M3 client using MiniMax's Responses API. */
 export class MiniMaxM3Client extends LLMClient {
   protected _model: string;
   private _client: OpenAI;
@@ -286,6 +282,9 @@ export class MiniMaxM3Client extends LLMClient {
     clientType?: string | null;
   }) {
     super();
+    if (options.model.toLowerCase() !== "minimax-m3") {
+      throw new Error(`${options.model} is not supported by MiniMaxM3Client.`);
+    }
     this._model = options.model;
     this._client = new OpenAI({
       apiKey: options.apiKey || process.env.MINIMAX_API_KEY || undefined,
@@ -298,9 +297,7 @@ export class MiniMaxM3Client extends LLMClient {
     thinkingLevel: ThinkingLevel,
   ): MiniMaxReasoningEffort {
     const mapping: Record<ThinkingLevel, MiniMaxReasoningEffort> = {
-      [ThinkingLevel.NONE]: MINIMAX_M2_7_MODELS.has(this._model.toLowerCase())
-        ? "low"
-        : "none",
+      [ThinkingLevel.NONE]: "none",
       [ThinkingLevel.LOW]: "low",
       [ThinkingLevel.MEDIUM]: "medium",
       [ThinkingLevel.HIGH]: "high",

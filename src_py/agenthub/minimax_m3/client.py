@@ -35,7 +35,6 @@ from ..types import (
 
 
 _DEFAULT_BASE_URL = "https://api.minimax.io/v1"
-_MINIMAX_M2_7_MODELS = frozenset({"minimax-m2.7", "minimax-m2.7-highspeed"})
 _WIRE_ITEM_FIDELITY_KEY = "wire_item"
 
 
@@ -146,10 +145,12 @@ def _format_response_error(event_type: str, error: Any, response_id: Any = None)
 
 
 class MiniMaxM3Client(LLMClient):
-    """MiniMax M-series client using MiniMax's Responses API."""
+    """MiniMax M3 client using MiniMax's Responses API."""
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
-        """Initialize a MiniMax Responses client with a Subscription Key or API key."""
+        """Initialize a MiniMax M3 Responses client with a Subscription Key or API key."""
+        if model.lower() != "minimax-m3":
+            raise ValueError(f"{model} is not supported by MiniMaxM3Client.")
         self._model = model
         self._client = AsyncOpenAI(
             api_key=api_key or os.getenv("MINIMAX_API_KEY"),
@@ -160,7 +161,7 @@ class MiniMaxM3Client(LLMClient):
     def _convert_thinking_level_to_effort(self, thinking_level: ThinkingLevel) -> str:
         """Map AgentHub thinking levels to the MiniMax reasoning effort vocabulary."""
         mapping = {
-            ThinkingLevel.NONE: "low" if self._model.lower() in _MINIMAX_M2_7_MODELS else "none",
+            ThinkingLevel.NONE: "none",
             ThinkingLevel.LOW: "low",
             ThinkingLevel.MEDIUM: "medium",
             ThinkingLevel.HIGH: "high",
