@@ -471,7 +471,6 @@ async def test_list_supported_models():
                         "name": "lookup",
                         "arguments": {"城市": "上海"},
                         "tool_call_id": "call-1",
-                        "fidelity": {"wire_item": function_wire_item},
                     },
                     {"type": "text", "text": "after"},
                 ],
@@ -481,9 +480,32 @@ async def test_list_supported_models():
     assert ordered_input == [
         {"role": "assistant", "content": [{"type": "output_text", "text": "before"}]},
         reasoning_wire_item,
-        function_wire_item,
+        {
+            "type": "function_call",
+            "call_id": "call-1",
+            "name": "lookup",
+            "arguments": '{"城市":"上海"}',
+        },
         {"role": "assistant", "content": [{"type": "output_text", "text": "after"}]},
     ]
+
+    reasoning_events = [
+        minimax_m3.transform_model_output_to_uni_event(
+            {"type": "response.reasoning_text.delta", "delta": "reasoning"}
+        ),
+        minimax_m3.transform_model_output_to_uni_event(
+            {"type": "response.output_item.done", "output_index": 0, "item": reasoning_wire_item}
+        ),
+    ]
+    replay_reasoning = minimax_m3.concat_uni_events_to_uni_message(reasoning_events)
+    assert replay_reasoning["content_items"] == [
+        {
+            "type": "thinking",
+            "thinking": "reasoning",
+            "fidelity": {"wire_item": reasoning_wire_item},
+        }
+    ]
+    assert minimax_m3.transform_uni_message_to_model_input([replay_reasoning]) == [reasoning_wire_item]
 
     message_wire_item = {
         "id": "message-1",
@@ -519,10 +541,12 @@ async def test_list_supported_models():
         {
             "type": "text",
             "text": "exact response",
-            "fidelity": {"phase": "message-1", "wire_item": message_wire_item},
+            "fidelity": {"phase": "message-1"},
         }
     ]
-    assert minimax_m3.transform_uni_message_to_model_input([replay_message]) == [message_wire_item]
+    assert minimax_m3.transform_uni_message_to_model_input([replay_message]) == [
+        {"role": "assistant", "content": [{"type": "output_text", "text": "exact response"}]}
+    ]
 
     second_function_wire_item = {
         **function_wire_item,
@@ -537,12 +561,63 @@ async def test_list_supported_models():
         for index, wire_item in enumerate((function_wire_item, second_function_wire_item))
     ]
     replay_functions = minimax_m3.concat_uni_events_to_uni_message(function_events)
+    assert replay_functions["content_items"] == [
+        {
+            "type": "tool_call",
+            "name": "lookup",
+            "arguments": {"城市": "上海"},
+            "tool_call_id": "call-1",
+            "fidelity": {"arguments": '{"城市": "上海"}'},
+        },
+        {
+            "type": "tool_call",
+            "name": "lookup",
+            "arguments": {"城市": "北京"},
+            "tool_call_id": "call-2",
+            "fidelity": {"arguments": '{"城市": "北京"}'},
+        },
+    ]
     assert minimax_m3.transform_uni_message_to_model_input([replay_functions]) == [
-        function_wire_item,
-        second_function_wire_item,
+        {
+            "type": "function_call",
+            "call_id": "call-1",
+            "name": "lookup",
+            "arguments": '{"城市": "上海"}',
+        },
+        {
+            "type": "function_call",
+            "call_id": "call-2",
+            "name": "lookup",
+            "arguments": '{"城市": "北京"}',
+        },
     ]
 
-    changed_arguments_input = minimax_m3.transform_uni_message_to_model_input(
+    precision_arguments = '{"large":9007199254740993,"decimal":1.0}'
+    precision_function_event = minimax_m3.transform_model_output_to_uni_event(
+        {
+            "type": "response.output_item.done",
+            "output_index": 0,
+            "item": {
+                "id": "function-precision",
+                "status": "completed",
+                "type": "function_call",
+                "call_id": "call-precision",
+                "name": "lookup",
+                "arguments": precision_arguments,
+            },
+        }
+    )
+    precision_message = minimax_m3.concat_uni_events_to_uni_message([precision_function_event])
+    assert minimax_m3.transform_uni_message_to_model_input([precision_message]) == [
+        {
+            "type": "function_call",
+            "call_id": "call-precision",
+            "name": "lookup",
+            "arguments": precision_arguments,
+        }
+    ]
+
+    serialized_arguments_input = minimax_m3.transform_uni_message_to_model_input(
         [
             {
                 "role": "assistant",
@@ -552,22 +627,13 @@ async def test_list_supported_models():
                         "name": "lookup",
                         "arguments": {"value": True},
                         "tool_call_id": "call-bool",
-                        "fidelity": {
-                            "wire_item": {
-                                "id": "function-bool",
-                                "status": "completed",
-                                "type": "function_call",
-                                "call_id": "call-bool",
-                                "name": "lookup",
-                                "arguments": '{"value":1}',
-                            }
-                        },
+                        "fidelity": {"arguments": '{"value":1}'},
                     }
                 ],
             }
         ]
     )
-    assert changed_arguments_input[0]["arguments"] == '{"value":true}'
+    assert serialized_arguments_input[0]["arguments"] == '{"value":true}'
 
     with pytest.raises(ValueError, match="valid id, summary, and content"):
         minimax_m3.transform_uni_message_to_model_input(

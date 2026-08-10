@@ -225,38 +225,12 @@ class MiniMaxM3Client(LLMClient):
             content_items: list[dict[str, Any]] = []
             for item in message["content_items"]:
                 if item["type"] == "text":
-                    fidelity = item.get("fidelity") or {}
-                    wire_item = (
-                        _wire_item_from_fidelity(fidelity, "MiniMax message fidelity")
-                        if isinstance(fidelity, dict)
-                        else None
+                    content_items.append(
+                        {
+                            "type": "input_text" if message["role"] == "user" else "output_text",
+                            "text": item["text"],
+                        }
                     )
-                    if wire_item is None:
-                        content_items.append(
-                            {
-                                "type": "input_text" if message["role"] == "user" else "output_text",
-                                "text": item["text"],
-                            }
-                        )
-                    else:
-                        if message["role"] != "assistant" or wire_item.get("type") != "message":
-                            raise ValueError("MiniMax message wire fidelity requires an assistant message item.")
-                        if content_items:
-                            input_list.append({"role": message["role"], "content": content_items})
-                            content_items = []
-
-                        wire_text = _wire_content_text(wire_item, "output_text")
-                        if wire_text == item["text"] and wire_item.get("role") == message["role"]:
-                            input_list.append(wire_item)
-                        else:
-                            input_list.append(
-                                {
-                                    **wire_item,
-                                    "type": "message",
-                                    "role": message["role"],
-                                    "content": [{"type": "output_text", "text": item["text"]}],
-                                }
-                            )
                     continue
                 if item["type"] == "image_url":
                     content_items.append({"type": "input_image", "image_url": item["image_url"]})
@@ -290,17 +264,8 @@ class MiniMaxM3Client(LLMClient):
                     )
                     input_list.append({**wire_item, "type": "reasoning", "content": reasoning_content})
                 elif item["type"] == "tool_call":
-                    fidelity = _require_json_object(item.get("fidelity") or {}, "MiniMax function-call fidelity")
-                    wire_item = _wire_item_from_fidelity(fidelity, "MiniMax function-call fidelity")
-                    if wire_item is None:
-                        wire_item = {
-                            key: value
-                            for key, value in fidelity.items()
-                            if key not in {_WIRE_ITEM_FIDELITY_KEY, "phase"}
-                        }
-
                     arguments = json.dumps(item["arguments"], ensure_ascii=False, separators=(",", ":"))
-                    raw_arguments = wire_item.get("arguments")
+                    raw_arguments = (item.get("fidelity") or {}).get("arguments")
                     if isinstance(raw_arguments, str):
                         parsed_arguments = parse_tool_call_arguments(
                             raw_arguments,
@@ -313,7 +278,6 @@ class MiniMaxM3Client(LLMClient):
 
                     input_list.append(
                         {
-                            **wire_item,
                             "type": "function_call",
                             "call_id": item["tool_call_id"],
                             "name": item["name"],
@@ -416,7 +380,7 @@ class MiniMaxM3Client(LLMClient):
                             item.get("arguments"), self.__class__.__name__, tool_name, tool_call_id
                         ),
                         "tool_call_id": tool_call_id,
-                        "fidelity": {_WIRE_ITEM_FIDELITY_KEY: item},
+                        "fidelity": {"arguments": item.get("arguments")},
                     }
                 )
             elif item.get("type") == "message":
@@ -426,7 +390,7 @@ class MiniMaxM3Client(LLMClient):
                     {
                         "type": "text",
                         "text": "",
-                        "fidelity": {"phase": phase, _WIRE_ITEM_FIDELITY_KEY: item},
+                        "fidelity": {"phase": phase},
                     }
                 )
         elif minimax_event_type in {"response.completed", "response.incomplete"}:

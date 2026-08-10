@@ -1208,7 +1208,6 @@ test("should list supported model entries", () => {
             name: "lookup",
             arguments: { 城市: "上海" },
             tool_call_id: "call-1",
-            fidelity: { wire_item: functionWireItem },
           },
           { type: "text", text: "after" },
         ],
@@ -1220,12 +1219,41 @@ test("should list supported model entries", () => {
       content: [{ type: "output_text", text: "before" }],
     },
     reasoningWireItem,
-    functionWireItem,
+    {
+      type: "function_call",
+      call_id: "call-1",
+      name: "lookup",
+      arguments: '{"城市":"上海"}',
+    },
     {
       role: "assistant",
       content: [{ type: "output_text", text: "after" }],
     },
   ]);
+
+  const reasoningEvents = [
+    minimaxM3.transformModelOutputToUniEvent({
+      type: "response.reasoning_text.delta",
+      delta: "reasoning",
+    }),
+    minimaxM3.transformModelOutputToUniEvent({
+      type: "response.output_item.done",
+      output_index: 0,
+      item: reasoningWireItem,
+    }),
+  ];
+  const replayReasoning =
+    minimaxM3.concatUniEventsToUniMessage(reasoningEvents);
+  expect(replayReasoning.content_items).toEqual([
+    {
+      type: "thinking",
+      thinking: "reasoning",
+      fidelity: { wire_item: reasoningWireItem },
+    },
+  ]);
+  expect(
+    minimaxM3.transformUniMessageToModelInput([replayReasoning]),
+  ).toEqual([reasoningWireItem]);
 
   const messageWireItem = {
     id: "message-1",
@@ -1261,11 +1289,14 @@ test("should list supported model entries", () => {
     {
       type: "text",
       text: "exact response",
-      fidelity: { phase: "message-1", wire_item: messageWireItem },
+      fidelity: { phase: "message-1" },
     },
   ]);
   expect(minimaxM3.transformUniMessageToModelInput([replayMessage])).toEqual([
-    messageWireItem,
+    {
+      role: "assistant",
+      content: [{ type: "output_text", text: "exact response" }],
+    },
   ]);
 
   const secondFunctionWireItem = {
@@ -1284,11 +1315,67 @@ test("should list supported model entries", () => {
   );
   const replayFunctions =
     minimaxM3.concatUniEventsToUniMessage(functionEvents);
+  expect(replayFunctions.content_items).toEqual([
+    {
+      type: "tool_call",
+      name: "lookup",
+      arguments: { 城市: "上海" },
+      tool_call_id: "call-1",
+      fidelity: { arguments: '{"城市": "上海"}' },
+    },
+    {
+      type: "tool_call",
+      name: "lookup",
+      arguments: { 城市: "北京" },
+      tool_call_id: "call-2",
+      fidelity: { arguments: '{"城市": "北京"}' },
+    },
+  ]);
   expect(
     minimaxM3.transformUniMessageToModelInput([replayFunctions]),
-  ).toEqual([functionWireItem, secondFunctionWireItem]);
+  ).toEqual([
+    {
+      type: "function_call",
+      call_id: "call-1",
+      name: "lookup",
+      arguments: '{"城市": "上海"}',
+    },
+    {
+      type: "function_call",
+      call_id: "call-2",
+      name: "lookup",
+      arguments: '{"城市": "北京"}',
+    },
+  ]);
 
-  const changedArgumentsInput = minimaxM3.transformUniMessageToModelInput([
+  const precisionArguments = '{"large":9007199254740993,"decimal":1.0}';
+  const precisionFunctionEvent = minimaxM3.transformModelOutputToUniEvent({
+    type: "response.output_item.done",
+    output_index: 0,
+    item: {
+      id: "function-precision",
+      status: "completed",
+      type: "function_call",
+      call_id: "call-precision",
+      name: "lookup",
+      arguments: precisionArguments,
+    },
+  });
+  const precisionMessage = minimaxM3.concatUniEventsToUniMessage([
+    precisionFunctionEvent,
+  ]);
+  expect(
+    minimaxM3.transformUniMessageToModelInput([precisionMessage]),
+  ).toEqual([
+    {
+      type: "function_call",
+      call_id: "call-precision",
+      name: "lookup",
+      arguments: precisionArguments,
+    },
+  ]);
+
+  const serializedArgumentsInput = minimaxM3.transformUniMessageToModelInput([
     {
       role: "assistant",
       content_items: [
@@ -1297,21 +1384,12 @@ test("should list supported model entries", () => {
           name: "lookup",
           arguments: { value: true },
           tool_call_id: "call-bool",
-          fidelity: {
-            wire_item: {
-              id: "function-bool",
-              status: "completed",
-              type: "function_call",
-              call_id: "call-bool",
-              name: "lookup",
-              arguments: '{"value":1}',
-            },
-          },
+          fidelity: { arguments: '{"value":1}' },
         },
       ],
     },
   ]);
-  expect(changedArgumentsInput[0].arguments).toBe('{"value":true}');
+  expect(serializedArgumentsInput[0].arguments).toBe('{"value":true}');
 
   expect(() =>
     minimaxM3.transformUniMessageToModelInput([

@@ -213,15 +213,6 @@ function wireContentText(
   return textParts.length > 0 ? textParts.join("") : undefined;
 }
 
-function wireMessageContent(wireItem: JsonObject): JsonObject[] {
-  const content = wireItem.content;
-  if (!Array.isArray(content) || !content.every(isJsonObject)) {
-    throw new Error(
-      "MiniMax message wire fidelity must contain JSON object content parts.",
-    );
-  }
-  return content;
-}
 
 function transformUsage(response: Response): UsageMetadata | null {
   const usage = response.usage;
@@ -389,34 +380,10 @@ export class MiniMaxM3Client extends LLMClient {
 
       for (const item of message.content_items) {
         if (item.type === "text") {
-          const wireItem = wireItemFromFidelity(
-            item.fidelity,
-            "MiniMax message fidelity",
-          );
-          if (wireItem === undefined) {
-            if (message.role === "user") {
-              contentItems.push({ type: "input_text", text: item.text });
-            } else {
-              contentItems.push({ type: "output_text", text: item.text });
-            }
+          if (message.role === "user") {
+            contentItems.push({ type: "input_text", text: item.text });
           } else {
-            if (message.role !== "assistant" || wireItem.type !== "message") {
-              throw new Error(
-                "MiniMax message wire fidelity requires an assistant message item.",
-              );
-            }
-            flushContentItems();
-            const wireText = wireContentText(wireItem, "output_text");
-            const content =
-              wireText === item.text && wireItem.role === message.role
-                ? wireMessageContent(wireItem)
-                : [{ type: "output_text", text: item.text }];
-            inputList.push({
-              ...wireItem,
-              type: "message",
-              role: message.role,
-              content,
-            });
+            contentItems.push({ type: "output_text", text: item.text });
           }
         } else if (item.type === "image_url") {
           contentItems.push({ type: "input_image", image_url: item.image_url });
@@ -460,15 +427,7 @@ export class MiniMaxM3Client extends LLMClient {
               `MiniMax tool call ${item.name} arguments could not be serialized.`,
             );
           }
-
-          const fidelity = requireJsonObject(
-            item.fidelity ?? {},
-            "MiniMax function-call fidelity",
-          );
-          const wireItem =
-            wireItemFromFidelity(fidelity, "MiniMax function-call fidelity") ??
-            legacyWireItemFromFidelity(fidelity);
-          const rawArguments = wireItem.arguments;
+          const rawArguments = item.fidelity?.arguments;
           if (
             typeof rawArguments === "string" &&
             isDeepStrictEqual(
@@ -484,7 +443,6 @@ export class MiniMaxM3Client extends LLMClient {
             serializedArguments = rawArguments;
           }
           inputList.push({
-            ...wireItem,
             type: "function_call",
             call_id: item.tool_call_id,
             name: item.name,
@@ -597,7 +555,7 @@ export class MiniMaxM3Client extends LLMClient {
               modelOutput.item.call_id,
             ),
             tool_call_id: modelOutput.item.call_id,
-            fidelity: { [WIRE_ITEM_FIDELITY_KEY]: wireItem },
+            fidelity: { arguments: modelOutput.item.arguments },
           });
         } else if (modelOutput.item.type === "message") {
           eventType = "delta";
@@ -608,10 +566,7 @@ export class MiniMaxM3Client extends LLMClient {
           contentItems.push({
             type: "text",
             text: "",
-            fidelity: {
-              phase,
-              [WIRE_ITEM_FIDELITY_KEY]: wireItem,
-            },
+            fidelity: { phase },
           });
         }
         break;
