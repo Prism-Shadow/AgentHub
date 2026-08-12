@@ -34,6 +34,7 @@ Use exact model IDs. If a model ID is not listed, ask the user to confirm the ex
 | GLM-5.2 | Official | `glm-5.2` | `ZAI_API_KEY` | `ZAI_BASE_URL` |
 | GLM-5.2 | OpenRouter | `z-ai/glm-5.2` | `ZAI_API_KEY` | `ZAI_BASE_URL` |
 | GLM-5.2 | SiliconFlow | `zai-org/GLM-5.2` | `ZAI_API_KEY` | `ZAI_BASE_URL` |
+| MiniMax-M3 | Official | `MiniMax-M3` | `MINIMAX_API_KEY` | `MINIMAX_BASE_URL` |
 
 Common gateway base URLs:
 

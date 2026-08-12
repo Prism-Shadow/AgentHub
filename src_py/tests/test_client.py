@@ -18,12 +18,13 @@ import mimetypes
 import os
 from contextlib import nullcontext
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 import httpx
 import pytest
 
 from agenthub import AutoLLMClient, PromptCaching, ThinkingLevel, UnsupportedParameterError, list_supported_models
+from agenthub.errors import AgentHubError
 
 
 IMAGE = "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg"
@@ -41,7 +42,6 @@ class Model:
     support_embedding: bool = False
     provider: Literal["official", "bedrock", "vertex", "siliconflow", "openrouter", "modelverse"] = "official"
     client_type: str | None = None
-    requires_explicit_tool_prompt: bool = False
 
     def __repr__(self) -> str:
         return f"{self.name}:{self.provider}"
@@ -102,7 +102,7 @@ if os.getenv("MOONSHOT_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="kimi-k3", support_temperature=False))
 
 if os.getenv("MINIMAX_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="MiniMax-M3", client_type="minimax-m3", requires_explicit_tool_prompt=True))
+    AVAILABLE_MODELS.append(Model(name="MiniMax-M3", client_type="minimax-m3"))
 
 if os.getenv("DEEPSEEK_API_KEY"):
     AVAILABLE_MODELS.append(
@@ -399,9 +399,43 @@ async def test_unknown_model():
 
 
 @pytest.mark.asyncio
-async def test_list_supported_models():
+async def test_list_supported_models(monkeypatch: pytest.MonkeyPatch):
     """Test that the registry lists model entries accepted by AutoLLMClient."""
     entries = list_supported_models()
+
+    kimi = next(entry for entry in entries if entry["model"] == "kimi-k3")
+    assert kimi["base_url"] == "https://api.moonshot.cn/v1"
+    assert kimi["client"] == "kimi-k3"
+    assert kimi["context_window"] == 1048576
+    assert kimi["input_modalities"] == ["Text", "Image"]
+    assert kimi["output_modalities"] == ["Text"]
+    # stored in USD (official CNY prices pre-converted at 7 CNY/USD)
+    assert kimi["pricing"] == {
+        "currency": "USD",
+        "prompt_tokens": 2.857143,
+        "thoughts_tokens": 14.285714,
+        "response_tokens": 14.285714,
+        "cached_tokens": 0.285714,
+    }
+
+    kimi_cny = next(entry for entry in list_supported_models(currency="CNY") if entry["model"] == "kimi-k3")
+    assert kimi_cny["pricing"]["currency"] == "CNY"
+    assert kimi_cny["pricing"]["prompt_tokens"] == pytest.approx(20.0, abs=1e-4)
+    assert kimi_cny["pricing"]["thoughts_tokens"] == pytest.approx(100.0, abs=1e-4)
+    assert kimi_cny["pricing"]["response_tokens"] == pytest.approx(100.0, abs=1e-4)
+    assert kimi_cny["pricing"]["cached_tokens"] == pytest.approx(2.0, abs=1e-4)
+
+    glm_5_2 = next(entry for entry in entries if entry["model"] == "z-ai/glm-5.2")
+    assert glm_5_2["base_url"] == "https://openrouter.ai/api/v1"
+    assert glm_5_2["client"] == "glm-5.2"
+
+    for entry in entries:
+        assert {"model", "base_url", "client", "input_modalities", "output_modalities"} <= set(entry)
+        client = AutoLLMClient(
+            model=entry["model"], api_key="test-key", base_url=entry["base_url"], client_type=entry["client"]
+        )
+        assert client._client is not None
+
     minimax_entries = [entry for entry in entries if entry["base_url"] == "https://api.minimax.io/v1"]
     assert minimax_entries == [
         {
@@ -416,9 +450,18 @@ async def test_list_supported_models():
 
     minimax_m3 = AutoLLMClient(model="MiniMax-M3", api_key="test-key")
     assert minimax_m3._client.__class__.__name__ == "MiniMaxM3Client"
-    for client_type in (None, "minimax-m3"):
-        with pytest.raises(ValueError, match="not support"):
-            AutoLLMClient(model="MiniMax-M3-preview", api_key="test-key", client_type=client_type)
+    # Automatic routing matches the exact model id only ...
+    with pytest.raises(ValueError, match="not support"):
+        AutoLLMClient(model="MiniMax-M3-preview", api_key="test-key")
+    # ... but an explicit client_type reaches gateway-hosted or aliased deployments, as for every
+    # other client.
+    aliased = AutoLLMClient(model="MiniMax-M3-preview", api_key="test-key", client_type="minimax-m3")
+    assert aliased._client.__class__.__name__ == "MiniMaxM3Client"
+    # A MiniMax credential is required; the wrapped SDK must never fall back to OPENAI_API_KEY.
+    monkeypatch.delenv("MINIMAX_API_KEY", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-openai-must-not-reach-the-minimax-host")
+    with pytest.raises(ValueError, match="MINIMAX_API_KEY is required"):
+        AutoLLMClient(model="MiniMax-M3", client_type="minimax-m3")
 
     expected_m3_efforts = {
         ThinkingLevel.NONE: "none",
@@ -447,6 +490,11 @@ async def test_list_supported_models():
         "content": [{"type": "reasoning_text", "text": "reasoning"}],
         "type": "reasoning",
     }
+    replayed_reasoning = {
+        "type": "reasoning",
+        "id": "reasoning-1",
+        "content": [{"type": "reasoning_text", "text": "reasoning"}],
+    }
     function_wire_item = {
         "id": "function-1",
         "status": "completed",
@@ -464,7 +512,7 @@ async def test_list_supported_models():
                     {
                         "type": "thinking",
                         "thinking": "reasoning",
-                        "fidelity": {"wire_item": reasoning_wire_item},
+                        "fidelity": {"id": "reasoning-1"},
                     },
                     {
                         "type": "tool_call",
@@ -479,12 +527,12 @@ async def test_list_supported_models():
     )
     assert ordered_input == [
         {"role": "assistant", "content": [{"type": "output_text", "text": "before"}]},
-        reasoning_wire_item,
+        replayed_reasoning,
         {
             "type": "function_call",
             "call_id": "call-1",
             "name": "lookup",
-            "arguments": '{"城市":"上海"}',
+            "arguments": '{"城市": "上海"}',
         },
         {"role": "assistant", "content": [{"type": "output_text", "text": "after"}]},
     ]
@@ -498,14 +546,16 @@ async def test_list_supported_models():
         ),
     ]
     replay_reasoning = minimax_m3.concat_uni_events_to_uni_message(reasoning_events)
+    # Fidelity keeps only the provider's item id, as every other client does; the reasoning item
+    # is rebuilt from the universal thinking text on replay.
     assert replay_reasoning["content_items"] == [
         {
             "type": "thinking",
             "thinking": "reasoning",
-            "fidelity": {"wire_item": reasoning_wire_item},
+            "fidelity": {"id": "reasoning-1"},
         }
     ]
-    assert minimax_m3.transform_uni_message_to_model_input([replay_reasoning]) == [reasoning_wire_item]
+    assert minimax_m3.transform_uni_message_to_model_input([replay_reasoning]) == [replayed_reasoning]
 
     message_wire_item = {
         "id": "message-1",
@@ -537,13 +587,8 @@ async def test_list_supported_models():
         ),
     ]
     replay_message = minimax_m3.concat_uni_events_to_uni_message(message_events)
-    assert replay_message["content_items"] == [
-        {
-            "type": "text",
-            "text": "exact response",
-            "fidelity": {"phase": "message-1"},
-        }
-    ]
+    # No phase fidelity: MiniMax emits one message item per response and never reads a phase back.
+    assert replay_message["content_items"] == [{"type": "text", "text": "exact response"}]
     assert minimax_m3.transform_uni_message_to_model_input([replay_message]) == [
         {"role": "assistant", "content": [{"type": "output_text", "text": "exact response"}]}
     ]
@@ -567,16 +612,15 @@ async def test_list_supported_models():
             "name": "lookup",
             "arguments": {"城市": "上海"},
             "tool_call_id": "call-1",
-            "fidelity": {"arguments": '{"城市": "上海"}'},
         },
         {
             "type": "tool_call",
             "name": "lookup",
             "arguments": {"城市": "北京"},
             "tool_call_id": "call-2",
-            "fidelity": {"arguments": '{"城市": "北京"}'},
         },
     ]
+    # Replay re-serializes the parsed arguments, as every other client does.
     assert minimax_m3.transform_uni_message_to_model_input([replay_functions]) == [
         {
             "type": "function_call",
@@ -592,31 +636,6 @@ async def test_list_supported_models():
         },
     ]
 
-    precision_arguments = '{"large":9007199254740993,"decimal":1.0}'
-    precision_function_event = minimax_m3.transform_model_output_to_uni_event(
-        {
-            "type": "response.output_item.done",
-            "output_index": 0,
-            "item": {
-                "id": "function-precision",
-                "status": "completed",
-                "type": "function_call",
-                "call_id": "call-precision",
-                "name": "lookup",
-                "arguments": precision_arguments,
-            },
-        }
-    )
-    precision_message = minimax_m3.concat_uni_events_to_uni_message([precision_function_event])
-    assert minimax_m3.transform_uni_message_to_model_input([precision_message]) == [
-        {
-            "type": "function_call",
-            "call_id": "call-precision",
-            "name": "lookup",
-            "arguments": precision_arguments,
-        }
-    ]
-
     serialized_arguments_input = minimax_m3.transform_uni_message_to_model_input(
         [
             {
@@ -627,15 +646,15 @@ async def test_list_supported_models():
                         "name": "lookup",
                         "arguments": {"value": True},
                         "tool_call_id": "call-bool",
-                        "fidelity": {"arguments": '{"value":1}'},
                     }
                 ],
             }
         ]
     )
-    assert serialized_arguments_input[0]["arguments"] == '{"value":true}'
+    assert serialized_arguments_input[0]["arguments"] == '{"value": true}'
 
-    with pytest.raises(ValueError, match="valid id, summary, and content"):
+    # Only the id is required; summary and content are optional on a MiniMax reasoning item.
+    with pytest.raises(ValueError, match="requires an id"):
         minimax_m3.transform_uni_message_to_model_input(
             [
                 {
@@ -644,19 +663,33 @@ async def test_list_supported_models():
                         {
                             "type": "thinking",
                             "thinking": "invalid",
-                            "fidelity": {
-                                "wire_item": {
-                                    "id": 123,
-                                    "type": "reasoning",
-                                    "summary": "invalid",
-                                    "content": [],
-                                }
-                            },
+                            "fidelity": {"id": 123},
                         }
                     ],
                 }
             ]
         )
+    sparse_reasoning_input = minimax_m3.transform_uni_message_to_model_input(
+        [
+            {
+                "role": "assistant",
+                "content_items": [
+                    {
+                        "type": "thinking",
+                        "thinking": "recovered",
+                        "fidelity": {"id": "rs-sparse"},
+                    }
+                ],
+            }
+        ]
+    )
+    assert sparse_reasoning_input == [
+        {
+            "id": "rs-sparse",
+            "type": "reasoning",
+            "content": [{"type": "reasoning_text", "text": "recovered"}],
+        }
+    ]
 
     completed_event = minimax_m3.transform_model_output_to_uni_event(
         {
@@ -701,14 +734,9 @@ async def test_list_supported_models():
             "delta": '{"value":1}',
         }
     )
-    assert partial_start["content_items"][0]["fidelity"] == {
-        "item_id": "function-partial",
-        "output_index": 3,
-    }
-    assert partial_delta["content_items"][0]["fidelity"] == {
-        "item_id": "function-partial",
-        "output_index": 3,
-    }
+    # Only the correlation id is recorded; output_index was never read anywhere.
+    assert partial_start["content_items"][0]["fidelity"] == {"item_id": "function-partial"}
+    assert partial_delta["content_items"][0]["fidelity"] == {"item_id": "function-partial"}
 
     incomplete_event = minimax_m3.transform_model_output_to_uni_event(
         {
@@ -721,7 +749,52 @@ async def test_list_supported_models():
         }
     )
     assert incomplete_event["finish_reason"] == "length"
-    with pytest.raises(RuntimeError, match="provider_failure"):
+    # A response with no usage block reports none rather than fabricating zeros for a request that
+    # consumed real tokens; the base client's last-event validation stays in charge.
+    assert incomplete_event["usage_metadata"] is None
+    # Missing usage sub-fields still default, so a partial block never yields a bogus total.
+    sparse_usage_event = minimax_m3.transform_model_output_to_uni_event(
+        {"type": "response.completed", "response": {"output": [], "usage": {"input_tokens": 10}}}
+    )
+    assert sparse_usage_event["usage_metadata"] == {
+        "cached_tokens": 0,
+        "prompt_tokens": 10,
+        "thoughts_tokens": 0,
+        "response_tokens": 0,
+    }
+    # A truncation reported through response.completed still finishes as a truncation.
+    truncated_completed = minimax_m3.transform_model_output_to_uni_event(
+        {
+            "type": "response.completed",
+            "response": {
+                "output": [],
+                "status": "incomplete",
+                "usage": {"input_tokens": 4, "output_tokens": 2},
+                "incomplete_details": {"reason": "max_output_tokens"},
+            },
+        }
+    )
+    assert truncated_completed["finish_reason"] == "length"
+    # A function-call start event without the optional output-item id still yields the call.
+    idless_start = minimax_m3.transform_model_output_to_uni_event(
+        {
+            "type": "response.output_item.added",
+            "output_index": 0,
+            "item": {"type": "function_call", "call_id": "call-idless", "name": "lookup", "arguments": ""},
+        }
+    )
+    assert idless_start["content_items"][0]["tool_call_id"] == "call-idless"
+    assert idless_start["content_items"][0]["fidelity"] == {"item_id": None}
+    # A non-JSON value is rejected on the event that carried it, not one turn later.
+    with pytest.raises(ValueError, match="MiniMax output item must contain only JSON-style values"):
+        minimax_m3.transform_model_output_to_uni_event(
+            {
+                "type": "response.output_item.done",
+                "output_index": 0,
+                "item": {"id": "rs", "type": "reasoning", "summary": [], "content": [], "score": float("nan")},
+            }
+        )
+    with pytest.raises(AgentHubError, match="provider_failure"):
         minimax_m3.transform_model_output_to_uni_event(
             {
                 "type": "response.failed",
@@ -731,43 +804,10 @@ async def test_list_supported_models():
                 },
             }
         )
-    with pytest.raises(RuntimeError, match="bad_request"):
+    with pytest.raises(AgentHubError, match="bad_request"):
         minimax_m3.transform_model_output_to_uni_event(
             {"type": "error", "error": {"code": "bad_request", "message": "invalid"}}
         )
-
-    kimi = next(entry for entry in entries if entry["model"] == "kimi-k3")
-    assert kimi["base_url"] == "https://api.moonshot.cn/v1"
-    assert kimi["client"] == "kimi-k3"
-    assert kimi["context_window"] == 1048576
-    assert kimi["input_modalities"] == ["Text", "Image"]
-    assert kimi["output_modalities"] == ["Text"]
-    # stored in USD (official CNY prices pre-converted at 7 CNY/USD)
-    assert kimi["pricing"] == {
-        "currency": "USD",
-        "prompt_tokens": 2.857143,
-        "thoughts_tokens": 14.285714,
-        "response_tokens": 14.285714,
-        "cached_tokens": 0.285714,
-    }
-
-    kimi_cny = next(entry for entry in list_supported_models(currency="CNY") if entry["model"] == "kimi-k3")
-    assert kimi_cny["pricing"]["currency"] == "CNY"
-    assert kimi_cny["pricing"]["prompt_tokens"] == pytest.approx(20.0, abs=1e-4)
-    assert kimi_cny["pricing"]["thoughts_tokens"] == pytest.approx(100.0, abs=1e-4)
-    assert kimi_cny["pricing"]["response_tokens"] == pytest.approx(100.0, abs=1e-4)
-    assert kimi_cny["pricing"]["cached_tokens"] == pytest.approx(2.0, abs=1e-4)
-
-    glm_5_2 = next(entry for entry in entries if entry["model"] == "z-ai/glm-5.2")
-    assert glm_5_2["base_url"] == "https://openrouter.ai/api/v1"
-    assert glm_5_2["client"] == "glm-5.2"
-
-    for entry in entries:
-        assert {"model", "base_url", "client", "input_modalities", "output_modalities"} <= set(entry)
-        client = AutoLLMClient(
-            model=entry["model"], api_key="test-key", base_url=entry["base_url"], client_type=entry["client"]
-        )
-        assert client._client is not None
 
 
 @pytest.mark.asyncio
@@ -833,48 +873,58 @@ async def test_tool_use(model: Model):
     }
 
     config = {"tools": [weather_tool]}
-    tool_name = None
-    tool_arguments = {}
-    tool_call_id = None
-    partial_tool_call_data = {}
+    tool_calls: list[dict[str, Any]] = []
+    # A model may open several tool calls for this prompt. Clients whose provider interleaves the
+    # argument deltas tag each delta with a correlation id in fidelity; the rest stream one call
+    # at a time, so a completed tool_call marks the boundary between them.
+    partials: list[dict[str, str]] = []
+    partial_by_call: dict[Any, int] = {}
+    open_index: int | None = None
 
-    tool_prompt = "What is the weather in San Francisco?"
-    if model.requires_explicit_tool_prompt:
-        tool_prompt = (
-            "You must invoke get_weather exactly once with location San Francisco. "
-            "Your only allowed action before the tool result is that function call; return no text before its result. "
-            "After the result is provided, answer using the returned weather."
-        )
+    tool_prompt = "What is the weather in San Francisco and in New York?"
     message1 = {"role": "user", "content_items": [{"type": "text", "text": tool_prompt}]}
     async for event in client.streaming_response_stateful(message=message1, config=config):
         await _check_event_integrity(event)
         for item in event["content_items"]:
             if item["type"] == "partial_tool_call":
-                if not partial_tool_call_data:
-                    partial_tool_call_data = {
-                        "name": item["name"],
-                        "arguments": item["arguments"],
-                        "tool_call_id": item["tool_call_id"],
-                    }
+                item_id = (item.get("fidelity") or {}).get("item_id")
+                if item_id is not None:
+                    index = partial_by_call.setdefault(item_id, len(partials))
                 else:
-                    partial_tool_call_data["arguments"] += item["arguments"]
+                    if open_index is None:
+                        open_index = len(partials)
+                    index = open_index
+                while len(partials) <= index:
+                    partials.append({"name": "", "arguments": ""})
+                partials[index]["name"] = partials[index]["name"] or item["name"]
+                partials[index]["arguments"] += item["arguments"]
             elif item["type"] == "tool_call":
-                tool_name = item["name"]
-                tool_arguments = item["arguments"]
-                tool_call_id = item["tool_call_id"]
+                tool_calls.append(item)
+                # A completed call ends the uncorrelated stream, so the next delta opens the next.
+                open_index = None
 
-    # Check if a function call was made
-    assert tool_name == weather_tool["name"]
-    assert "location" in tool_arguments
-    assert tool_call_id is not None
-    assert partial_tool_call_data["name"] == tool_name
-    assert partial_tool_call_data["tool_call_id"] == tool_call_id
-    assert json.loads(partial_tool_call_data["arguments"]) == tool_arguments
+    # Check that at least one function call was made, and that each one is fully reconstructable
+    # from its own delta stream. Calls are matched by completion order, because a tool_call_id is
+    # not unique for every provider: Gemini reuses the function name for all of its parallel calls.
+    assert tool_calls
+    assert len(partials) == len(tool_calls)
+    for tool_call, partial in zip(tool_calls, partials, strict=True):
+        assert tool_call["name"] == weather_tool["name"]
+        assert "location" in tool_call["arguments"]
+        assert tool_call["tool_call_id"] is not None
+        assert partial["name"] == tool_call["name"]
+        assert json.loads(partial["arguments"]) == tool_call["arguments"]
 
+    # Every open call needs a result, otherwise the replayed history is incomplete.
     message2 = {
         "role": "user",
         "content_items": [
-            {"type": "tool_result", "text": "It's 20 degrees in San Francisco.", "tool_call_id": tool_call_id}
+            {
+                "type": "tool_result",
+                "text": "It's 20 degrees.",
+                "tool_call_id": tool_call["tool_call_id"],
+            }
+            for tool_call in tool_calls
         ],
     }
     text = ""
@@ -988,9 +1038,7 @@ async def test_tool_result_with_image(model: Model):
     # Define a tool that returns an image
     image_tool = {
         "name": "get_image",
-        "description": (
-            "Retrieve an image URL for a numeric seed." if model.requires_explicit_tool_prompt else "Get an image URL"
-        ),
+        "description": "Get an image URL",
         "parameters": {
             "type": "object",
             "properties": {
@@ -1004,39 +1052,37 @@ async def test_tool_result_with_image(model: Model):
     }
 
     config = {"tools": [image_tool]}
-    tool_name = None
-    tool_call_id = None
+    tool_calls: list[dict[str, Any]] = []
 
-    tool_prompt = "Get me a random image and describe it briefly."
-    if model.requires_explicit_tool_prompt:
-        tool_prompt = (
-            "You must invoke the get_image function exactly once with seed 42. "
-            "Your only allowed action in this turn is that function call; return no text before its result."
-        )
+    # Prescriptive on purpose: this test covers a tool *result* carrying an image, so reaching
+    # that state is setup. Natural tool selection is covered by test_tool_use.
+    tool_prompt = (
+        "Call get_image exactly once with seed 42. Make that function call your only action "
+        "this turn, then describe the returned image briefly."
+    )
     message1 = {"role": "user", "content_items": [{"type": "text", "text": tool_prompt}]}
     async for event in client.streaming_response_stateful(message=message1, config=config):
         await _check_event_integrity(event)
         for item in event["content_items"]:
             if item["type"] == "tool_call":
-                tool_name = item["name"]
-                tool_call_id = item["tool_call_id"]
+                tool_calls.append(item)
 
-    assert tool_name == image_tool["name"]
-    assert tool_call_id is not None
+    assert tool_calls
+    for tool_call in tool_calls:
+        assert tool_call["name"] == image_tool["name"]
+        assert tool_call["tool_call_id"] is not None
 
+    # Every open call needs a result, otherwise the replayed history is incomplete.
     message2 = {
         "role": "user",
         "content_items": [
             {
                 "type": "tool_result",
-                "text": (
-                    "Here is the result image. Describe it briefly."
-                    if model.requires_explicit_tool_prompt
-                    else "Here is the result image:"
-                ),
+                "text": "Here is the result image:",
                 "images": [IMAGE],
-                "tool_call_id": tool_call_id,
+                "tool_call_id": tool_call["tool_call_id"],
             }
+            for tool_call in tool_calls
         ],
     }
     text = ""

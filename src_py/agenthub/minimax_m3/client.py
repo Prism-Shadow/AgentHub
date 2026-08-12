@@ -19,7 +19,7 @@ from typing import Any, AsyncIterator
 from openai import AsyncOpenAI
 
 from ..base_client import LLMClient
-from ..errors import UnsupportedParameterError, parse_tool_call_arguments
+from ..errors import AgentHubError, UnsupportedParameterError, parse_tool_call_arguments
 from ..types import (
     EventType,
     FinishReason,
@@ -35,7 +35,6 @@ from ..types import (
 
 
 _DEFAULT_BASE_URL = "https://api.minimax.io/v1"
-_WIRE_ITEM_FIDELITY_KEY = "wire_item"
 
 
 def _field(value: Any, name: str, default: Any = None) -> Any:
@@ -58,7 +57,7 @@ def _normalize_json_value(value: Any) -> Any:
 
 
 def _require_json_object(value: Any, context: str) -> dict[str, Any]:
-    """Normalize and validate a JSON object used for wire-fidelity replay."""
+    """Normalize and validate a JSON object arriving from the provider."""
     normalized = _normalize_json_value(value)
     if not isinstance(normalized, dict):
         raise ValueError(f"{context} must be a JSON object.")
@@ -69,47 +68,12 @@ def _require_json_object(value: Any, context: str) -> dict[str, Any]:
     return normalized
 
 
-def _wire_item_from_fidelity(fidelity: dict[str, Any], context: str) -> dict[str, Any] | None:
-    """Extract a complete provider output item from a fidelity payload."""
-    wire_item = fidelity.get(_WIRE_ITEM_FIDELITY_KEY)
-    if wire_item is None:
-        return None
-    return _require_json_object(wire_item, f"{context} wire item")
-
-
-def _wire_content_text(wire_item: dict[str, Any], content_type: str) -> str | None:
-    """Concatenate text from matching content parts in a provider output item."""
-    content = wire_item.get("content")
-    if not isinstance(content, list):
-        return None
-
-    text_parts: list[str] = []
-    for part in content:
-        if not isinstance(part, dict) or part.get("type") != content_type:
-            continue
-        text = part.get("text")
-        if not isinstance(text, str):
-            return None
-        text_parts.append(text)
-    return "".join(text_parts) if text_parts else None
-
-
-def _json_values_equal(left: Any, right: Any) -> bool:
-    """Compare JSON-style values without conflating booleans and numbers."""
-    if isinstance(left, bool) or isinstance(right, bool):
-        return isinstance(left, bool) and isinstance(right, bool) and left == right
-    if isinstance(left, dict) and isinstance(right, dict):
-        return left.keys() == right.keys() and all(_json_values_equal(left[key], right[key]) for key in left)
-    if isinstance(left, list) and isinstance(right, list):
-        return len(left) == len(right) and all(
-            _json_values_equal(left_item, right_item) for left_item, right_item in zip(left, right, strict=True)
-        )
-    if isinstance(left, (int, float)) and isinstance(right, (int, float)):
-        return left == right
-    return type(left) is type(right) and left == right
-
-
 def _usage_from_response(response: Any) -> UsageMetadata | None:
+    """Read usage from a terminal response, or None when the provider reported none.
+
+    Reporting zeros for a request that consumed real tokens would corrupt cost accounting, so
+    leave the base client's "last event must carry usage_metadata" validation in charge.
+    """
     usage = _field(response, "usage")
     if usage is None:
         return None
@@ -149,11 +113,14 @@ class MiniMaxM3Client(LLMClient):
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
         """Initialize a MiniMax M3 Responses client with a Subscription Key or API key."""
-        if model.lower() != "minimax-m3":
-            raise ValueError(f"{model} is not supported by MiniMaxM3Client.")
         self._model = model
+        # The wrapped OpenAI SDK falls back to OPENAI_API_KEY when handed None, which would send an
+        # OpenAI credential to the MiniMax host, so resolve the key here and fail loudly instead.
+        resolved_api_key = api_key or os.getenv("MINIMAX_API_KEY")
+        if not resolved_api_key:
+            raise ValueError("MINIMAX_API_KEY is required for MiniMaxM3Client.")
         self._client = AsyncOpenAI(
-            api_key=api_key or os.getenv("MINIMAX_API_KEY"),
+            api_key=resolved_api_key,
             base_url=base_url or os.getenv("MINIMAX_BASE_URL") or _DEFAULT_BASE_URL,
         )
         self._history: list[UniMessage] = []
@@ -241,50 +208,33 @@ class MiniMaxM3Client(LLMClient):
                     content_items = []
 
                 if item["type"] == "thinking":
-                    fidelity = _require_json_object(item.get("fidelity") or {}, "MiniMax reasoning fidelity")
-                    wire_item = _wire_item_from_fidelity(fidelity, "MiniMax reasoning fidelity")
-                    if wire_item is None:
-                        wire_item = {
-                            key: value
-                            for key, value in fidelity.items()
-                            if key not in {_WIRE_ITEM_FIDELITY_KEY, "phase"}
+                    # Rebuild the reasoning item from the universal thinking text plus the one
+                    # field that cannot be reconstructed, the provider's item id.
+                    reasoning_id = (item.get("fidelity") or {}).get("id")
+                    if not isinstance(reasoning_id, str):
+                        raise ValueError("MiniMax reasoning replay requires an id in its fidelity.")
+                    input_list.append(
+                        {
+                            "type": "reasoning",
+                            "id": reasoning_id,
+                            "content": [{"type": "reasoning_text", "text": item["thinking"]}]
+                            if item["thinking"]
+                            else [],
                         }
-                    if (
-                        not isinstance(wire_item.get("id"), str)
-                        or not isinstance(wire_item.get("summary"), list)
-                        or not isinstance(wire_item.get("content"), list)
-                    ):
-                        raise ValueError("MiniMax reasoning replay requires valid id, summary, and content fidelity.")
-
-                    wire_text = _wire_content_text(wire_item, "reasoning_text")
-                    reasoning_content = (
-                        wire_item["content"]
-                        if wire_text == item["thinking"]
-                        else [{"type": "reasoning_text", "text": item["thinking"]}]
                     )
-                    input_list.append({**wire_item, "type": "reasoning", "content": reasoning_content})
                 elif item["type"] == "tool_call":
-                    arguments = json.dumps(item["arguments"], ensure_ascii=False, separators=(",", ":"))
-                    raw_arguments = (item.get("fidelity") or {}).get("arguments")
-                    if isinstance(raw_arguments, str):
-                        parsed_arguments = parse_tool_call_arguments(
-                            raw_arguments,
-                            self.__class__.__name__,
-                            item["name"],
-                            item["tool_call_id"],
-                        )
-                        if _json_values_equal(parsed_arguments, item["arguments"]):
-                            arguments = raw_arguments
-
                     input_list.append(
                         {
                             "type": "function_call",
                             "call_id": item["tool_call_id"],
                             "name": item["name"],
-                            "arguments": arguments,
+                            "arguments": json.dumps(item["arguments"], ensure_ascii=False),
                         }
                     )
                 elif item["type"] == "tool_result":
+                    if "tool_call_id" not in item:
+                        raise ValueError("tool_call_id is required for tool result.")
+
                     output: str | list[dict[str, Any]] = item["text"]
                     if item.get("images"):
                         output = [{"type": "input_text", "text": item["text"]}]
@@ -313,14 +263,11 @@ class MiniMaxM3Client(LLMClient):
         minimax_event_type = _field(model_output, "type")
 
         if minimax_event_type == "response.output_text.delta":
+            # No phase fidelity: MiniMax documents no phase field, always sends the response's own
+            # phase as null, and emits a single message item per response, so a phase would never
+            # split anything. This client never replays it either.
             event_type = "delta"
-            content_items.append(
-                {
-                    "type": "text",
-                    "text": _field(model_output, "delta", ""),
-                    "fidelity": {"phase": _normalize_json_value(_field(model_output, "item_id"))},
-                }
-            )
+            content_items.append({"type": "text", "text": _field(model_output, "delta", "")})
         elif minimax_event_type == "response.reasoning_text.delta":
             event_type = "delta"
             content_items.append({"type": "thinking", "thinking": _field(model_output, "delta", "")})
@@ -334,10 +281,7 @@ class MiniMaxM3Client(LLMClient):
                         "name": _field(item, "name", ""),
                         "arguments": "",
                         "tool_call_id": _field(item, "call_id", ""),
-                        "fidelity": {
-                            "item_id": _normalize_json_value(_field(item, "id")),
-                            "output_index": _normalize_json_value(_field(model_output, "output_index")),
-                        },
+                        "fidelity": {"item_id": _normalize_json_value(_field(item, "id"))},
                     }
                 )
         elif minimax_event_type == "response.function_call_arguments.delta":
@@ -348,16 +292,13 @@ class MiniMaxM3Client(LLMClient):
                     "name": "",
                     "arguments": _field(model_output, "delta", ""),
                     "tool_call_id": "",
-                    "fidelity": {
-                        "item_id": _normalize_json_value(_field(model_output, "item_id")),
-                        "output_index": _normalize_json_value(_field(model_output, "output_index")),
-                    },
+                    "fidelity": {"item_id": _normalize_json_value(_field(model_output, "item_id"))},
                 }
             )
         elif minimax_event_type == "response.output_item.done":
-            item = _normalize_json_value(_field(model_output, "item"))
-            if not isinstance(item, dict):
-                raise ValueError(f"MiniMax output item must be a JSON object, got: {item!r}")
+            # Validate the whole item now: capturing a non-JSON value here would only fail on the
+            # next request, where it can no longer be traced back to the response that produced it.
+            item = _require_json_object(_field(model_output, "item"), "MiniMax output item")
 
             if item.get("type") == "reasoning":
                 event_type = "delta"
@@ -365,7 +306,7 @@ class MiniMaxM3Client(LLMClient):
                     {
                         "type": "thinking",
                         "thinking": "",
-                        "fidelity": {_WIRE_ITEM_FIDELITY_KEY: item},
+                        "fidelity": {"id": item.get("id")},
                     }
                 )
             elif item.get("type") == "function_call":
@@ -380,24 +321,18 @@ class MiniMaxM3Client(LLMClient):
                             item.get("arguments"), self.__class__.__name__, tool_name, tool_call_id
                         ),
                         "tool_call_id": tool_call_id,
-                        "fidelity": {"arguments": item.get("arguments")},
                     }
                 )
-            elif item.get("type") == "message":
-                event_type = "delta"
-                phase = item.get("id") or f"output-{_field(model_output, 'output_index', 0)}"
-                content_items.append(
-                    {
-                        "type": "text",
-                        "text": "",
-                        "fidelity": {"phase": phase},
-                    }
-                )
+            # A completed message needs no content item: every output_text delta already carries
+            # this item's id as its phase, so emitting an empty text item here would only add a
+            # standalone empty assistant message when the item produced no deltas at all.
         elif minimax_event_type in {"response.completed", "response.incomplete"}:
             event_type = "stop"
             response = _field(model_output, "response")
             usage_metadata = _usage_from_response(response)
-            if minimax_event_type == "response.completed":
+            # Trust the response status over the event name: a truncated answer reported through
+            # response.completed must still finish as a truncation, not as a normal stop.
+            if minimax_event_type == "response.completed" and _field(response, "status") != "incomplete":
                 output = _field(response, "output", []) or []
                 finish_reason = (
                     "tool_call" if any(_field(item, "type") == "function_call" for item in output) else "stop"
@@ -409,7 +344,7 @@ class MiniMaxM3Client(LLMClient):
                 )
         elif minimax_event_type == "response.failed":
             response = _field(model_output, "response")
-            raise RuntimeError(
+            raise AgentHubError(
                 _format_response_error(minimax_event_type, _field(response, "error"), _field(response, "id"))
             )
         elif minimax_event_type in {"error", "response.error"}:
@@ -417,7 +352,7 @@ class MiniMaxM3Client(LLMClient):
             error = _field(model_output, "error")
             if error is None and response is not None:
                 error = _field(response, "error")
-            raise RuntimeError(
+            raise AgentHubError(
                 _format_response_error(
                     minimax_event_type,
                     error if error is not None else model_output,

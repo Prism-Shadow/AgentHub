@@ -36,7 +36,6 @@ interface Model {
   supportAudioGeneration: boolean;
   supportEmbedding: boolean;
   clientType?: string;
-  requiresExplicitToolPrompt?: boolean;
   provider:
     | "official"
     | "bedrock"
@@ -170,7 +169,6 @@ if (process.env.MINIMAX_API_KEY) {
     supportAudioGeneration: false,
     supportEmbedding: false,
     clientType: "minimax-m3",
-    requiresExplicitToolPrompt: true,
     provider: "official",
   });
 }
@@ -672,20 +670,19 @@ if (AVAILABLE_MODELS.length > 0) {
       };
 
       const config: UniConfig = { tools: [weatherTool] };
-      let toolCallId: string | undefined;
-      const partialToolCallData: {
-        name?: string;
-        arguments?: string;
-        tool_call_id?: string;
-      } = {};
-      let toolName: string | undefined;
-      let toolArguments: Record<string, unknown> | undefined;
+      const toolCalls: {
+        name: string;
+        arguments: Record<string, unknown>;
+        tool_call_id: string;
+      }[] = [];
+      // A model may open several tool calls for this prompt. Clients whose provider interleaves
+      // the argument deltas tag each delta with a correlation id in fidelity; the rest stream one
+      // call at a time, so a completed tool_call marks the boundary between them.
+      const partials: { name: string; arguments: string }[] = [];
+      const partialByCall = new Map<unknown, number>();
+      let openIndex: number | undefined;
 
-      const toolPrompt = model.requiresExplicitToolPrompt
-        ? "You must invoke get_weather exactly once with location San Francisco. " +
-          "Your only allowed action before the tool result is that function call; return no text before its result. " +
-          "After the result is provided, answer using the returned weather."
-        : "What is the weather in San Francisco?";
+      const toolPrompt = "What is the weather in San Francisco and in New York?";
       const message1: UniMessage = {
         role: "user",
         content_items: [{ type: "text", text: toolPrompt }],
@@ -697,41 +694,51 @@ if (AVAILABLE_MODELS.length > 0) {
         checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "partial_tool_call") {
-            if (!partialToolCallData.name) {
-              partialToolCallData.name = item.name;
-              partialToolCallData.arguments = item.arguments;
-              partialToolCallData.tool_call_id = item.tool_call_id;
+            const itemId = item.fidelity?.item_id;
+            let index: number;
+            if (itemId !== undefined && itemId !== null) {
+              index = partialByCall.get(itemId) ?? partials.length;
+              partialByCall.set(itemId, index);
             } else {
-              partialToolCallData.arguments += item.arguments;
+              openIndex ??= partials.length;
+              index = openIndex;
             }
+            while (partials.length <= index) {
+              partials.push({ name: "", arguments: "" });
+            }
+            partials[index].name ||= item.name;
+            partials[index].arguments += item.arguments;
           } else if (item.type === "tool_call") {
-            toolName = item.name;
-            toolArguments = item.arguments;
-            toolCallId = item.tool_call_id;
+            toolCalls.push(item);
+            // A completed call ends the uncorrelated stream, so the next delta opens the next.
+            openIndex = undefined;
           }
         }
       }
 
-      expect(toolName).toBe(weatherTool.name);
-      expect(toolArguments).toHaveProperty("location");
-      expect(toolCallId).toBeDefined();
-      expect(partialToolCallData.name).toBe(toolName);
-      expect(partialToolCallData.tool_call_id).toBe(toolCallId);
-      if (partialToolCallData.arguments && toolArguments) {
-        expect(JSON.parse(partialToolCallData.arguments)).toEqual(
-          toolArguments,
+      // Check that at least one function call was made, and that each one is fully reconstructable
+      // from its own delta stream. Calls are matched by completion order, because a tool_call_id
+      // is not unique for every provider: Gemini reuses the function name for its parallel calls.
+      expect(toolCalls.length).toBeGreaterThan(0);
+      expect(partials.length).toBe(toolCalls.length);
+      toolCalls.forEach((toolCall, index) => {
+        expect(toolCall.name).toBe(weatherTool.name);
+        expect(toolCall.arguments).toHaveProperty("location");
+        expect(toolCall.tool_call_id).toBeDefined();
+        expect(partials[index].name).toBe(toolCall.name);
+        expect(JSON.parse(partials[index].arguments)).toEqual(
+          toolCall.arguments,
         );
-      }
+      });
 
+      // Every open call needs a result, otherwise the replayed history is incomplete.
       const message2: UniMessage = {
         role: "user",
-        content_items: [
-          {
-            type: "tool_result",
-            text: "It's 20 degrees in San Francisco.",
-            tool_call_id: toolCallId || "",
-          },
-        ],
+        content_items: toolCalls.map((toolCall) => ({
+          type: "tool_result",
+          text: "It's 20 degrees.",
+          tool_call_id: toolCall.tool_call_id,
+        })),
       };
       let text = "";
       for await (const event of client.streamingResponseStateful({
@@ -875,9 +882,7 @@ if (AVAILABLE_MODELS.length > 0) {
 
       const imageTool = {
         name: "get_image",
-        description: model.requiresExplicitToolPrompt
-          ? "Retrieve an image URL for a numeric seed."
-          : "Get an image URL",
+        description: "Get an image URL",
         parameters: {
           type: "object",
           properties: {
@@ -891,13 +896,13 @@ if (AVAILABLE_MODELS.length > 0) {
       };
 
       const config: UniConfig = { tools: [imageTool] };
-      let toolCallId: string | undefined;
-      let toolName: string | undefined;
+      const toolCalls: { name: string; tool_call_id: string }[] = [];
 
-      const toolPrompt = model.requiresExplicitToolPrompt
-        ? "You must invoke the get_image function exactly once with seed 42. " +
-          "Your only allowed action in this turn is that function call; return no text before its result."
-        : "Get me a random image and describe it briefly.";
+      // Prescriptive on purpose: this test covers a tool *result* carrying an image, so
+      // reaching that state is setup. Natural tool selection is covered by the tool-use test.
+      const toolPrompt =
+        "Call get_image exactly once with seed 42. Make that function call your only action " +
+        "this turn, then describe the returned image briefly.";
       const message1: UniMessage = {
         role: "user",
         content_items: [{ type: "text", text: toolPrompt }],
@@ -909,27 +914,26 @@ if (AVAILABLE_MODELS.length > 0) {
         checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "tool_call") {
-            toolName = item.name;
-            toolCallId = item.tool_call_id;
+            toolCalls.push(item);
           }
         }
       }
 
-      expect(toolName).toBe(imageTool.name);
-      expect(toolCallId).toBeDefined();
+      expect(toolCalls.length).toBeGreaterThan(0);
+      for (const toolCall of toolCalls) {
+        expect(toolCall.name).toBe(imageTool.name);
+        expect(toolCall.tool_call_id).toBeDefined();
+      }
 
+      // Every open call needs a result, otherwise the replayed history is incomplete.
       const message2: UniMessage = {
         role: "user",
-        content_items: [
-          {
-            type: "tool_result",
-            text: model.requiresExplicitToolPrompt
-              ? "Here is the result image. Describe it briefly."
-              : "Here is the result image:",
-            images: [IMAGE],
-            tool_call_id: toolCallId || "",
-          },
-        ],
+        content_items: toolCalls.map((toolCall) => ({
+          type: "tool_result",
+          text: "Here is the result image:",
+          images: [IMAGE],
+          tool_call_id: toolCall.tool_call_id,
+        })),
       };
       let text = "";
       for await (const event of client.streamingResponseStateful({
@@ -1130,15 +1134,41 @@ test("should list supported model entries", () => {
     model: "MiniMax-M3",
     apiKey: "test-key",
   });
-  for (const clientType of [undefined, "minimax-m3"]) {
+  // Automatic routing matches the exact model id only ...
+  expect(
+    () =>
+      new AutoLLMClient({ model: "MiniMax-M3-preview", apiKey: "test-key" }),
+  ).toThrow("not supported");
+  // ... but an explicit clientType reaches gateway-hosted or aliased deployments, as for every
+  // other client.
+  expect(
+    () =>
+      new AutoLLMClient({
+        model: "MiniMax-M3-preview",
+        apiKey: "test-key",
+        clientType: "minimax-m3",
+      }),
+  ).not.toThrow();
+  // A MiniMax credential is required; the wrapped SDK must never fall back to OPENAI_API_KEY.
+  const savedMinimaxKey = process.env.MINIMAX_API_KEY;
+  const savedOpenaiKey = process.env.OPENAI_API_KEY;
+  delete process.env.MINIMAX_API_KEY;
+  process.env.OPENAI_API_KEY = "sk-openai-must-not-reach-the-minimax-host";
+  try {
     expect(
-      () =>
-        new AutoLLMClient({
-          model: "MiniMax-M3-preview",
-          apiKey: "test-key",
-          clientType,
-        }),
-    ).toThrow("not supported");
+      () => new AutoLLMClient({ model: "MiniMax-M3", clientType: "minimax-m3" }),
+    ).toThrow("MINIMAX_API_KEY is required");
+  } finally {
+    if (savedMinimaxKey === undefined) {
+      delete process.env.MINIMAX_API_KEY;
+    } else {
+      process.env.MINIMAX_API_KEY = savedMinimaxKey;
+    }
+    if (savedOpenaiKey === undefined) {
+      delete process.env.OPENAI_API_KEY;
+    } else {
+      process.env.OPENAI_API_KEY = savedOpenaiKey;
+    }
   }
 
   const m3ThinkingEfforts = [
@@ -1184,6 +1214,12 @@ test("should list supported model entries", () => {
     content: [{ type: "reasoning_text", text: "reasoning" }],
     type: "reasoning",
   };
+  // The reasoning item is now rebuilt from the thinking text plus the captured id.
+  const replayedReasoning = {
+    type: "reasoning",
+    id: "reasoning-1",
+    content: [{ type: "reasoning_text", text: "reasoning" }],
+  };
   const functionWireItem = {
     id: "function-1",
     status: "completed",
@@ -1201,7 +1237,7 @@ test("should list supported model entries", () => {
           {
             type: "thinking",
             thinking: "reasoning",
-            fidelity: { wire_item: reasoningWireItem },
+            fidelity: { id: "reasoning-1" },
           },
           {
             type: "tool_call",
@@ -1218,7 +1254,7 @@ test("should list supported model entries", () => {
       role: "assistant",
       content: [{ type: "output_text", text: "before" }],
     },
-    reasoningWireItem,
+    replayedReasoning,
     {
       type: "function_call",
       call_id: "call-1",
@@ -1244,16 +1280,18 @@ test("should list supported model entries", () => {
   ];
   const replayReasoning =
     minimaxM3.concatUniEventsToUniMessage(reasoningEvents);
+  // Fidelity keeps only the provider's item id, as every other client does; the reasoning item is
+  // rebuilt from the universal thinking text on replay.
   expect(replayReasoning.content_items).toEqual([
     {
       type: "thinking",
       thinking: "reasoning",
-      fidelity: { wire_item: reasoningWireItem },
+      fidelity: { id: "reasoning-1" },
     },
   ]);
   expect(
     minimaxM3.transformUniMessageToModelInput([replayReasoning]),
-  ).toEqual([reasoningWireItem]);
+  ).toEqual([replayedReasoning]);
 
   const messageWireItem = {
     id: "message-1",
@@ -1285,12 +1323,9 @@ test("should list supported model entries", () => {
     }),
   ];
   const replayMessage = minimaxM3.concatUniEventsToUniMessage(messageEvents);
+  // No phase fidelity: MiniMax emits one message item per response and never reads a phase back.
   expect(replayMessage.content_items).toEqual([
-    {
-      type: "text",
-      text: "exact response",
-      fidelity: { phase: "message-1" },
-    },
+    { type: "text", text: "exact response" },
   ]);
   expect(minimaxM3.transformUniMessageToModelInput([replayMessage])).toEqual([
     {
@@ -1321,16 +1356,15 @@ test("should list supported model entries", () => {
       name: "lookup",
       arguments: { 城市: "上海" },
       tool_call_id: "call-1",
-      fidelity: { arguments: '{"城市": "上海"}' },
     },
     {
       type: "tool_call",
       name: "lookup",
       arguments: { 城市: "北京" },
       tool_call_id: "call-2",
-      fidelity: { arguments: '{"城市": "北京"}' },
     },
   ]);
+  // Replay re-serializes the parsed arguments, as every other client does.
   expect(
     minimaxM3.transformUniMessageToModelInput([replayFunctions]),
   ).toEqual([
@@ -1338,40 +1372,13 @@ test("should list supported model entries", () => {
       type: "function_call",
       call_id: "call-1",
       name: "lookup",
-      arguments: '{"城市": "上海"}',
+      arguments: '{"城市":"上海"}',
     },
     {
       type: "function_call",
       call_id: "call-2",
       name: "lookup",
-      arguments: '{"城市": "北京"}',
-    },
-  ]);
-
-  const precisionArguments = '{"large":9007199254740993,"decimal":1.0}';
-  const precisionFunctionEvent = minimaxM3.transformModelOutputToUniEvent({
-    type: "response.output_item.done",
-    output_index: 0,
-    item: {
-      id: "function-precision",
-      status: "completed",
-      type: "function_call",
-      call_id: "call-precision",
-      name: "lookup",
-      arguments: precisionArguments,
-    },
-  });
-  const precisionMessage = minimaxM3.concatUniEventsToUniMessage([
-    precisionFunctionEvent,
-  ]);
-  expect(
-    minimaxM3.transformUniMessageToModelInput([precisionMessage]),
-  ).toEqual([
-    {
-      type: "function_call",
-      call_id: "call-precision",
-      name: "lookup",
-      arguments: precisionArguments,
+      arguments: '{"城市":"北京"}',
     },
   ]);
 
@@ -1384,13 +1391,13 @@ test("should list supported model entries", () => {
           name: "lookup",
           arguments: { value: true },
           tool_call_id: "call-bool",
-          fidelity: { arguments: '{"value":1}' },
         },
       ],
     },
   ]);
   expect(serializedArgumentsInput[0].arguments).toBe('{"value":true}');
 
+  // Only the id is required; summary and content are optional on a MiniMax reasoning item.
   expect(() =>
     minimaxM3.transformUniMessageToModelInput([
       {
@@ -1399,19 +1406,32 @@ test("should list supported model entries", () => {
           {
             type: "thinking",
             thinking: "invalid",
-            fidelity: {
-              wire_item: {
-                id: 123,
-                type: "reasoning",
-                summary: "invalid",
-                content: [],
-              },
-            },
+            fidelity: { id: 123 },
           },
         ],
       },
     ]),
-  ).toThrow("valid id, summary, and content");
+  ).toThrow("requires an id");
+  expect(
+    minimaxM3.transformUniMessageToModelInput([
+      {
+        role: "assistant",
+        content_items: [
+          {
+            type: "thinking",
+            thinking: "recovered",
+            fidelity: { id: "rs-sparse" },
+          },
+        ],
+      },
+    ]),
+  ).toEqual([
+    {
+      id: "rs-sparse",
+      type: "reasoning",
+      content: [{ type: "reasoning_text", text: "recovered" }],
+    },
+  ]);
 
   const completedEvent = minimaxM3.transformModelOutputToUniEvent({
     type: "response.completed",
@@ -1460,14 +1480,9 @@ test("should list supported model entries", () => {
   ) {
     throw new Error("Expected MiniMax partial tool-call events.");
   }
-  expect(partialStartItem.fidelity).toEqual({
-    item_id: "function-partial",
-    output_index: 3,
-  });
-  expect(partialDeltaItem.fidelity).toEqual({
-    item_id: "function-partial",
-    output_index: 3,
-  });
+  // Only the correlation id is recorded; output_index was never read anywhere.
+  expect(partialStartItem.fidelity).toEqual({ item_id: "function-partial" });
+  expect(partialDeltaItem.fidelity).toEqual({ item_id: "function-partial" });
 
   const incompleteEvent = minimaxM3.transformModelOutputToUniEvent({
     type: "response.incomplete",
@@ -1478,6 +1493,84 @@ test("should list supported model entries", () => {
     },
   });
   expect(incompleteEvent.finish_reason).toBe("length");
+  // A response with no usage block reports none rather than fabricating zeros for a request that
+  // consumed real tokens; the base client's last-event validation stays in charge.
+  expect(incompleteEvent.usage_metadata).toBeNull();
+  // Missing usage sub-fields still default, so a partial block never yields NaN.
+  expect(
+    minimaxM3.transformModelOutputToUniEvent({
+      type: "response.completed",
+      response: { output: [], usage: { input_tokens: 10 } },
+    }).usage_metadata,
+  ).toEqual({
+    cached_tokens: 0,
+    prompt_tokens: 10,
+    thoughts_tokens: 0,
+    response_tokens: 0,
+  });
+  // A truncation reported through response.completed still finishes as a truncation.
+  expect(
+    minimaxM3.transformModelOutputToUniEvent({
+      type: "response.completed",
+      response: {
+        output: [],
+        status: "incomplete",
+        usage: { input_tokens: 4, output_tokens: 2 },
+        incomplete_details: { reason: "max_output_tokens" },
+      },
+    }).finish_reason,
+  ).toBe("length");
+  // Usage without the optional detail objects must not abort the stream.
+  expect(
+    minimaxM3.transformModelOutputToUniEvent({
+      type: "response.completed",
+      response: {
+        output: [],
+        usage: {
+          input_tokens: 8,
+          input_tokens_details: null,
+          output_tokens: 14,
+          output_tokens_details: null,
+        },
+      },
+    }).usage_metadata,
+  ).toEqual({
+    cached_tokens: 0,
+    prompt_tokens: 8,
+    thoughts_tokens: 0,
+    response_tokens: 14,
+  });
+  // A function-call start event without the optional output-item id still yields the call.
+  const idlessStart = minimaxM3.transformModelOutputToUniEvent({
+    type: "response.output_item.added",
+    output_index: 0,
+    item: {
+      type: "function_call",
+      call_id: "call-idless",
+      name: "lookup",
+      arguments: "",
+    },
+  });
+  const idlessItem = idlessStart.content_items[0];
+  if (idlessItem.type !== "partial_tool_call") {
+    throw new Error("Expected a MiniMax partial tool-call event.");
+  }
+  expect(idlessItem.tool_call_id).toBe("call-idless");
+  expect(idlessItem.fidelity).toEqual({ item_id: null });
+  // Stream errors are readable whether the provider nests them or reports them flat.
+  expect(() =>
+    minimaxM3.transformModelOutputToUniEvent({
+      type: "error",
+      error: { code: "rate_limit_exceeded", message: "slow down" },
+    }),
+  ).toThrow("rate_limit_exceeded");
+  expect(() =>
+    minimaxM3.transformModelOutputToUniEvent({
+      type: "error",
+      code: "bad_request",
+      message: "invalid",
+    }),
+  ).toThrow("bad_request");
   expect(() =>
     minimaxM3.transformModelOutputToUniEvent({
       type: "response.failed",

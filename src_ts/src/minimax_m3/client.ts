@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { isDeepStrictEqual } from "node:util";
 import OpenAI from "openai";
 import type {
   Response,
@@ -20,7 +19,11 @@ import type {
   ResponseStreamEvent,
 } from "openai/resources/responses/responses";
 import { LLMClient } from "../baseClient";
-import { parseToolCallArguments, UnsupportedParameterError } from "../errors";
+import {
+  AgentHubError,
+  parseToolCallArguments,
+  UnsupportedParameterError,
+} from "../errors";
 import {
   EventType,
   FinishReason,
@@ -92,11 +95,11 @@ interface MiniMaxMessageInput {
   content: JsonObject[];
 }
 
+// `summary` and `content` are optional on a MiniMax reasoning item, so they ride along through the
+// JsonObject index signature rather than being required here.
 interface MiniMaxReasoningInput extends JsonObject {
   id: string;
   type: "reasoning";
-  summary: JsonValue[];
-  content: JsonValue[];
 }
 
 interface MiniMaxFunctionCallInput extends JsonObject {
@@ -123,7 +126,6 @@ interface MiniMaxResponseCreateParamsStreaming extends MiniMaxResponseConfig {
   stream: true;
 }
 
-const WIRE_ITEM_FIDELITY_KEY = "wire_item";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -164,69 +166,28 @@ function requireJsonObject(value: unknown, context: string): JsonObject {
   return value;
 }
 
-function isJsonArray(value: JsonValue | undefined): value is JsonValue[] {
-  return Array.isArray(value);
-}
-
-function wireItemFromFidelity(
-  fidelity: unknown,
-  context: string,
-): JsonObject | undefined {
-  if (!isRecord(fidelity) || !(WIRE_ITEM_FIDELITY_KEY in fidelity)) {
-    return undefined;
-  }
-  return requireJsonObject(
-    fidelity[WIRE_ITEM_FIDELITY_KEY],
-    `${context} wire item`,
-  );
-}
-
-function legacyWireItemFromFidelity(fidelity: JsonObject): JsonObject {
-  const wireItem: JsonObject = {};
-  for (const [key, value] of Object.entries(fidelity)) {
-    if (key !== WIRE_ITEM_FIDELITY_KEY && key !== "phase") {
-      wireItem[key] = value;
-    }
-  }
-  return wireItem;
-}
-
-function wireContentText(
-  wireItem: JsonObject,
-  contentType: string,
-): string | undefined {
-  const content = wireItem.content;
-  if (!Array.isArray(content)) {
-    return undefined;
-  }
-
-  const textParts: string[] = [];
-  for (const part of content) {
-    if (!isJsonObject(part) || part.type !== contentType) {
-      continue;
-    }
-    if (typeof part.text !== "string") {
-      return undefined;
-    }
-    textParts.push(part.text);
-  }
-  return textParts.length > 0 ? textParts.join("") : undefined;
-}
 
 
+
+
+// Reporting zeros for a request that consumed real tokens would corrupt cost accounting, so a
+// response with no usage block returns null and leaves the base client's "last event must carry
+// usage_metadata" validation in charge.
 function transformUsage(response: Response): UsageMetadata | null {
   const usage = response.usage;
   if (!usage) {
     return null;
   }
 
-  const cachedTokens = usage.input_tokens_details.cached_tokens ?? 0;
-  const reasoningTokens = usage.output_tokens_details.reasoning_tokens ?? 0;
+  // MiniMax sends the detail objects as null when it has nothing to report and drops them
+  // entirely on truncated responses, so every field needs its own default, parents included.
+  const cachedTokens = usage.input_tokens_details?.cached_tokens ?? 0;
+  const reasoningTokens = usage.output_tokens_details?.reasoning_tokens ?? 0;
   return {
     cached_tokens: cachedTokens,
-    prompt_tokens: usage.input_tokens - cachedTokens,
+    prompt_tokens: (usage.input_tokens ?? 0) - cachedTokens,
     thoughts_tokens: reasoningTokens,
-    response_tokens: usage.output_tokens - reasoningTokens,
+    response_tokens: (usage.output_tokens ?? 0) - reasoningTokens,
   };
 }
 
@@ -234,7 +195,9 @@ function transformFinishReason(
   response: Response,
   eventType: "response.completed" | "response.incomplete",
 ): FinishReason {
-  if (eventType === "response.incomplete") {
+  // Trust the response status over the event name: a truncated answer reported through
+  // response.completed must still finish as a truncation, not as a normal stop.
+  if (eventType === "response.incomplete" || response.status === "incomplete") {
     const incompleteReason = response.incomplete_details?.reason;
     if (incompleteReason === "max_output_tokens") {
       return "length";
@@ -244,19 +207,38 @@ function transformFinishReason(
     }
     return "unknown";
   }
-  if (response.output.some((item) => item.type === "function_call")) {
+  if ((response.output ?? []).some((item) => item.type === "function_call")) {
     return "tool_call";
   }
   return "stop";
 }
 
+// MiniMax reports stream errors either flat on the event or nested under `error`, and the Python
+// client accepts both, so read whichever shape arrived rather than emitting `undefined`.
+function streamError(modelOutput: object): Error {
+  const flat = modelOutput as Record<string, unknown>;
+  const nested = flat.error;
+  const source = isRecord(nested) ? nested : flat;
+  const details: string[] = [];
+  for (const field of ["code", "message", "param"] as const) {
+    const value = source[field];
+    if (value !== undefined && value !== null) {
+      details.push(`${field}=${JSON.stringify(value)}`);
+    }
+  }
+  if (details.length === 0) {
+    details.push("no error details were provided");
+  }
+  return new AgentHubError(`MiniMax stream error: ${details.join(", ")}`);
+}
+
 function responseFailure(response: Response): Error {
   if (response.error) {
-    return new Error(
+    return new AgentHubError(
       `MiniMax response ${response.id} failed (${response.error.code}): ${response.error.message}`,
     );
   }
-  return new Error(
+  return new AgentHubError(
     `MiniMax response ${response.id} failed without error details from the API.`,
   );
 }
@@ -273,12 +255,15 @@ export class MiniMaxM3Client extends LLMClient {
     clientType?: string | null;
   }) {
     super();
-    if (options.model.toLowerCase() !== "minimax-m3") {
-      throw new Error(`${options.model} is not supported by MiniMaxM3Client.`);
-    }
     this._model = options.model;
+    // The wrapped OpenAI SDK falls back to OPENAI_API_KEY when handed undefined, which would send
+    // an OpenAI credential to the MiniMax host, so resolve the key here and fail loudly instead.
+    const apiKey = options.apiKey || process.env.MINIMAX_API_KEY;
+    if (!apiKey) {
+      throw new Error("MINIMAX_API_KEY is required for MiniMaxM3Client.");
+    }
     this._client = new OpenAI({
-      apiKey: options.apiKey || process.env.MINIMAX_API_KEY || undefined,
+      apiKey,
       baseURL:
         options.baseUrl || process.env.MINIMAX_BASE_URL || DEFAULT_BASE_URL,
     });
@@ -321,7 +306,9 @@ export class MiniMaxM3Client extends LLMClient {
       minimaxConfig.max_output_tokens = config.max_tokens;
     }
     if (config.temperature !== undefined) {
-      if (config.temperature < 0 || config.temperature > 1) {
+      // Written as a positive range test so NaN is rejected too: every `<`/`>` comparison against
+      // NaN is false, which would let it through to the provider as a null temperature.
+      if (!(config.temperature >= 0 && config.temperature <= 1)) {
         throw new UnsupportedParameterError({
           client: this.constructor.name,
           parameter: "temperature",
@@ -389,67 +376,34 @@ export class MiniMaxM3Client extends LLMClient {
           contentItems.push({ type: "input_image", image_url: item.image_url });
         } else if (item.type === "thinking") {
           flushContentItems();
-          const fidelity = requireJsonObject(
-            item.fidelity ?? {},
-            "MiniMax reasoning fidelity",
-          );
-          const wireItem =
-            wireItemFromFidelity(fidelity, "MiniMax reasoning fidelity") ??
-            legacyWireItemFromFidelity(fidelity);
-          const id = wireItem.id;
-          const summary = wireItem.summary;
-          const wireContent = wireItem.content;
-          if (
-            typeof id !== "string" ||
-            !isJsonArray(summary) ||
-            !isJsonArray(wireContent)
-          ) {
+          // Rebuild the reasoning item from the universal thinking text plus the one field that
+          // cannot be reconstructed, the provider's item id.
+          const reasoningId = item.fidelity?.id;
+          if (typeof reasoningId !== "string") {
             throw new Error(
-              "MiniMax reasoning replay requires valid id, summary, and content fidelity.",
+              "MiniMax reasoning replay requires an id in its fidelity.",
             );
           }
-          const content =
-            wireContentText(wireItem, "reasoning_text") === item.thinking
-              ? wireContent
-              : [{ type: "reasoning_text", text: item.thinking }];
           inputList.push({
-            ...wireItem,
-            id,
             type: "reasoning",
-            summary,
-            content,
+            id: reasoningId,
+            content: item.thinking
+              ? [{ type: "reasoning_text", text: item.thinking }]
+              : [],
           });
         } else if (item.type === "tool_call") {
           flushContentItems();
-          let serializedArguments = JSON.stringify(item.arguments);
-          if (serializedArguments === undefined) {
-            throw new Error(
-              `MiniMax tool call ${item.name} arguments could not be serialized.`,
-            );
-          }
-          const rawArguments = item.fidelity?.arguments;
-          if (
-            typeof rawArguments === "string" &&
-            isDeepStrictEqual(
-              parseToolCallArguments(
-                rawArguments,
-                this.constructor.name,
-                item.name,
-                item.tool_call_id,
-              ),
-              item.arguments,
-            )
-          ) {
-            serializedArguments = rawArguments;
-          }
           inputList.push({
             type: "function_call",
             call_id: item.tool_call_id,
             name: item.name,
-            arguments: serializedArguments,
+            arguments: JSON.stringify(item.arguments),
           });
         } else if (item.type === "tool_result") {
           flushContentItems();
+          if (item.tool_call_id === undefined) {
+            throw new Error("tool_call_id is required for tool result.");
+          }
           let output: string | MiniMaxToolOutputContent[] = item.text;
           if (item.images?.length) {
             const outputItems: MiniMaxToolOutputContent[] = [
@@ -488,7 +442,6 @@ export class MiniMaxM3Client extends LLMClient {
         contentItems.push({
           type: "text",
           text: modelOutput.delta,
-          fidelity: { phase: modelOutput.item_id },
         });
         break;
       case "response.reasoning_text.delta":
@@ -500,21 +453,15 @@ export class MiniMaxM3Client extends LLMClient {
         break;
       case "response.output_item.added":
         if (modelOutput.item.type === "function_call") {
-          if (modelOutput.item.id === undefined) {
-            throw new Error(
-              "MiniMax function-call start event is missing its output item id.",
-            );
-          }
           eventType = "start";
           contentItems.push({
             type: "partial_tool_call",
-            name: modelOutput.item.name,
+            name: modelOutput.item.name ?? "",
             arguments: "",
-            tool_call_id: modelOutput.item.call_id,
-            fidelity: {
-              item_id: modelOutput.item.id,
-              output_index: modelOutput.output_index,
-            },
+            tool_call_id: modelOutput.item.call_id ?? "",
+            // The output-item id is optional on the wire; record null rather than aborting the
+            // turn, matching the Python client.
+            fidelity: { item_id: modelOutput.item.id ?? null },
           });
         }
         break;
@@ -525,23 +472,19 @@ export class MiniMaxM3Client extends LLMClient {
           name: "",
           arguments: modelOutput.delta,
           tool_call_id: "",
-          fidelity: {
-            item_id: modelOutput.item_id,
-            output_index: modelOutput.output_index,
-          },
+          fidelity: { item_id: modelOutput.item_id },
         });
         break;
       case "response.output_item.done": {
-        const wireItem = requireJsonObject(
-          modelOutput.item,
-          "MiniMax output item",
-        );
+        // Validate the whole item now: a non-JSON value captured here would otherwise only fail on
+        // the next request, where it can no longer be traced back to the response that produced it.
+        requireJsonObject(modelOutput.item, "MiniMax output item");
         if (modelOutput.item.type === "reasoning") {
           eventType = "delta";
           contentItems.push({
             type: "thinking",
             thinking: "",
-            fidelity: { [WIRE_ITEM_FIDELITY_KEY]: wireItem },
+            fidelity: { id: modelOutput.item.id ?? null },
           });
         } else if (modelOutput.item.type === "function_call") {
           eventType = "delta";
@@ -555,20 +498,11 @@ export class MiniMaxM3Client extends LLMClient {
               modelOutput.item.call_id,
             ),
             tool_call_id: modelOutput.item.call_id,
-            fidelity: { arguments: modelOutput.item.arguments },
-          });
-        } else if (modelOutput.item.type === "message") {
-          eventType = "delta";
-          const phase =
-            typeof wireItem.id === "string"
-              ? wireItem.id
-              : `output-${modelOutput.output_index}`;
-          contentItems.push({
-            type: "text",
-            text: "",
-            fidelity: { phase },
           });
         }
+        // A completed message needs no content item: its text already arrived as output_text
+        // deltas, so emitting an empty one here would only add a standalone empty assistant
+        // message when the item produced no deltas at all.
         break;
       }
       case "response.completed":
@@ -582,15 +516,8 @@ export class MiniMaxM3Client extends LLMClient {
         break;
       case "response.failed":
         throw responseFailure(modelOutput.response);
-      case "error": {
-        const code = modelOutput.code ? ` (${modelOutput.code})` : "";
-        const parameter = modelOutput.param
-          ? ` for parameter ${modelOutput.param}`
-          : "";
-        throw new Error(
-          `MiniMax stream error${code}${parameter}: ${modelOutput.message}`,
-        );
-      }
+      case "error":
+        throw streamError(modelOutput);
       case "response.created":
       case "response.in_progress":
       case "response.output_text.done":
@@ -600,6 +527,11 @@ export class MiniMaxM3Client extends LLMClient {
       case "response.function_call_arguments.done":
         break;
       default:
+        // `response.error` is absent from the SDK's event union but handled by the Python client,
+        // so match it here rather than reporting a provider error as an unknown event.
+        if ((modelOutput as { type?: string }).type === "response.error") {
+          throw streamError(modelOutput);
+        }
         throw new Error(`Unknown output: ${JSON.stringify(modelOutput)}`);
     }
 
