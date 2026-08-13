@@ -80,6 +80,7 @@ When writing tests that require calling AI models, the following secrets are ava
 - `OPENAI_API_KEY` - API key for OpenAI GPT Models
 - `ZAI_API_KEY` - API key for Z.AI GLM Models
 - `MOONSHOT_API_KEY` - API key for MoonShot Kimi Models
+- `MINIMAX_API_KEY` - API key or Token Plan Subscription Key for MiniMax Models
 - `DEEPSEEK_API_KEY` - API key for DeepSeek Models
 - `MODELVERSE_API_KEY` - API key for ModelVerse Models
 - `OPENROUTER_API_KEY` - API key for OpenRouter Models
@@ -96,6 +97,7 @@ env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
   MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
+  MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
   DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
   MODELVERSE_API_KEY: ${{ secrets.MODELVERSE_API_KEY }}
   OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}

@@ -61,6 +61,7 @@ _MOONSHOT = "https://api.moonshot.cn/v1"
 _DEEPSEEK = "https://api.deepseek.com"
 _OPENROUTER = "https://openrouter.ai/api/v1"
 _SILICONFLOW = "https://api.siliconflow.cn/v1"
+_MINIMAX = "https://api.minimax.io/v1"
 
 # Display convention shared with the AgentHub apps: prices are stored in USD (official CNY
 # list prices pre-converted at 7 CNY/USD), so requesting CNY shows the vendor's numbers.
@@ -186,6 +187,16 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "output_modalities": ["Text"],
         "context_window": 1050000,
         "pricing": _usd(5.0, 30.0, cached=0.5),
+    },
+    {
+        "model": "MiniMax-M3",
+        "base_url": _MINIMAX,
+        "client": "minimax-m3",
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
+        "context_window": 1000000,
+        # official list price for the <=512K-input tier; rates double above it
+        "pricing": _usd(0.3, 1.2, cached=0.06),
     },
     {
         "model": "text-embedding-3-large",

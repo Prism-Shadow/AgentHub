@@ -57,6 +57,7 @@ const MOONSHOT = "https://api.moonshot.cn/v1";
 const DEEPSEEK = "https://api.deepseek.com";
 const OPENROUTER = "https://openrouter.ai/api/v1";
 const SILICONFLOW = "https://api.siliconflow.cn/v1";
+const MINIMAX = "https://api.minimax.io/v1";
 
 // Display convention shared with the AgentHub apps: prices are stored in USD
 // (official CNY list prices pre-converted at 7 CNY/USD), so requesting CNY
@@ -181,6 +182,16 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     output_modalities: ["Text"],
     context_window: 1050000,
     pricing: usd(5.0, 30.0, 0.5),
+  },
+  {
+    model: "MiniMax-M3",
+    base_url: MINIMAX,
+    client: "minimax-m3",
+    input_modalities: ["Text", "Image"],
+    output_modalities: ["Text"],
+    context_window: 1000000,
+    // official list price for the <=512K-input tier; rates double above it
+    pricing: usd(0.3, 1.2, 0.06),
   },
   {
     model: "text-embedding-3-large",

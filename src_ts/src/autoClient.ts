@@ -25,6 +25,7 @@ import { KimiK3Client } from "./kimi_k3";
 import { OpenaiClient } from "./openai";
 import { OpenaiEmbeddingClient } from "./openai_embedding";
 import { DeepSeekV4Client } from "./deepseek_v4";
+import { MiniMaxM3Client } from "./minimax_m3";
 import { UniConfig, UniEvent, UniMessage } from "./types";
 
 /**
@@ -72,12 +73,11 @@ export class AutoLLMClient extends LLMClient {
     baseUrl?: string | null,
     clientType?: string | null,
   ): LLMClient {
-    clientType = (
-      clientType ||
-      process.env.CLIENT_TYPE ||
-      model.toLowerCase()
-    ).toLowerCase();
+    clientType = (clientType || process.env.CLIENT_TYPE || model).toLowerCase();
 
+    if (clientType === "minimax-m3") {
+      return new MiniMaxM3Client({ model, apiKey, baseUrl });
+    }
     // gemini-3.6 must be matched before the broader gemini-3 prefix below
     if (
       clientType.includes("gemini-3.6") ||
@@ -130,7 +130,10 @@ export class AutoLLMClient extends LLMClient {
     } else {
       throw new Error(
         `${clientType} is not supported. ` +
-          "Supported client types: gemini-3.6, gemini-3, claude-5, claude-4-8, claude-4-7, claude-4-6, gpt-5.5, gpt-5.4, glm-5.2, glm-5.1, kimi-k3, kimi-k2.6, kimi-k2.5, deepseek-v4, openai-embedding, openai.",
+          "Supported client types: minimax-m3, gemini-3.6, gemini-3, " +
+          "claude-5, claude-4-8, claude-4-7, " +
+          "claude-4-6, gpt-5.5, gpt-5.4, glm-5.2, glm-5.1, kimi-k3, kimi-k2.6, kimi-k2.5, " +
+          "deepseek-v4, openai-embedding, openai.",
       );
     }
   }
