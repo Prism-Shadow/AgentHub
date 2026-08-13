@@ -190,6 +190,8 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1000000,
+    // official list price for the <=512K-input tier; rates double above it
+    pricing: usd(0.3, 1.2, 0.06),
   },
   {
     model: "text-embedding-3-large",
