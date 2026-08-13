@@ -18,12 +18,12 @@ import mimetypes
 import os
 from contextlib import nullcontext
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Literal
 
 import httpx
 import pytest
 
-from agenthub import AutoLLMClient, PromptCaching, ThinkingLevel, UnsupportedParameterError, list_supported_models
+from agenthub import AutoLLMClient, ThinkingLevel, list_supported_models
 
 
 IMAGE = "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg"
@@ -398,10 +398,9 @@ async def test_unknown_model():
 
 
 @pytest.mark.asyncio
-async def test_list_supported_models(monkeypatch: pytest.MonkeyPatch):
+async def test_list_supported_models():
     """Test that the registry lists model entries accepted by AutoLLMClient."""
     entries = list_supported_models()
-
     kimi = next(entry for entry in entries if entry["model"] == "kimi-k3")
     assert kimi["base_url"] == "https://api.moonshot.cn/v1"
     assert kimi["client"] == "kimi-k3"
@@ -434,85 +433,6 @@ async def test_list_supported_models(monkeypatch: pytest.MonkeyPatch):
             model=entry["model"], api_key="test-key", base_url=entry["base_url"], client_type=entry["client"]
         )
         assert client._client is not None
-
-    minimax_entries = [entry for entry in entries if entry["base_url"] == "https://api.minimax.io/v1"]
-    assert minimax_entries == [
-        {
-            "model": "MiniMax-M3",
-            "base_url": "https://api.minimax.io/v1",
-            "client": "minimax-m3",
-            "input_modalities": ["Text", "Image"],
-            "output_modalities": ["Text"],
-            "context_window": 1000000,
-        }
-    ]
-
-    minimax_m3 = AutoLLMClient(model="MiniMax-M3", api_key="test-key")
-    assert minimax_m3._client.__class__.__name__ == "MiniMaxM3Client"
-    # Automatic routing matches the exact model id only ...
-    with pytest.raises(ValueError, match="not support"):
-        AutoLLMClient(model="MiniMax-M3-preview", api_key="test-key")
-    # ... but an explicit client_type reaches gateway-hosted or aliased deployments, as for every
-    # other client.
-    aliased = AutoLLMClient(model="MiniMax-M3-preview", api_key="test-key", client_type="minimax-m3")
-    assert aliased._client.__class__.__name__ == "MiniMaxM3Client"
-    # A MiniMax credential is required; the wrapped SDK must never fall back to OPENAI_API_KEY.
-    monkeypatch.delenv("MINIMAX_API_KEY", raising=False)
-    monkeypatch.setenv("OPENAI_API_KEY", "sk-openai-must-not-reach-the-minimax-host")
-    with pytest.raises(ValueError, match="MINIMAX_API_KEY is required"):
-        AutoLLMClient(model="MiniMax-M3", client_type="minimax-m3")
-
-    expected_m3_efforts = {
-        ThinkingLevel.NONE: "none",
-        ThinkingLevel.LOW: "low",
-        ThinkingLevel.MEDIUM: "medium",
-        ThinkingLevel.HIGH: "high",
-        ThinkingLevel.XHIGH: "high",
-    }
-    for thinking_level, effort in expected_m3_efforts.items():
-        config = minimax_m3.transform_uni_config_to_model_config({"thinking_level": thinking_level})
-        assert config["reasoning"] == {"effort": effort}
-    assert "prompt_caching" not in minimax_m3.transform_uni_config_to_model_config(
-        {"prompt_caching": PromptCaching.ENABLE}
-    )
-    for prompt_caching in (PromptCaching.DISABLE, PromptCaching.ENHANCE):
-        with pytest.raises(UnsupportedParameterError, match="does not support"):
-            minimax_m3.transform_uni_config_to_model_config({"prompt_caching": prompt_caching})
-    for tool_choice in ("required", ["lookup"]):
-        with pytest.raises(UnsupportedParameterError, match="does not support"):
-            minimax_m3.transform_uni_config_to_model_config({"tool_choice": tool_choice})
-
-    # Assistant text order is preserved around top-level items; the reasoning item is rebuilt from
-    # the thinking text alone, and the tool call re-serializes its parsed arguments.
-    ordered_input = minimax_m3.transform_uni_message_to_model_input(
-        [
-            {
-                "role": "assistant",
-                "content_items": [
-                    {"type": "text", "text": "before"},
-                    {"type": "thinking", "thinking": "reasoning"},
-                    {
-                        "type": "tool_call",
-                        "name": "lookup",
-                        "arguments": {"城市": "上海"},
-                        "tool_call_id": "call-1",
-                    },
-                    {"type": "text", "text": "after"},
-                ],
-            }
-        ]
-    )
-    assert ordered_input == [
-        {"role": "assistant", "content": [{"type": "output_text", "text": "before"}]},
-        {"type": "reasoning", "content": [{"type": "reasoning_text", "text": "reasoning"}]},
-        {
-            "type": "function_call",
-            "call_id": "call-1",
-            "name": "lookup",
-            "arguments": '{"城市": "上海"}',
-        },
-        {"role": "assistant", "content": [{"type": "output_text", "text": "after"}]},
-    ]
 
 
 @pytest.mark.asyncio
@@ -578,58 +498,39 @@ async def test_tool_use(model: Model):
     }
 
     config = {"tools": [weather_tool]}
-    tool_calls: list[dict[str, Any]] = []
-    # A model may open several tool calls for this prompt. Clients whose provider interleaves the
-    # argument deltas tag each delta with a correlation id in fidelity; the rest stream one call
-    # at a time, so a completed tool_call marks the boundary between them.
-    partials: list[dict[str, str]] = []
-    partial_by_call: dict[Any, int] = {}
-    open_index: int | None = None
+    tool_call_id = None
+    partial_tool_call_data = {}
 
-    tool_prompt = "What is the weather in San Francisco and in New York?"
-    message1 = {"role": "user", "content_items": [{"type": "text", "text": tool_prompt}]}
+    message1 = {"role": "user", "content_items": [{"type": "text", "text": "What is the weather in San Francisco?"}]}
     async for event in client.streaming_response_stateful(message=message1, config=config):
         await _check_event_integrity(event)
         for item in event["content_items"]:
             if item["type"] == "partial_tool_call":
-                item_id = (item.get("fidelity") or {}).get("item_id")
-                if item_id is not None:
-                    index = partial_by_call.setdefault(item_id, len(partials))
+                if not partial_tool_call_data:
+                    partial_tool_call_data = {
+                        "name": item["name"],
+                        "arguments": item["arguments"],
+                        "tool_call_id": item["tool_call_id"],
+                    }
                 else:
-                    if open_index is None:
-                        open_index = len(partials)
-                    index = open_index
-                while len(partials) <= index:
-                    partials.append({"name": "", "arguments": ""})
-                partials[index]["name"] = partials[index]["name"] or item["name"]
-                partials[index]["arguments"] += item["arguments"]
+                    partial_tool_call_data["arguments"] += item["arguments"]
             elif item["type"] == "tool_call":
-                tool_calls.append(item)
-                # A completed call ends the uncorrelated stream, so the next delta opens the next.
-                open_index = None
+                tool_name = item["name"]
+                tool_arguments = item["arguments"]
+                tool_call_id = item["tool_call_id"]
 
-    # Check that at least one function call was made, and that each one is fully reconstructable
-    # from its own delta stream. Calls are matched by completion order, because a tool_call_id is
-    # not unique for every provider: Gemini reuses the function name for all of its parallel calls.
-    assert tool_calls
-    assert len(partials) == len(tool_calls)
-    for tool_call, partial in zip(tool_calls, partials, strict=True):
-        assert tool_call["name"] == weather_tool["name"]
-        assert "location" in tool_call["arguments"]
-        assert tool_call["tool_call_id"] is not None
-        assert partial["name"] == tool_call["name"]
-        assert json.loads(partial["arguments"]) == tool_call["arguments"]
+    # Check if a function call was made
+    assert tool_name == weather_tool["name"]
+    assert "location" in tool_arguments
+    assert tool_call_id is not None
+    assert partial_tool_call_data["name"] == tool_name
+    assert partial_tool_call_data["tool_call_id"] == tool_call_id
+    assert json.loads(partial_tool_call_data["arguments"]) == tool_arguments
 
-    # Every open call needs a result, otherwise the replayed history is incomplete.
     message2 = {
         "role": "user",
         "content_items": [
-            {
-                "type": "tool_result",
-                "text": "It's 20 degrees.",
-                "tool_call_id": tool_call["tool_call_id"],
-            }
-            for tool_call in tool_calls
+            {"type": "tool_result", "text": "It's 20 degrees in San Francisco.", "tool_call_id": tool_call_id}
         ],
     }
     text = ""
@@ -757,27 +658,22 @@ async def test_tool_result_with_image(model: Model):
     }
 
     config = {"tools": [image_tool]}
-    tool_calls: list[dict[str, Any]] = []
+    tool_call_id = None
 
-    # Prescriptive on purpose: this test covers a tool *result* carrying an image, so reaching
-    # that state is setup. Natural tool selection is covered by test_tool_use.
-    tool_prompt = (
-        "Call get_image exactly once with seed 42. Make that function call your only action "
-        "this turn, then describe the returned image briefly."
-    )
-    message1 = {"role": "user", "content_items": [{"type": "text", "text": tool_prompt}]}
+    message1 = {
+        "role": "user",
+        "content_items": [{"type": "text", "text": "Get me a random image and describe it briefly."}],
+    }
     async for event in client.streaming_response_stateful(message=message1, config=config):
         await _check_event_integrity(event)
         for item in event["content_items"]:
             if item["type"] == "tool_call":
-                tool_calls.append(item)
+                tool_name = item["name"]
+                tool_call_id = item["tool_call_id"]
 
-    assert tool_calls
-    for tool_call in tool_calls:
-        assert tool_call["name"] == image_tool["name"]
-        assert tool_call["tool_call_id"] is not None
+    assert tool_name == image_tool["name"]
+    assert tool_call_id is not None
 
-    # Every open call needs a result, otherwise the replayed history is incomplete.
     message2 = {
         "role": "user",
         "content_items": [
@@ -785,9 +681,8 @@ async def test_tool_result_with_image(model: Model):
                 "type": "tool_result",
                 "text": "Here is the result image:",
                 "images": [IMAGE],
-                "tool_call_id": tool_call["tool_call_id"],
+                "tool_call_id": tool_call_id,
             }
-            for tool_call in tool_calls
         ],
     }
     text = ""

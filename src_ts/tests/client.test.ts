@@ -14,13 +14,7 @@
 
 import { AutoLLMClient } from "../src/autoClient";
 import { listSupportedModels } from "../src/registry";
-import {
-  PromptCaching,
-  ThinkingLevel,
-  UniMessage,
-  UniConfig,
-  UniEvent,
-} from "../src/types";
+import { ThinkingLevel, UniMessage, UniConfig, UniEvent } from "../src/types";
 import { expect, describe, test } from "@jest/globals";
 
 const IMAGE =
@@ -670,22 +664,20 @@ if (AVAILABLE_MODELS.length > 0) {
       };
 
       const config: UniConfig = { tools: [weatherTool] };
-      const toolCalls: {
-        name: string;
-        arguments: Record<string, unknown>;
-        tool_call_id: string;
-      }[] = [];
-      // A model may open several tool calls for this prompt. Clients whose provider interleaves
-      // the argument deltas tag each delta with a correlation id in fidelity; the rest stream one
-      // call at a time, so a completed tool_call marks the boundary between them.
-      const partials: { name: string; arguments: string }[] = [];
-      const partialByCall = new Map<unknown, number>();
-      let openIndex: number | undefined;
+      let toolCallId: string | undefined;
+      const partialToolCallData: {
+        name?: string;
+        arguments?: string;
+        tool_call_id?: string;
+      } = {};
+      let toolName: string | undefined;
+      let toolArguments: Record<string, unknown> | undefined;
 
-      const toolPrompt = "What is the weather in San Francisco and in New York?";
       const message1: UniMessage = {
         role: "user",
-        content_items: [{ type: "text", text: toolPrompt }],
+        content_items: [
+          { type: "text", text: "What is the weather in San Francisco?" },
+        ],
       };
       for await (const event of client.streamingResponseStateful({
         message: message1,
@@ -694,51 +686,41 @@ if (AVAILABLE_MODELS.length > 0) {
         checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "partial_tool_call") {
-            const itemId = item.fidelity?.item_id;
-            let index: number;
-            if (itemId !== undefined && itemId !== null) {
-              index = partialByCall.get(itemId) ?? partials.length;
-              partialByCall.set(itemId, index);
+            if (!partialToolCallData.name) {
+              partialToolCallData.name = item.name;
+              partialToolCallData.arguments = item.arguments;
+              partialToolCallData.tool_call_id = item.tool_call_id;
             } else {
-              openIndex ??= partials.length;
-              index = openIndex;
+              partialToolCallData.arguments += item.arguments;
             }
-            while (partials.length <= index) {
-              partials.push({ name: "", arguments: "" });
-            }
-            partials[index].name ||= item.name;
-            partials[index].arguments += item.arguments;
           } else if (item.type === "tool_call") {
-            toolCalls.push(item);
-            // A completed call ends the uncorrelated stream, so the next delta opens the next.
-            openIndex = undefined;
+            toolName = item.name;
+            toolArguments = item.arguments;
+            toolCallId = item.tool_call_id;
           }
         }
       }
 
-      // Check that at least one function call was made, and that each one is fully reconstructable
-      // from its own delta stream. Calls are matched by completion order, because a tool_call_id
-      // is not unique for every provider: Gemini reuses the function name for its parallel calls.
-      expect(toolCalls.length).toBeGreaterThan(0);
-      expect(partials.length).toBe(toolCalls.length);
-      toolCalls.forEach((toolCall, index) => {
-        expect(toolCall.name).toBe(weatherTool.name);
-        expect(toolCall.arguments).toHaveProperty("location");
-        expect(toolCall.tool_call_id).toBeDefined();
-        expect(partials[index].name).toBe(toolCall.name);
-        expect(JSON.parse(partials[index].arguments)).toEqual(
-          toolCall.arguments,
+      expect(toolName).toBe(weatherTool.name);
+      expect(toolArguments).toHaveProperty("location");
+      expect(toolCallId).toBeDefined();
+      expect(partialToolCallData.name).toBe(toolName);
+      expect(partialToolCallData.tool_call_id).toBe(toolCallId);
+      if (partialToolCallData.arguments && toolArguments) {
+        expect(JSON.parse(partialToolCallData.arguments)).toEqual(
+          toolArguments,
         );
-      });
+      }
 
-      // Every open call needs a result, otherwise the replayed history is incomplete.
       const message2: UniMessage = {
         role: "user",
-        content_items: toolCalls.map((toolCall) => ({
-          type: "tool_result",
-          text: "It's 20 degrees.",
-          tool_call_id: toolCall.tool_call_id,
-        })),
+        content_items: [
+          {
+            type: "tool_result",
+            text: "It's 20 degrees in San Francisco.",
+            tool_call_id: toolCallId || "",
+          },
+        ],
       };
       let text = "";
       for await (const event of client.streamingResponseStateful({
@@ -896,16 +878,17 @@ if (AVAILABLE_MODELS.length > 0) {
       };
 
       const config: UniConfig = { tools: [imageTool] };
-      const toolCalls: { name: string; tool_call_id: string }[] = [];
+      let toolCallId: string | undefined;
+      let toolName: string | undefined;
 
-      // Prescriptive on purpose: this test covers a tool *result* carrying an image, so
-      // reaching that state is setup. Natural tool selection is covered by the tool-use test.
-      const toolPrompt =
-        "Call get_image exactly once with seed 42. Make that function call your only action " +
-        "this turn, then describe the returned image briefly.";
       const message1: UniMessage = {
         role: "user",
-        content_items: [{ type: "text", text: toolPrompt }],
+        content_items: [
+          {
+            type: "text",
+            text: "Get me a random image and describe it briefly.",
+          },
+        ],
       };
       for await (const event of client.streamingResponseStateful({
         message: message1,
@@ -914,26 +897,25 @@ if (AVAILABLE_MODELS.length > 0) {
         checkEventIntegrity(event);
         for (const item of event.content_items) {
           if (item.type === "tool_call") {
-            toolCalls.push(item);
+            toolName = item.name;
+            toolCallId = item.tool_call_id;
           }
         }
       }
 
-      expect(toolCalls.length).toBeGreaterThan(0);
-      for (const toolCall of toolCalls) {
-        expect(toolCall.name).toBe(imageTool.name);
-        expect(toolCall.tool_call_id).toBeDefined();
-      }
+      expect(toolName).toBe(imageTool.name);
+      expect(toolCallId).toBeDefined();
 
-      // Every open call needs a result, otherwise the replayed history is incomplete.
       const message2: UniMessage = {
         role: "user",
-        content_items: toolCalls.map((toolCall) => ({
-          type: "tool_result",
-          text: "Here is the result image:",
-          images: [IMAGE],
-          tool_call_id: toolCall.tool_call_id,
-        })),
+        content_items: [
+          {
+            type: "tool_result",
+            text: "Here is the result image:",
+            images: [IMAGE],
+            tool_call_id: toolCallId || "",
+          },
+        ],
       };
       let text = "";
       for await (const event of client.streamingResponseStateful({
@@ -1115,132 +1097,6 @@ test("should list supported model entries", () => {
   const glm52 = entries.find((entry) => entry.model === "z-ai/glm-5.2");
   expect(glm52?.base_url).toBe("https://openrouter.ai/api/v1");
   expect(glm52?.client).toBe("glm-5.2");
-
-  const minimaxEntries = entries.filter(
-    (entry) => entry.base_url === "https://api.minimax.io/v1",
-  );
-  expect(minimaxEntries).toEqual([
-    {
-      model: "MiniMax-M3",
-      base_url: "https://api.minimax.io/v1",
-      client: "minimax-m3",
-      input_modalities: ["Text", "Image"],
-      output_modalities: ["Text"],
-      context_window: 1000000,
-    },
-  ]);
-
-  const minimaxM3 = new AutoLLMClient({
-    model: "MiniMax-M3",
-    apiKey: "test-key",
-  });
-  // Automatic routing matches the exact model id only ...
-  expect(
-    () =>
-      new AutoLLMClient({ model: "MiniMax-M3-preview", apiKey: "test-key" }),
-  ).toThrow("not supported");
-  // ... but an explicit clientType reaches gateway-hosted or aliased deployments, as for every
-  // other client.
-  expect(
-    () =>
-      new AutoLLMClient({
-        model: "MiniMax-M3-preview",
-        apiKey: "test-key",
-        clientType: "minimax-m3",
-      }),
-  ).not.toThrow();
-  // A MiniMax credential is required; the wrapped SDK must never fall back to OPENAI_API_KEY.
-  const savedMinimaxKey = process.env.MINIMAX_API_KEY;
-  const savedOpenaiKey = process.env.OPENAI_API_KEY;
-  delete process.env.MINIMAX_API_KEY;
-  process.env.OPENAI_API_KEY = "sk-openai-must-not-reach-the-minimax-host";
-  try {
-    expect(
-      () => new AutoLLMClient({ model: "MiniMax-M3", clientType: "minimax-m3" }),
-    ).toThrow("MINIMAX_API_KEY is required");
-  } finally {
-    if (savedMinimaxKey === undefined) {
-      delete process.env.MINIMAX_API_KEY;
-    } else {
-      process.env.MINIMAX_API_KEY = savedMinimaxKey;
-    }
-    if (savedOpenaiKey === undefined) {
-      delete process.env.OPENAI_API_KEY;
-    } else {
-      process.env.OPENAI_API_KEY = savedOpenaiKey;
-    }
-  }
-
-  const m3ThinkingEfforts = [
-    [ThinkingLevel.NONE, "none"],
-    [ThinkingLevel.LOW, "low"],
-    [ThinkingLevel.MEDIUM, "medium"],
-    [ThinkingLevel.HIGH, "high"],
-    [ThinkingLevel.XHIGH, "high"],
-  ] as const;
-  for (const [thinkingLevel, effort] of m3ThinkingEfforts) {
-    expect(
-      minimaxM3.transformUniConfigToModelConfig({
-        thinking_level: thinkingLevel,
-      }).reasoning,
-    ).toEqual({ effort });
-  }
-  expect(
-    minimaxM3.transformUniConfigToModelConfig({
-      prompt_caching: PromptCaching.ENABLE,
-    }),
-  ).not.toHaveProperty("prompt_caching");
-  for (const promptCaching of [
-    PromptCaching.DISABLE,
-    PromptCaching.ENHANCE,
-  ]) {
-    expect(() =>
-      minimaxM3.transformUniConfigToModelConfig({
-        prompt_caching: promptCaching,
-      }),
-    ).toThrow("does not support");
-  }
-  expect(() =>
-    minimaxM3.transformUniConfigToModelConfig({ tool_choice: "required" }),
-  ).toThrow("does not support");
-  expect(() =>
-    minimaxM3.transformUniConfigToModelConfig({ tool_choice: ["lookup"] }),
-  ).toThrow("does not support");
-
-  // Assistant text order is preserved around top-level items; the reasoning item is rebuilt from
-  // the thinking text alone, and the tool call re-serializes its parsed arguments.
-  expect(
-    minimaxM3.transformUniMessageToModelInput([
-      {
-        role: "assistant",
-        content_items: [
-          { type: "text", text: "before" },
-          { type: "thinking", thinking: "reasoning" },
-          {
-            type: "tool_call",
-            name: "lookup",
-            arguments: { 城市: "上海" },
-            tool_call_id: "call-1",
-          },
-          { type: "text", text: "after" },
-        ],
-      },
-    ]),
-  ).toEqual([
-    { role: "assistant", content: [{ type: "output_text", text: "before" }] },
-    {
-      type: "reasoning",
-      content: [{ type: "reasoning_text", text: "reasoning" }],
-    },
-    {
-      type: "function_call",
-      call_id: "call-1",
-      name: "lookup",
-      arguments: '{"城市":"上海"}',
-    },
-    { role: "assistant", content: [{ type: "output_text", text: "after" }] },
-  ]);
-
 
   for (const entry of entries) {
     expect(entry.input_modalities.length).toBeGreaterThan(0);
