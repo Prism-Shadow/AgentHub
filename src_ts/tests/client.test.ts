@@ -881,14 +881,14 @@ if (AVAILABLE_MODELS.length > 0) {
       let toolCallId: string | undefined;
       let toolName: string | undefined;
 
+      // Prescriptive on purpose: this test covers a tool *result* carrying an image, so
+      // reaching that state is setup. Natural tool selection is covered by the tool-use test.
+      const toolPrompt =
+        "Call get_image exactly once with seed 42. Make that function call your only action " +
+        "this turn, then describe the returned image briefly.";
       const message1: UniMessage = {
         role: "user",
-        content_items: [
-          {
-            type: "text",
-            text: "Get me a random image and describe it briefly.",
-          },
-        ],
+        content_items: [{ type: "text", text: toolPrompt }],
       };
       for await (const event of client.streamingResponseStateful({
         message: message1,

@@ -660,10 +660,13 @@ async def test_tool_result_with_image(model: Model):
     config = {"tools": [image_tool]}
     tool_call_id = None
 
-    message1 = {
-        "role": "user",
-        "content_items": [{"type": "text", "text": "Get me a random image and describe it briefly."}],
-    }
+    # Prescriptive on purpose: this test covers a tool *result* carrying an image, so reaching
+    # that state is setup. Natural tool selection is covered by test_tool_use.
+    tool_prompt = (
+        "Call get_image exactly once with seed 42. Make that function call your only action "
+        "this turn, then describe the returned image briefly."
+    )
+    message1 = {"role": "user", "content_items": [{"type": "text", "text": tool_prompt}]}
     async for event in client.streaming_response_stateful(message=message1, config=config):
         await _check_event_integrity(event)
         for item in event["content_items"]:
