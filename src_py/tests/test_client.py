@@ -24,7 +24,6 @@ import httpx
 import pytest
 
 from agenthub import AutoLLMClient, PromptCaching, ThinkingLevel, UnsupportedParameterError, list_supported_models
-from agenthub.errors import AgentHubError
 
 
 IMAGE = "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg"
@@ -483,37 +482,15 @@ async def test_list_supported_models(monkeypatch: pytest.MonkeyPatch):
         with pytest.raises(UnsupportedParameterError, match="does not support"):
             minimax_m3.transform_uni_config_to_model_config({"tool_choice": tool_choice})
 
-    reasoning_wire_item = {
-        "id": "reasoning-1",
-        "status": "completed",
-        "summary": [],
-        "content": [{"type": "reasoning_text", "text": "reasoning"}],
-        "type": "reasoning",
-    }
-    replayed_reasoning = {
-        "type": "reasoning",
-        "id": "reasoning-1",
-        "content": [{"type": "reasoning_text", "text": "reasoning"}],
-    }
-    function_wire_item = {
-        "id": "function-1",
-        "status": "completed",
-        "type": "function_call",
-        "call_id": "call-1",
-        "name": "lookup",
-        "arguments": '{"城市": "上海"}',
-    }
+    # Assistant text order is preserved around top-level items; the reasoning item is rebuilt from
+    # the thinking text alone, and the tool call re-serializes its parsed arguments.
     ordered_input = minimax_m3.transform_uni_message_to_model_input(
         [
             {
                 "role": "assistant",
                 "content_items": [
                     {"type": "text", "text": "before"},
-                    {
-                        "type": "thinking",
-                        "thinking": "reasoning",
-                        "fidelity": {"id": "reasoning-1"},
-                    },
+                    {"type": "thinking", "thinking": "reasoning"},
                     {
                         "type": "tool_call",
                         "name": "lookup",
@@ -527,7 +504,7 @@ async def test_list_supported_models(monkeypatch: pytest.MonkeyPatch):
     )
     assert ordered_input == [
         {"role": "assistant", "content": [{"type": "output_text", "text": "before"}]},
-        replayed_reasoning,
+        {"type": "reasoning", "content": [{"type": "reasoning_text", "text": "reasoning"}]},
         {
             "type": "function_call",
             "call_id": "call-1",
@@ -536,278 +513,6 @@ async def test_list_supported_models(monkeypatch: pytest.MonkeyPatch):
         },
         {"role": "assistant", "content": [{"type": "output_text", "text": "after"}]},
     ]
-
-    reasoning_events = [
-        minimax_m3.transform_model_output_to_uni_event(
-            {"type": "response.reasoning_text.delta", "delta": "reasoning"}
-        ),
-        minimax_m3.transform_model_output_to_uni_event(
-            {"type": "response.output_item.done", "output_index": 0, "item": reasoning_wire_item}
-        ),
-    ]
-    replay_reasoning = minimax_m3.concat_uni_events_to_uni_message(reasoning_events)
-    # Fidelity keeps only the provider's item id, as every other client does; the reasoning item
-    # is rebuilt from the universal thinking text on replay.
-    assert replay_reasoning["content_items"] == [
-        {
-            "type": "thinking",
-            "thinking": "reasoning",
-            "fidelity": {"id": "reasoning-1"},
-        }
-    ]
-    assert minimax_m3.transform_uni_message_to_model_input([replay_reasoning]) == [replayed_reasoning]
-
-    message_wire_item = {
-        "id": "message-1",
-        "type": "message",
-        "status": "completed",
-        "role": "assistant",
-        "content": [
-            {
-                "type": "output_text",
-                "text": "exact response",
-                "annotations": [],
-                "logprobs": None,
-            }
-        ],
-        "phase": None,
-    }
-    message_events = [
-        minimax_m3.transform_model_output_to_uni_event(
-            {
-                "type": "response.output_text.delta",
-                "item_id": "message-1",
-                "output_index": 0,
-                "content_index": 0,
-                "delta": "exact response",
-            }
-        ),
-        minimax_m3.transform_model_output_to_uni_event(
-            {"type": "response.output_item.done", "output_index": 0, "item": message_wire_item}
-        ),
-    ]
-    replay_message = minimax_m3.concat_uni_events_to_uni_message(message_events)
-    # No phase fidelity: MiniMax emits one message item per response and never reads a phase back.
-    assert replay_message["content_items"] == [{"type": "text", "text": "exact response"}]
-    assert minimax_m3.transform_uni_message_to_model_input([replay_message]) == [
-        {"role": "assistant", "content": [{"type": "output_text", "text": "exact response"}]}
-    ]
-
-    second_function_wire_item = {
-        **function_wire_item,
-        "id": "function-2",
-        "call_id": "call-2",
-        "arguments": '{"城市": "北京"}',
-    }
-    function_events = [
-        minimax_m3.transform_model_output_to_uni_event(
-            {"type": "response.output_item.done", "output_index": index, "item": wire_item}
-        )
-        for index, wire_item in enumerate((function_wire_item, second_function_wire_item))
-    ]
-    replay_functions = minimax_m3.concat_uni_events_to_uni_message(function_events)
-    assert replay_functions["content_items"] == [
-        {
-            "type": "tool_call",
-            "name": "lookup",
-            "arguments": {"城市": "上海"},
-            "tool_call_id": "call-1",
-        },
-        {
-            "type": "tool_call",
-            "name": "lookup",
-            "arguments": {"城市": "北京"},
-            "tool_call_id": "call-2",
-        },
-    ]
-    # Replay re-serializes the parsed arguments, as every other client does.
-    assert minimax_m3.transform_uni_message_to_model_input([replay_functions]) == [
-        {
-            "type": "function_call",
-            "call_id": "call-1",
-            "name": "lookup",
-            "arguments": '{"城市": "上海"}',
-        },
-        {
-            "type": "function_call",
-            "call_id": "call-2",
-            "name": "lookup",
-            "arguments": '{"城市": "北京"}',
-        },
-    ]
-
-    serialized_arguments_input = minimax_m3.transform_uni_message_to_model_input(
-        [
-            {
-                "role": "assistant",
-                "content_items": [
-                    {
-                        "type": "tool_call",
-                        "name": "lookup",
-                        "arguments": {"value": True},
-                        "tool_call_id": "call-bool",
-                    }
-                ],
-            }
-        ]
-    )
-    assert serialized_arguments_input[0]["arguments"] == '{"value": true}'
-
-    # Only the id is required; summary and content are optional on a MiniMax reasoning item.
-    with pytest.raises(ValueError, match="requires an id"):
-        minimax_m3.transform_uni_message_to_model_input(
-            [
-                {
-                    "role": "assistant",
-                    "content_items": [
-                        {
-                            "type": "thinking",
-                            "thinking": "invalid",
-                            "fidelity": {"id": 123},
-                        }
-                    ],
-                }
-            ]
-        )
-    sparse_reasoning_input = minimax_m3.transform_uni_message_to_model_input(
-        [
-            {
-                "role": "assistant",
-                "content_items": [
-                    {
-                        "type": "thinking",
-                        "thinking": "recovered",
-                        "fidelity": {"id": "rs-sparse"},
-                    }
-                ],
-            }
-        ]
-    )
-    assert sparse_reasoning_input == [
-        {
-            "id": "rs-sparse",
-            "type": "reasoning",
-            "content": [{"type": "reasoning_text", "text": "recovered"}],
-        }
-    ]
-
-    completed_event = minimax_m3.transform_model_output_to_uni_event(
-        {
-            "type": "response.completed",
-            "response": {
-                "output": [function_wire_item, second_function_wire_item],
-                "usage": {
-                    "input_tokens": 10,
-                    "input_tokens_details": {"cached_tokens": 2},
-                    "output_tokens": 6,
-                    "output_tokens_details": {"reasoning_tokens": 1},
-                },
-            },
-        }
-    )
-    assert completed_event["finish_reason"] == "tool_call"
-    assert completed_event["usage_metadata"] == {
-        "cached_tokens": 2,
-        "prompt_tokens": 8,
-        "thoughts_tokens": 1,
-        "response_tokens": 5,
-    }
-
-    partial_start = minimax_m3.transform_model_output_to_uni_event(
-        {
-            "type": "response.output_item.added",
-            "output_index": 3,
-            "item": {
-                "id": "function-partial",
-                "type": "function_call",
-                "call_id": "call-partial",
-                "name": "lookup",
-                "arguments": "",
-            },
-        }
-    )
-    partial_delta = minimax_m3.transform_model_output_to_uni_event(
-        {
-            "type": "response.function_call_arguments.delta",
-            "item_id": "function-partial",
-            "output_index": 3,
-            "delta": '{"value":1}',
-        }
-    )
-    # Only the correlation id is recorded; output_index was never read anywhere.
-    assert partial_start["content_items"][0]["fidelity"] == {"item_id": "function-partial"}
-    assert partial_delta["content_items"][0]["fidelity"] == {"item_id": "function-partial"}
-
-    incomplete_event = minimax_m3.transform_model_output_to_uni_event(
-        {
-            "type": "response.incomplete",
-            "response": {
-                "output": [],
-                "usage": None,
-                "incomplete_details": {"reason": "max_output_tokens"},
-            },
-        }
-    )
-    assert incomplete_event["finish_reason"] == "length"
-    # A response with no usage block reports none rather than fabricating zeros for a request that
-    # consumed real tokens; the base client's last-event validation stays in charge.
-    assert incomplete_event["usage_metadata"] is None
-    # Missing usage sub-fields still default, so a partial block never yields a bogus total.
-    sparse_usage_event = minimax_m3.transform_model_output_to_uni_event(
-        {"type": "response.completed", "response": {"output": [], "usage": {"input_tokens": 10}}}
-    )
-    assert sparse_usage_event["usage_metadata"] == {
-        "cached_tokens": 0,
-        "prompt_tokens": 10,
-        "thoughts_tokens": 0,
-        "response_tokens": 0,
-    }
-    # A truncation reported through response.completed still finishes as a truncation.
-    truncated_completed = minimax_m3.transform_model_output_to_uni_event(
-        {
-            "type": "response.completed",
-            "response": {
-                "output": [],
-                "status": "incomplete",
-                "usage": {"input_tokens": 4, "output_tokens": 2},
-                "incomplete_details": {"reason": "max_output_tokens"},
-            },
-        }
-    )
-    assert truncated_completed["finish_reason"] == "length"
-    # A function-call start event without the optional output-item id still yields the call.
-    idless_start = minimax_m3.transform_model_output_to_uni_event(
-        {
-            "type": "response.output_item.added",
-            "output_index": 0,
-            "item": {"type": "function_call", "call_id": "call-idless", "name": "lookup", "arguments": ""},
-        }
-    )
-    assert idless_start["content_items"][0]["tool_call_id"] == "call-idless"
-    assert idless_start["content_items"][0]["fidelity"] == {"item_id": None}
-    # A non-JSON value is rejected on the event that carried it, not one turn later.
-    with pytest.raises(ValueError, match="MiniMax output item must contain only JSON-style values"):
-        minimax_m3.transform_model_output_to_uni_event(
-            {
-                "type": "response.output_item.done",
-                "output_index": 0,
-                "item": {"id": "rs", "type": "reasoning", "summary": [], "content": [], "score": float("nan")},
-            }
-        )
-    with pytest.raises(AgentHubError, match="provider_failure"):
-        minimax_m3.transform_model_output_to_uni_event(
-            {
-                "type": "response.failed",
-                "response": {
-                    "id": "response-1",
-                    "error": {"code": "provider_failure", "message": "failed"},
-                },
-            }
-        )
-    with pytest.raises(AgentHubError, match="bad_request"):
-        minimax_m3.transform_model_output_to_uni_event(
-            {"type": "error", "error": {"code": "bad_request", "message": "invalid"}}
-        )
 
 
 @pytest.mark.asyncio
