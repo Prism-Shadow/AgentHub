@@ -73,19 +73,19 @@ function itemThoughtSignature(item: {
 }
 
 /**
- * Client for the Gemini 3.6 protocol generation (gemini-3.6-*,
+ * Client for the Gemini 3.7 protocol generation (gemini-3.7-*, gemini-3.6-*,
  * gemini-3.5-flash-lite).
  *
  * Starting with these models the API deprecates the temperature/top_p/top_k
  * sampling parameters (silently ignored today, HTTP 400 in future
  * generations), so this client rejects them instead of sending a no-op.
  */
-export class Gemini3_6Client extends LLMClient {
+export class Gemini3_7Client extends LLMClient {
   protected _model: string;
   private _client: GoogleGenAI;
 
   /**
-   * Initialize Gemini 3.6 client with model and API key.
+   * Initialize Gemini 3.7 client with model and API key.
    */
   constructor(options: {
     model: string;
@@ -166,8 +166,32 @@ export class Gemini3_6Client extends LLMClient {
     }
   }
 
+  // Gemini thinking levels from weakest to strongest, used to pick the
+  // closest supported level when a model rejects the requested one.
+  private static readonly GEMINI_LEVEL_ORDER: GeminiThinkingLevel[] = [
+    GeminiThinkingLevel.MINIMAL,
+    GeminiThinkingLevel.LOW,
+    GeminiThinkingLevel.MEDIUM,
+    GeminiThinkingLevel.HIGH,
+  ];
+
   /**
-   * Convert ThinkingLevel enum to Gemini's ThinkingLevel.
+   * Thinking levels the target model accepts (llmsdk_docs/gemini3_7/docs/thinking.md).
+   */
+  private _supportedThinkingLevels(): GeminiThinkingLevel[] {
+    if (this._model.includes("gemini-3.7")) {
+      // The 3.7 generation rejects "minimal" with a 400 (verified live 2026-08-13).
+      return [
+        GeminiThinkingLevel.LOW,
+        GeminiThinkingLevel.MEDIUM,
+        GeminiThinkingLevel.HIGH,
+      ];
+    }
+    return Gemini3_7Client.GEMINI_LEVEL_ORDER;
+  }
+
+  /**
+   * Convert ThinkingLevel enum to the closest Gemini ThinkingLevel the model supports.
    */
   private _convertThinkingLevel(
     thinkingLevel: ThinkingLevel | undefined,
@@ -181,7 +205,27 @@ export class Gemini3_6Client extends LLMClient {
       [ThinkingLevel.HIGH]: GeminiThinkingLevel.HIGH,
       [ThinkingLevel.XHIGH]: GeminiThinkingLevel.HIGH,
     };
-    return mapping[thinkingLevel];
+    const level = mapping[thinkingLevel];
+    if (level === undefined) {
+      return undefined;
+    }
+    const supported = this._supportedThinkingLevels();
+    if (supported.includes(level)) {
+      return level;
+    }
+    // Degrade silently to the nearest supported level; ties round up,
+    // e.g. NONE maps to LOW on gemini-3.7-flash. `supported` is non-empty
+    // here, so the initial-value-less reduce cannot throw.
+    const order = Gemini3_7Client.GEMINI_LEVEL_ORDER;
+    const index = order.indexOf(level);
+    return supported.reduce((best, candidate) => {
+      const bestDistance = Math.abs(order.indexOf(best) - index);
+      const candidateDistance = Math.abs(order.indexOf(candidate) - index);
+      if (candidateDistance !== bestDistance) {
+        return candidateDistance < bestDistance ? candidate : best;
+      }
+      return order.indexOf(candidate) > order.indexOf(best) ? candidate : best;
+    });
   }
 
   /**
@@ -237,7 +281,7 @@ export class Gemini3_6Client extends LLMClient {
         client: this.constructor.name,
         parameter: "temperature",
         message:
-          "Gemini 3.6 generation models do not support setting temperature.",
+          "Gemini 3.7 generation models do not support setting temperature.",
       });
     }
 
@@ -270,7 +314,7 @@ export class Gemini3_6Client extends LLMClient {
       throw new UnsupportedParameterError({
         client: this.constructor.name,
         parameter: "prompt_caching",
-        message: "prompt_caching must be ENABLE for Gemini 3.6.",
+        message: "prompt_caching must be ENABLE for Gemini 3.7.",
       });
     }
 
@@ -341,6 +385,9 @@ export class Gemini3_6Client extends LLMClient {
     };
 
     const contents: Content[] = [];
+    // The generateContent API wants both the call id and the function name on a function
+    // response, but a universal tool_result carries only the id, so remember each call's name.
+    const callNames = new Map<string, string>();
     for (const msg of messages) {
       const parts: Part[] = [];
       for (const item of msg.content_items) {
@@ -385,7 +432,13 @@ export class Gemini3_6Client extends LLMClient {
             thoughtSignature: itemThoughtSignature(item),
           } as Part);
         } else if (item.type === "tool_call") {
+          callNames.set(item.tool_call_id, item.name);
+          // Histories from before ids were stored carry the name as the tool_call_id;
+          // replay those without an id, exactly as they arrived.
           const functionCall: FunctionCall = {
+            ...(item.tool_call_id !== item.name
+              ? { id: item.tool_call_id }
+              : {}),
             name: item.name,
             args: item.arguments,
           };
@@ -417,9 +470,14 @@ export class Gemini3_6Client extends LLMClient {
             }
           }
 
+          const functionName =
+            callNames.get(item.tool_call_id) ?? item.tool_call_id;
           parts.push({
             functionResponse: {
-              name: item.tool_call_id,
+              ...(item.tool_call_id !== functionName
+                ? { id: item.tool_call_id }
+                : {}),
+              name: functionName,
               response: toolResult,
               parts: multimodalParts.length > 0 ? multimodalParts : undefined,
             } as FunctionResponse,
@@ -460,7 +518,7 @@ export class Gemini3_6Client extends LLMClient {
             type: "tool_call",
             name: part.functionCall.name || "",
             arguments: part.functionCall.args || {},
-            tool_call_id: part.functionCall.name || "",
+            tool_call_id: part.functionCall.id || part.functionCall.name || "",
             ...partFidelity(part),
           });
         } else if (part.thought) {
@@ -621,7 +679,7 @@ export class Gemini3_6Client extends LLMClient {
       const event = this.transformModelOutputToUniEvent(chunk);
       for (const item of event.content_items) {
         if (item.type === "tool_call") {
-          // gemini 3.6 does not support partial tool call, mock a partial tool call event
+          // gemini 3.7 does not support partial tool call, mock a partial tool call event
           yield {
             role: "assistant",
             event_type: "delta",

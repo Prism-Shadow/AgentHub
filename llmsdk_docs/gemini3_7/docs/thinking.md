@@ -18,6 +18,7 @@ values and defaults per model:
 
 Notes:
 
+- All Gemini 3.x models have reasoning enabled by default; none allow disabling it.
 - Thought summaries are requested via the thinking config (`include_thoughts` in the
   google-genai SDK). A thought block may contain **only a signature with no summary** for
   simple requests or thought content types without text summaries.

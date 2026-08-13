@@ -42,8 +42,8 @@ from ..types import (
 )
 
 
-class Gemini3_6Client(LLMClient):
-    """Client for the Gemini 3.6 protocol generation (gemini-3.6-*, gemini-3.5-flash-lite).
+class Gemini3_7Client(LLMClient):
+    """Client for the Gemini 3.7 protocol generation (gemini-3.7-*, gemini-3.6-*, gemini-3.5-flash-lite).
 
     Starting with these models the API deprecates the temperature/top_p/top_k sampling
     parameters (silently ignored today, HTTP 400 in future generations), so this client
@@ -51,7 +51,7 @@ class Gemini3_6Client(LLMClient):
     """
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
-        """Initialize Gemini 3.6 client with model and API key."""
+        """Initialize Gemini 3.7 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("GEMINI_API_KEY")
         base_url = base_url or os.getenv("GEMINI_BASE_URL")
@@ -97,8 +97,24 @@ class Gemini3_6Client(LLMClient):
 
         return {"data": image_bytes, "mime_type": mime_type}
 
+    # Gemini thinking levels from weakest to strongest, used to pick the
+    # closest supported level when a model rejects the requested one.
+    _GEMINI_LEVEL_ORDER = (
+        types.ThinkingLevel.MINIMAL,
+        types.ThinkingLevel.LOW,
+        types.ThinkingLevel.MEDIUM,
+        types.ThinkingLevel.HIGH,
+    )
+
+    def _supported_thinking_levels(self) -> tuple[types.ThinkingLevel, ...]:
+        """Thinking levels the target model accepts (llmsdk_docs/gemini3_7/docs/thinking.md)."""
+        if "gemini-3.7" in self._model:
+            # The 3.7 generation rejects "minimal" with a 400 (verified live 2026-08-13).
+            return (types.ThinkingLevel.LOW, types.ThinkingLevel.MEDIUM, types.ThinkingLevel.HIGH)
+        return self._GEMINI_LEVEL_ORDER
+
     def _convert_thinking_level(self, thinking_level: ThinkingLevel | None) -> types.ThinkingLevel | None:
-        """Convert ThinkingLevel enum to Gemini's ThinkingLevel."""
+        """Convert ThinkingLevel enum to the closest Gemini ThinkingLevel the model supports."""
         mapping = {
             ThinkingLevel.NONE: types.ThinkingLevel.MINIMAL,
             ThinkingLevel.LOW: types.ThinkingLevel.LOW,
@@ -106,7 +122,22 @@ class Gemini3_6Client(LLMClient):
             ThinkingLevel.HIGH: types.ThinkingLevel.HIGH,
             ThinkingLevel.XHIGH: types.ThinkingLevel.HIGH,
         }
-        return mapping.get(thinking_level)
+        level = mapping.get(thinking_level)
+        if level is None:
+            return None
+        supported = self._supported_thinking_levels()
+        if level in supported:
+            return level
+        # Degrade silently to the nearest supported level; ties round up,
+        # e.g. NONE maps to LOW on gemini-3.7-flash.
+        index = self._GEMINI_LEVEL_ORDER.index(level)
+        return min(
+            supported,
+            key=lambda candidate: (
+                abs(self._GEMINI_LEVEL_ORDER.index(candidate) - index),
+                -self._GEMINI_LEVEL_ORDER.index(candidate),
+            ),
+        )
 
     def _convert_tool_choice(self, tool_choice: ToolChoice) -> types.FunctionCallingConfig:
         """Convert ToolChoice to Gemini's tool config."""
@@ -121,7 +152,7 @@ class Gemini3_6Client(LLMClient):
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> types.GenerateContentConfig | None:
         """
-        Transform universal configuration to Gemini 3.6-specific configuration.
+        Transform universal configuration to Gemini 3.7-specific configuration.
 
         Args:
             config: Universal configuration dict
@@ -140,7 +171,7 @@ class Gemini3_6Client(LLMClient):
             raise UnsupportedParameterError(
                 self.__class__.__name__,
                 "temperature",
-                "Gemini 3.6 generation models do not support setting temperature.",
+                "Gemini 3.7 generation models do not support setting temperature.",
             )
 
         thinking_summary = config.get("thinking_summary")
@@ -159,7 +190,7 @@ class Gemini3_6Client(LLMClient):
 
         if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
             raise UnsupportedParameterError(
-                self.__class__.__name__, "prompt_caching", "prompt_caching must be ENABLE for Gemini 3.6."
+                self.__class__.__name__, "prompt_caching", "prompt_caching must be ENABLE for Gemini 3.7."
             )
 
         if config.get("image_config") is not None:
@@ -226,6 +257,9 @@ class Gemini3_6Client(LLMClient):
             List of Gemini Content objects
         """
         mapping = {"user": "user", "assistant": "model"}
+        # The generateContent API wants both the call id and the function name on a function
+        # response, but a universal tool_result carries only the id, so remember each call's name.
+        call_names: dict[str, str] = {}
         contents = []
         for msg in messages:
             parts = []
@@ -255,7 +289,14 @@ class Gemini3_6Client(LLMClient):
                         )
                     )
                 elif item["type"] == "tool_call":
-                    function_call = types.FunctionCall(name=item["name"], args=item["arguments"])
+                    call_names[item["tool_call_id"]] = item["name"]
+                    # Histories from before ids were stored carry the name as the tool_call_id;
+                    # replay those without an id, exactly as they arrived.
+                    function_call = types.FunctionCall(
+                        id=item["tool_call_id"] if item["tool_call_id"] != item["name"] else None,
+                        name=item["name"],
+                        args=item["arguments"],
+                    )
                     parts.append(
                         types.Part(function_call=function_call, thought_signature=self._item_thought_signature(item))
                     )
@@ -272,11 +313,15 @@ class Gemini3_6Client(LLMClient):
                                 types.FunctionResponsePart(inline_data=types.FunctionResponseBlob(**image_data))
                             )
 
+                    function_name = call_names.get(item["tool_call_id"], item["tool_call_id"])
                     parts.append(
-                        types.Part.from_function_response(
-                            name=item["tool_call_id"],
-                            response=tool_result,
-                            parts=multimodal_parts if multimodal_parts else None,
+                        types.Part(
+                            function_response=types.FunctionResponse(
+                                id=item["tool_call_id"] if item["tool_call_id"] != function_name else None,
+                                name=function_name,
+                                response=tool_result,
+                                parts=multimodal_parts if multimodal_parts else None,
+                            )
                         )
                     )
                 else:
@@ -288,7 +333,7 @@ class Gemini3_6Client(LLMClient):
 
     def transform_model_output_to_uni_event(self, model_output: types.GenerateContentResponse) -> UniEvent:
         """
-        Transform Gemini 3.6 model output to universal event format.
+        Transform Gemini 3.7 model output to universal event format.
 
         Args:
             model_output: Gemini response chunk
@@ -311,7 +356,7 @@ class Gemini3_6Client(LLMClient):
                             "type": "tool_call",
                             "name": part.function_call.name,
                             "arguments": part.function_call.args or {},
-                            "tool_call_id": part.function_call.name,
+                            "tool_call_id": part.function_call.id or part.function_call.name,
                             **self._part_fidelity(part),
                         }
                     )
@@ -438,7 +483,7 @@ class Gemini3_6Client(LLMClient):
             event = self.transform_model_output_to_uni_event(chunk)
             for item in event["content_items"]:
                 if item["type"] == "tool_call":
-                    # gemini 3.6 does not support partial tool call, mock a partial tool call event
+                    # gemini 3.7 does not support partial tool call, mock a partial tool call event
                     yield {
                         "role": "assistant",
                         "event_type": "delta",

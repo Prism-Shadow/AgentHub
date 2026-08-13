@@ -49,7 +49,7 @@ class Model:
 AVAILABLE_MODELS: list[Model] = []
 
 if os.getenv("GEMINI_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="gemini-3.6-flash", support_temperature=False))
+    AVAILABLE_MODELS.append(Model(name="gemini-3.7-flash", support_temperature=False))
     AVAILABLE_MODELS.append(
         Model(
             name="gemini-3.1-flash-image",
@@ -112,7 +112,7 @@ if os.getenv("BEDROCK_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="global.anthropic.claude-sonnet-4-6", provider="bedrock"))
 
 if os.getenv("VERTEX_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="gemini-3.6-flash", provider="vertex", support_temperature=False))
+    AVAILABLE_MODELS.append(Model(name="gemini-3.7-flash", provider="vertex", support_temperature=False))
     AVAILABLE_MODELS.append(
         Model(
             name="gemini-3.1-flash-image",

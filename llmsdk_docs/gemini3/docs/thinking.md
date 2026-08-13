@@ -373,6 +373,7 @@ The following table details the `thinkingLevel` support for each model:
 
 | Model | Default Thinking | Levels Supported |
 |-------|------------------|------------------|
+| gemini-3.7-flash | On (medium) | low, medium, high |
 | gemini-3.6-flash | On (medium) | minimal, low, medium, high |
 | gemini-3.5-flash-lite | On (minimal) | minimal, low, medium, high |
 | gemini-3.1-pro-preview | On (high) | low, medium, high |

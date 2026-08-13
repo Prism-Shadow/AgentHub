@@ -14,7 +14,7 @@
 
 import { LLMClient } from "./baseClient";
 import { Gemini3Client } from "./gemini3";
-import { Gemini3_6Client } from "./gemini3_6";
+import { Gemini3_7Client } from "./gemini3_7";
 import { Claude4_6Client } from "./claude4_6";
 import { Claude5Client } from "./claude5";
 import { GPT5_5Client } from "./gpt5_5";
@@ -78,13 +78,14 @@ export class AutoLLMClient extends LLMClient {
     if (clientType === "minimax-m3") {
       return new MiniMaxM3Client({ model, apiKey, baseUrl });
     }
-    // gemini-3.6 must be matched before the broader gemini-3 prefix below
+    // gemini-3.7/gemini-3.6 must be matched before the broader gemini-3 prefix below
     if (
+      clientType.includes("gemini-3.7") ||
       clientType.includes("gemini-3.6") ||
       clientType.includes("gemini-3.5-flash-lite")
     ) {
-      // gemini-3.5-flash-lite shares the sampling-parameter deprecation with gemini-3.6
-      return new Gemini3_6Client({ model, apiKey, baseUrl });
+      // the older models share the sampling-parameter deprecation with gemini-3.7
+      return new Gemini3_7Client({ model, apiKey, baseUrl });
     } else if (
       clientType.includes("gemini-3") ||
       clientType.includes("gemini-embedding")
@@ -130,7 +131,7 @@ export class AutoLLMClient extends LLMClient {
     } else {
       throw new Error(
         `${clientType} is not supported. ` +
-          "Supported client types: minimax-m3, gemini-3.6, gemini-3, " +
+          "Supported client types: minimax-m3, gemini-3.7, gemini-3.6, gemini-3, " +
           "claude-5, claude-4-8, claude-4-7, " +
           "claude-4-6, gpt-5.5, gpt-5.4, glm-5.2, glm-5.1, kimi-k3, kimi-k2.6, kimi-k2.5, " +
           "deepseek-v4, openai-embedding, openai.",

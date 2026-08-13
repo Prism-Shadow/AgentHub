@@ -96,9 +96,19 @@ def _cny(prompt: float, output: float, cached: float | None = None) -> ModelPric
 _SUPPORTED_MODELS: list[SupportedModel] = [
     # official vendor endpoints
     {
+        "model": "gemini-3.7-flash",
+        "base_url": _GOOGLE,
+        "client": "gemini-3.7",
+        "input_modalities": ["Text", "Image", "Video", "Audio"],
+        "output_modalities": ["Text"],
+        "context_window": 1048576,
+        # official list price; a launch discount halves all three rates through 2026-12-31
+        "pricing": _usd(1.5, 7.5, cached=0.15),
+    },
+    {
         "model": "gemini-3.6-flash",
         "base_url": _GOOGLE,
-        "client": "gemini-3.6",
+        "client": "gemini-3.7",
         "input_modalities": ["Text", "Image", "Video", "Audio"],
         "output_modalities": ["Text"],
         "context_window": 1048576,
@@ -107,7 +117,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "gemini-3.5-flash-lite",
         "base_url": _GOOGLE,
-        "client": "gemini-3.6",
+        "client": "gemini-3.7",
         "input_modalities": ["Text", "Image", "Video", "Audio"],
         "output_modalities": ["Text"],
         "context_window": 1048576,
