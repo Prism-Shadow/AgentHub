@@ -12,4 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { GLM5_1Client } from "./client";
+export { GLM5_3Client } from "./client";

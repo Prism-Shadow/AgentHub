@@ -120,3 +120,37 @@ describe("gemini3_7 thinking level clamping", () => {
     },
   );
 });
+
+// GLM-5.3 cannot disable thinking and accepts only low/high/max reasoning_effort
+// (llmsdk_docs/glm5_3/docs/thinking.md, docs-only: the API is not yet live); GLM-5.2
+// keeps the full pass-through vocabulary and pre-5.2 models take no effort parameter.
+const GLM_THINKING_LEVEL_CASES: Array<
+  [string, ThinkingLevel, string, string | undefined]
+> = [
+  ["glm-5.3", ThinkingLevel.NONE, "enabled", "low"],
+  ["glm-5.3", ThinkingLevel.LOW, "enabled", "low"],
+  ["glm-5.3", ThinkingLevel.MEDIUM, "enabled", "high"],
+  ["glm-5.3", ThinkingLevel.HIGH, "enabled", "high"],
+  ["glm-5.3", ThinkingLevel.XHIGH, "enabled", "max"],
+  ["glm-5.2", ThinkingLevel.NONE, "disabled", undefined],
+  ["glm-5.2", ThinkingLevel.MEDIUM, "enabled", "medium"],
+  ["glm-5.2", ThinkingLevel.XHIGH, "enabled", "xhigh"],
+  ["glm-5.1", ThinkingLevel.HIGH, "enabled", undefined],
+];
+
+describe("glm thinking level mapping", () => {
+  test.each(GLM_THINKING_LEVEL_CASES)(
+    "%s maps %s to thinking=%s effort=%s",
+    (model, level, thinkingType, effort) => {
+      const client = new AutoLLMClient({ model, apiKey: "test-key" });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((client as any)._client.constructor.name).toBe("GLM5_3Client");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const config = (client as any)._client.transformUniConfigToModelConfig({
+        thinking_level: level,
+      });
+      expect(config.extra_body.thinking.type).toBe(thinkingType);
+      expect(config.reasoning_effort).toBe(effort);
+    },
+  );
+});

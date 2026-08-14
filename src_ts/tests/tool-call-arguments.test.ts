@@ -51,7 +51,7 @@ const OPENAI_COMPATIBLE_TOOL_STREAM_CASES: OpenAICompatibleToolStreamCase[] = [
     clientType: "openai",
   },
   {
-    expectedClient: "GLM5_1Client",
+    expectedClient: "GLM5_3Client",
     model: "glm-5.1",
     clientType: "glm-5.1",
   },

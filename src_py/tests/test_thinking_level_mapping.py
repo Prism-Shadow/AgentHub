@@ -102,3 +102,30 @@ def test_gemini3_7_thinking_level_clamps_to_model_support(
     client = AutoLLMClient(model=model, api_key="test-key")
     assert client._client.__class__.__name__ == "Gemini3_7Client"
     assert client._client._convert_thinking_level(level) == expected  # noqa: SLF001
+
+
+# GLM-5.3 cannot disable thinking and accepts only low/high/max reasoning_effort
+# (llmsdk_docs/glm5_3/docs/thinking.md, docs-only: the API is not yet live); GLM-5.2
+# keeps the full pass-through vocabulary and pre-5.2 models take no effort parameter.
+GLM_THINKING_LEVEL_CASES = [
+    ("glm-5.3", ThinkingLevel.NONE, "enabled", "low"),
+    ("glm-5.3", ThinkingLevel.LOW, "enabled", "low"),
+    ("glm-5.3", ThinkingLevel.MEDIUM, "enabled", "high"),
+    ("glm-5.3", ThinkingLevel.HIGH, "enabled", "high"),
+    ("glm-5.3", ThinkingLevel.XHIGH, "enabled", "max"),
+    ("glm-5.2", ThinkingLevel.NONE, "disabled", None),
+    ("glm-5.2", ThinkingLevel.MEDIUM, "enabled", "medium"),
+    ("glm-5.2", ThinkingLevel.XHIGH, "enabled", "xhigh"),
+    ("glm-5.1", ThinkingLevel.HIGH, "enabled", None),
+]
+
+
+@pytest.mark.parametrize(("model", "level", "thinking_type", "effort"), GLM_THINKING_LEVEL_CASES)
+def test_glm_thinking_level_maps_per_generation(
+    model: str, level: ThinkingLevel, thinking_type: str, effort: str | None
+):
+    client = AutoLLMClient(model=model, api_key="test-key")
+    assert client._client.__class__.__name__ == "GLM5_3Client"
+    config = client._client.transform_uni_config_to_model_config({"thinking_level": level})  # noqa: SLF001
+    assert config["extra_body"]["thinking"]["type"] == thinking_type
+    assert config.get("reasoning_effort") == effort

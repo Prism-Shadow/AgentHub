@@ -38,14 +38,17 @@ import {
 import { fixOpenrouterUsageMetadata } from "../utils";
 
 /**
- * GLM-5.1-specific LLM client implementation using OpenAI-compatible API.
+ * Unified client for the GLM series, named for the newest generation it serves (5.3).
+ *
+ * The wire format is shared across GLM-5.1 through 5.3; only the thinking
+ * parameter contract differs per generation, handled model-by-model.
  */
-export class GLM5_1Client extends LLMClient {
+export class GLM5_3Client extends LLMClient {
   protected _model: string;
   private _client: OpenAI;
 
   /**
-   * Initialize GLM-5.1 client with model and API key.
+   * Initialize GLM client with model and API key.
    */
   constructor(options: {
     model: string;
@@ -65,21 +68,56 @@ export class GLM5_1Client extends LLMClient {
 
   /**
    * Convert ThinkingLevel enum to GLM's thinking configuration.
+   *
+   * GLM-5.3 uses forced thinking and errors on {"type": "disabled"}, so NONE
+   * stays enabled there and degrades through the lightest reasoning effort
+   * instead (llmsdk_docs/glm5_3/docs/thinking.md).
    */
   private _convertThinkingLevelToConfig(thinkingLevel: ThinkingLevel): {
     type: string;
     clear_thinking?: boolean;
   } {
-    const mapping: {
-      [key: string]: { type: string; clear_thinking?: boolean };
-    } = {
-      [ThinkingLevel.NONE]: { type: "disabled" },
-      [ThinkingLevel.LOW]: { type: "enabled", clear_thinking: false },
-      [ThinkingLevel.MEDIUM]: { type: "enabled", clear_thinking: false },
-      [ThinkingLevel.HIGH]: { type: "enabled", clear_thinking: false },
-      [ThinkingLevel.XHIGH]: { type: "enabled", clear_thinking: false },
-    };
-    return mapping[thinkingLevel];
+    if (
+      thinkingLevel === ThinkingLevel.NONE &&
+      !this._model.includes("glm-5.3")
+    ) {
+      return { type: "disabled" };
+    }
+    return { type: "enabled", clear_thinking: false };
+  }
+
+  /**
+   * Convert ThinkingLevel enum to the reasoning_effort the model accepts.
+   *
+   * GLM-5.3 accepts only low/high/max and errors on anything else, so the
+   * client clamps to the closest value; NONE rides on low because 5.3 cannot
+   * disable thinking. GLM-5.2 accepts the full vocabulary and maps it
+   * server-side (low/medium to high, xhigh to max); NONE disables thinking
+   * there instead. Models before 5.2 take no reasoning_effort parameter at all.
+   */
+  private _convertThinkingLevelToReasoningEffort(
+    thinkingLevel: ThinkingLevel,
+  ): string | undefined {
+    if (this._model.includes("glm-5.3")) {
+      const mapping: { [key: string]: string } = {
+        [ThinkingLevel.NONE]: "low",
+        [ThinkingLevel.LOW]: "low",
+        [ThinkingLevel.MEDIUM]: "high",
+        [ThinkingLevel.HIGH]: "high",
+        [ThinkingLevel.XHIGH]: "max",
+      };
+      return mapping[thinkingLevel];
+    }
+    if (this._model.includes("glm-5.2")) {
+      const mapping: { [key: string]: string } = {
+        [ThinkingLevel.LOW]: "low",
+        [ThinkingLevel.MEDIUM]: "medium",
+        [ThinkingLevel.HIGH]: "high",
+        [ThinkingLevel.XHIGH]: "xhigh",
+      };
+      return mapping[thinkingLevel];
+    }
+    return undefined;
   }
 
   /**
@@ -125,6 +163,12 @@ export class GLM5_1Client extends LLMClient {
         ...(glmConfig.extra_body || {}),
         thinking: thinkingConfig,
       };
+      const reasoningEffort = this._convertThinkingLevelToReasoningEffort(
+        config.thinking_level,
+      );
+      if (reasoningEffort !== undefined) {
+        glmConfig.reasoning_effort = reasoningEffort;
+      }
     }
 
     if (config.tools !== undefined) {
