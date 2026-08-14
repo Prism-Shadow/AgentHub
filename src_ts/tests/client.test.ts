@@ -44,7 +44,7 @@ const AVAILABLE_MODELS: Model[] = [];
 if (process.env.GEMINI_API_KEY) {
 
   AVAILABLE_MODELS.push({
-    name: "gemini-3.6-flash",
+    name: "gemini-3.7-flash",
     supportTextGeneration: true,
     supportTemperature: false,
     supportImageUnderstanding: true,
@@ -195,7 +195,7 @@ if (process.env.BEDROCK_API_KEY) {
 
 if (process.env.VERTEX_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "gemini-3.6-flash",
+    name: "gemini-3.7-flash",
     supportTextGeneration: true,
     supportTemperature: false,
     supportImageUnderstanding: true,

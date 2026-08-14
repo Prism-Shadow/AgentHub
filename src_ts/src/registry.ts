@@ -91,9 +91,19 @@ function cny(prompt: number, output: number, cached?: number): ModelPricing {
 const SUPPORTED_MODELS: SupportedModel[] = [
   // official vendor endpoints
   {
+    model: "gemini-3.7-flash",
+    base_url: GOOGLE,
+    client: "gemini-3.7",
+    input_modalities: ["Text", "Image", "Video", "Audio"],
+    output_modalities: ["Text"],
+    context_window: 1048576,
+    // official list price; a launch discount halves all three rates through 2026-12-31
+    pricing: usd(1.5, 7.5, 0.15),
+  },
+  {
     model: "gemini-3.6-flash",
     base_url: GOOGLE,
-    client: "gemini-3.6",
+    client: "gemini-3.7",
     input_modalities: ["Text", "Image", "Video", "Audio"],
     output_modalities: ["Text"],
     context_window: 1048576,
@@ -102,7 +112,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "gemini-3.5-flash-lite",
     base_url: GOOGLE,
-    client: "gemini-3.6",
+    client: "gemini-3.7",
     input_modalities: ["Text", "Image", "Video", "Audio"],
     output_modalities: ["Text"],
     context_window: 1048576,
@@ -111,7 +121,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "gemini-3.5-flash",
     base_url: GOOGLE,
-    client: "gemini-3",
+    client: "gemini-3.7",
     input_modalities: ["Text", "Image", "Video", "Audio"],
     output_modalities: ["Text"],
     context_window: 1048576,
@@ -120,21 +130,21 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "gemini-3.1-flash-image",
     base_url: GOOGLE,
-    client: "gemini-3",
+    client: "gemini-3.7",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Image"],
   },
   {
     model: "gemini-3.1-flash-tts-preview",
     base_url: GOOGLE,
-    client: "gemini-3",
+    client: "gemini-3.7",
     input_modalities: ["Text"],
     output_modalities: ["Audio"],
   },
   {
     model: "gemini-embedding-2",
     base_url: GOOGLE,
-    client: "gemini-3",
+    client: "gemini-3.7",
     input_modalities: ["Text"],
     output_modalities: ["Embed"],
   },
