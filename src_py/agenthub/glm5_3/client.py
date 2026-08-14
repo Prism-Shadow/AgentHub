@@ -36,11 +36,15 @@ from ..types import (
 from ..utils import fix_openrouter_usage_metadata
 
 
-class GLM5_1Client(LLMClient):
-    """GLM-5.1-specific LLM client implementation using OpenAI-compatible API."""
+class GLM5_3Client(LLMClient):
+    """Unified client for the GLM series, named for the newest generation it serves (5.3).
+
+    The wire format is shared across GLM-5.1 through 5.3; only the thinking parameter
+    contract differs per generation, handled model-by-model below.
+    """
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
-        """Initialize GLM-5.1 client with model and API key."""
+        """Initialize GLM client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("ZAI_API_KEY")
         base_url = base_url or os.getenv("ZAI_BASE_URL") or "https://api.z.ai/api/paas/v4/"
@@ -48,15 +52,47 @@ class GLM5_1Client(LLMClient):
         self._history: list[UniMessage] = []
 
     def _convert_thinking_level_to_config(self, thinking_level: ThinkingLevel) -> dict[str, str | bool]:
-        """Convert ThinkingLevel enum to GLM's thinking configuration."""
-        mapping = {
-            ThinkingLevel.NONE: {"type": "disabled"},
-            ThinkingLevel.LOW: {"type": "enabled", "clear_thinking": False},
-            ThinkingLevel.MEDIUM: {"type": "enabled", "clear_thinking": False},
-            ThinkingLevel.HIGH: {"type": "enabled", "clear_thinking": False},
-            ThinkingLevel.XHIGH: {"type": "enabled", "clear_thinking": False},
-        }
-        return mapping.get(thinking_level)
+        """Convert ThinkingLevel enum to GLM's thinking configuration.
+
+        GLM-5.3 uses forced thinking and errors on {"type": "disabled"}, so NONE stays
+        enabled there and degrades through the lightest reasoning effort instead
+        (llmsdk_docs/glm5_3/docs/thinking.md).
+        """
+        # Provider-hosted ids keep their own casing (e.g. SiliconFlow's zai-org/GLM-5.2),
+        # so generation detection is case-insensitive.
+        if thinking_level == ThinkingLevel.NONE and "glm-5.3" not in self._model.lower():
+            return {"type": "disabled"}
+        return {"type": "enabled", "clear_thinking": False}
+
+    def _convert_thinking_level_to_reasoning_effort(self, thinking_level: ThinkingLevel) -> str | None:
+        """Convert ThinkingLevel enum to the reasoning_effort the model accepts.
+
+        GLM-5.3 accepts only low/high/max and errors on anything else, so the client
+        clamps to the closest value; NONE rides on low because 5.3 cannot disable
+        thinking. GLM-5.2 accepts the full vocabulary and maps it server-side
+        (low/medium to high, xhigh to max); NONE disables thinking there instead.
+        Models before 5.2 take no reasoning_effort parameter at all.
+        """
+        model = self._model.lower()  # provider-hosted ids keep their own casing
+        if "glm-5.3" in model:
+            mapping = {
+                ThinkingLevel.NONE: "low",
+                ThinkingLevel.LOW: "low",
+                ThinkingLevel.MEDIUM: "high",
+                ThinkingLevel.HIGH: "high",
+                ThinkingLevel.XHIGH: "max",
+            }
+            return mapping.get(thinking_level)
+        if "glm-5.2" in model:
+            mapping = {
+                ThinkingLevel.NONE: None,
+                ThinkingLevel.LOW: "low",
+                ThinkingLevel.MEDIUM: "medium",
+                ThinkingLevel.HIGH: "high",
+                ThinkingLevel.XHIGH: "xhigh",
+            }
+            return mapping.get(thinking_level)
+        return None
 
     def _convert_tool_choice(self, tool_choice: ToolChoice) -> str:
         """Convert ToolChoice to OpenAI's tool_choice format."""
@@ -90,6 +126,9 @@ class GLM5_1Client(LLMClient):
             thinking_config = self._convert_thinking_level_to_config(config["thinking_level"])
             # thinking is only effective when using the official API endpoint
             glm_config.setdefault("extra_body", {})["thinking"] = thinking_config
+            reasoning_effort = self._convert_thinking_level_to_reasoning_effort(config["thinking_level"])
+            if reasoning_effort is not None:
+                glm_config["reasoning_effort"] = reasoning_effort
 
         if config.get("tools") is not None:
             glm_config["tools"] = [{"type": "function", "function": tool} for tool in config["tools"]]

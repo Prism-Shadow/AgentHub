@@ -212,9 +212,18 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     pricing: usd(0.13, 0.0),
   },
   {
+    model: "glm-5.3",
+    base_url: ZAI,
+    client: "glm-5.3",
+    input_modalities: ["Text"],
+    output_modalities: ["Text"],
+    context_window: 1000000,
+    // pricing omitted: the API is announced but not yet live and no price is published
+  },
+  {
     model: "glm-5.2",
     base_url: ZAI,
-    client: "glm-5.2",
+    client: "glm-5.3",
     input_modalities: ["Text"],
     output_modalities: ["Text"],
     context_window: 1000000,
@@ -223,7 +232,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "glm-5.1",
     base_url: ZAI,
-    client: "glm-5.1",
+    client: "glm-5.3",
     input_modalities: ["Text"],
     output_modalities: ["Text"],
     context_window: 200000,

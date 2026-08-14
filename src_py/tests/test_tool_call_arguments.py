@@ -35,7 +35,7 @@ OPENAI_COMPATIBLE_TOOL_STREAM_CASES = [
         client_type="openai",
     ),
     OpenAICompatibleToolStreamCase(
-        expected_client="GLM5_1Client",
+        expected_client="GLM5_3Client",
         model="glm-5.1",
         client_type="glm-5.1",
     ),

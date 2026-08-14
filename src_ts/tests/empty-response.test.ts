@@ -53,7 +53,7 @@ const REASONING_STREAM_CASES: ReasoningStreamCase[] = [
     clientType: "openai",
   },
   {
-    expectedClient: "GLM5_1Client",
+    expectedClient: "GLM5_3Client",
     model: "glm-5.1",
     clientType: "glm-5.1",
   },
