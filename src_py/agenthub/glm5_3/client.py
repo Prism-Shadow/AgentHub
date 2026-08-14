@@ -58,7 +58,9 @@ class GLM5_3Client(LLMClient):
         enabled there and degrades through the lightest reasoning effort instead
         (llmsdk_docs/glm5_3/docs/thinking.md).
         """
-        if thinking_level == ThinkingLevel.NONE and "glm-5.3" not in self._model:
+        # Provider-hosted ids keep their own casing (e.g. SiliconFlow's zai-org/GLM-5.2),
+        # so generation detection is case-insensitive.
+        if thinking_level == ThinkingLevel.NONE and "glm-5.3" not in self._model.lower():
             return {"type": "disabled"}
         return {"type": "enabled", "clear_thinking": False}
 
@@ -71,7 +73,8 @@ class GLM5_3Client(LLMClient):
         (low/medium to high, xhigh to max); NONE disables thinking there instead.
         Models before 5.2 take no reasoning_effort parameter at all.
         """
-        if "glm-5.3" in self._model:
+        model = self._model.lower()  # provider-hosted ids keep their own casing
+        if "glm-5.3" in model:
             mapping = {
                 ThinkingLevel.NONE: "low",
                 ThinkingLevel.LOW: "low",
@@ -80,7 +83,7 @@ class GLM5_3Client(LLMClient):
                 ThinkingLevel.XHIGH: "max",
             }
             return mapping.get(thinking_level)
-        if "glm-5.2" in self._model:
+        if "glm-5.2" in model:
             mapping = {
                 ThinkingLevel.NONE: None,
                 ThinkingLevel.LOW: "low",

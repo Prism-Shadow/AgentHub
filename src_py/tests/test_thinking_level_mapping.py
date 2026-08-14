@@ -117,6 +117,10 @@ GLM_THINKING_LEVEL_CASES = [
     ("glm-5.2", ThinkingLevel.MEDIUM, "enabled", "medium"),
     ("glm-5.2", ThinkingLevel.XHIGH, "enabled", "xhigh"),
     ("glm-5.1", ThinkingLevel.HIGH, "enabled", None),
+    # Provider-hosted ids keep their own casing (SiliconFlow), so generation
+    # detection must be case-insensitive.
+    ("zai-org/GLM-5.2", ThinkingLevel.XHIGH, "enabled", "xhigh"),
+    ("Pro/zai-org/GLM-5.1", ThinkingLevel.HIGH, "enabled", None),
 ]
 
 

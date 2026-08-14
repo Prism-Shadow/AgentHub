@@ -77,9 +77,11 @@ export class GLM5_3Client extends LLMClient {
     type: string;
     clear_thinking?: boolean;
   } {
+    // Provider-hosted ids keep their own casing (e.g. SiliconFlow's zai-org/GLM-5.2),
+    // so generation detection is case-insensitive.
     if (
       thinkingLevel === ThinkingLevel.NONE &&
-      !this._model.includes("glm-5.3")
+      !this._model.toLowerCase().includes("glm-5.3")
     ) {
       return { type: "disabled" };
     }
@@ -98,7 +100,8 @@ export class GLM5_3Client extends LLMClient {
   private _convertThinkingLevelToReasoningEffort(
     thinkingLevel: ThinkingLevel,
   ): string | undefined {
-    if (this._model.includes("glm-5.3")) {
+    const model = this._model.toLowerCase(); // provider-hosted ids keep their own casing
+    if (model.includes("glm-5.3")) {
       const mapping: { [key: string]: string } = {
         [ThinkingLevel.NONE]: "low",
         [ThinkingLevel.LOW]: "low",
@@ -108,7 +111,7 @@ export class GLM5_3Client extends LLMClient {
       };
       return mapping[thinkingLevel];
     }
-    if (this._model.includes("glm-5.2")) {
+    if (model.includes("glm-5.2")) {
       const mapping: { [key: string]: string } = {
         [ThinkingLevel.LOW]: "low",
         [ThinkingLevel.MEDIUM]: "medium",
