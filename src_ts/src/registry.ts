@@ -121,7 +121,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "gemini-3.5-flash",
     base_url: GOOGLE,
-    client: "gemini-3",
+    client: "gemini-3.7",
     input_modalities: ["Text", "Image", "Video", "Audio"],
     output_modalities: ["Text"],
     context_window: 1048576,
@@ -130,21 +130,21 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "gemini-3.1-flash-image",
     base_url: GOOGLE,
-    client: "gemini-3",
+    client: "gemini-3.7",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Image"],
   },
   {
     model: "gemini-3.1-flash-tts-preview",
     base_url: GOOGLE,
-    client: "gemini-3",
+    client: "gemini-3.7",
     input_modalities: ["Text"],
     output_modalities: ["Audio"],
   },
   {
     model: "gemini-embedding-2",
     base_url: GOOGLE,
-    client: "gemini-3",
+    client: "gemini-3.7",
     input_modalities: ["Text"],
     output_modalities: ["Embed"],
   },

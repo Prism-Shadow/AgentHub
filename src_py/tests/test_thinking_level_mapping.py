@@ -52,7 +52,7 @@ GEMINI3_THINKING_LEVEL_CASES = [
 
 def _create_gemini3_auto_client(model: str) -> AutoLLMClient:
     # client_type pins routing so pre-3 and hypothetical model names reach
-    # Gemini3Client the same way an explicit override would in user code.
+    # the unified Gemini3_7Client the same way an explicit override would in user code.
     return AutoLLMClient(model=model, api_key="test-key", client_type="gemini-3")
 
 

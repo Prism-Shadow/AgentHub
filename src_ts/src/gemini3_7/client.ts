@@ -73,10 +73,13 @@ function itemThoughtSignature(item: {
 }
 
 /**
- * Client for the Gemini 3.7 protocol generation (gemini-3.7-*, gemini-3.6-*,
- * gemini-3.5-flash-lite).
+ * Unified client for the Gemini family, named for the newest generation it
+ * serves (3.7). It serves every generateContent model generation (3.7 back
+ * through 3.x text, image, TTS, and embedding models, with the 2.5 series
+ * reachable via an explicit clientType), and applies the 3.6-generation
+ * parameter contract to the whole family: temperature is rejected everywhere.
  *
- * Starting with these models the API deprecates the temperature/top_p/top_k
+ * Starting with the 3.6 generation the API deprecates the temperature/top_p/top_k
  * sampling parameters (silently ignored today, HTTP 400 in future
  * generations), so this client rejects them instead of sending a no-op.
  */
@@ -177,8 +180,34 @@ export class Gemini3_7Client extends LLMClient {
 
   /**
    * Thinking levels the target model accepts (llmsdk_docs/gemini3_7/docs/thinking.md).
+   *
+   * An empty array means the model rejects the thinking_level parameter
+   * entirely, so it must be omitted from the request.
    */
   private _supportedThinkingLevels(): GeminiThinkingLevel[] {
+    if (this._model.includes("gemini-2.5")) {
+      // The vendor table claims low/medium/high, but the live API rejects
+      // every thinking_level value for the 2.5 series (verified 2026-07-24).
+      return [];
+    }
+    if (this._model.includes("-image")) {
+      return [GeminiThinkingLevel.MINIMAL, GeminiThinkingLevel.HIGH];
+    }
+    if (this._model.includes("gemini-3-pro")) {
+      // The only pro generation without "medium".
+      return [GeminiThinkingLevel.LOW, GeminiThinkingLevel.HIGH];
+    }
+    if (this._model.includes("-pro")) {
+      // Every pro generation rejects "minimal"; matching broadly keeps
+      // future pro models on the safe side (clamping a level the model
+      // would have accepted costs a little accuracy, forwarding an
+      // unsupported one is a 400).
+      return [
+        GeminiThinkingLevel.LOW,
+        GeminiThinkingLevel.MEDIUM,
+        GeminiThinkingLevel.HIGH,
+      ];
+    }
     if (this._model.includes("gemini-3.7")) {
       // The 3.7 generation rejects "minimal" with a 400 (verified live 2026-08-13).
       return [
@@ -210,12 +239,18 @@ export class Gemini3_7Client extends LLMClient {
       return undefined;
     }
     const supported = this._supportedThinkingLevels();
+    if (supported.length === 0) {
+      // The model takes no thinking_level at all; drop the parameter and
+      // let the model use its default instead of forwarding a 400.
+      return undefined;
+    }
     if (supported.includes(level)) {
       return level;
     }
     // Degrade silently to the nearest supported level; ties round up,
-    // e.g. NONE maps to LOW on gemini-3.7-flash. `supported` is non-empty
-    // here, so the initial-value-less reduce cannot throw.
+    // e.g. MEDIUM becomes HIGH on gemini-3-pro and NONE maps to LOW on
+    // gemini-3.7-flash. `supported` is non-empty here, so the
+    // initial-value-less reduce cannot throw.
     const order = Gemini3_7Client.GEMINI_LEVEL_ORDER;
     const index = order.indexOf(level);
     return supported.reduce((best, candidate) => {
@@ -281,7 +316,8 @@ export class Gemini3_7Client extends LLMClient {
         client: this.constructor.name,
         parameter: "temperature",
         message:
-          "Gemini 3.7 generation models do not support setting temperature.",
+          "Gemini models do not support setting temperature; the API deprecated " +
+          "sampling parameters starting with the 3.6 generation.",
       });
     }
 
@@ -314,7 +350,7 @@ export class Gemini3_7Client extends LLMClient {
       throw new UnsupportedParameterError({
         client: this.constructor.name,
         parameter: "prompt_caching",
-        message: "prompt_caching must be ENABLE for Gemini 3.7.",
+        message: "prompt_caching must be ENABLE for Gemini.",
       });
     }
 

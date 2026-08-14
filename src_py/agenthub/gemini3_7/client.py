@@ -43,11 +43,13 @@ from ..types import (
 
 
 class Gemini3_7Client(LLMClient):
-    """Client for the Gemini 3.7 protocol generation (gemini-3.7-*, gemini-3.6-*, gemini-3.5-flash-lite).
+    """Unified client for the Gemini family, named for the newest generation it serves (3.7).
 
-    Starting with these models the API deprecates the temperature/top_p/top_k sampling
-    parameters (silently ignored today, HTTP 400 in future generations), so this client
-    rejects them instead of sending a no-op.
+    It serves every generateContent model generation (3.7 back through 3.x text, image, TTS,
+    and embedding models, with the 2.5 series reachable via an explicit client_type). The API
+    deprecated the temperature/top_p/top_k sampling parameters starting with the 3.6
+    generation (silently ignored today, HTTP 400 in future generations), and this client
+    applies that contract to the whole family: temperature is rejected everywhere.
     """
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
@@ -107,7 +109,26 @@ class Gemini3_7Client(LLMClient):
     )
 
     def _supported_thinking_levels(self) -> tuple[types.ThinkingLevel, ...]:
-        """Thinking levels the target model accepts (llmsdk_docs/gemini3_7/docs/thinking.md)."""
+        """Thinking levels the target model accepts (llmsdk_docs/gemini3_7/docs/thinking.md).
+
+        An empty tuple means the model rejects the thinking_level parameter
+        entirely, so it must be omitted from the request.
+        """
+        if "gemini-2.5" in self._model:
+            # The vendor table claims low/medium/high, but the live API rejects
+            # every thinking_level value for the 2.5 series (verified 2026-07-24).
+            return ()
+        if "-image" in self._model:
+            return (types.ThinkingLevel.MINIMAL, types.ThinkingLevel.HIGH)
+        if "gemini-3-pro" in self._model:
+            # The only pro generation without "medium".
+            return (types.ThinkingLevel.LOW, types.ThinkingLevel.HIGH)
+        if "-pro" in self._model:
+            # Every pro generation rejects "minimal"; matching broadly keeps
+            # future pro models on the safe side (clamping a level the model
+            # would have accepted costs a little accuracy, forwarding an
+            # unsupported one is a 400).
+            return (types.ThinkingLevel.LOW, types.ThinkingLevel.MEDIUM, types.ThinkingLevel.HIGH)
         if "gemini-3.7" in self._model:
             # The 3.7 generation rejects "minimal" with a 400 (verified live 2026-08-13).
             return (types.ThinkingLevel.LOW, types.ThinkingLevel.MEDIUM, types.ThinkingLevel.HIGH)
@@ -126,10 +147,15 @@ class Gemini3_7Client(LLMClient):
         if level is None:
             return None
         supported = self._supported_thinking_levels()
+        if not supported:
+            # The model takes no thinking_level at all; drop the parameter and
+            # let the model use its default instead of forwarding a 400.
+            return None
         if level in supported:
             return level
         # Degrade silently to the nearest supported level; ties round up,
-        # e.g. NONE maps to LOW on gemini-3.7-flash.
+        # e.g. MEDIUM becomes HIGH on gemini-3-pro and NONE maps to LOW on
+        # gemini-3.7-flash.
         index = self._GEMINI_LEVEL_ORDER.index(level)
         return min(
             supported,
@@ -171,7 +197,8 @@ class Gemini3_7Client(LLMClient):
             raise UnsupportedParameterError(
                 self.__class__.__name__,
                 "temperature",
-                "Gemini 3.7 generation models do not support setting temperature.",
+                "Gemini models do not support setting temperature; the API deprecated "
+                "sampling parameters starting with the 3.6 generation.",
             )
 
         thinking_summary = config.get("thinking_summary")
@@ -190,7 +217,7 @@ class Gemini3_7Client(LLMClient):
 
         if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
             raise UnsupportedParameterError(
-                self.__class__.__name__, "prompt_caching", "prompt_caching must be ENABLE for Gemini 3.7."
+                self.__class__.__name__, "prompt_caching", "prompt_caching must be ENABLE for Gemini."
             )
 
         if config.get("image_config") is not None:

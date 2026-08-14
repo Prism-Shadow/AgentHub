@@ -13,7 +13,6 @@
 // limitations under the License.
 
 import { LLMClient } from "./baseClient";
-import { Gemini3Client } from "./gemini3";
 import { Gemini3_7Client } from "./gemini3_7";
 import { Claude4_6Client } from "./claude4_6";
 import { Claude5Client } from "./claude5";
@@ -78,19 +77,13 @@ export class AutoLLMClient extends LLMClient {
     if (clientType === "minimax-m3") {
       return new MiniMaxM3Client({ model, apiKey, baseUrl });
     }
-    // gemini-3.7/gemini-3.6 must be matched before the broader gemini-3 prefix below
+    // every Gemini generation shares the unified client ("gemini-3" also matches the
+    // gemini-3.7/gemini-3.6/gemini-3.5-flash-lite client types)
     if (
-      clientType.includes("gemini-3.7") ||
-      clientType.includes("gemini-3.6") ||
-      clientType.includes("gemini-3.5-flash-lite")
-    ) {
-      // the older models share the sampling-parameter deprecation with gemini-3.7
-      return new Gemini3_7Client({ model, apiKey, baseUrl });
-    } else if (
       clientType.includes("gemini-3") ||
       clientType.includes("gemini-embedding")
     ) {
-      return new Gemini3Client({ model, apiKey, baseUrl });
+      return new Gemini3_7Client({ model, apiKey, baseUrl });
     } else if (
       clientType.includes("claude") &&
       (clientType.includes("4-7") ||

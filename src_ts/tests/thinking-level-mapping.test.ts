@@ -50,7 +50,7 @@ const GEMINI3_THINKING_LEVEL_CASES: Array<
 ];
 
 // clientType pins routing so pre-3 and hypothetical model names reach
-// Gemini3Client the same way an explicit override would in user code.
+// the unified Gemini3_7Client the same way an explicit override would in user code.
 function createGemini3AutoClient(model: string): AutoLLMClient {
   return new AutoLLMClient({
     model,

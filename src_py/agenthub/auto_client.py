@@ -51,19 +51,14 @@ class AutoLLMClient(LLMClient):
             from .minimax_m3 import MiniMaxM3Client
 
             return MiniMaxM3Client(model=model, api_key=api_key, base_url=base_url)
-        # gemini-3.7/gemini-3.6 must be matched before the broader gemini-3 prefix below
+        # every Gemini generation shares the unified client ("gemini-3" also matches the
+        # gemini-3.7/gemini-3.6/gemini-3.5-flash-lite client types)
         if any(
-            prefix in client_type for prefix in ("gemini-3.7", "gemini-3.6", "gemini-3.5-flash-lite")
-        ):  # e.g., gemini-3.7-flash; the older models share the sampling-parameter deprecation
+            prefix in client_type for prefix in ("gemini-3", "gemini-embedding")
+        ):  # e.g., gemini-3.7-flash, gemini-3-flash-preview, gemini-embedding-2
             from .gemini3_7 import Gemini3_7Client
 
             return Gemini3_7Client(model=model, api_key=api_key, base_url=base_url)
-        elif any(
-            prefix in client_type for prefix in ("gemini-3", "gemini-embedding")
-        ):  # e.g., gemini-3-flash-preview, gemini-embedding-2
-            from .gemini3 import Gemini3Client
-
-            return Gemini3Client(model=model, api_key=api_key, base_url=base_url)
         elif "claude" in client_type and (
             "4-7" in client_type or "4-8" in client_type or "-5" in client_type
         ):  # e.g., claude-opus-4-7
