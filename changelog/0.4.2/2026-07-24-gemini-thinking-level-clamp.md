@@ -1,5 +1,10 @@
 # Gemini 3 clients clamp thinking levels to what each model supports
 
+- **Date:** 2026-07-24
+- **Type:** fix
+- **Scope:** `gemini3`, `tests`
+- **PR:** [#166](https://github.com/Prism-Shadow/agenthub/pull/166)
+
 ## What changed
 
 - `gemini3/` clients (Python and TypeScript) no longer forward a thinking level the

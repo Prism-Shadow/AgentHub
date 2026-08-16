@@ -35,6 +35,7 @@ CHANGELOG.md                      One brief line per release linking into change
 - Gate: the provider's API key environment variable must be set and usable. Use the same environment variables and base URLs as `src_py/tests/test_client.py` (`AVAILABLE_MODELS` gating and `_create_client`). **Stop and ask** the user to supply the key if it is missing; the workflow must not continue without it.
 - Using the provider's official SDK, or raw HTTP exactly as documented, run one streaming tool-call request with thinking enabled, then send the tool result back so the capture also shows how assistant turns are re-sent.
 - Save the complete exchange unmodified under `api_captures/<protocol>/` (git-ignored), e.g. `round1.request.json` plus `round1.stream.jsonl` with every raw stream event in order. Never save credentials.
+- When something in the exchange will not serialize to JSON (binary payloads, SDK objects holding non-JSON values), save its `str()` form instead — that line of the `.jsonl`, or a sibling `.txt` file — and analyze from that. A `str()` capture is still the authoritative record of what the API returned. Never drop the event, hand-edit it into valid JSON, or fall back to the docs because serialization failed.
 - **Stop and ask** on any API error (invalid key, insufficient quota, rate limit). Do not mock the response or continue from docs alone.
 - The capture is the primary implementation reference and outranks the docs: where they disagree, implement what the API actually returned.
 
@@ -54,6 +55,7 @@ CHANGELOG.md                      One brief line per release linking into change
 ## Stage 4 — Verify
 
 - Register the model in the env-gated `AVAILABLE_MODELS` lists of both test files with correct capability flags. Do not add model-specific test functions or files.
+- That `AVAILABLE_MODELS` entry is the **only** test change a new model is entitled to. `src_py/tests/test_client.py` and `src_ts/tests/client.test.ts` are shared contracts every client must already satisfy: never rewrite their bodies, assertions, prompts, or helpers to accommodate one model, and never branch inside them on a model name. A failing shared test means the client is wrong until proven otherwise. **Stop and ask** for explicit approval before any broader test edit, and get it per change — approval for one edit is not approval for the next.
 - `AVAILABLE_MODELS` keeps only the newest version of each model family per provider block (e.g. gemini-3.6-flash, not gemini-3.5-flash or 3.5-flash-lite as well). When a newer generation lands, replace the older entry — the old client folder stays supported and routed (see Stage 3) but is no longer e2e-tested.
 - Static checks: `make lint` in `src_py/`; `npm run lint` and `npm run build` in `src_ts/`.
 - Run only the new model's e2e tests; the full suites are slow and spend real API quota:
@@ -69,6 +71,7 @@ CHANGELOG.md                      One brief line per release linking into change
 
 ## Record and ship
 
-- Write `changelog/<version>/YYYY-MM-DD-<slug>.md` (folder of the upcoming release) with the specifics: protocol differences found, config mapping decisions, notable capture findings.
-- Add one brief line at the top of that version's `changelog/<version>/README.md` linking to the file; the root `CHANGELOG.md` keeps one line per release, added at release preparation.
+- Write `changelog/<version>/YYYY-MM-DD-<slug>.md` (folder of the upcoming release) in the format `changelog/README.md` specifies: the metadata block (`Date`, `Type`, `Scope`, `PR`, `Issue`, `Breaking`) directly under the title, then `## What changed` and `## Why`. `## Why` carries what the code cannot — protocol differences found, config mappings chosen, alternatives rejected and the reason.
+- Link the PR and any issue the change closes as full URLs (`https://github.com/Prism-Shadow/agenthub/pull/N`), in the metadata block and in the release-README line. A bare `#N` is not a link in a Markdown file. The PR number only exists once the PR is open, so open it first, then add both links in a follow-up commit on the same branch.
+- Add one line at the top of that version's `changelog/<version>/README.md`; the root `CHANGELOG.md` keeps one line per release, added at release preparation.
 - Commit on a feature branch and open a PR with `gh pr create --base dev`; direct pushes to `dev` are rejected.

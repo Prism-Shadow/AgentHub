@@ -1,5 +1,10 @@
 # Kimi K3, Gemini 3.6 generation, supported-model registry, and UnsupportedParameterError
 
+- **Date:** 2026-07-22
+- **Type:** feature
+- **Scope:** `kimi_k3`, `gemini3_6`, `glm5_2`, `registry`, `errors`
+- **PR:** [#163](https://github.com/Prism-Shadow/agenthub/pull/163)
+
 ## What changed
 
 - New `kimi_k3/` clients (Python and TypeScript) for Moonshot's `kimi-k3`.
