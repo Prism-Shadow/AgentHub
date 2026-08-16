@@ -5,6 +5,8 @@
 - **Scope:** `claude4_5`, `base_client`, `types`, `tests`
 - **PR:** [#74](https://github.com/Prism-Shadow/agenthub/pull/74)
 
+[中文版](2026-02-15-claude-encrypted-thinking-fix.zh.md)
+
 ## What changed
 
 - Encrypted (redacted) thinking blocks from Claude must be preserved in history and sent back to the server unchanged; the client no longer drops them ([#74](https://github.com/Prism-Shadow/agenthub/pull/74)).

@@ -5,6 +5,8 @@
 - **Scope:** `gemini3`, `gpt5_5`, `types`, `auto_client`, `integration/playground`
 - **PR:** [#110](https://github.com/Prism-Shadow/agenthub/pull/110), [#112](https://github.com/Prism-Shadow/agenthub/pull/112), [#113](https://github.com/Prism-Shadow/agenthub/pull/113)
 
+[中文版](2026-04-28-gemini-tts-gpt-5-5-modelverse.zh.md)
+
 ## What changed
 
 - Gemini TTS is supported across clients with speaker/voice configuration ([#110](https://github.com/Prism-Shadow/agenthub/pull/110), [#113](https://github.com/Prism-Shadow/agenthub/pull/113)).

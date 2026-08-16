@@ -5,6 +5,8 @@
 - **Scope:** `gemini3`, `tests`
 - **PR:** [#166](https://github.com/Prism-Shadow/agenthub/pull/166)
 
+[中文版](2026-07-24-gemini-thinking-level-clamp.zh.md)
+
 ## What changed
 
 - `gemini3/` clients (Python and TypeScript) no longer forward a thinking level the

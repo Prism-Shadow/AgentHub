@@ -5,6 +5,8 @@
 - **Scope:** `errors`, `base_client`, `tests`
 - **PR:** [#155](https://github.com/Prism-Shadow/agenthub/pull/155), [#157](https://github.com/Prism-Shadow/agenthub/pull/157)
 
+[中文版](2026-07-14-empty-response-error.zh.md)
+
 ## What changed
 
 - A response that completes with thinking output only now raises `EmptyResponseError` as soon as the stream ends, because replaying a thinking-only assistant message on the next turn fails with a 400 error ([#157](https://github.com/Prism-Shadow/agenthub/pull/157)).

@@ -1,5 +1,7 @@
 # Version 0.4.0
 
+[中文版](README.zh.md)
+
 Released on 2026-07-20.
 
 - [2026-07-20] Content items now carry an opaque `fidelity` payload that absorbs the former `signature`/`phase` fields (breaking), and OpenAI-compatible clients use it to replay thinking through exactly the reasoning field the upstream produced. ([details](2026-07-20-reasoning-field-fidelity.md), [#159](https://github.com/Prism-Shadow/agenthub/pull/159))

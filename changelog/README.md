@@ -1,5 +1,7 @@
 # Changelog Details
 
+[中文版](README.zh.md)
+
 Release history lives in three levels, each one link away from the next:
 
 1. [`../CHANGELOG.md`](../CHANGELOG.md) — one line per release.
@@ -53,6 +55,25 @@ The metadata block is the fixed part; the body is as long as the change deserves
 - `## Compatibility` is required whenever `Breaking: yes`: what breaks, and the migration.
 
 Cross-reference other entries with relative links, e.g. `[Gemini 3.7](../0.4.2/2026-08-13-gemini-3.7.md)`; relative links survive the folder rename at release time and can be checked mechanically.
+
+## Chinese counterpart
+
+Every file in this tree ships in both languages: `<name>.md` in English and `<name>.zh.md` in Chinese, mirroring it section for section. That holds for detail entries, release READMEs, and the root `CHANGELOG.md`. A change is not complete until both exist — write the English file first, then the counterpart, in the same PR.
+
+What stays in English, verbatim, so one `grep` works across both languages:
+
+- The metadata field names and their values — `- **Type:** feature`, the `Scope` identifiers, the `Date`, and the links. Only the `Breaking` reason is prose, so only it is translated.
+- Code identifiers, model ids, parameter names, error classes, and file paths.
+
+What gets translated: all prose, and the section headings. Use these renderings for the standard headings, so a Chinese reader can `grep` them just as reliably:
+
+| English | 中文 |
+| --- | --- |
+| `## What changed` | `## 变更内容` |
+| `## Why` | `## 原因` |
+| `## Compatibility` | `## 兼容性` |
+
+Bespoke headings are translated naturally, keeping the same order and count as the English file. Each file links its counterpart on the line directly below the metadata block: `[中文版](<name>.zh.md)` in the English file, `[English](<name>.md)` in the Chinese one.
 
 ## Release README format
 

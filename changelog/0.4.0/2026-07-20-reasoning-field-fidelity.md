@@ -6,6 +6,8 @@
 - **PR:** [#159](https://github.com/Prism-Shadow/agenthub/pull/159)
 - **Breaking:** yes — clients no longer read top-level `signature`/`phase` on content items; histories recorded by earlier versions must move them into `fidelity`
 
+[中文版](2026-07-20-reasoning-field-fidelity.zh.md)
+
 ## The bug
 
 OpenAI Chat Completions-compatible servers spell the streamed thinking field differently — vLLM & SiliconFlow use `reasoning_content` while OpenRouter uses `reasoning` — and when sending assistant history back, the `openai`, `glm5_1`, and `kimi_k2_6` clients always set **both** fields on the message. Strict upstreams reject the spelling they did not emit (e.g. a server that returned `reasoning_content` refuses a request containing `reasoning`), breaking multi-turn conversations.

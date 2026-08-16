@@ -1,5 +1,7 @@
 # Version 0.3.2
 
+[中文版](README.zh.md)
+
 Released on 2026-05-30.
 
 - [2026-05-30] Support Claude 4.8 models and an OpenAI Chat Completions API-compatible client. ([details](2026-05-30-claude-4-8-openai-compatible.md), [#138](https://github.com/Prism-Shadow/agenthub/pull/138))

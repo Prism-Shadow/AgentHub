@@ -5,6 +5,8 @@
 - **Scope:** `utils`, `glm5`, `qwen3`, `integration/tracer`, `tests`
 - **PR:** [#73](https://github.com/Prism-Shadow/agenthub/pull/73)
 
+[中文版](2026-02-15-openrouter-usage-fix.zh.md)
+
 ## What changed
 
 - OpenRouter occasionally omits reasoning tokens from completion tokens; the usage metadata calculation compensates for it in both Python and TypeScript ([#73](https://github.com/Prism-Shadow/agenthub/pull/73)).

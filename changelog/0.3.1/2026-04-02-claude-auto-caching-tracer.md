@@ -5,6 +5,8 @@
 - **Scope:** `claude4_6`, `integration/tracer`, `types`, `base_client`, `gpt5_4`
 - **PR:** [#95](https://github.com/Prism-Shadow/agenthub/pull/95), [#96](https://github.com/Prism-Shadow/agenthub/pull/96)
 
+[中文版](2026-04-02-claude-auto-caching-tracer.zh.md)
+
 ## What changed
 
 - Claude 4.6 switched to automatic prompt caching by moving `cache_control` from message content items to a top-level API parameter ([#95](https://github.com/Prism-Shadow/agenthub/pull/95)); Bedrock still uses per-message cache control.

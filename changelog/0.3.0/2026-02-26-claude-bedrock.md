@@ -5,6 +5,8 @@
 - **Scope:** `claude4_5`, `llmsdk_docs`, `tests`
 - **PR:** [#79](https://github.com/Prism-Shadow/agenthub/pull/79)
 
+[中文版](2026-02-26-claude-bedrock.zh.md)
+
 ## What changed
 
 - Claude models are supported through Amazon Bedrock ([#79](https://github.com/Prism-Shadow/agenthub/pull/79)).

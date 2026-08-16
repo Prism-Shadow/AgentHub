@@ -5,6 +5,8 @@
 - **Scope:** `auto_client`, `gemini3`, `deepseek_v4`, `glm5_1`, `kimi_k2_6`
 - **PR:** [#124](https://github.com/Prism-Shadow/agenthub/pull/124), [#126](https://github.com/Prism-Shadow/agenthub/pull/126), [#127](https://github.com/Prism-Shadow/agenthub/pull/127), [#137](https://github.com/Prism-Shadow/agenthub/pull/137)
 
+[中文版](2026-05-27-model-refresh.zh.md)
+
 ## What changed
 
 - Added support for Gemini 3.5, Gemini Embedding 2 ([#126](https://github.com/Prism-Shadow/agenthub/pull/126), [#127](https://github.com/Prism-Shadow/agenthub/pull/127)), Claude 4.7, Kimi-K2.6, GLM-5.1, DeepSeek V4 ([#124](https://github.com/Prism-Shadow/agenthub/pull/124)), and Qwen3.6 ([#137](https://github.com/Prism-Shadow/agenthub/pull/137)) models.

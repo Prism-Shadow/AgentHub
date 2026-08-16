@@ -5,6 +5,8 @@
 - **Scope:** `claude4_6`, `openai`, `auto_client`
 - **PR:** [#138](https://github.com/Prism-Shadow/agenthub/pull/138)
 
+[中文版](2026-05-30-claude-4-8-openai-compatible.zh.md)
+
 ## What changed
 
 - Claude 4.8 models are supported.

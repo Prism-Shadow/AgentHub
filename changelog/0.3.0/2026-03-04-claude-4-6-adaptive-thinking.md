@@ -5,6 +5,8 @@
 - **Scope:** `claude4_6`, `kimi_k2_5`, `gemini3`, `auto_client`, `llmsdk_docs`
 - **PR:** [#81](https://github.com/Prism-Shadow/agenthub/pull/81), [#82](https://github.com/Prism-Shadow/agenthub/pull/82)
 
+[中文版](2026-03-04-claude-4-6-adaptive-thinking.zh.md)
+
 ## What changed
 
 - Claude 4.6 is supported using the adaptive thinking and `effort` parameter instead of the thinking budget ([#82](https://github.com/Prism-Shadow/agenthub/pull/82)).

@@ -5,6 +5,8 @@
 - **Scope:** `kimi_k3`, `gemini3_6`, `glm5_2`, `registry`, `errors`
 - **PR:** [#163](https://github.com/Prism-Shadow/agenthub/pull/163)
 
+[中文版](2026-07-22-kimi-k3-gemini-3-6-registry.zh.md)
+
 ## What changed
 
 - New `kimi_k3/` clients (Python and TypeScript) for Moonshot's `kimi-k3`.

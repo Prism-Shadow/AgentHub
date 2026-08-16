@@ -1,5 +1,7 @@
 # Version 0.3.0
 
+[中文版](README.zh.md)
+
 Released on 2026-03-11.
 
 - [2026-03-11] GPT-5.4 is supported. We now add `phase` labels to assistant messages, and preserve and send them to the server. GPT-5.2 is deprecated. ([details](2026-03-11-gpt-5-4-phase-labels.md), [#87](https://github.com/Prism-Shadow/agenthub/pull/87))
@@ -10,6 +12,6 @@ Released on 2026-03-11.
 
 - [2026-02-15] Fix encrypted thinking message in Claude models. It needs to be preserved and sent to the server. ([details](2026-02-15-claude-encrypted-thinking-fix.md), [#74](https://github.com/Prism-Shadow/agenthub/pull/74))
 
-- [2026-02-15] Fix the calculation of token usage in from OpenRouter provider. ([details](2026-02-15-openrouter-usage-fix.md), [#73](https://github.com/Prism-Shadow/agenthub/pull/73))
+- [2026-02-15] Fix the calculation of token usage from the OpenRouter provider. ([details](2026-02-15-openrouter-usage-fix.md), [#73](https://github.com/Prism-Shadow/agenthub/pull/73))
 
 - [2026-02-13] Support GLM-5 model, GLM-4.7 is deprecated. ([details](2026-02-13-glm-5.md), [#71](https://github.com/Prism-Shadow/agenthub/pull/71))

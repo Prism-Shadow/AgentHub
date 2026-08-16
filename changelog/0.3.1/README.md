@@ -1,5 +1,7 @@
 # Version 0.3.1
 
+[中文版](README.zh.md)
+
 Released on 2026-04-28.
 
 - [2026-04-28] Support Gemini 3.1 Flash TTS and GPT-5.5 models. Add UModelVerse vendor. ([details](2026-04-28-gemini-tts-gpt-5-5-modelverse.md), [#112](https://github.com/Prism-Shadow/agenthub/pull/112))
