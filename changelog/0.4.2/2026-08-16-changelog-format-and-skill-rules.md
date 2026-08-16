@@ -3,6 +3,7 @@
 - **Date:** 2026-08-16
 - **Type:** process
 - **Scope:** `changelog`, `skills`
+- **PR:** [#170](https://github.com/Prism-Shadow/agenthub/pull/170)
 
 ## What changed
 
