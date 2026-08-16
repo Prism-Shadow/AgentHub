@@ -3,11 +3,11 @@
 - **Date:** 2026-04-28
 - **Type:** feature
 - **Scope:** `gemini3`, `gpt5_5`, `types`, `auto_client`, `integration/playground`
-- **PR:** [#112](https://github.com/Prism-Shadow/agenthub/pull/112)
+- **PR:** [#110](https://github.com/Prism-Shadow/agenthub/pull/110), [#112](https://github.com/Prism-Shadow/agenthub/pull/112), [#113](https://github.com/Prism-Shadow/agenthub/pull/113)
 
 ## What changed
 
-- Gemini TTS is supported across clients with speaker/voice configuration (#110, #113).
+- Gemini TTS is supported across clients with speaker/voice configuration ([#110](https://github.com/Prism-Shadow/agenthub/pull/110), [#113](https://github.com/Prism-Shadow/agenthub/pull/113)).
 - GPT-5.5 models are supported and became the default GPT option; GPT-5.4 routes through the GPT-5.5 client ([#112](https://github.com/Prism-Shadow/agenthub/pull/112)).
 - Added the UModelVerse vendor.
 

@@ -38,7 +38,7 @@ The metadata block sits directly under the H1, one field per bullet, always in t
 | `Date` | always | The entry date, matching the filename prefix. |
 | `Type` | always | Exactly one of `feature` (new model or user-facing capability), `fix` (defect correction), `refactor` (restructuring with no capability change), `process` (tooling, docs, skills, CI, release plumbing). |
 | `Scope` | always | 1–5 code areas, backticked, named as the tree names them (`gemini3_7`, `registry`, `auto_client`, `tests`, `skills`, …). |
-| `PR` | when one exists | Full link. A bare `#N` does not render as a link in a Markdown file, so always write the URL. |
+| `PR` | when one exists | Full link to the PR(s) that shipped this change. A bare `#N` does not render as a link in a Markdown file, so always write the URL — in the body too. A PR mentioned in the prose for context (an earlier change being corrected, say) is a cross-reference, not a shipping PR, and stays inline. |
 | `Issue` | when one exists | Full link, same rule. Multiple links are comma-separated. |
 | `Breaking` | only when breaking | `yes — <one line>`. Omit the field entirely otherwise, so `grep -rl 'Breaking:' changelog/` lists exactly the breaking changes. |
 
@@ -69,7 +69,7 @@ The PR link is repeated here on purpose: the release summary should answer "whic
 | Question | Query |
 | --- | --- |
 | What shipped in a release? | `cat changelog/<version>/README.md` |
-| What ever broke compatibility? | `grep -rl 'Breaking:' changelog/` |
+| What has ever broken compatibility? | `grep -rl 'Breaking:' changelog/` |
 | Every entry touching a client | `grep -rl 'Scope:.*gemini' changelog/` |
 | Only bug fixes | `grep -rl 'Type:\*\* fix' changelog/` |
 | Which PR shipped an entry | `grep 'PR:' changelog/<version>/<entry>.md` |
