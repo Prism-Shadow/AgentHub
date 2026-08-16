@@ -19,7 +19,9 @@ src_ts/src/autoClient.ts          TypeScript routing, mirrors auto_client.py
 src_py/tests/test_client.py       Parameterized e2e tests (env-gated AVAILABLE_MODELS)
 src_ts/tests/client.test.ts       Same for TypeScript
 changelog/<version>/              Release summary (README.md) plus one detail file per entry
+changelog/README.md               The entry format: metadata block, body rules, bilingual pairing
 CHANGELOG.md                      One brief line per release linking into changelog/
+<name>.zh.md                      Chinese counterpart, required for every file in changelog/
 ```
 
 ## Stage 1 — Sync official docs into `llmsdk_docs/`
@@ -38,6 +40,7 @@ CHANGELOG.md                      One brief line per release linking into change
 - When something in the exchange will not serialize to JSON (binary payloads, SDK objects holding non-JSON values), save its `str()` form and analyze from that. Keep the container parseable: wrap the text in a JSON object so the `.jsonl` stays one JSON value per line (`{"unserializable_str": "<str(event)>"}`, keeping the event in stream order), or put the whole exchange in a sibling `.txt` when nothing about it serializes. A `str()` capture is still the authoritative record of what the API returned. Never drop the event, hand-edit it into valid JSON, or fall back to the docs because serialization failed.
 - **Stop and ask** on any API error (invalid key, insufficient quota, rate limit). Do not mock the response or continue from docs alone.
 - The capture is the primary implementation reference and outranks the docs: where they disagree, implement what the API actually returned.
+- Then probe the replay, because the capture only shows what the API *sends*, not what it *needs back*. Re-send the assistant turn repeatedly, each time with one candidate field removed — the reasoning item's id, its content, the whole reasoning item, each field you were tempted to keep — and record which removals the API still accepts with the model's behavior intact. That result, not the shape of the response, decides what Stage 3 stores. Save the probe outcomes next to the capture.
 
 ## Stage 3 — Implement the Python and TypeScript clients
 
@@ -46,9 +49,14 @@ CHANGELOG.md                      One brief line per release linking into change
   - Only an identical wire protocol may share a folder; name it after the newest generation (rename and reroute if needed). This is how `claude5/` serves Claude 4.7, 4.8, and 5.
   - When the old and new generations' implementations differ, keep the old model supported: leave its client folder and routing in place and add a new client folder for the new model. Never delete or rewire away an old model's client unless the user explicitly instructs it.
 - `auto_client.py` / `autoClient.ts` route model names by explicit version matching only, never a bare substring like `"claude" in model`.
-- Conversion must be bijective: a wire message converted to `UniMessage`/`UniEvent` and back must reproduce the original exactly, including `fidelity` payloads (thinking signatures, phase labels, reasoning field names) and tool-call IDs. Verify against the captured exchange.
+- Replay must be **minimal, not exhaustive**. A replayed assistant turn has to be accepted by the API with the model's behavior intact; it does not have to reproduce the wire item field for field. `fidelity` is an exception channel, not a mirror of the payload: a field earns a place there only when the Stage 2 probe shows the request fails or the model degrades without it. Provider-generated ids the API regenerates or ignores — a reasoning item id, an output-item id — stay out. Fields the API demands go in: GPT-5.5's `phase`, Claude's thinking `signature`, the exact reasoning field name a strict upstream requires.
+- Never copy into `fidelity` what a universal field already carries — the thinking text, a tool call's name or parsed arguments. Rebuild the wire item from the universal fields instead.
+- `tool_call_id` is not optional: always capture the provider's call id and replay it. Where the wire format carries both an item id and a call id, the call id is the one that correlates a result to its call.
+- **Follow the reference client; do not redesign.** `gpt5_5/` is the shape for Responses-style protocols, `openai/` for Chat Completions: same method order, same control flow, same names. A new client should read as a diff against its reference, because that is how it will be reviewed.
+- **No helper layer.** Do not add module-level helpers for field access, JSON normalization or validation, error formatting, or usage arithmetic. Read the SDK's attributes directly (`model_output.delta`, `model_output.item.call_id`), inline the usage arithmetic, and keep the logic inside the transform and streaming methods. Shims that accept both dicts and SDK objects are never warranted — type the events with the SDK's own types.
+- **Stream on deltas only.** Open a partial tool call on the item-added event (name plus call id), accumulate its arguments from the argument deltas, and emit the complete `tool_call` item at the terminal event, exactly as `gpt5_5` does — every client must emit a complete `tool_call`, not just partials. List completion events (`response.output_item.done` and its equivalents) with the ignored types: never re-read a completed item or cross-check it against what the deltas produced. Leave provider error events (`response.failed`, `response.error`, `error`) to the unknown-event guard rather than translating them into AgentHub errors.
 - `UniConfig` keys rarely map one-to-one onto provider config keys. **Stop and ask**: list every non-obvious mapping and confirm it with the user before coding. Never decide silently.
-- Every `ThinkingLevel` must stay usable on every client — never raise for a thinking level. Map each level to the closest level the model supports and degrade silently when a level has no exact equivalent (e.g. `gemini3` maps `NONE` to `MINIMAL`; `kimi_k3` maps `NONE` to `low` because K3 cannot disable reasoning).
+- Every `ThinkingLevel` must stay usable on every client — never raise for a thinking level. Map each level to the closest level the model supports and degrade silently when a level has no exact equivalent (e.g. `gemini3_7` maps `NONE` to `MINIMAL`, or to `low` on the models that reject `minimal`; `kimi_k3` maps `NONE` to `low` because K3 cannot disable reasoning).
 - `temperature` and `tool_choice` (and other unsupported parameter values, e.g. `prompt_caching`) may reject with an exception, but must raise the AgentHub-specific `UnsupportedParameterError` from `errors.py` / `errors.ts`, never a bare `ValueError`/`Error`. Keep the message wording consistent with existing clients (containing "not support").
 - Implement Python and TypeScript together with identical behavior.
 
