@@ -6,7 +6,7 @@ Release history lives in three levels, each one link away from the next:
 
 1. [`../CHANGELOG.md`](../CHANGELOG.md) — one line per release.
 2. `<version>/README.md` — one line per change in that release, linking its detail file and its PR.
-3. `<version>/YYYY-MM-DD-<slug>.md` — one detail file per change: what changed, why, and what it cost.
+3. `<version>/YYYY-MM-DD-<slug>.md` — one detail file per change, recording what the change did.
 
 Everything that has not shipped goes into `unreleased/`, which is named for its state rather than a number because the version is not decided until release. Never create a numbered folder for unshipped work and never invent the next version number. At release preparation, `unreleased/` is renamed to the decided version, its README title becomes that version, and the release line is added to the root file; the next change recreates `unreleased/`.
 
@@ -29,22 +29,6 @@ Copy this template:
 ## What changed
 
 - ...
-
-## Problem
-
-...
-
-## Decision
-
-...
-
-## Alternatives considered
-
-- ...
-
-## Verification
-
-- ...
 ```
 
 The metadata block sits directly under the H1, one field per bullet, always in the order above, so a reader and a `grep` find each field in the same place.
@@ -62,25 +46,17 @@ Omit a field that does not apply rather than writing a placeholder. A change wit
 
 ### Body
 
-An entry takes one of two shapes.
-
-**Short form** — the metadata block and `## What changed`, nothing else. Correct when nothing was decided: a model registration, a dependency bump, a typo. Most historical entries are this shape.
-
-**Full form** — the decision record, for any change where someone weighed something. Sections appear in this order; skip the ones that do not apply, never reorder the ones that do.
+An entry records **what was done**, in past tense. It is a short document:
 
 | Section | When | What belongs in it |
 | --- | --- | --- |
-| `## What changed` | always | The user-visible outcome, in bullets, each led by the model id, class, or parameter a reader would search for. Not the implementation story. |
-| `## Problem` | full form | What was wrong or missing, stated as its consequence: "strict upstreams reject the spelling they did not emit, breaking multi-turn conversations", not "reasoning field handling was wrong". |
-| `## Decision` | full form | What the code does now and why this shape. Present tense, and kept true as the code evolves — this is the section a future change has to update or supersede. |
-| `## Alternatives considered` | full form | The options genuinely weighed and the reason each lost. "None" is not an answer: if nothing was weighed, the entry is short form. |
-| bespoke | as needed | Protocol tables, config mappings, registry metadata — the detail that supports the decision. Reuse an existing name (`## Configuration behavior`, `## Registry metadata`) before inventing one. |
-| `## Verification` | any client or protocol change | The evidence, named: which capture, which probe and what it returned, which e2e ran, what the live API actually did. "Tested" is not evidence. |
-| `## Risks` | when evidence is incomplete | What a future reader should distrust: assumptions never checked against the live API, provider behavior that may change, coverage deliberately skipped. |
-| `## Compatibility` | `Breaking: yes` | What breaks, and the migration. |
-| `## Deferred` | optional | Known follow-ups, recorded so they are not rediscovered later as bugs. |
+| `## What changed` | always | What the change did, in bullets, each led by the model id, class, or parameter a reader would search for. |
+| bespoke | as needed | The factual detail the change introduced — a config mapping table, registry metadata, a protocol difference. Reuse an existing name (`## Configuration behavior`, `## Registry metadata`) before inventing one. |
+| `## Compatibility` | `Breaking: yes` | What breaks and the migration step. The instruction, not an argument for why the rest is safe. |
 
-`## Proposal`, `## Plan`, and `## Acceptance criteria` never appear: an entry records work that shipped, not work that was intended.
+**Reasoning does not go on disk.** No `## Why`, `## Problem`, `## Decision`, `## Alternatives considered`, `## Verification`, `## Risks`. The thinking still has to happen — the dev skill requires the probes, the alternatives, and the verification — but it is reported in the conversation and written into the PR description, which stays attached to the diff it describes. An agent that wants it pulls the PR description, `git blame`, or `git log`; those carry their own timestamp, so nothing has to be re-checked for staleness first.
+
+**Do not describe the current state of the codebase.** "`X` is not exported from `Y`", "the client folder now holds `Z`" — these read as fact, drift silently as the code moves, and cost every later reader a verification they did not ask for. Write what the change did at the time, not what the repository is today.
 
 Cross-reference other entries with relative links, e.g. `[Gemini 3.7](../0.4.1/2026-07-22-kimi-k3-gemini-3-6-registry.md)`; relative links survive the folder rename at release time and can be checked mechanically.
 
@@ -98,13 +74,7 @@ What gets translated: all prose, and the section headings. Use these renderings 
 | English | 中文 |
 | --- | --- |
 | `## What changed` | `## 变更内容` |
-| `## Problem` | `## 问题` |
-| `## Decision` | `## 决策` |
-| `## Alternatives considered` | `## 备选方案权衡` |
-| `## Verification` | `## 验证` |
-| `## Risks` | `## 风险` |
 | `## Compatibility` | `## 兼容性` |
-| `## Deferred` | `## 待办` |
 
 Bespoke headings are translated naturally, keeping the same order and count as the English file. Each file links its counterpart on the line directly below the metadata block: `[中文版](<name>.zh.md)` in the English file, `[English](<name>.md)` in the Chinese one.
 

@@ -20,6 +20,6 @@
 
 ## 兼容性
 
-向 `gemini-3.5-flash`、3.1 图像/TTS 模型或 2.5 系列传入 `temperature` 的代码现在会抛出 `UnsupportedParameterError`，而不再发送该值。请从 `UniConfig` 中移除该键：API 已弃用采样参数，并且对这些模型本就将其忽略，因此移除它不会改变输出。
+向 `gemini-3.5-flash`、3.1 图像/TTS 模型或 2.5 系列传入 `temperature` 的代码现在会抛出 `UnsupportedParameterError`，而不再发送该值。请从 `UniConfig` 中移除该键；API 此前就已弃用采样参数并对这些模型忽略它，因此移除它不会改变输出。
 
-客户端目录的合并本身不构成破坏性变更 —— 客户端类从未从 `agenthub/__init__.py`（或 `src_ts/src/index.ts`）导出，且此前能够路由的每个 `client_type` 写法仍然可以路由。
+此前能够路由的每个 `client_type` 写法仍然可以路由。

@@ -8,7 +8,7 @@
 
 [English](2026-07-20-reasoning-field-fidelity.md)
 
-## 问题
+## 缺陷
 
 OpenAI Chat Completions 兼容服务端对流式思考字段的拼写各不相同——vLLM 与 SiliconFlow 使用 `reasoning_content`，而 OpenRouter 使用 `reasoning`——而在回传 assistant 历史消息时，`openai`、`glm5_1` 和 `kimi_k2_6` 客户端总是在消息上**同时**设置这两个字段。严格的上游会拒绝自己未曾输出过的那种拼写（例如返回 `reasoning_content` 的服务端会拒绝包含 `reasoning` 的请求），从而破坏多轮对话。
 

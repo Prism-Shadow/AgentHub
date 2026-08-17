@@ -37,9 +37,7 @@ differences into one file:
 
 Code that passes `temperature` to `gemini-3.5-flash`, the 3.1 image/TTS models, or the 2.5
 series now raises `UnsupportedParameterError` instead of sending the value. Drop the key
-from `UniConfig`: the API deprecated the sampling parameters and already ignored them for
-these models, so removing it does not change the output.
+from `UniConfig`; the API had already deprecated the sampling parameters and ignored them
+for these models, so removing it does not change the output.
 
-The client folder merge is not itself breaking — client classes have never been exported
-from `agenthub/__init__.py` (or `src_ts/src/index.ts`), and every `client_type` spelling
-that routed before still routes.
+Every `client_type` spelling that routed before still routes.
