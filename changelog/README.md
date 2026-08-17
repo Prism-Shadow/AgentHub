@@ -8,7 +8,7 @@ Release history lives in three levels, each one link away from the next:
 2. `<version>/README.md` — one line per change in that release, linking its detail file and its PR.
 3. `<version>/YYYY-MM-DD-<slug>.md` — one detail file per change: what changed, why, and what it cost.
 
-Unreleased work goes into the upcoming version's folder. At release preparation, rename the folder if the number changed and add the release line to the root file.
+Unreleased work all goes into one folder: the single release folder whose README title carries `(unreleased)`, which `grep -l '(unreleased)' changelog/*/README.md` finds. Add to that folder. Never open a second folder for work that has not shipped, and never invent the next version number — at release preparation the folder is renamed if the number turned out different, the `(unreleased)` marker is dropped, and the release line is added to the root file.
 
 ## Detail file format
 
