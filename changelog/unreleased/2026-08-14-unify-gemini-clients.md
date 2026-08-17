@@ -1,5 +1,15 @@
 # Unified Gemini client with a single sampling-parameter contract
 
+- **Date:** 2026-08-14
+- **Type:** refactor
+- **Scope:** `gemini3_7`, `gemini3`, `auto_client`, `registry`, `errors`
+- **PR:** [#168](https://github.com/Prism-Shadow/agenthub/pull/168)
+- **Breaking:** yes — `temperature` now raises `UnsupportedParameterError` on every Gemini model, including `gemini-3.5-flash`, the 3.1 image/TTS models, and the 2.5 series, which passed it through before
+
+[中文版](2026-08-14-unify-gemini-clients.zh.md)
+
+## What changed
+
 The `gemini3` and `gemini3_7` client folders are merged into one `gemini3_7` client per
 language, named for the newest generation it serves. Outside of the parameter contract the
 two implementations had already converged line for line, so the merge folds the remaining
@@ -22,3 +32,12 @@ differences into one file:
   Claude 4.7–5 entries point at `claude-5`.
 - `llmsdk_docs/gemini3/` stays as the wire-protocol reference for the older generation;
   client folders merge, docs snapshots do not.
+
+## Compatibility
+
+Code that passes `temperature` to `gemini-3.5-flash`, the 3.1 image/TTS models, or the 2.5
+series now raises `UnsupportedParameterError` instead of sending the value. Drop the key
+from `UniConfig`; the API had already deprecated the sampling parameters and ignored them
+for these models, so removing it does not change the output.
+
+Every `client_type` spelling that routed before still routes.
