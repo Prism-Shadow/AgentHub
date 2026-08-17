@@ -1,4 +1,4 @@
-# 0.4.2 (unreleased)
+# Unreleased
 
 [中文版](README.zh.md)
 

@@ -8,7 +8,7 @@ Release history lives in three levels, each one link away from the next:
 2. `<version>/README.md` — one line per change in that release, linking its detail file and its PR.
 3. `<version>/YYYY-MM-DD-<slug>.md` — one detail file per change: what changed, why, and what it cost.
 
-Unreleased work all goes into one folder: the single release folder whose README title carries `(unreleased)`, which `grep -l '(unreleased)' changelog/*/README.md` finds. Add to that folder. Never open a second folder for work that has not shipped, and never invent the next version number — at release preparation the folder is renamed if the number turned out different, the `(unreleased)` marker is dropped, and the release line is added to the root file.
+Everything that has not shipped goes into `unreleased/`, which is named for its state rather than a number because the version is not decided until release. Never create a numbered folder for unshipped work and never invent the next version number. At release preparation, `unreleased/` is renamed to the decided version, its README title becomes that version, and the release line is added to the root file; the next change recreates `unreleased/`.
 
 ## Detail file format
 
@@ -54,7 +54,7 @@ The metadata block is the fixed part; the body is as long as the change deserves
 - A change with findings or decisions behind it adds `## Why`: what the code cannot carry — protocol differences found, config mappings chosen, alternatives rejected and the reason. `## Why` is the part still worth reading a year later. Add bespoke sections as the change needs them (`## Configuration behavior`, `## Registry metadata`, `## Verification`).
 - `## Compatibility` is required whenever `Breaking: yes`: what breaks, and the migration.
 
-Cross-reference other entries with relative links, e.g. `[Gemini 3.7](../0.4.2/2026-08-13-gemini-3.7.md)`; relative links survive the folder rename at release time and can be checked mechanically.
+Cross-reference other entries with relative links, e.g. `[Gemini 3.7](../0.4.1/2026-07-22-kimi-k3-gemini-3-6-registry.md)`; relative links survive the folder rename at release time and can be checked mechanically.
 
 ## Chinese counterpart
 

@@ -18,6 +18,7 @@ src_ts/src/<protocol>/            TypeScript client, mirrors the Python folder
 src_ts/src/autoClient.ts          TypeScript routing, mirrors auto_client.py
 src_py/tests/test_client.py       Parameterized e2e tests (env-gated AVAILABLE_MODELS)
 src_ts/tests/client.test.ts       Same for TypeScript
+changelog/unreleased/             Where unshipped changes go; renamed to the version at release
 changelog/<version>/              Release summary (README.md) plus one detail file per entry
 changelog/README.md               The entry format: metadata block, body rules, bilingual pairing
 CHANGELOG.md                      One brief line per release linking into changelog/
@@ -79,8 +80,8 @@ CHANGELOG.md                      One brief line per release linking into change
 
 ## Record and ship
 
-- Unreleased changes all land in one folder: the single release folder whose `README.md` title carries `(unreleased)`, which `grep -l '(unreleased)' changelog/*/README.md` finds. Add to it — never create another version folder for work that has not shipped, and never invent the next version number; release preparation renames the folder if the number turns out different.
-- Write `changelog/<version>/YYYY-MM-DD-<slug>.md` in that folder, in the format `changelog/README.md` specifies: the metadata block (`Date`, `Type`, `Scope`, `PR`, `Issue`, `Breaking`) directly under the title, then `## What changed` and `## Why`. `## Why` carries what the code cannot — protocol differences found, config mappings chosen, alternatives rejected and the reason.
+- Unreleased changes all land in `changelog/unreleased/`, named for its state rather than a number because the version is not decided until release. Never create a numbered folder for unshipped work and never invent the next version number; release preparation renames `unreleased/` to the decided version.
+- Write `changelog/unreleased/YYYY-MM-DD-<slug>.md` in the format `changelog/README.md` specifies: the metadata block (`Date`, `Type`, `Scope`, `PR`, `Issue`, `Breaking`) directly under the title, then `## What changed` and `## Why`. `## Why` carries what the code cannot — protocol differences found, config mappings chosen, alternatives rejected and the reason.
 - Link the PR and any issue the change closes as full URLs (`https://github.com/Prism-Shadow/agenthub/pull/N`), in the metadata block and in the release-README line. A bare `#N` is not a link in a Markdown file. The PR number only exists once the PR is open, so open it first, then add both links in a follow-up commit on the same branch.
 - Write the Chinese counterpart `changelog/<version>/YYYY-MM-DD-<slug>.zh.md` in the same PR, mirroring the English file section for section. The metadata block stays English verbatim (only the `Breaking` reason is prose to translate), as do code identifiers, model ids, and links; `changelog/README.md` lists the standard heading renderings. An entry without its counterpart is unfinished.
 - Add one line at the top of that version's `changelog/<version>/README.md` and the matching line in `README.zh.md`, whose `[详情]` link points at the `.zh.md` entry; the root `CHANGELOG.md` and `CHANGELOG.zh.md` keep one line per release, added at release preparation.
