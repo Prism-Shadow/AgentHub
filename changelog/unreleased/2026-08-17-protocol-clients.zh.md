@@ -3,6 +3,7 @@
 - **Date:** 2026-08-17
 - **Type:** feature
 - **Scope:** `openai_responses`, `ant_messages`, `openai_chat`, `auto_client`, `tests`
+- **PR:** [#171](https://github.com/Prism-Shadow/agenthub/pull/171)
 - **Breaking:** yes — `openai` client 文件夹重命名为 `openai_chat`，类 `OpenaiClient` 重命名为 `OpenaiChatClient`；旧路径的深层导入失效。
 
 [English](2026-08-17-protocol-clients.md)

@@ -3,6 +3,7 @@
 - **Date:** 2026-08-17
 - **Type:** feature
 - **Scope:** `openai_responses`, `ant_messages`, `openai_chat`, `auto_client`, `tests`
+- **PR:** [#171](https://github.com/Prism-Shadow/agenthub/pull/171)
 - **Breaking:** yes — the `openai` client folder was renamed to `openai_chat` and its class `OpenaiClient` to `OpenaiChatClient`; deep imports of the old path stop working.
 
 [中文版](2026-08-17-protocol-clients.zh.md)

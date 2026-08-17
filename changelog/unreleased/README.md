@@ -2,9 +2,9 @@
 
 [中文版](README.zh.md)
 
-- [2026-08-17] Generic `openai_responses` and `ant_messages` protocol clients cover OpenAI, OpenRouter, DeepSeek, Z.AI, and MiniMax; the generic chat client renames to `openai_chat`. ([details](2026-08-17-protocol-clients.md))
-- [2026-08-17] GPT-5.6 support: the `gpt5_6` client serves GPT-5.4/5.5/5.6, with official and OpenRouter registry pricing. ([details](2026-08-17-gpt-5.6.md))
-- [2026-08-17] `UniConfig.fast_mode` maps to OpenAI `service_tier: "priority"` and Anthropic `speed: "fast"`. ([details](2026-08-17-fast-mode.md))
+- [2026-08-17] Generic `openai_responses` and `ant_messages` protocol clients cover OpenAI, OpenRouter, DeepSeek, Z.AI, and MiniMax; the generic chat client renames to `openai_chat`. ([details](2026-08-17-protocol-clients.md), [#171](https://github.com/Prism-Shadow/agenthub/pull/171))
+- [2026-08-17] GPT-5.6 support: the `gpt5_6` client serves GPT-5.4/5.5/5.6, with official and OpenRouter registry pricing. ([details](2026-08-17-gpt-5.6.md), [#171](https://github.com/Prism-Shadow/agenthub/pull/171))
+- [2026-08-17] `UniConfig.fast_mode` maps to OpenAI `service_tier: "priority"` and Anthropic `speed: "fast"`. ([details](2026-08-17-fast-mode.md), [#171](https://github.com/Prism-Shadow/agenthub/pull/171))
 - [2026-08-16] The dev skill specifies the client implementation standard: minimal replay probed against the live API, the reference-client shape, and delta-only streaming. ([details](2026-08-16-client-implementation-standard.md), [#170](https://github.com/Prism-Shadow/agenthub/pull/170))
 - [2026-08-16] Changelog entries carry a metadata block with explicit PR links, and the dev skill gains a capture-serialization rule and a shared-test rule. ([details](2026-08-16-changelog-format-and-skill-rules.md), [#170](https://github.com/Prism-Shadow/agenthub/pull/170))
 - [2026-08-14] GLM-5.3 support (docs-only, API pre-launch) and the GLM series clients merge into one unified client. ([details](2026-08-14-glm-5.3.md), [#169](https://github.com/Prism-Shadow/agenthub/pull/169))
