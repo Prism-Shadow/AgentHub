@@ -174,6 +174,11 @@ class Claude4_6Client(LLMClient):
         if config.get("tool_choice") is not None:
             claude_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
 
+        if config.get("fast_mode"):
+            raise UnsupportedParameterError(
+                self.__class__.__name__, "fast_mode", "Claude 4.6 does not support fast mode."
+            )
+
         # Add cache_control if prompt caching is enabled
         # TODO: wait for bedrock to support cache_control in config
         if not self._use_bedrock:

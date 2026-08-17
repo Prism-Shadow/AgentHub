@@ -30,7 +30,7 @@ class OpenAICompatibleToolStreamCase:
 
 OPENAI_COMPATIBLE_TOOL_STREAM_CASES = [
     OpenAICompatibleToolStreamCase(
-        expected_client="OpenaiClient",
+        expected_client="OpenaiChatClient",
         model="gpt-5.5",
         client_type="openai",
     ),

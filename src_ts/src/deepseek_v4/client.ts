@@ -139,6 +139,14 @@ export class DeepSeekV4Client extends LLMClient {
       deepseekConfig.tool_choice = this._convertToolChoice(config.tool_choice);
     }
 
+    if (config.fast_mode) {
+      throw new UnsupportedParameterError({
+        client: this.constructor.name,
+        parameter: "fast_mode",
+        message: "DeepSeek V4 does not support fast mode.",
+      });
+    }
+
     if (
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE

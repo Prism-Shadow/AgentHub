@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .client import GPT5_5Client
+from .client import OpenaiResponsesClient
 
 
-__all__ = ["GPT5_5Client"]
+__all__ = ["OpenaiResponsesClient"]

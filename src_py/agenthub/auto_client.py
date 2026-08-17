@@ -69,10 +69,10 @@ class AutoLLMClient(LLMClient):
             from .claude4_6 import Claude4_6Client
 
             return Claude4_6Client(model=model, api_key=api_key, base_url=base_url)
-        elif "gpt-5.4" in client_type or "gpt-5.5" in client_type:  # e.g., gpt-5.5
-            from .gpt5_5 import GPT5_5Client
+        elif "gpt-5.4" in client_type or "gpt-5.5" in client_type or "gpt-5.6" in client_type:  # e.g., gpt-5.6
+            from .gpt5_6 import GPT5_6Client
 
-            return GPT5_5Client(model=model, api_key=api_key, base_url=base_url)
+            return GPT5_6Client(model=model, api_key=api_key, base_url=base_url)
         elif "glm-5" in client_type:  # the whole GLM series shares the unified client
             from .glm5_3 import GLM5_3Client
 
@@ -89,21 +89,29 @@ class AutoLLMClient(LLMClient):
             from .deepseek_v4 import DeepSeekV4Client
 
             return DeepSeekV4Client(model=model, api_key=api_key, base_url=base_url)
+        elif "ant-messages" in client_type:
+            from .ant_messages import AntMessagesClient
+
+            return AntMessagesClient(model=model, api_key=api_key, base_url=base_url)
+        elif "openai-responses" in client_type:
+            from .openai_responses import OpenaiResponsesClient
+
+            return OpenaiResponsesClient(model=model, api_key=api_key, base_url=base_url)
         elif "openai" in client_type and "embedding" in client_type:
             from .openai_embedding import OpenaiEmbeddingClient
 
             return OpenaiEmbeddingClient(model=model, api_key=api_key, base_url=base_url)
-        elif "openai" in client_type and "embedding" not in client_type:
-            from .openai import OpenaiClient
+        elif "openai" in client_type and "embedding" not in client_type:  # openai-chat, plus bare "openai" as alias
+            from .openai_chat import OpenaiChatClient
 
-            return OpenaiClient(model=model, api_key=api_key, base_url=base_url)
+            return OpenaiChatClient(model=model, api_key=api_key, base_url=base_url)
         else:
             raise ValueError(
                 f"{client_type} is not supported. "
                 "Supported client types: minimax-m3, gemini-3.7, gemini-3.6, gemini-3, "
-                "claude-5, claude-4-8, claude-4-7, claude-4-6, gpt-5.5, gpt-5.4, glm-5.3, glm-5.2, glm-5.1, kimi-k3, "
-                "kimi-k2.6, kimi-k2.5, "
-                "deepseek-v4, openai-embedding, openai."
+                "claude-5, claude-4-8, claude-4-7, claude-4-6, gpt-5.6, gpt-5.5, gpt-5.4, "
+                "glm-5.3, glm-5.2, glm-5.1, kimi-k3, kimi-k2.6, kimi-k2.5, deepseek-v4, "
+                "openai-embedding, ant-messages, openai-responses, openai-chat."
             )
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:

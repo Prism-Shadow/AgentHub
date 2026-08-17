@@ -18,6 +18,7 @@ import type {
   EmbeddingCreateParams,
 } from "openai/resources/embeddings";
 import { LLMClient } from "../baseClient";
+import { UnsupportedParameterError } from "../errors";
 import { UniConfig, UniEvent, UniMessage } from "../types";
 
 /**
@@ -49,6 +50,14 @@ export class OpenaiEmbeddingClient extends LLMClient {
   transformUniConfigToModelConfig(
     config: UniConfig,
   ): Omit<EmbeddingCreateParams, "input"> {
+    if (config.fast_mode) {
+      throw new UnsupportedParameterError({
+        client: this.constructor.name,
+        parameter: "fast_mode",
+        message: "OpenAI embeddings do not support fast mode.",
+      });
+    }
+
     const params: Omit<EmbeddingCreateParams, "input"> = {
       model: this._model as OpenAI.EmbeddingModel,
     };

@@ -38,7 +38,7 @@ from ..types import (
 from ..utils import fix_openrouter_usage_metadata
 
 
-class OpenaiClient(LLMClient):
+class OpenaiChatClient(LLMClient):
     """OpenAI Chat Completions-compatible client implementation."""
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
@@ -105,6 +105,9 @@ class OpenaiClient(LLMClient):
 
         if config.get("tool_choice") is not None:
             openai_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
+
+        if config.get("fast_mode"):
+            openai_config["service_tier"] = "priority"
 
         if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
             raise UnsupportedParameterError(

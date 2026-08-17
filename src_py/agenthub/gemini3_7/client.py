@@ -215,6 +215,9 @@ class Gemini3_7Client(LLMClient):
                 tool_config = self._convert_tool_choice(tool_choice)
                 config_params["tool_config"] = types.ToolConfig(function_calling_config=tool_config)
 
+        if config.get("fast_mode"):
+            raise UnsupportedParameterError(self.__class__.__name__, "fast_mode", "Gemini does not support fast mode.")
+
         if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
             raise UnsupportedParameterError(
                 self.__class__.__name__, "prompt_caching", "prompt_caching must be ENABLE for Gemini."

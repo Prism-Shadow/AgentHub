@@ -30,13 +30,17 @@ interface Model {
   supportAudioGeneration: boolean;
   supportEmbedding: boolean;
   clientType?: string;
+  baseUrl?: string;
   provider:
     | "official"
     | "bedrock"
     | "vertex"
     | "siliconflow"
     | "openrouter"
-    | "modelverse";
+    | "modelverse"
+    | "deepseek"
+    | "zai"
+    | "minimax";
 }
 
 const AVAILABLE_MODELS: Model[] = [];
@@ -104,7 +108,7 @@ if (process.env.ANTHROPIC_API_KEY) {
 
 if (process.env.OPENAI_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "gpt-5.5",
+    name: "gpt-5.6-luna",
     supportTextGeneration: true,
     supportTemperature: false,
     supportImageUnderstanding: true,
@@ -127,6 +131,8 @@ if (process.env.OPENAI_API_KEY) {
   });
 }
 
+const PROTOCOL_MODES = ["openai-chat", "openai-responses", "ant-messages"];
+
 if (process.env.ZAI_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "glm-5.2",
@@ -138,6 +144,26 @@ if (process.env.ZAI_API_KEY) {
     supportEmbedding: false,
     provider: "official",
   });
+  // GLM Coding Plan base URLs, one per protocol
+  const ZAI_BASE_URLS: { [key: string]: string } = {
+    "openai-chat": "https://api.z.ai/api/coding/paas/v4",
+    "openai-responses": "https://api.z.ai/api/v1",
+    "ant-messages": "https://api.z.ai/api/anthropic",
+  };
+  for (const mode of PROTOCOL_MODES) {
+    AVAILABLE_MODELS.push({
+      name: "glm-5.2",
+      supportTextGeneration: true,
+      supportTemperature: true,
+      supportImageUnderstanding: false,
+      supportImageGeneration: false,
+      supportAudioGeneration: false,
+      supportEmbedding: false,
+      provider: "zai",
+      clientType: mode,
+      baseUrl: ZAI_BASE_URLS[mode],
+    });
+  }
 }
 
 if (process.env.MOONSHOT_API_KEY) {
@@ -165,6 +191,23 @@ if (process.env.MINIMAX_API_KEY) {
     clientType: "minimax-m3",
     provider: "official",
   });
+  for (const mode of PROTOCOL_MODES) {
+    AVAILABLE_MODELS.push({
+      name: "MiniMax-M3",
+      supportTextGeneration: true,
+      supportTemperature: true,
+      supportImageUnderstanding: true,
+      supportImageGeneration: false,
+      supportAudioGeneration: false,
+      supportEmbedding: false,
+      provider: "minimax",
+      clientType: mode,
+      baseUrl:
+        mode === "ant-messages"
+          ? "https://api.minimax.io/anthropic"
+          : "https://api.minimax.io/v1",
+    });
+  }
 }
 
 if (process.env.DEEPSEEK_API_KEY) {
@@ -178,6 +221,23 @@ if (process.env.DEEPSEEK_API_KEY) {
     supportEmbedding: false,
     provider: "official",
   });
+  for (const mode of PROTOCOL_MODES) {
+    AVAILABLE_MODELS.push({
+      name: "deepseek-v4-flash",
+      supportTextGeneration: true,
+      supportTemperature: true,
+      supportImageUnderstanding: false,
+      supportImageGeneration: false,
+      supportAudioGeneration: false,
+      supportEmbedding: false,
+      provider: "deepseek",
+      clientType: mode,
+      baseUrl:
+        mode === "ant-messages"
+          ? "https://api.deepseek.com/anthropic"
+          : "https://api.deepseek.com",
+    });
+  }
 }
 
 if (process.env.BEDROCK_API_KEY) {
@@ -231,6 +291,21 @@ if (process.env.VERTEX_API_KEY) {
 const RUN_SLOW_TEST = process.env.RUN_SLOW_TEST === "1";
 
 if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
+  for (const mode of PROTOCOL_MODES) {
+    AVAILABLE_MODELS.push({
+      name: "openai/gpt-5.6-luna",
+      supportTextGeneration: true,
+      supportTemperature: true,
+      supportImageUnderstanding: true,
+      supportImageGeneration: false,
+      supportAudioGeneration: false,
+      supportEmbedding: false,
+      provider: "openrouter",
+      clientType: mode,
+      baseUrl:
+        mode === "ant-messages" ? "https://openrouter.ai/api" : undefined,
+    });
+  }
   AVAILABLE_MODELS.push({
     name: "z-ai/glm-5.2",
     supportTextGeneration: true,
@@ -366,6 +441,15 @@ function createClient(model: Model): AutoLLMClient {
     } else {
       baseUrl = "https://api.modelverse.cn/v1";
     }
+  } else if (model.provider === "deepseek") {
+    apiKey = process.env.DEEPSEEK_API_KEY;
+    baseUrl = undefined;
+  } else if (model.provider === "zai") {
+    apiKey = process.env.ZAI_API_KEY;
+    baseUrl = undefined;
+  } else if (model.provider === "minimax") {
+    apiKey = process.env.MINIMAX_API_KEY;
+    baseUrl = undefined;
   } else {
     apiKey = undefined;
     baseUrl = undefined;
@@ -374,7 +458,7 @@ function createClient(model: Model): AutoLLMClient {
   return new AutoLLMClient({
     model: model.name,
     apiKey,
-    baseUrl,
+    baseUrl: model.baseUrl || baseUrl,
     clientType: model.clientType,
   });
 }
@@ -446,7 +530,9 @@ function checkEventIntegrity(event: UniEvent): void {
 if (AVAILABLE_MODELS.length > 0) {
   describe.each(
     AVAILABLE_MODELS.map((m): [string, Model] => [
-      `${m.name}:${m.provider}`,
+      m.clientType
+        ? `${m.name}:${m.provider}:${m.clientType}`
+        : `${m.name}:${m.provider}`,
       m,
     ]),
   )("Client tests for %s", (_name, model: Model) => {
@@ -1113,7 +1199,10 @@ test("should list supported model entries", () => {
 });
 
 test.each([
-  ["openai-compatible", "OpenaiClient"],
+  ["openai-compatible", "OpenaiChatClient"],
+  ["openai-chat-compatible", "OpenaiChatClient"],
+  ["openai-responses-compatible", "OpenaiResponsesClient"],
+  ["ant-messages-compatible", "AntMessagesClient"],
   ["openai-embedding-compatible", "OpenaiEmbeddingClient"],
 ])("should route %s clientType to %s", (clientType, clientName) => {
   const client = new AutoLLMClient({

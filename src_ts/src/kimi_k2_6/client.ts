@@ -185,6 +185,14 @@ export class KimiK2_6Client extends LLMClient {
       kimiConfig.tool_choice = this._convertToolChoice(config.tool_choice);
     }
 
+    if (config.fast_mode) {
+      throw new UnsupportedParameterError({
+        client: this.constructor.name,
+        parameter: "fast_mode",
+        message: "Kimi K2.6 does not support fast mode.",
+      });
+    }
+
     if (
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE

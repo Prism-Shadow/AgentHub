@@ -35,11 +35,11 @@ from ..types import (
 )
 
 
-class GPT5_5Client(LLMClient):
-    """GPT-5.5-specific LLM client implementation."""
+class OpenaiResponsesClient(LLMClient):
+    """OpenAI Responses-compatible client implementation."""
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
-        """Initialize GPT-5.5 client with model and API key."""
+        """Initialize OpenAI Responses-compatible client with model, API key, and base URL."""
         self._model = model
         api_key = api_key or os.getenv("OPENAI_API_KEY")
         base_url = base_url or os.getenv("OPENAI_BASE_URL")
@@ -47,7 +47,7 @@ class GPT5_5Client(LLMClient):
         self._history: list[UniMessage] = []
 
     def _convert_thinking_level_to_effort(self, thinking_level: ThinkingLevel) -> str:
-        """Convert ThinkingLevel enum to OpenAI's reasoning effort."""
+        """Convert ThinkingLevel enum to the Responses API reasoning effort."""
         mapping = {
             ThinkingLevel.NONE: "none",
             ThinkingLevel.LOW: "low",
@@ -58,14 +58,14 @@ class GPT5_5Client(LLMClient):
         return mapping.get(thinking_level)
 
     def _convert_tool_choice(self, tool_choice: ToolChoice) -> str | dict[str, Any]:
-        """Convert ToolChoice to OpenAI's tool_choice format with allowed tools support."""
+        """Convert ToolChoice to the Responses API tool_choice format with allowed tools support."""
         if isinstance(tool_choice, list):
             return {"mode": "required", "tools": [{"type": "function", "name": name} for name in tool_choice]}
         return tool_choice
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """
-        Transform universal configuration to OpenAI Responses API configuration.
+        Transform universal configuration to OpenAI Responses-compatible configuration.
 
         Args:
             config: Universal configuration dict
@@ -73,9 +73,7 @@ class GPT5_5Client(LLMClient):
         Returns:
             OpenAI Responses API configuration dictionary
         """
-        # Set store to False to avoid validation error
-        # https://community.openai.com/t/one-potential-cause-of-item-rs-xx-of-type-reasoning-was-provided-without-its-required-following-item-error-stateless-using-agents-sdk/1370540
-        openai_config = {"model": self._model, "store": False, "include": ["reasoning.encrypted_content"]}
+        openai_config = {"model": self._model, "store": False}
 
         if config.get("system_prompt") is not None:
             openai_config["instructions"] = config["system_prompt"]
@@ -83,10 +81,8 @@ class GPT5_5Client(LLMClient):
         if config.get("max_tokens") is not None:
             openai_config["max_output_tokens"] = config["max_tokens"]
 
-        if config.get("temperature") is not None and config["temperature"] != 1.0:
-            raise UnsupportedParameterError(
-                self.__class__.__name__, "temperature", "GPT-5.5 does not support setting temperature."
-            )
+        if config.get("temperature") is not None:
+            openai_config["temperature"] = config["temperature"]
 
         if config.get("thinking_level") is not None:
             openai_config["reasoning"] = {"effort": self._convert_thinking_level_to_effort(config["thinking_level"])}
@@ -99,22 +95,25 @@ class GPT5_5Client(LLMClient):
         if config.get("tool_choice") is not None:
             openai_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
 
+        if config.get("fast_mode"):
+            openai_config["service_tier"] = "priority"
+
         if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
             raise UnsupportedParameterError(
-                self.__class__.__name__, "prompt_caching", "prompt_caching must be ENABLE for GPT-5.5."
+                self.__class__.__name__, "prompt_caching", "prompt_caching must be ENABLE for the Responses API."
             )
 
         return openai_config
 
     def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> ResponseInputParam:
         """
-        Transform universal message format to OpenAI Responses API input format.
+        Transform universal message format to OpenAI Responses-compatible input format.
 
         Args:
             messages: List of universal message dictionaries
 
         Returns:
-            List of input items for OpenAI Responses API
+            List of input items for the Responses API
         """
         input_list: list[ResponseInputParam] = []
 
@@ -136,20 +135,38 @@ class GPT5_5Client(LLMClient):
                         content_items.append({"type": "input_text", "text": item["text"]})
                     else:
                         content_items.append({"type": "output_text", "text": item["text"]})
-                elif item["type"] == "image_url":
+                    continue
+                if item["type"] == "image_url":
                     content_items.append({"type": "input_image", "image_url": item["image_url"]})
-                elif item["type"] == "thinking":
-                    fidelity = item["fidelity"]
-                    input_list.append(
-                        {
-                            "type": "reasoning",
-                            "id": fidelity["id"],
-                            "summary": [{"type": "summary_text", "text": item["thinking"]}]
-                            if item["thinking"]
-                            else [],
-                            "encrypted_content": fidelity["encrypted_content"],
-                        }
-                    )
+                    continue
+
+                # Top-level items follow, so flush buffered text first to keep the wire order.
+                if content_items:
+                    entry = {"role": msg["role"], "content": content_items}
+                    if last_phase is not None:
+                        entry["phase"] = last_phase
+
+                    input_list.append(entry)
+                    content_items = []
+
+                if item["type"] == "thinking":
+                    # the wire shape differs by server: OpenAI-style servers stream summaries and
+                    # demand the summary key back (with encrypted_content preserved), while
+                    # DeepSeek/Z.AI/MiniMax-style servers accept a reasoning item rebuilt from the
+                    # thinking text alone as reasoning_text content
+                    fidelity = item.get("fidelity") or {}
+                    reasoning = {"type": "reasoning", "summary": []}
+                    if fidelity.get("channel") == "summary":
+                        if item["thinking"]:
+                            reasoning["summary"] = [{"type": "summary_text", "text": item["thinking"]}]
+                    elif item["thinking"]:
+                        reasoning["content"] = [{"type": "reasoning_text", "text": item["thinking"]}]
+
+                    for key in ("encrypted_content", "signature", "format"):
+                        if fidelity.get(key) is not None:
+                            reasoning[key] = fidelity[key]
+
+                    input_list.append(reasoning)
                 elif item["type"] == "tool_call":
                     input_list.append(
                         {
@@ -186,7 +203,7 @@ class GPT5_5Client(LLMClient):
 
     def transform_model_output_to_uni_event(self, model_output: ResponseStreamEvent) -> UniEvent:
         """
-        Transform OpenAI Responses API streaming event to universal event format.
+        Transform OpenAI Responses-compatible streaming event to universal event format.
 
         Args:
             model_output: OpenAI Responses API streaming event
@@ -204,7 +221,7 @@ class GPT5_5Client(LLMClient):
             event_type = "delta"
             content_items.append({"type": "text", "text": model_output.delta})
 
-        elif openai_event_type == "response.reasoning_summary_text.delta":
+        elif openai_event_type in ("response.reasoning_text.delta", "response.reasoning_summary_text.delta"):
             event_type = "delta"
             content_items.append({"type": "thinking", "thinking": model_output.delta})
 
@@ -219,33 +236,24 @@ class GPT5_5Client(LLMClient):
                         "tool_call_id": model_output.item.call_id,
                     }
                 )
-            # adding the following thinking item leads to 400 invalid request error, why?
-            # elif model_output.item.type == "reasoning":
-            #     event_type = "delta"
-            #     fidelity = {
-            #         "id": model_output.item.id,
-            #         "encrypted_content": model_output.item.encrypted_content,
-            #     }
-            #     content_items.append({"type": "thinking", "thinking": "", "fidelity": fidelity})
-            elif model_output.item.type == "message":
-                if hasattr(model_output.item, "phase"):
-                    event_type = "delta"
-                    content_items.append(
-                        {"type": "text", "text": "", "fidelity": {"phase": getattr(model_output.item, "phase", None)}}
-                    )
-                else:
-                    event_type = "unused"
+            elif model_output.item.type == "message" and getattr(model_output.item, "phase", None):
+                event_type = "delta"
+                content_items.append({"type": "text", "text": "", "fidelity": {"phase": model_output.item.phase}})
             else:
                 event_type = "unused"
 
         elif openai_event_type == "response.output_item.done":
-            # not sure about the signature of openai, need to check
             if model_output.item.type == "reasoning":
+                # record the wire shape of the completed reasoning item so a replay reproduces
+                # the channel that carried the thinking plus the fields the server demands back
                 event_type = "delta"
-                fidelity = {
-                    "id": model_output.item.id,
-                    "encrypted_content": model_output.item.encrypted_content,
-                }
+                fidelity = {}
+                if getattr(model_output.item, "summary", None):
+                    fidelity["channel"] = "summary"
+                for key in ("encrypted_content", "signature", "format"):
+                    if getattr(model_output.item, key, None) is not None:
+                        fidelity[key] = getattr(model_output.item, key)
+
                 content_items.append({"type": "thinking", "thinking": "", "fidelity": fidelity})
             else:
                 event_type = "unused"
@@ -259,7 +267,7 @@ class GPT5_5Client(LLMClient):
         elif openai_event_type == "response.function_call_arguments.done":
             event_type = "stop"
 
-        elif openai_event_type == "response.completed":
+        elif openai_event_type in ("response.completed", "response.incomplete"):
             event_type = "stop"
             finish_reason_mapping = {
                 "completed": "stop",
@@ -267,29 +275,30 @@ class GPT5_5Client(LLMClient):
             }
             finish_reason = finish_reason_mapping.get(model_output.response.status, "unknown")
 
-            input_tokens = model_output.response.usage.input_tokens
-            output_tokens = model_output.response.usage.output_tokens
+            if model_output.response.usage:
+                # some servers drop the detail blocks (e.g. MiniMax on truncation), so default to zero
+                input_details = model_output.response.usage.input_tokens_details
+                output_details = model_output.response.usage.output_tokens_details
+                cached_tokens = input_details.cached_tokens if input_details else 0
+                reasoning_tokens = output_details.reasoning_tokens if output_details else 0
+                usage_metadata = {
+                    "cached_tokens": cached_tokens,
+                    "prompt_tokens": model_output.response.usage.input_tokens - cached_tokens,
+                    "thoughts_tokens": reasoning_tokens,
+                    "response_tokens": model_output.response.usage.output_tokens - reasoning_tokens,
+                }
 
-            cached_tokens = model_output.response.usage.input_tokens_details.cached_tokens
-            reasoning_tokens = model_output.response.usage.output_tokens_details.reasoning_tokens
-
-            usage_metadata = {
-                "cached_tokens": cached_tokens,
-                "prompt_tokens": input_tokens - cached_tokens,
-                "thoughts_tokens": reasoning_tokens,
-                "response_tokens": output_tokens - reasoning_tokens,
-            }
-
-        elif openai_event_type in [
+        elif openai_event_type in (
             "response.created",
             "response.in_progress",
             "response.output_text.done",
+            "response.reasoning_text.done",
             "response.reasoning_summary_part.added",
             "response.reasoning_summary_part.done",
             "response.reasoning_summary_text.done",
             "response.content_part.added",
             "response.content_part.done",
-        ]:
+        ):
             event_type = "unused"
 
         else:
@@ -308,7 +317,7 @@ class GPT5_5Client(LLMClient):
         messages: list[UniMessage],
         config: UniConfig,
     ) -> AsyncIterator[UniEvent]:
-        """Stream generate using OpenAI Responses API with unified conversion methods."""
+        """Stream generate using an OpenAI Responses-compatible API with unified conversion methods."""
         # Use unified config conversion
         openai_config = self.transform_uni_config_to_model_config(config)
 

@@ -343,6 +343,14 @@ export class Gemini3_7Client extends LLMClient {
       }
     }
 
+    if (config.fast_mode) {
+      throw new UnsupportedParameterError({
+        client: this.constructor.name,
+        parameter: "fast_mode",
+        message: "Gemini does not support fast mode.",
+      });
+    }
+
     if (
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE

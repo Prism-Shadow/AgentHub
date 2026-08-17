@@ -40,7 +40,7 @@ import { fixOpenrouterUsageMetadata } from "../utils";
 /**
  * OpenAI Chat Completions-compatible client implementation.
  */
-export class OpenaiClient extends LLMClient {
+export class OpenaiChatClient extends LLMClient {
   protected _model: string;
   private _client: OpenAI;
 
@@ -152,6 +152,10 @@ export class OpenaiClient extends LLMClient {
 
     if (config.tool_choice !== undefined) {
       openaiConfig.tool_choice = this._convertToolChoice(config.tool_choice);
+    }
+
+    if (config.fast_mode) {
+      openaiConfig.service_tier = "priority";
     }
 
     if (

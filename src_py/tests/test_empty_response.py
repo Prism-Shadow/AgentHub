@@ -30,7 +30,7 @@ class ReasoningStreamCase:
 
 REASONING_STREAM_CASES = [
     ReasoningStreamCase(
-        expected_client="OpenaiClient",
+        expected_client="OpenaiChatClient",
         model="gpt-5.5",
         client_type="openai",
     ),

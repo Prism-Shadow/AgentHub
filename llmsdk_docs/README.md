@@ -6,6 +6,7 @@ This directory contains documentation and examples for all supported AI model SD
 
 To use a specific model, please refer to its dedicated README:
 
+- **[Anthropic Messages protocol](./ant_messages/README.md)** - The Anthropic Messages-compatible protocol across Anthropic, OpenRouter, DeepSeek, Z.AI, and MiniMax (generic `ant_messages` client)
 - **[Claude 4.6](./claude4_6/README.md)** - Anthropic's Claude 4.6 API documentation and examples
 - **[Claude 4.7](./claude4_7/README.md)** - Anthropic's Claude 4.7 API documentation and examples
 - **[Claude 4.8](./claude4_8/README.md)** - Anthropic's Claude 4.8 API documentation and examples
@@ -17,8 +18,10 @@ To use a specific model, please refer to its dedicated README:
 - **[GLM-5.2](./glm5_2/README.md)** - Z.AI's GLM-5.2 API documentation (reasoning_effort, thinking modes, tool streaming)
 - **[GLM-5.3](./glm5_3/README.md)** - Z.AI's GLM-5.3 pre-launch documentation (forced thinking, reasoning_effort restricted to low/high/max)
 - **[GPT-5.5](./gpt5_5/README.md)** - OpenAI's GPT-5.5 API documentation and examples
+- **[GPT-5.6](./gpt5_6/README.md)** - OpenAI's GPT-5.6 generation (sol/terra/luna): reasoning modes, fast mode, and Responses migration
 - **[Kimi K3](./kimi_k3/README.md)** - Moonshot's Kimi K3 API documentation (reasoning_effort, tool calling, vision, caching)
 - **[MiniMax M-series](./minimax_m3/README.md)** - Responses API-compatible documentation for MiniMax M3 and M2.7, plus Token Plan Subscription Key integration
+- **[OpenAI Responses protocol](./openai_responses/README.md)** - The OpenAI Responses-compatible protocol across OpenAI, OpenRouter, DeepSeek, Z.AI, and MiniMax (generic `openai_responses` client)
 
 Each model directory contains:
 - `docs/` - Detailed documentation for the model's features and capabilities

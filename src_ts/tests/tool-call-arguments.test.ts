@@ -46,7 +46,7 @@ interface OpenAICompatibleToolStreamCase {
 
 const OPENAI_COMPATIBLE_TOOL_STREAM_CASES: OpenAICompatibleToolStreamCase[] = [
   {
-    expectedClient: "OpenaiClient",
+    expectedClient: "OpenaiChatClient",
     model: "gpt-5.5",
     clientType: "openai",
   },

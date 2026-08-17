@@ -18,7 +18,7 @@ client = AutoLLMClient(
 )
 
 # Use OpenAI Chat Completions-compatible routing explicitly
-client = AutoLLMClient(model="custom-model", client_type="openai")
+client = AutoLLMClient(model="custom-model", client_type="openai-chat")
 ```
 
 ## Method signatures

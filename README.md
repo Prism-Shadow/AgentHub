@@ -44,12 +44,18 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 | -------------- | ----------------------------------- | ---------------------- | ---------------- | ------------------------------ |
 | Gemini 3-3.7   | Official/Google Vertex AI           | `gemini-3.7-flash`     | Text, Image      | Text, Image, Speech, Embedding |
 | Claude 4.6-5   | Official/Amazon Bedrock/UModelVerse | `claude-opus-4-8`      | Text, Image      | Text                           |
-| GPT-5.4/5.5    | Official/UModelVerse                | `gpt-5.5`              | Text, Image      | Text, Embedding                |
+| GPT-5.4-5.6    | Official/OpenRouter/UModelVerse     | `gpt-5.6`              | Text, Image      | Text, Embedding                |
 | Kimi-K2.5/K2.6/K3 | Official/OpenRouter/SiliconFlow  | `kimi-k3`              | Text, Image      | Text                           |
 | DeepSeek V4    | Official/OpenRouter/SiliconFlow     | `deepseek-v4-pro`      | Text             | Text                           |
 | GLM-5.1-5.3 (5.3 API pre-launch) | Official/OpenRouter/SiliconFlow | `glm-5.2`        | Text             | Text                           |
 | MiniMax-M3     | Official                            | `MiniMax-M3`           | Text, Image      | Text                           |
 | Qwen3.6        | OpenRouter/SiliconFlow/vLLM         | `qwen/qwen3.6-35b-a3b` | Text, Image      | Text, Embedding                |
+
+Beyond the model-specific clients, three generic protocol clients call any compatible
+endpoint: `client_type="openai-chat"` (OpenAI Chat Completions; bare `"openai"` is an
+alias), `"openai-responses"` (OpenAI Responses, served by OpenAI, OpenRouter, DeepSeek,
+Z.AI, and MiniMax), and `"ant-messages"` (Anthropic Messages, served by Anthropic,
+OpenRouter, DeepSeek, Z.AI, and MiniMax).
 
 The full machine-readable list — model, base URL, client, input/output modalities, context
 window, and per-million-token pricing in USD or CNY — is available via
@@ -113,7 +119,7 @@ AgentHub provides Codex/Claude Code skill files for assistants that need to help
 > [!NOTE]
 > We recommend using the **stateful interface** when calling the AgentHub SDK.
 
-### OpenAI GPT-5.5
+### OpenAI GPT-5.6
 
 Python Example:
 
@@ -125,7 +131,7 @@ from agenthub import AutoLLMClient
 os.environ["OPENAI_API_KEY"] = "your-openai-api-key"
 
 async def main():
-    client = AutoLLMClient(model="gpt-5.5")
+    client = AutoLLMClient(model="gpt-5.6")
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -151,7 +157,7 @@ import { AutoLLMClient } from "@prismshadow/agenthub";
 process.env.OPENAI_API_KEY = "your-openai-api-key";
 
 async function main() {
-  const client = new AutoLLMClient({ model: "gpt-5.5" });
+  const client = new AutoLLMClient({ model: "gpt-5.6" });
   for await (const event of client.streamingResponseStateful({
     message: {
       role: "user",
@@ -288,7 +294,7 @@ os.environ["OPENAI_API_KEY"] = "your-siliconflow-api-key"
 os.environ["OPENAI_BASE_URL"] = "https://api.siliconflow.cn/v1"
 
 async def main():
-    client = AutoLLMClient(model="Qwen/Qwen3.6-35B-A3B", client_type="openai")
+    client = AutoLLMClient(model="Qwen/Qwen3.6-35B-A3B", client_type="openai-chat")
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -313,7 +319,7 @@ process.env.OPENAI_BASE_URL = "https://api.siliconflow.cn/v1";
 async function main() {
   const client = new AutoLLMClient({
     model: "Qwen/Qwen3.6-35B-A3B",
-    clientType: "openai",
+    clientType: "openai-chat",
   });
   for await (const event of client.streamingResponseStateful({
     message: {
@@ -343,7 +349,7 @@ os.environ["OPENAI_API_KEY"] = "your-siliconflow-api-key"
 os.environ["OPENAI_BASE_URL"] = "https://api.siliconflow.cn/v1"
 
 async def main():
-    client = AutoLLMClient(model="Qwen/Qwen3-Embedding-0.6B", client_type="openai")
+    client = AutoLLMClient(model="Qwen/Qwen3-Embedding-0.6B", client_type="openai-embedding")
 
     async for event in client.streaming_response_stateful(
         message={
@@ -369,7 +375,7 @@ process.env.OPENAI_BASE_URL = "https://api.siliconflow.cn/v1";
 async function main() {
   const client = new AutoLLMClient({
     model: "Qwen/Qwen3-Embedding-0.6B",
-    clientType: "openai",
+    clientType: "openai-embedding",
   });
   for await (const event of client.streamingResponseStateful({
     message: {
@@ -419,6 +425,7 @@ Example UniConfig:
   "tool_choice": "auto | required | none",
   "system_prompt": "You are a helpful assistant.",
   "prompt_caching": "enable | disable | enhance",
+  "fast_mode": false,
   "image_config": {"aspect_ratio": "4:3", "image_size": "1K"},
   "tts_config": [{"voice": "Kore"}],
   "trace_id": null

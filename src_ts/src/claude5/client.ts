@@ -244,6 +244,19 @@ export class Claude5Client extends LLMClient {
       claudeConfig.tool_choice = this._convertToolChoice(config.tool_choice);
     }
 
+    if (config.fast_mode) {
+      if (this._use_bedrock) {
+        throw new UnsupportedParameterError({
+          client: this.constructor.name,
+          parameter: "fast_mode",
+          message: "Bedrock does not support fast mode.",
+        });
+      }
+
+      claudeConfig.speed = "fast";
+      claudeConfig.betas = ["fast-mode-2026-02-01"];
+    }
+
     // Add cache_control if prompt caching is enabled
     // TODO: wait for bedrock to support cache_control in config
     if (!this._use_bedrock) {

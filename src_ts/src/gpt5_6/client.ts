@@ -37,14 +37,14 @@ import {
 } from "../types";
 
 /**
- * GPT-5.5-specific LLM client implementation.
+ * GPT-5.6-specific LLM client implementation (also serves GPT-5.4 and GPT-5.5).
  */
-export class GPT5_5Client extends LLMClient {
+export class GPT5_6Client extends LLMClient {
   protected _model: string;
   private _client: OpenAI;
 
   /**
-   * Initialize GPT-5.5 client with model and API key.
+   * Initialize GPT-5.6 client with model and API key.
    */
   constructor(options: {
     model: string;
@@ -112,7 +112,7 @@ export class GPT5_5Client extends LLMClient {
       throw new UnsupportedParameterError({
         client: this.constructor.name,
         parameter: "temperature",
-        message: "GPT-5.5 does not support setting temperature.",
+        message: "GPT-5.6 does not support setting temperature.",
       });
     }
 
@@ -136,6 +136,10 @@ export class GPT5_5Client extends LLMClient {
       openaiConfig.tool_choice = this._convertToolChoice(config.tool_choice);
     }
 
+    if (config.fast_mode) {
+      openaiConfig.service_tier = "priority";
+    }
+
     if (
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE
@@ -143,7 +147,7 @@ export class GPT5_5Client extends LLMClient {
       throw new UnsupportedParameterError({
         client: this.constructor.name,
         parameter: "prompt_caching",
-        message: "prompt_caching must be ENABLE for GPT-5.5.",
+        message: "prompt_caching must be ENABLE for GPT-5.6.",
       });
     }
 

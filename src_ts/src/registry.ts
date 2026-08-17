@@ -185,6 +185,34 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     pricing: usd(3.0, 15.0, 0.3),
   },
   {
+    // the gpt-5.6 alias routes to gpt-5.6-sol; official standard-tier list price
+    model: "gpt-5.6",
+    base_url: OPENAI,
+    client: "gpt-5.6",
+    input_modalities: ["Text", "Image"],
+    output_modalities: ["Text"],
+    context_window: 1050000,
+    pricing: usd(5.0, 30.0, 0.5),
+  },
+  {
+    model: "gpt-5.6-terra",
+    base_url: OPENAI,
+    client: "gpt-5.6",
+    input_modalities: ["Text", "Image"],
+    output_modalities: ["Text"],
+    context_window: 1050000,
+    pricing: usd(2.0, 12.0, 0.2),
+  },
+  {
+    model: "gpt-5.6-luna",
+    base_url: OPENAI,
+    client: "gpt-5.6",
+    input_modalities: ["Text", "Image"],
+    output_modalities: ["Text"],
+    context_window: 1050000,
+    pricing: usd(0.2, 1.2, 0.02),
+  },
+  {
     model: "gpt-5.5",
     base_url: OPENAI,
     client: "gpt-5.5",
@@ -278,7 +306,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "anthropic/claude-fable-5",
     base_url: OPENROUTER,
-    client: "openai",
+    client: "openai-chat",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1000000,
@@ -287,7 +315,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "anthropic/claude-opus-4.8",
     base_url: OPENROUTER,
-    client: "openai",
+    client: "openai-chat",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1000000,
@@ -296,7 +324,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "anthropic/claude-opus-4.7",
     base_url: OPENROUTER,
-    client: "openai",
+    client: "openai-chat",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1000000,
@@ -305,7 +333,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "anthropic/claude-sonnet-5",
     base_url: OPENROUTER,
-    client: "openai",
+    client: "openai-chat",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1000000,
@@ -332,7 +360,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "google/gemini-3.5-flash",
     base_url: OPENROUTER,
-    client: "openai",
+    client: "openai-chat",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1048576,
@@ -341,7 +369,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "minimax/minimax-m3",
     base_url: OPENROUTER,
-    client: "openai",
+    client: "openai-chat",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1048576,
@@ -368,7 +396,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "nvidia/nemotron-3-ultra-550b-a55b:free",
     base_url: OPENROUTER,
-    client: "openai",
+    client: "openai-chat",
     input_modalities: ["Text"],
     output_modalities: ["Text"],
     context_window: 1000000,
@@ -377,7 +405,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "openai/gpt-5.6-sol",
     base_url: OPENROUTER,
-    client: "openai",
+    client: "openai-chat",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1050000,
@@ -386,16 +414,25 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "openai/gpt-5.6-terra",
     base_url: OPENROUTER,
-    client: "openai",
+    client: "openai-chat",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1050000,
-    pricing: usd(2.5, 15.0, 0.25),
+    pricing: usd(1.0, 6.0, 0.1),
+  },
+  {
+    model: "openai/gpt-5.6-luna",
+    base_url: OPENROUTER,
+    client: "openai-chat",
+    input_modalities: ["Text", "Image"],
+    output_modalities: ["Text"],
+    context_window: 1050000,
+    pricing: usd(0.1, 0.6, 0.01),
   },
   {
     model: "openai/gpt-5.5",
     base_url: OPENROUTER,
-    client: "openai",
+    client: "openai-chat",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1050000,
@@ -404,7 +441,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "qwen/qwen3.6-35b-a3b",
     base_url: OPENROUTER,
-    client: "openai",
+    client: "openai-chat",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 262144,
@@ -422,7 +459,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "stepfun/step-3.7-flash",
     base_url: OPENROUTER,
-    client: "openai",
+    client: "openai-chat",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 262144,
@@ -431,7 +468,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "tencent/hy3",
     base_url: OPENROUTER,
-    client: "openai",
+    client: "openai-chat",
     input_modalities: ["Text"],
     output_modalities: ["Text"],
     context_window: 262144,
@@ -440,7 +477,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "x-ai/grok-4.5",
     base_url: OPENROUTER,
-    client: "openai",
+    client: "openai-chat",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 500000,
@@ -449,7 +486,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "xiaomi/mimo-v2.5",
     base_url: OPENROUTER,
-    client: "openai",
+    client: "openai-chat",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1050000,
@@ -495,7 +532,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "meituan-longcat/LongCat-2.0",
     base_url: SILICONFLOW,
-    client: "openai",
+    client: "openai-chat",
     input_modalities: ["Text"],
     output_modalities: ["Text"],
     context_window: 1000000,
@@ -504,7 +541,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "moonshotai/Kimi-K2.7-Code",
     base_url: SILICONFLOW,
-    client: "openai",
+    client: "openai-chat",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 262144,
@@ -538,7 +575,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "Qwen/Qwen3.6-35B-A3B",
     base_url: SILICONFLOW,
-    client: "openai",
+    client: "openai-chat",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 262144,

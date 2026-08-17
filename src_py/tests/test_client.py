@@ -39,10 +39,16 @@ class Model:
     support_image_generation: bool = False
     support_tts: bool = False
     support_embedding: bool = False
-    provider: Literal["official", "bedrock", "vertex", "siliconflow", "openrouter", "modelverse"] = "official"
+    provider: Literal[
+        "official", "bedrock", "vertex", "siliconflow", "openrouter", "modelverse", "deepseek", "zai", "minimax"
+    ] = "official"
     client_type: str | None = None
+    base_url: str | None = None
 
     def __repr__(self) -> str:
+        if self.client_type is not None:
+            return f"{self.name}:{self.provider}:{self.client_type}"
+
         return f"{self.name}:{self.provider}"
 
 
@@ -82,7 +88,7 @@ if os.getenv("ANTHROPIC_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="claude-sonnet-4-6"))
 
 if os.getenv("OPENAI_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="gpt-5.5", support_temperature=False))
+    AVAILABLE_MODELS.append(Model(name="gpt-5.6-luna", support_temperature=False))
     AVAILABLE_MODELS.append(
         Model(
             name="text-embedding-3-large",
@@ -94,19 +100,58 @@ if os.getenv("OPENAI_API_KEY"):
         )
     )
 
+_PROTOCOL_MODES = ["openai-chat", "openai-responses", "ant-messages"]
+
 if os.getenv("ZAI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="glm-5.2", support_image_understanding=False))
+    # GLM Coding Plan base URLs, one per protocol
+    _ZAI_BASE_URLS = {
+        "openai-chat": "https://api.z.ai/api/coding/paas/v4",
+        "openai-responses": "https://api.z.ai/api/v1",
+        "ant-messages": "https://api.z.ai/api/anthropic",
+    }
+    for mode in _PROTOCOL_MODES:
+        AVAILABLE_MODELS.append(
+            Model(
+                name="glm-5.2",
+                provider="zai",
+                client_type=mode,
+                base_url=_ZAI_BASE_URLS[mode],
+                support_image_understanding=False,
+            )
+        )
 
 if os.getenv("MOONSHOT_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="kimi-k3", support_temperature=False))
 
 if os.getenv("MINIMAX_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="MiniMax-M3", client_type="minimax-m3"))
+    for mode in _PROTOCOL_MODES:
+        AVAILABLE_MODELS.append(
+            Model(
+                name="MiniMax-M3",
+                provider="minimax",
+                client_type=mode,
+                base_url="https://api.minimax.io/anthropic" if mode == "ant-messages" else "https://api.minimax.io/v1",
+            )
+        )
 
 if os.getenv("DEEPSEEK_API_KEY"):
     AVAILABLE_MODELS.append(
         Model(name="deepseek-v4-flash", support_temperature=False, support_image_understanding=False)
     )
+    for mode in _PROTOCOL_MODES:
+        AVAILABLE_MODELS.append(
+            Model(
+                name="deepseek-v4-flash",
+                provider="deepseek",
+                client_type=mode,
+                base_url="https://api.deepseek.com/anthropic"
+                if mode == "ant-messages"
+                else "https://api.deepseek.com",
+                support_image_understanding=False,
+            )
+        )
 
 if os.getenv("BEDROCK_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="global.anthropic.claude-sonnet-4-6", provider="bedrock"))
@@ -137,6 +182,15 @@ if os.getenv("VERTEX_API_KEY"):
 RUN_SLOW_TEST = os.getenv("RUN_SLOW_TEST", "0") == "1"
 
 if os.getenv("OPENROUTER_API_KEY") and RUN_SLOW_TEST:
+    for mode in _PROTOCOL_MODES:
+        AVAILABLE_MODELS.append(
+            Model(
+                name="openai/gpt-5.6-luna",
+                provider="openrouter",
+                client_type=mode,
+                base_url="https://openrouter.ai/api" if mode == "ant-messages" else None,
+            )
+        )
     AVAILABLE_MODELS.append(Model(name="z-ai/glm-5.2", provider="openrouter", support_image_understanding=False))
     AVAILABLE_MODELS.append(Model(name="qwen/qwen3.6-35b-a3b", provider="openrouter", client_type="openai"))
     AVAILABLE_MODELS.append(
@@ -193,10 +247,21 @@ async def _create_client(model: Model) -> AutoLLMClient:
             base_url = "https://api.modelverse.cn/"
         else:
             base_url = "https://api.modelverse.cn/v1"
+    elif model.provider == "deepseek":
+        api_key = os.getenv("DEEPSEEK_API_KEY")
+        base_url = None
+    elif model.provider == "zai":
+        api_key = os.getenv("ZAI_API_KEY")
+        base_url = None
+    elif model.provider == "minimax":
+        api_key = os.getenv("MINIMAX_API_KEY")
+        base_url = None
     else:
         api_key, base_url = None, None
 
-    return AutoLLMClient(model=model.name, api_key=api_key, base_url=base_url, client_type=model.client_type)
+    return AutoLLMClient(
+        model=model.name, api_key=api_key, base_url=model.base_url or base_url, client_type=model.client_type
+    )
 
 
 async def _check_event_integrity(event: dict) -> None:
@@ -439,7 +504,10 @@ async def test_list_supported_models():
 @pytest.mark.parametrize(
     ("client_type", "client_name"),
     [
-        ("openai-compatible", "OpenaiClient"),
+        ("openai-compatible", "OpenaiChatClient"),
+        ("openai-chat-compatible", "OpenaiChatClient"),
+        ("openai-responses-compatible", "OpenaiResponsesClient"),
+        ("ant-messages-compatible", "AntMessagesClient"),
         ("openai-embedding-compatible", "OpenaiEmbeddingClient"),
     ],
 )
