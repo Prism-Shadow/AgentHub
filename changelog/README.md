@@ -24,13 +24,27 @@ Copy this template:
 - **Issue:** [#N](https://github.com/Prism-Shadow/agenthub/issues/N)
 - **Breaking:** yes — <what breaks, in one line>
 
+[中文版](<name>.zh.md)
+
 ## What changed
 
 - ...
 
-## Why
+## Problem
 
 ...
+
+## Decision
+
+...
+
+## Alternatives considered
+
+- ...
+
+## Verification
+
+- ...
 ```
 
 The metadata block sits directly under the H1, one field per bullet, always in the order above, so a reader and a `grep` find each field in the same place.
@@ -48,11 +62,25 @@ Omit a field that does not apply rather than writing a placeholder. A change wit
 
 ### Body
 
-The metadata block is the fixed part; the body is as long as the change deserves.
+An entry takes one of two shapes.
 
-- The body opens with a `##` section — `## What changed`, unless a more specific name fits the change (`## Protocol findings`, `## The bug`). Keep it to bullets, each led by the model id, class, or parameter a reader would search for. A small change needs nothing more.
-- A change with findings or decisions behind it adds `## Why`: what the code cannot carry — protocol differences found, config mappings chosen, alternatives rejected and the reason. `## Why` is the part still worth reading a year later. Add bespoke sections as the change needs them (`## Configuration behavior`, `## Registry metadata`, `## Verification`).
-- `## Compatibility` is required whenever `Breaking: yes`: what breaks, and the migration.
+**Short form** — the metadata block and `## What changed`, nothing else. Correct when nothing was decided: a model registration, a dependency bump, a typo. Most historical entries are this shape.
+
+**Full form** — the decision record, for any change where someone weighed something. Sections appear in this order; skip the ones that do not apply, never reorder the ones that do.
+
+| Section | When | What belongs in it |
+| --- | --- | --- |
+| `## What changed` | always | The user-visible outcome, in bullets, each led by the model id, class, or parameter a reader would search for. Not the implementation story. |
+| `## Problem` | full form | What was wrong or missing, stated as its consequence: "strict upstreams reject the spelling they did not emit, breaking multi-turn conversations", not "reasoning field handling was wrong". |
+| `## Decision` | full form | What the code does now and why this shape. Present tense, and kept true as the code evolves — this is the section a future change has to update or supersede. |
+| `## Alternatives considered` | full form | The options genuinely weighed and the reason each lost. "None" is not an answer: if nothing was weighed, the entry is short form. |
+| bespoke | as needed | Protocol tables, config mappings, registry metadata — the detail that supports the decision. Reuse an existing name (`## Configuration behavior`, `## Registry metadata`) before inventing one. |
+| `## Verification` | any client or protocol change | The evidence, named: which capture, which probe and what it returned, which e2e ran, what the live API actually did. "Tested" is not evidence. |
+| `## Risks` | when evidence is incomplete | What a future reader should distrust: assumptions never checked against the live API, provider behavior that may change, coverage deliberately skipped. |
+| `## Compatibility` | `Breaking: yes` | What breaks, and the migration. |
+| `## Deferred` | optional | Known follow-ups, recorded so they are not rediscovered later as bugs. |
+
+`## Proposal`, `## Plan`, and `## Acceptance criteria` never appear: an entry records work that shipped, not work that was intended.
 
 Cross-reference other entries with relative links, e.g. `[Gemini 3.7](../0.4.1/2026-07-22-kimi-k3-gemini-3-6-registry.md)`; relative links survive the folder rename at release time and can be checked mechanically.
 
@@ -70,8 +98,13 @@ What gets translated: all prose, and the section headings. Use these renderings 
 | English | 中文 |
 | --- | --- |
 | `## What changed` | `## 变更内容` |
-| `## Why` | `## 原因` |
+| `## Problem` | `## 问题` |
+| `## Decision` | `## 决策` |
+| `## Alternatives considered` | `## 备选方案权衡` |
+| `## Verification` | `## 验证` |
+| `## Risks` | `## 风险` |
 | `## Compatibility` | `## 兼容性` |
+| `## Deferred` | `## 待办` |
 
 Bespoke headings are translated naturally, keeping the same order and count as the English file. Each file links its counterpart on the line directly below the metadata block: `[中文版](<name>.zh.md)` in the English file, `[English](<name>.md)` in the Chinese one.
 
