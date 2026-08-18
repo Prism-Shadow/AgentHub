@@ -85,7 +85,7 @@ if os.getenv("GEMINI_API_KEY"):
     )
 
 if os.getenv("ANTHROPIC_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="claude-sonnet-4-6"))
+    AVAILABLE_MODELS.append(Model(name="claude-sonnet-4-6", support_temperature=False))
 
 if os.getenv("OPENAI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="gpt-5.6-luna", support_temperature=False))
@@ -154,7 +154,9 @@ if os.getenv("DEEPSEEK_API_KEY"):
         )
 
 if os.getenv("BEDROCK_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="global.anthropic.claude-sonnet-4-6", provider="bedrock"))
+    AVAILABLE_MODELS.append(
+        Model(name="global.anthropic.claude-sonnet-4-6", provider="bedrock", support_temperature=False)
+    )
 
 if os.getenv("VERTEX_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="gemini-3.7-flash", provider="vertex", support_temperature=False))
@@ -223,7 +225,7 @@ if os.getenv("SILICONFLOW_API_KEY") and RUN_SLOW_TEST:
     )
 
 if os.getenv("MODELVERSE_API_KEY") and RUN_SLOW_TEST:
-    AVAILABLE_MODELS.append(Model(name="claude-sonnet-4-6", provider="modelverse"))
+    AVAILABLE_MODELS.append(Model(name="claude-sonnet-4-6", provider="modelverse", support_temperature=False))
     AVAILABLE_MODELS.append(Model(name="gpt-5.5", provider="modelverse", support_temperature=False))
 
 

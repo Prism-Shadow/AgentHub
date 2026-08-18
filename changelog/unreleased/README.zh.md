@@ -2,6 +2,7 @@
 
 [English](README.md)
 
+- [2026-08-17] Claude 4.6 client 合并进统一的 `claude5` client，并对整个家族拒绝 `temperature`。([详情](2026-08-17-unify-claude-clients.zh.md), [#171](https://github.com/Prism-Shadow/agenthub/pull/171))
 - [2026-08-17] 通用 `openai_responses` 与 `ant_messages` 协议 client 覆盖 OpenAI、OpenRouter、DeepSeek、Z.AI 与 MiniMax；通用 chat client 重命名为 `openai_chat`。([详情](2026-08-17-protocol-clients.zh.md), [#171](https://github.com/Prism-Shadow/agenthub/pull/171))
 - [2026-08-17] GPT-5.6 支持：`gpt5_6` client 服务 GPT-5.4/5.5/5.6，registry 收录官方与 OpenRouter 价格。([详情](2026-08-17-gpt-5.6.zh.md), [#171](https://github.com/Prism-Shadow/agenthub/pull/171))
 - [2026-08-17] `UniConfig.fast_mode` 映射为 OpenAI `service_tier: "priority"` 与 Anthropic `speed: "fast"`。([详情](2026-08-17-fast-mode.zh.md), [#171](https://github.com/Prism-Shadow/agenthub/pull/171))

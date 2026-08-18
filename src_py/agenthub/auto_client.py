@@ -60,15 +60,11 @@ class AutoLLMClient(LLMClient):
 
             return Gemini3_7Client(model=model, api_key=api_key, base_url=base_url)
         elif "claude" in client_type and (
-            "4-7" in client_type or "4-8" in client_type or "-5" in client_type
-        ):  # e.g., claude-opus-4-7
+            "4-6" in client_type or "4-7" in client_type or "4-8" in client_type or "-5" in client_type
+        ):  # the whole Claude 4.6+ series shares the unified client, e.g., claude-sonnet-4-6
             from .claude5 import Claude5Client
 
             return Claude5Client(model=model, api_key=api_key, base_url=base_url)
-        elif "claude" in client_type and "4-6" in client_type:  # e.g., claude-sonnet-4-6
-            from .claude4_6 import Claude4_6Client
-
-            return Claude4_6Client(model=model, api_key=api_key, base_url=base_url)
         elif "gpt-5.4" in client_type or "gpt-5.5" in client_type or "gpt-5.6" in client_type:  # e.g., gpt-5.6
             from .gpt5_6 import GPT5_6Client
 

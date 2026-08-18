@@ -97,7 +97,7 @@ if (process.env.ANTHROPIC_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "claude-sonnet-4-6",
     supportTextGeneration: true,
-    supportTemperature: true,
+    supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -244,7 +244,7 @@ if (process.env.BEDROCK_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "global.anthropic.claude-sonnet-4-6",
     supportTextGeneration: true,
-    supportTemperature: true,
+    supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -399,7 +399,7 @@ if (process.env.MODELVERSE_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
     name: "claude-sonnet-4-6",
     supportTextGeneration: true,
-    supportTemperature: true,
+    supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,

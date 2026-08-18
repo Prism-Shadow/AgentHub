@@ -2,6 +2,7 @@
 
 [中文版](README.zh.md)
 
+- [2026-08-17] The Claude 4.6 client merges into the unified `claude5` client, which rejects `temperature` for the whole family. ([details](2026-08-17-unify-claude-clients.md), [#171](https://github.com/Prism-Shadow/agenthub/pull/171))
 - [2026-08-17] Generic `openai_responses` and `ant_messages` protocol clients cover OpenAI, OpenRouter, DeepSeek, Z.AI, and MiniMax; the generic chat client renames to `openai_chat`. ([details](2026-08-17-protocol-clients.md), [#171](https://github.com/Prism-Shadow/agenthub/pull/171))
 - [2026-08-17] GPT-5.6 support: the `gpt5_6` client serves GPT-5.4/5.5/5.6, with official and OpenRouter registry pricing. ([details](2026-08-17-gpt-5.6.md), [#171](https://github.com/Prism-Shadow/agenthub/pull/171))
 - [2026-08-17] `UniConfig.fast_mode` maps to OpenAI `service_tier: "priority"` and Anthropic `speed: "fast"`. ([details](2026-08-17-fast-mode.md), [#171](https://github.com/Prism-Shadow/agenthub/pull/171))

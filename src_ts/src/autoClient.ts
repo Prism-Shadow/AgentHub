@@ -14,7 +14,6 @@
 
 import { LLMClient } from "./baseClient";
 import { Gemini3_7Client } from "./gemini3_7";
-import { Claude4_6Client } from "./claude4_6";
 import { Claude5Client } from "./claude5";
 import { GPT5_6Client } from "./gpt5_6";
 import { GLM5_3Client } from "./glm5_3";
@@ -87,13 +86,13 @@ export class AutoLLMClient extends LLMClient {
       return new Gemini3_7Client({ model, apiKey, baseUrl });
     } else if (
       clientType.includes("claude") &&
-      (clientType.includes("4-7") ||
+      (clientType.includes("4-6") ||
+        clientType.includes("4-7") ||
         clientType.includes("4-8") ||
         clientType.includes("-5"))
     ) {
+      // the whole Claude 4.6+ series shares the unified client
       return new Claude5Client({ model, apiKey, baseUrl });
-    } else if (clientType.includes("claude") && clientType.includes("4-6")) {
-      return new Claude4_6Client({ model, apiKey, baseUrl });
     } else if (
       clientType.includes("gpt-5.4") ||
       clientType.includes("gpt-5.5") ||

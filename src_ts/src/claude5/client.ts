@@ -40,7 +40,7 @@ import {
 const REDACTED_THINKING = "_REDACTED_THINKING";
 
 /**
- * Claude 5-specific LLM client implementation.
+ * Claude 5-specific LLM client implementation (also serves Claude 4.6 through 4.8).
  */
 export class Claude5Client extends LLMClient {
   protected _model: string;
@@ -157,9 +157,12 @@ export class Claude5Client extends LLMClient {
         thinking: { type: "adaptive" },
         output_config: { effort: "high" },
       },
+      // Claude 4.6 has no xhigh effort, so XHIGH degrades to the closest supported level
       [ThinkingLevel.XHIGH]: {
         thinking: { type: "adaptive" },
-        output_config: { effort: "xhigh" },
+        output_config: {
+          effort: this._model.includes("4-6") ? "high" : "xhigh",
+        },
       },
     };
     return mapping[thinkingLevel];
@@ -213,7 +216,9 @@ export class Claude5Client extends LLMClient {
       throw new UnsupportedParameterError({
         client: this.constructor.name,
         parameter: "temperature",
-        message: "Claude 4.8 does not support setting temperature.",
+        message:
+          "Claude models do not support setting temperature; the API dropped it " +
+          "starting with the 4.7 generation and the unified client rejects it for the whole family.",
       });
     }
 
@@ -250,6 +255,14 @@ export class Claude5Client extends LLMClient {
           client: this.constructor.name,
           parameter: "fast_mode",
           message: "Bedrock does not support fast mode.",
+        });
+      }
+
+      if (this._model.includes("4-6")) {
+        throw new UnsupportedParameterError({
+          client: this.constructor.name,
+          parameter: "fast_mode",
+          message: "Claude 4.6 does not support fast mode.",
         });
       }
 
