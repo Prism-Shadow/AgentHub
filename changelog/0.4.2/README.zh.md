@@ -1,7 +1,8 @@
-# 未发布
+# 0.4.2
 
 [English](README.md)
 
+- [2026-08-18] 官方 DeepSeek registry 条目按更新后的空闲时段价目重新定价。([详情](2026-08-18-deepseek-pricing.zh.md), [#172](https://github.com/Prism-Shadow/agenthub/pull/172))
 - [2026-08-17] Kimi K2.6 client 合并进统一的 `kimi_k3` client，思考配置与缓存键按代际分支。([详情](2026-08-17-unify-kimi-clients.zh.md), [#171](https://github.com/Prism-Shadow/agenthub/pull/171))
 - [2026-08-17] Claude 4.6 client 合并进统一的 `claude5` client，并对整个家族拒绝 `temperature`。([详情](2026-08-17-unify-claude-clients.zh.md), [#171](https://github.com/Prism-Shadow/agenthub/pull/171))
 - [2026-08-17] 通用 `openai_responses` 与 `ant_messages` 协议 client 覆盖 OpenAI、OpenRouter、DeepSeek、Z.AI 与 MiniMax；通用 chat client 重命名为 `openai_chat`。([详情](2026-08-17-protocol-clients.zh.md), [#171](https://github.com/Prism-Shadow/agenthub/pull/171))
