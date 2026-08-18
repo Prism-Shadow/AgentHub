@@ -43,7 +43,7 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 | Model Name     | Vendor                              | Example Model ID       | Input Modalities | Output Modalities              |
 | -------------- | ----------------------------------- | ---------------------- | ---------------- | ------------------------------ |
 | Gemini 3-3.7   | Official/Google Vertex AI           | `gemini-3.7-flash`     | Text, Image      | Text, Image, Speech, Embedding |
-| Claude 4.6-5   | Official/Amazon Bedrock/UModelVerse | `claude-opus-4-8`      | Text, Image      | Text                           |
+| Claude 4.6-5   | Official/Amazon Bedrock/UModelVerse | `claude-sonnet-5`      | Text, Image      | Text                           |
 | GPT-5.4-5.6    | Official/OpenRouter/UModelVerse     | `gpt-5.6`              | Text, Image      | Text, Embedding                |
 | Kimi-K2.5/K2.6/K3 | Official/OpenRouter/SiliconFlow  | `kimi-k3`              | Text, Image      | Text                           |
 | DeepSeek V4    | Official/OpenRouter/SiliconFlow     | `deepseek-v4-pro`      | Text             | Text                           |
@@ -392,6 +392,62 @@ main().catch(console.error);
 ```
 </details>
 
+### Z.AI GLM via the OpenAI Responses protocol
+
+<details><summary><strong>Python Example</strong></summary>
+
+```python
+import asyncio
+import os
+from agenthub import AutoLLMClient
+
+async def main():
+    client = AutoLLMClient(
+        model="glm-5.2",
+        api_key=os.environ["ZAI_API_KEY"],
+        base_url="https://api.z.ai/api/v1",
+        client_type="openai-responses",
+    )
+    async for event in client.streaming_response_stateful(
+        message={
+            "role": "user",
+            "content_items": [{"type": "text", "text": "Say 'Hello, World!'"}]
+        },
+        config={}
+    ):
+        print(event)
+
+asyncio.run(main())
+```
+</details>
+
+<details><summary><strong>TypeScript Example</strong></summary>
+
+```typescript
+import { AutoLLMClient } from "@prismshadow/agenthub";
+
+async function main() {
+  const client = new AutoLLMClient({
+    model: "glm-5.2",
+    apiKey: process.env.ZAI_API_KEY,
+    baseUrl: "https://api.z.ai/api/v1",
+    clientType: "openai-responses",
+  });
+  for await (const event of client.streamingResponseStateful({
+    message: {
+      role: "user",
+      content_items: [{ type: "text", text: "Say 'Hello, World!'" }],
+    },
+    config: {},
+  })) {
+    console.log(event);
+  }
+}
+
+main();
+```
+</details>
+
 ### DeepSeek via the Anthropic Messages protocol
 
 Any compatible endpoint can be called through the generic protocol clients by picking the
@@ -485,13 +541,14 @@ Example UniConfig:
     }
   ],
   "thinking_summary": true,
-  "thinking_level": "none | low | medium | high",
-  "tool_choice": "auto | required | none",
+  "thinking_level": "none | low | medium | high | xhigh",
+  "tool_choice": "auto | required | none | a list of allowed tool names",
   "system_prompt": "You are a helpful assistant.",
   "prompt_caching": "enable | disable | enhance",
   "fast_mode": false,
   "image_config": {"aspect_ratio": "4:3", "image_size": "1K"},
   "tts_config": [{"voice": "Kore"}],
+  "embedding_config": {"dimensions": 768},
   "trace_id": null
 }
 ```
@@ -615,6 +672,8 @@ The integrated tracer is available at `http://localhost:25751/tracer/`.
 
 Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
 
-## Star History
+## Used By
 
-![Star History Chart](https://api.star-history.com/svg?repos=Prism-Shadow/AgentHub&type=Date)
+Projects built on AgentHub:
+
+- [PenguinHarness](https://github.com/Prism-Shadow/penguin-harness)
