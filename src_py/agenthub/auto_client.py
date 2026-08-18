@@ -73,14 +73,11 @@ class AutoLLMClient(LLMClient):
             from .glm5_3 import GLM5_3Client
 
             return GLM5_3Client(model=model, api_key=api_key, base_url=base_url)
-        elif "kimi-k3" in client_type:
+        elif "kimi-k3" in client_type or "kimi-k2.5" in client_type or "kimi-k2.6" in client_type:
+            # the whole Kimi K2.5+ series shares the unified client
             from .kimi_k3 import KimiK3Client
 
             return KimiK3Client(model=model, api_key=api_key, base_url=base_url)
-        elif "kimi-k2.5" in client_type or "kimi-k2.6" in client_type:
-            from .kimi_k2_6 import KimiK2_6Client
-
-            return KimiK2_6Client(model=model, api_key=api_key, base_url=base_url)
         elif "deepseek-v4" in client_type:
             from .deepseek_v4 import DeepSeekV4Client
 

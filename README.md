@@ -177,7 +177,7 @@ main().catch(console.error);
 // {'role': 'assistant', 'event_type': 'stop', 'content_items': [], 'usage_metadata': {'cached_tokens': 0, 'prompt_tokens': 12, 'thoughts_tokens': 0, 'response_tokens': 8}, 'finish_reason': 'stop'}
 ```
 
-### Anthropic Claude 4.6
+### Anthropic Claude Sonnet 5
 
 <details><summary><strong>Python Example</strong></summary>
 
@@ -189,7 +189,7 @@ from agenthub import AutoLLMClient
 os.environ["ANTHROPIC_API_KEY"] = "your-anthropic-api-key"
 
 async def main():
-    client = AutoLLMClient(model="claude-sonnet-4-6")
+    client = AutoLLMClient(model="claude-sonnet-5")
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -212,7 +212,7 @@ import { AutoLLMClient } from "@prismshadow/agenthub";
 process.env.ANTHROPIC_API_KEY = "your-anthropic-api-key";
 
 async function main() {
-  const client = new AutoLLMClient({ model: "claude-sonnet-4-6" });
+  const client = new AutoLLMClient({ model: "claude-sonnet-5" });
   for await (const event of client.streamingResponseStateful({
     message: {
       role: "user",
@@ -391,6 +391,70 @@ async function main() {
 main().catch(console.error);
 ```
 </details>
+
+### DeepSeek via the Anthropic Messages protocol
+
+Any compatible endpoint can be called through the generic protocol clients by picking the
+client type (`openai-chat` / `openai-responses` / `ant-messages`) and the provider's base
+URL for that protocol:
+
+<details><summary><strong>Python Example</strong></summary>
+
+```python
+import asyncio
+import os
+from agenthub import AutoLLMClient
+
+async def main():
+    client = AutoLLMClient(
+        model="deepseek-v4-flash",
+        api_key=os.environ["DEEPSEEK_API_KEY"],
+        base_url="https://api.deepseek.com/anthropic",
+        client_type="ant-messages",
+    )
+    async for event in client.streaming_response_stateful(
+        message={
+            "role": "user",
+            "content_items": [{"type": "text", "text": "Say 'Hello, World!'"}]
+        },
+        config={}
+    ):
+        print(event)
+
+asyncio.run(main())
+```
+</details>
+
+<details><summary><strong>TypeScript Example</strong></summary>
+
+```typescript
+import { AutoLLMClient } from "@prismshadow/agenthub";
+
+async function main() {
+  const client = new AutoLLMClient({
+    model: "deepseek-v4-flash",
+    apiKey: process.env.DEEPSEEK_API_KEY,
+    baseUrl: "https://api.deepseek.com/anthropic",
+    clientType: "ant-messages",
+  });
+  for await (const event of client.streamingResponseStateful({
+    message: {
+      role: "user",
+      content_items: [{ type: "text", text: "Say 'Hello, World!'" }],
+    },
+    config: {},
+  })) {
+    console.log(event);
+  }
+}
+
+main();
+```
+</details>
+
+The same model works over `client_type="openai-responses"` (base URL
+`https://api.deepseek.com`) and `client_type="openai-chat"`; OpenRouter, Z.AI, and MiniMax
+expose all three protocols the same way.
 
 ## Concepts: UniConfig, UniMessage and UniEvent
 

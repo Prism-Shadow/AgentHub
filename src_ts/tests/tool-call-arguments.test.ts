@@ -56,7 +56,7 @@ const OPENAI_COMPATIBLE_TOOL_STREAM_CASES: OpenAICompatibleToolStreamCase[] = [
     clientType: "glm-5.1",
   },
   {
-    expectedClient: "KimiK2_6Client",
+    expectedClient: "KimiK3Client",
     model: "kimi-k2.6",
     clientType: "kimi-k2.6",
   },

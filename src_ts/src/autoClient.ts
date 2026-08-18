@@ -17,7 +17,6 @@ import { Gemini3_7Client } from "./gemini3_7";
 import { Claude5Client } from "./claude5";
 import { GPT5_6Client } from "./gpt5_6";
 import { GLM5_3Client } from "./glm5_3";
-import { KimiK2_6Client } from "./kimi_k2_6";
 import { KimiK3Client } from "./kimi_k3";
 import { OpenaiChatClient } from "./openai_chat";
 import { OpenaiResponsesClient } from "./openai_responses";
@@ -102,13 +101,13 @@ export class AutoLLMClient extends LLMClient {
     } else if (clientType.includes("glm-5")) {
       // the whole GLM series shares the unified client
       return new GLM5_3Client({ model, apiKey, baseUrl });
-    } else if (clientType.includes("kimi-k3")) {
-      return new KimiK3Client({ model, apiKey, baseUrl });
     } else if (
+      clientType.includes("kimi-k3") ||
       clientType.includes("kimi-k2.5") ||
       clientType.includes("kimi-k2.6")
     ) {
-      return new KimiK2_6Client({ model, apiKey, baseUrl });
+      // the whole Kimi K2.5+ series shares the unified client
+      return new KimiK3Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("deepseek-v4")) {
       return new DeepSeekV4Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("ant-messages")) {

@@ -40,7 +40,7 @@ from ..utils import fix_openrouter_usage_metadata
 
 
 class KimiK3Client(LLMClient):
-    """Kimi K3-specific LLM client implementation using OpenAI-compatible API."""
+    """Kimi K3-specific LLM client implementation using OpenAI-compatible API (also serves K2.5 and K2.6)."""
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
         """Initialize Kimi K3 client with model and API key."""
@@ -70,6 +70,17 @@ class KimiK3Client(LLMClient):
             base64_string = base64.b64encode(image_bytes).decode("utf-8")
             return f"data:{mime_type};base64,{base64_string}"
 
+    def _convert_thinking_level_to_thinking_config(self, thinking_level: ThinkingLevel) -> dict[str, str]:
+        """Convert ThinkingLevel enum to the K2-generation thinking configuration."""
+        mapping = {
+            ThinkingLevel.NONE: {"type": "disabled"},
+            ThinkingLevel.LOW: {"type": "enabled", "keep": "all"},
+            ThinkingLevel.MEDIUM: {"type": "enabled", "keep": "all"},
+            ThinkingLevel.HIGH: {"type": "enabled", "keep": "all"},
+            ThinkingLevel.XHIGH: {"type": "enabled", "keep": "all"},
+        }
+        return mapping.get(thinking_level)
+
     def _convert_thinking_level_to_reasoning_effort(self, thinking_level: ThinkingLevel) -> str:
         """Convert ThinkingLevel enum to Kimi K3's reasoning_effort.
 
@@ -90,14 +101,15 @@ class KimiK3Client(LLMClient):
             return "auto"
         elif tool_choice == "none":
             return "none"
-        elif tool_choice == "required":
+        elif tool_choice == "required" and "k2." not in self._model.lower():
             return "required"
         else:
-            # forcing a specific tool is incompatible with K3's always-on reasoning
+            # the K2 generation rejects "required"; forcing a specific tool is
+            # unsupported family-wide
             raise UnsupportedParameterError(
                 self.__class__.__name__,
                 "tool_choice",
-                "Kimi K3 does not support forcing specific tools; only 'auto', 'none' and 'required' are supported.",
+                "Kimi does not support this tool_choice ('required' needs Kimi K3).",
             )
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
@@ -117,13 +129,19 @@ class KimiK3Client(LLMClient):
 
         if config.get("temperature") is not None and config["temperature"] != 1.0:
             raise UnsupportedParameterError(
-                self.__class__.__name__, "temperature", "Kimi K3 does not support setting temperature."
+                self.__class__.__name__, "temperature", "Kimi does not support setting temperature."
             )
 
         if config.get("thinking_level") is not None:
-            kimi_config["reasoning_effort"] = self._convert_thinking_level_to_reasoning_effort(
-                config["thinking_level"]
-            )
+            # the K2 generation configures thinking through extra_body and can disable it;
+            # K3 uses reasoning_effort and cannot
+            if "k2." in self._model.lower():
+                thinking_config = self._convert_thinking_level_to_thinking_config(config["thinking_level"])
+                kimi_config.setdefault("extra_body", {})["thinking"] = thinking_config
+            else:
+                kimi_config["reasoning_effort"] = self._convert_thinking_level_to_reasoning_effort(
+                    config["thinking_level"]
+                )
 
         if config.get("tools") is not None:
             kimi_config["tools"] = [{"type": "function", "function": tool} for tool in config["tools"]]
@@ -132,16 +150,17 @@ class KimiK3Client(LLMClient):
             kimi_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
 
         if config.get("fast_mode"):
-            raise UnsupportedParameterError(
-                self.__class__.__name__, "fast_mode", "Kimi K3 does not support fast mode."
-            )
+            raise UnsupportedParameterError(self.__class__.__name__, "fast_mode", "Kimi does not support fast mode.")
 
         if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
             raise UnsupportedParameterError(
-                self.__class__.__name__, "prompt_caching", "prompt_caching must be ENABLE for Kimi K3."
+                self.__class__.__name__, "prompt_caching", "prompt_caching must be ENABLE for Kimi."
             )
 
-        # K3 context caching is automatic; trace_id is intentionally not sent as prompt_cache_key
+        # K3 context caching is automatic; the K2 generation keys its prompt cache on trace_id
+        if config.get("trace_id") is not None and "k2." in self._model.lower():
+            kimi_config["prompt_cache_key"] = config["trace_id"]
+
         return kimi_config
 
     async def transform_uni_message_to_model_input(
