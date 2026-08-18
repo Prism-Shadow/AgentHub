@@ -392,7 +392,11 @@ main().catch(console.error);
 ```
 </details>
 
-### Z.AI GLM via the OpenAI Responses protocol
+### DeepSeek via the OpenAI Responses protocol
+
+Any compatible endpoint can be called through the generic protocol clients by picking the
+client type (`openai-chat` / `openai-responses` / `ant-messages`) and the provider's base
+URL for that protocol:
 
 <details><summary><strong>Python Example</strong></summary>
 
@@ -403,9 +407,9 @@ from agenthub import AutoLLMClient
 
 async def main():
     client = AutoLLMClient(
-        model="glm-5.2",
-        api_key=os.environ["ZAI_API_KEY"],
-        base_url="https://api.z.ai/api/v1",
+        model="deepseek-v4-flash",
+        api_key=os.environ["DEEPSEEK_API_KEY"],
+        base_url="https://api.deepseek.com",
         client_type="openai-responses",
     )
     async for event in client.streaming_response_stateful(
@@ -428,9 +432,9 @@ import { AutoLLMClient } from "@prismshadow/agenthub";
 
 async function main() {
   const client = new AutoLLMClient({
-    model: "glm-5.2",
-    apiKey: process.env.ZAI_API_KEY,
-    baseUrl: "https://api.z.ai/api/v1",
+    model: "deepseek-v4-flash",
+    apiKey: process.env.DEEPSEEK_API_KEY,
+    baseUrl: "https://api.deepseek.com",
     clientType: "openai-responses",
   });
   for await (const event of client.streamingResponseStateful({
@@ -449,10 +453,6 @@ main();
 </details>
 
 ### DeepSeek via the Anthropic Messages protocol
-
-Any compatible endpoint can be called through the generic protocol clients by picking the
-client type (`openai-chat` / `openai-responses` / `ant-messages`) and the provider's base
-URL for that protocol:
 
 <details><summary><strong>Python Example</strong></summary>
 
@@ -508,9 +508,9 @@ main();
 ```
 </details>
 
-The same model works over `client_type="openai-responses"` (base URL
-`https://api.deepseek.com`) and `client_type="openai-chat"`; OpenRouter, Z.AI, and MiniMax
-expose all three protocols the same way.
+The same model works over `client_type="openai-chat"` (base URL
+`https://api.deepseek.com`); OpenRouter, Z.AI, and MiniMax expose all three protocols the
+same way.
 
 ## Concepts: UniConfig, UniMessage and UniEvent
 
