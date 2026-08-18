@@ -296,7 +296,9 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _cny(1.0, 2.0, cached=0.02),
+        # official off-peak list price (verified 2026-08-18); peak-hour rates
+        # (Beijing 9:00-12:00, 14:00-18:00) are double
+        "pricing": _cny(1.5, 4.5, cached=0.05),
     },
     {
         "model": "deepseek-v4-pro",
@@ -305,7 +307,9 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _cny(3.0, 6.0, cached=0.025),
+        # official off-peak list price (verified 2026-08-18); peak-hour rates
+        # (Beijing 9:00-12:00, 14:00-18:00) are double
+        "pricing": _cny(4.5, 13.5, cached=0.15),
     },
     # OpenRouter (USD prices, context windows and modality flags from the live /models API)
     {

@@ -2,6 +2,7 @@
 
 [中文版](README.zh.md)
 
+- [2026-08-18] The official DeepSeek registry entries re-price to the updated off-peak list. ([details](2026-08-18-deepseek-pricing.md), [#172](https://github.com/Prism-Shadow/agenthub/pull/172))
 - [2026-08-17] The Kimi K2.6 client merges into the unified `kimi_k3` client, branching thinking config and prompt-cache keying by generation. ([details](2026-08-17-unify-kimi-clients.md), [#171](https://github.com/Prism-Shadow/agenthub/pull/171))
 - [2026-08-17] The Claude 4.6 client merges into the unified `claude5` client, which rejects `temperature` for the whole family. ([details](2026-08-17-unify-claude-clients.md), [#171](https://github.com/Prism-Shadow/agenthub/pull/171))
 - [2026-08-17] Generic `openai_responses` and `ant_messages` protocol clients cover OpenAI, OpenRouter, DeepSeek, Z.AI, and MiniMax; the generic chat client renames to `openai_chat`. ([details](2026-08-17-protocol-clients.md), [#171](https://github.com/Prism-Shadow/agenthub/pull/171))
