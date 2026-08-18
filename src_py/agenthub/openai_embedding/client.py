@@ -18,6 +18,7 @@ from typing import Any, AsyncIterator
 from openai import AsyncOpenAI
 
 from ..base_client import LLMClient
+from ..errors import UnsupportedParameterError
 from ..types import UniConfig, UniEvent, UniMessage
 
 
@@ -34,6 +35,11 @@ class OpenaiEmbeddingClient(LLMClient):
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """Transform universal configuration to OpenAI Embeddings configuration."""
+        if config.get("fast_mode"):
+            raise UnsupportedParameterError(
+                self.__class__.__name__, "fast_mode", "OpenAI embeddings do not support fast mode."
+            )
+
         params: dict[str, Any] = {"model": self._model}
         embedding_config = config.get("embedding_config") or {}
         if embedding_config.get("dimensions") is not None:

@@ -1,5 +1,13 @@
 # Add the `fidelity` field and replay the exact reasoning field the upstream produced
 
+- **Date:** 2026-07-20
+- **Type:** fix
+- **Scope:** `types`, `base_client`, `openai`, `glm5_1`, `kimi_k2_6`
+- **PR:** [#159](https://github.com/Prism-Shadow/agenthub/pull/159)
+- **Breaking:** yes — clients no longer read top-level `signature`/`phase` on content items; histories recorded by earlier versions must move them into `fidelity`
+
+[中文版](2026-07-20-reasoning-field-fidelity.zh.md)
+
 ## The bug
 
 OpenAI Chat Completions-compatible servers spell the streamed thinking field differently — vLLM & SiliconFlow use `reasoning_content` while OpenRouter uses `reasoning` — and when sending assistant history back, the `openai`, `glm5_1`, and `kimi_k2_6` clients always set **both** fields on the message. Strict upstreams reject the spelling they did not emit (e.g. a server that returned `reasoning_content` refuses a request containing `reasoning`), breaking multi-turn conversations.
@@ -30,7 +38,7 @@ On receive, the OpenAI-compatible clients record the wire field name that carrie
 - text: a phase change starts a new item (same-phase and phaseless deltas merge, per the GPT-5.5 `phase` guide); an incoming fidelity payload (e.g. a signature) merges into the open item's fidelity and finishes it.
 - thinking: an incoming fidelity payload finishes the open item (Claude signature deltas, GPT-5.5 reasoning markers), and a run of deltas carrying **equal** fidelity concatenates into one item (the OpenAI-compatible per-delta `reasoning_field` tags).
 
-## Breaking change
+## Compatibility
 
 Histories recorded by earlier versions carry `signature` / `phase` at the top level of content items; clients no longer read those fields. To replay an old history, move each item's `signature`/`phase` into `fidelity` (`{"signature": ...}` for Claude/Gemini, `{"id": ..., "encrypted_content": ...}` parsed from the GPT-5.5 JSON string, `{"phase": ...}` for GPT-5.5 text).
 

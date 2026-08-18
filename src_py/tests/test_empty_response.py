@@ -30,17 +30,17 @@ class ReasoningStreamCase:
 
 REASONING_STREAM_CASES = [
     ReasoningStreamCase(
-        expected_client="OpenaiClient",
+        expected_client="OpenaiChatClient",
         model="gpt-5.5",
         client_type="openai",
     ),
     ReasoningStreamCase(
-        expected_client="GLM5_1Client",
+        expected_client="GLM5_3Client",
         model="glm-5.1",
         client_type="glm-5.1",
     ),
     ReasoningStreamCase(
-        expected_client="KimiK2_6Client",
+        expected_client="KimiK3Client",
         model="kimi-k2.6",
         client_type="kimi-k2.6",
     ),

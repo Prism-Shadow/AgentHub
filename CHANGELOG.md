@@ -1,6 +1,10 @@
 # Changelog
 
+[中文版](CHANGELOG.zh.md)
+
 Here, we record the addition and removal times of models, major functional updates, bug fixes, and release times of key versions. Each release keeps one brief line here; the per-entry summaries live in `changelog/<version>/README.md`, and every entry links its detail file.
+
+- [2026-08-18] [Version 0.4.2](changelog/0.4.2/README.md): generic OpenAI Responses and Anthropic Messages protocol clients covering OpenAI, OpenRouter, DeepSeek, Z.AI, and MiniMax (the generic chat client renames to `openai-chat`), GPT-5.6 support, `UniConfig.fast_mode`, and the Claude and Kimi series clients unified with family-wide `temperature` rejection.
 
 - [2026-07-22] [Version 0.4.1](changelog/0.4.1/README.md): Kimi K3, the Gemini 3.6 generation (gemini-3.6-flash, gemini-3.5-flash-lite), and GLM-5.2 support, a supported-model registry with USD/CNY pricing, context windows, and modalities, and the `UnsupportedParameterError` parameter error class.
 

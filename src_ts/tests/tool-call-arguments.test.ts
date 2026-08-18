@@ -46,17 +46,17 @@ interface OpenAICompatibleToolStreamCase {
 
 const OPENAI_COMPATIBLE_TOOL_STREAM_CASES: OpenAICompatibleToolStreamCase[] = [
   {
-    expectedClient: "OpenaiClient",
+    expectedClient: "OpenaiChatClient",
     model: "gpt-5.5",
     clientType: "openai",
   },
   {
-    expectedClient: "GLM5_1Client",
+    expectedClient: "GLM5_3Client",
     model: "glm-5.1",
     clientType: "glm-5.1",
   },
   {
-    expectedClient: "KimiK2_6Client",
+    expectedClient: "KimiK3Client",
     model: "kimi-k2.6",
     clientType: "kimi-k2.6",
   },

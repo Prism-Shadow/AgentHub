@@ -61,6 +61,7 @@ _MOONSHOT = "https://api.moonshot.cn/v1"
 _DEEPSEEK = "https://api.deepseek.com"
 _OPENROUTER = "https://openrouter.ai/api/v1"
 _SILICONFLOW = "https://api.siliconflow.cn/v1"
+_MINIMAX = "https://api.minimax.io/v1"
 
 # Display convention shared with the AgentHub apps: prices are stored in USD (official CNY
 # list prices pre-converted at 7 CNY/USD), so requesting CNY shows the vendor's numbers.
@@ -95,9 +96,19 @@ def _cny(prompt: float, output: float, cached: float | None = None) -> ModelPric
 _SUPPORTED_MODELS: list[SupportedModel] = [
     # official vendor endpoints
     {
+        "model": "gemini-3.7-flash",
+        "base_url": _GOOGLE,
+        "client": "gemini-3.7",
+        "input_modalities": ["Text", "Image", "Video", "Audio"],
+        "output_modalities": ["Text"],
+        "context_window": 1048576,
+        # official list price; a launch discount halves all three rates through 2026-12-31
+        "pricing": _usd(1.5, 7.5, cached=0.15),
+    },
+    {
         "model": "gemini-3.6-flash",
         "base_url": _GOOGLE,
-        "client": "gemini-3.6",
+        "client": "gemini-3.7",
         "input_modalities": ["Text", "Image", "Video", "Audio"],
         "output_modalities": ["Text"],
         "context_window": 1048576,
@@ -106,7 +117,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "gemini-3.5-flash-lite",
         "base_url": _GOOGLE,
-        "client": "gemini-3.6",
+        "client": "gemini-3.7",
         "input_modalities": ["Text", "Image", "Video", "Audio"],
         "output_modalities": ["Text"],
         "context_window": 1048576,
@@ -115,7 +126,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "gemini-3.5-flash",
         "base_url": _GOOGLE,
-        "client": "gemini-3",
+        "client": "gemini-3.7",
         "input_modalities": ["Text", "Image", "Video", "Audio"],
         "output_modalities": ["Text"],
         "context_window": 1048576,
@@ -124,21 +135,21 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "gemini-3.1-flash-image",
         "base_url": _GOOGLE,
-        "client": "gemini-3",
+        "client": "gemini-3.7",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Image"],
     },
     {
         "model": "gemini-3.1-flash-tts-preview",
         "base_url": _GOOGLE,
-        "client": "gemini-3",
+        "client": "gemini-3.7",
         "input_modalities": ["Text"],
         "output_modalities": ["Audio"],
     },
     {
         "model": "gemini-embedding-2",
         "base_url": _GOOGLE,
-        "client": "gemini-3",
+        "client": "gemini-3.7",
         "input_modalities": ["Text"],
         "output_modalities": ["Embed"],
     },
@@ -179,6 +190,34 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "pricing": _usd(3.0, 15.0, cached=0.3),
     },
     {
+        # the gpt-5.6 alias routes to gpt-5.6-sol; official standard-tier list price
+        "model": "gpt-5.6",
+        "base_url": _OPENAI,
+        "client": "gpt-5.6",
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
+        "context_window": 1050000,
+        "pricing": _usd(5.0, 30.0, cached=0.5),
+    },
+    {
+        "model": "gpt-5.6-terra",
+        "base_url": _OPENAI,
+        "client": "gpt-5.6",
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
+        "context_window": 1050000,
+        "pricing": _usd(2.0, 12.0, cached=0.2),
+    },
+    {
+        "model": "gpt-5.6-luna",
+        "base_url": _OPENAI,
+        "client": "gpt-5.6",
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
+        "context_window": 1050000,
+        "pricing": _usd(0.2, 1.2, cached=0.02),
+    },
+    {
         "model": "gpt-5.5",
         "base_url": _OPENAI,
         "client": "gpt-5.5",
@@ -186,6 +225,16 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "output_modalities": ["Text"],
         "context_window": 1050000,
         "pricing": _usd(5.0, 30.0, cached=0.5),
+    },
+    {
+        "model": "MiniMax-M3",
+        "base_url": _MINIMAX,
+        "client": "minimax-m3",
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
+        "context_window": 1000000,
+        # official list price for the <=512K-input tier; rates double above it
+        "pricing": _usd(0.3, 1.2, cached=0.06),
     },
     {
         "model": "text-embedding-3-large",
@@ -196,9 +245,18 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "pricing": _usd(0.13, 0.0),
     },
     {
+        "model": "glm-5.3",
+        "base_url": _ZAI,
+        "client": "glm-5.3",
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
+        "context_window": 1000000,
+        # pricing omitted: the API is announced but not yet live and no price is published
+    },
+    {
         "model": "glm-5.2",
         "base_url": _ZAI,
-        "client": "glm-5.2",
+        "client": "glm-5.3",
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
@@ -207,7 +265,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "glm-5.1",
         "base_url": _ZAI,
-        "client": "glm-5.1",
+        "client": "glm-5.3",
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 200000,
@@ -238,7 +296,9 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _cny(1.0, 2.0, cached=0.02),
+        # official off-peak list price (verified 2026-08-18); peak-hour rates
+        # (Beijing 9:00-12:00, 14:00-18:00) are double
+        "pricing": _cny(1.5, 4.5, cached=0.05),
     },
     {
         "model": "deepseek-v4-pro",
@@ -247,13 +307,15 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
-        "pricing": _cny(3.0, 6.0, cached=0.025),
+        # official off-peak list price (verified 2026-08-18); peak-hour rates
+        # (Beijing 9:00-12:00, 14:00-18:00) are double
+        "pricing": _cny(4.5, 13.5, cached=0.15),
     },
     # OpenRouter (USD prices, context windows and modality flags from the live /models API)
     {
         "model": "anthropic/claude-fable-5",
         "base_url": _OPENROUTER,
-        "client": "openai",
+        "client": "openai-chat",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
@@ -262,7 +324,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "anthropic/claude-opus-4.8",
         "base_url": _OPENROUTER,
-        "client": "openai",
+        "client": "openai-chat",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
@@ -271,7 +333,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "anthropic/claude-opus-4.7",
         "base_url": _OPENROUTER,
-        "client": "openai",
+        "client": "openai-chat",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
@@ -280,7 +342,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "anthropic/claude-sonnet-5",
         "base_url": _OPENROUTER,
-        "client": "openai",
+        "client": "openai-chat",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
@@ -307,7 +369,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "google/gemini-3.5-flash",
         "base_url": _OPENROUTER,
-        "client": "openai",
+        "client": "openai-chat",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1048576,
@@ -316,7 +378,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "minimax/minimax-m3",
         "base_url": _OPENROUTER,
-        "client": "openai",
+        "client": "openai-chat",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1048576,
@@ -343,7 +405,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
         "base_url": _OPENROUTER,
-        "client": "openai",
+        "client": "openai-chat",
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
@@ -352,7 +414,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "openai/gpt-5.6-sol",
         "base_url": _OPENROUTER,
-        "client": "openai",
+        "client": "openai-chat",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1050000,
@@ -361,16 +423,25 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "openai/gpt-5.6-terra",
         "base_url": _OPENROUTER,
-        "client": "openai",
+        "client": "openai-chat",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1050000,
-        "pricing": _usd(2.5, 15.0, cached=0.25),
+        "pricing": _usd(1.0, 6.0, cached=0.1),
+    },
+    {
+        "model": "openai/gpt-5.6-luna",
+        "base_url": _OPENROUTER,
+        "client": "openai-chat",
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
+        "context_window": 1050000,
+        "pricing": _usd(0.1, 0.6, cached=0.01),
     },
     {
         "model": "openai/gpt-5.5",
         "base_url": _OPENROUTER,
-        "client": "openai",
+        "client": "openai-chat",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1050000,
@@ -379,7 +450,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "qwen/qwen3.6-35b-a3b",
         "base_url": _OPENROUTER,
-        "client": "openai",
+        "client": "openai-chat",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 262144,
@@ -397,7 +468,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "stepfun/step-3.7-flash",
         "base_url": _OPENROUTER,
-        "client": "openai",
+        "client": "openai-chat",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 262144,
@@ -406,7 +477,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "tencent/hy3",
         "base_url": _OPENROUTER,
-        "client": "openai",
+        "client": "openai-chat",
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 262144,
@@ -415,7 +486,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "x-ai/grok-4.5",
         "base_url": _OPENROUTER,
-        "client": "openai",
+        "client": "openai-chat",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 500000,
@@ -424,7 +495,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "xiaomi/mimo-v2.5",
         "base_url": _OPENROUTER,
-        "client": "openai",
+        "client": "openai-chat",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1050000,
@@ -470,7 +541,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "meituan-longcat/LongCat-2.0",
         "base_url": _SILICONFLOW,
-        "client": "openai",
+        "client": "openai-chat",
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
@@ -479,7 +550,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "moonshotai/Kimi-K2.7-Code",
         "base_url": _SILICONFLOW,
-        "client": "openai",
+        "client": "openai-chat",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 262144,
@@ -513,7 +584,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "Qwen/Qwen3.6-35B-A3B",
         "base_url": _SILICONFLOW,
-        "client": "openai",
+        "client": "openai-chat",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 262144,

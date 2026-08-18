@@ -44,19 +44,15 @@ Stateless method that requires passing the full message history on each call:
 import asyncio
 from agenthub import AutoLLMClient
 
+
 async def main():
     client = AutoLLMClient(model="gpt-5.5")
 
     async for event in client.streaming_response(
-        messages=[
-            {
-                "role": "user",
-                "content_items": [{"type": "text", "text": "Hello!"}]
-            }
-        ],
-        config={}
+        messages=[{"role": "user", "content_items": [{"type": "text", "text": "Hello!"}]}], config={}
     ):
         print(event)
+
 
 asyncio.run(main())
 ```
@@ -69,28 +65,22 @@ Stateful method that maintains conversation history internally:
 import asyncio
 from agenthub import AutoLLMClient
 
+
 async def main():
     client = AutoLLMClient(model="gpt-5.5")
 
     # First message
     async for event in client.streaming_response_stateful(
-        message={
-            "role": "user",
-            "content_items": [{"type": "text", "text": "My name is Alice"}]
-        },
-        config={}
+        message={"role": "user", "content_items": [{"type": "text", "text": "My name is Alice"}]}, config={}
     ):
         print(event)
 
     # Second message - history is maintained automatically
     async for event in client.streaming_response_stateful(
-        message={
-            "role": "user",
-            "content_items": [{"type": "text", "text": "What's my name?"}]
-        },
-        config={}
+        message={"role": "user", "content_items": [{"type": "text", "text": "What's my name?"}]}, config={}
     ):
         print(event)
+
 
 asyncio.run(main())
 ```
@@ -145,9 +135,11 @@ import asyncio
 import json
 from agenthub import AutoLLMClient
 
+
 def get_weather(location: str) -> str:
     """Mock function to get weather."""
     return f"Temperature in {location}: 22°C"
+
 
 async def main():
     # Define tool
@@ -156,14 +148,9 @@ async def main():
         "description": "Gets the current weather for a given location.",
         "parameters": {
             "type": "object",
-            "properties": {
-                "location": {
-                    "type": "string",
-                    "description": "The city name"
-                }
-            },
-            "required": ["location"]
-        }
+            "properties": {"location": {"type": "string", "description": "The city name"}},
+            "required": ["location"],
+        },
     }
 
     client = AutoLLMClient(model="gpt-5.5")
@@ -172,11 +159,8 @@ async def main():
     # User asks about weather
     events = []
     async for event in client.streaming_response_stateful(
-        message={
-            "role": "user",
-            "content_items": [{"type": "text", "text": "What's the weather in London?"}]
-        },
-        config=config
+        message={"role": "user", "content_items": [{"type": "text", "text": "What's the weather in London?"}]},
+        config=config,
     ):
         events.append(event)
 
@@ -203,13 +187,14 @@ async def main():
                     {
                         "type": "tool_result",
                         "text": result,
-                        "tool_call_id": tool_call["tool_call_id"]  # Required for tool responses
+                        "tool_call_id": tool_call["tool_call_id"],  # Required for tool responses
                     }
-                ]
+                ],
             },
-            config=config
+            config=config,
         ):
             print(event)
+
 
 asyncio.run(main())
 ```
@@ -224,8 +209,13 @@ asyncio.run(main())
     "content_items": [
         {"type": "text", "text": "Hello"},
         {"type": "image_url", "image_url": "https://..."},
-        {"type": "tool_call", "name": "get_weather", "arguments": {"location": "London"}, "tool_call_id": "call_abc123"}
-    ]
+        {
+            "type": "tool_call",
+            "name": "get_weather",
+            "arguments": {"location": "London"},
+            "tool_call_id": "call_abc123",
+        },
+    ],
 }
 ```
 
@@ -240,9 +230,9 @@ When responding to a tool call, include the `tool_call_id` in the result content
         {
             "type": "tool_result",
             "text": "London is 22°C today.",
-            "tool_call_id": "call_abc123"  # From tool_call event
+            "tool_call_id": "call_abc123",  # From tool_call event
         }
-    ]
+    ],
 }
 ```
 
@@ -260,7 +250,7 @@ config = {
     "tool_choice": "auto",  # "auto", "required", "none", or ["tool_name"]
     "system_prompt": "You are a helpful assistant",
     "prompt_caching": PromptCaching.ENABLE,
-    "trace_id": "agent1/conversation_001"  # Optional: save conversation trace
+    "trace_id": "agent1/conversation_001",  # Optional: save conversation trace
 }
 ```
 
@@ -279,8 +269,7 @@ client = AutoLLMClient(model="gpt-5.5")
 config = {"trace_id": "agent1/conversation_001"}
 
 async for event in client.streaming_response_stateful(
-    message={"role": "user", "content_items": [{"type": "text", "text": "Hello"}]},
-    config=config
+    message={"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}, config=config
 ):
     pass  # Conversation is automatically saved
 ```

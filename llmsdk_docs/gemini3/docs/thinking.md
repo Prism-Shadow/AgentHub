@@ -361,24 +361,29 @@ incremental summaries during generation:
 ## Controlling thinking
 
 Gemini models engage in dynamic thinking by default, automatically adjusting the
-amount of reasoning effort based on the complexity of the user's request.
-However, if you have specific latency constraints or require the model to engage
-in deeper reasoning than usual, you can optionally use parameters to control
-thinking behavior.
+amount of reasoning effort based on the complexity of the request. You can
+control this behavior using the `thinking_level` parameter.
 
 ### Thinking levels (Gemini 3)
 
 The `thinkingLevel` parameter, recommended for Gemini 3 models and onwards,
 lets you control reasoning behavior.
 
-The following table details the `thinkingLevel` settings for each model type:
+The following table details the `thinkingLevel` support for each model:
 
-| Thinking Level | Gemini 3.1 Pro | Gemini 3.1 Flash-Lite | Gemini 3 Flash | Description |
-|---|---|---|---|---|
-| **`minimal`** | Not supported | Supported (Default) | Supported | Matches the "no thinking" setting for most queries. The model may think very minimally for complex coding tasks. Minimizes latency for chat or high throughput applications. Note, `minimal` does not guarantee that thinking is off. |
-| **`low`** | Supported | Supported | Supported | Minimizes latency and cost. Best for simple instruction following, chat, or high-throughput applications. |
-| **`medium`** | Supported | Supported | Supported | Balanced thinking for most tasks. |
-| **`high`** | Supported (Default, Dynamic) | Supported (Dynamic) | Supported (Default, Dynamic) | Maximizes reasoning depth. The model may take significantly longer to reach a first (non thinking) output token, but the output will be more carefully reasoned. |
+| Model | Default Thinking | Levels Supported |
+|-------|------------------|------------------|
+| gemini-3.7-flash | On (medium) | low, medium, high |
+| gemini-3.6-flash | On (medium) | minimal, low, medium, high |
+| gemini-3.5-flash-lite | On (minimal) | minimal, low, medium, high |
+| gemini-3.1-pro-preview | On (high) | low, medium, high |
+| gemini-3.1-flash-lite-image | On (minimal) | minimal, high |
+| gemini-3-flash-preview | On (high) | minimal, low, medium, high |
+| gemini-3-pro-preview | On (high) | low, high |
+| gemini-3.5-flash | On (medium) | minimal, low, medium, high |
+| gemini-2.5-pro | On | low, medium, high |
+| gemini-2.5-flash | On | low, medium, high |
+| gemini-2.5-flash-lite | Off | low, medium, high |
 
 The following example shows how to set the thinking level.
 

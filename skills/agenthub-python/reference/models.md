@@ -6,6 +6,7 @@ Use exact model IDs. If a model ID is not listed, ask the user to confirm the ex
 | --- | --- | --- | --- | --- |
 | Gemini 3 | Official / Vertex AI | `gemini-3.1-pro-preview`, `gemini-3.5-flash`, `gemini-3.1-flash-lite` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
 | Gemini 3.6 | Official / Vertex AI | `gemini-3.6-flash`, `gemini-3.5-flash-lite` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
+| Gemini 3.7 | Official / Vertex AI | `gemini-3.7-flash` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
 | Gemini 3 Image | Official / Vertex AI | `gemini-3.1-flash-image`, `gemini-3-pro-image` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
 | Gemini 3 TTS | Official / Vertex AI | `gemini-3.1-flash-tts-preview` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
 | Gemini Embedding | Official / Vertex AI | `gemini-embedding-2` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
@@ -34,6 +35,8 @@ Use exact model IDs. If a model ID is not listed, ask the user to confirm the ex
 | GLM-5.2 | Official | `glm-5.2` | `ZAI_API_KEY` | `ZAI_BASE_URL` |
 | GLM-5.2 | OpenRouter | `z-ai/glm-5.2` | `ZAI_API_KEY` | `ZAI_BASE_URL` |
 | GLM-5.2 | SiliconFlow | `zai-org/GLM-5.2` | `ZAI_API_KEY` | `ZAI_BASE_URL` |
+| GLM-5.3 | Official | `glm-5.3` (API not yet live) | `ZAI_API_KEY` | `ZAI_BASE_URL` |
+| MiniMax-M3 | Official | `MiniMax-M3` | `MINIMAX_API_KEY` | `MINIMAX_BASE_URL` |
 
 Common gateway base URLs:
 
@@ -42,7 +45,7 @@ Common gateway base URLs:
 - ModelVerse: `https://api.modelverse.cn/v1` (`https://api.modelverse.cn/` for Claude)
 - vLLM: `http://127.0.0.1:8000/v1/`
 
-For models accessed through OpenAI-compatible APIs (e.g., Qwen series models via SiliconFlow or OpenRouter), pass `client_type="openai"` (`client_type="openai-embedding"` for embedding endpoints), and set `OPENAI_API_KEY` and `OPENAI_BASE_URL`:
+For models accessed through OpenAI-compatible APIs (e.g., Qwen series models via SiliconFlow or OpenRouter), pass `client_type="openai-chat"` (bare `"openai"` is an alias; `"openai-embedding"` for embedding endpoints, `"openai-responses"` for OpenAI Responses endpoints, `"ant-messages"` for Anthropic Messages endpoints), and set `OPENAI_API_KEY` and `OPENAI_BASE_URL` (`ANTHROPIC_API_KEY`/`ANTHROPIC_BASE_URL` for `ant-messages`):
 
 ```python
 client = AutoLLMClient(model="Qwen/Qwen3-Embedding-0.6B", client_type="openai-embedding")

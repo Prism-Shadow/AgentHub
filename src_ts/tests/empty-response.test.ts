@@ -48,17 +48,17 @@ interface ReasoningStreamCase {
 
 const REASONING_STREAM_CASES: ReasoningStreamCase[] = [
   {
-    expectedClient: "OpenaiClient",
+    expectedClient: "OpenaiChatClient",
     model: "gpt-5.5",
     clientType: "openai",
   },
   {
-    expectedClient: "GLM5_1Client",
+    expectedClient: "GLM5_3Client",
     model: "glm-5.1",
     clientType: "glm-5.1",
   },
   {
-    expectedClient: "KimiK2_6Client",
+    expectedClient: "KimiK3Client",
     model: "kimi-k2.6",
     clientType: "kimi-k2.6",
   },
@@ -213,12 +213,12 @@ describe.each(REASONING_STREAM_CASES)(
 
 test("AgentHub errors share the AgentHubError base class", () => {
   const emptyError = new EmptyResponseError({
-    client: "OpenaiClient",
+    client: "OpenaiChatClient",
     finishReason: "stop",
   });
   expect(emptyError).toBeInstanceOf(AgentHubError);
   const parseError = new ToolCallArgumentParseError({
-    client: "OpenaiClient",
+    client: "OpenaiChatClient",
     toolName: "exec_command",
     toolCallId: "call_ok",
     rawArguments: "[]",

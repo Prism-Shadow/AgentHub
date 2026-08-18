@@ -1,12 +1,13 @@
 # Thinking levels across Gemini 3.x
 
-> Source: https://ai.google.dev/gemini-api/docs/thinking (snapshot 2026-07-22)
+> Source: https://ai.google.dev/gemini-api/docs/thinking (snapshot 2026-08-13)
 
 Thinking is controlled with the `thinking_level` enum in the generation config. Supported
 values and defaults per model:
 
 | Model                       | Default thinking | Supported levels             |
 | --------------------------- | ---------------- | ---------------------------- |
+| gemini-3.7-flash            | medium           | low, medium, high            |
 | gemini-3.6-flash            | medium           | minimal, low, medium, high   |
 | gemini-3.5-flash            | medium           | minimal, low, medium, high   |
 | gemini-3.5-flash-lite       | minimal          | minimal, low, medium, high   |

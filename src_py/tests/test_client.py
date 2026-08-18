@@ -16,7 +16,6 @@ import base64
 import json
 import mimetypes
 import os
-from contextlib import nullcontext
 from dataclasses import dataclass
 from typing import Literal
 
@@ -34,27 +33,31 @@ IMAGE_KEYWORDS = ("flower", "narcissus", "daffodil", "bloom")
 class Model:
     name: str
     support_text: bool = True
-    support_temperature: bool = True
     support_image_understanding: bool = True
     support_image_generation: bool = False
     support_tts: bool = False
     support_embedding: bool = False
-    provider: Literal["official", "bedrock", "vertex", "siliconflow", "openrouter", "modelverse"] = "official"
+    provider: Literal[
+        "official", "bedrock", "vertex", "siliconflow", "openrouter", "modelverse", "deepseek", "zai", "minimax"
+    ] = "official"
     client_type: str | None = None
+    base_url: str | None = None
 
     def __repr__(self) -> str:
+        if self.client_type is not None:
+            return f"{self.name}:{self.provider}:{self.client_type}"
+
         return f"{self.name}:{self.provider}"
 
 
 AVAILABLE_MODELS: list[Model] = []
 
 if os.getenv("GEMINI_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="gemini-3.6-flash", support_temperature=False))
+    AVAILABLE_MODELS.append(Model(name="gemini-3.7-flash"))
     AVAILABLE_MODELS.append(
         Model(
             name="gemini-3.1-flash-image",
             support_text=False,
-            support_temperature=False,
             support_image_understanding=False,
             support_image_generation=True,
         )
@@ -63,7 +66,6 @@ if os.getenv("GEMINI_API_KEY"):
         Model(
             name="gemini-3.1-flash-tts-preview",
             support_text=False,
-            support_temperature=False,
             support_image_understanding=False,
             support_tts=True,
         )
@@ -72,50 +74,84 @@ if os.getenv("GEMINI_API_KEY"):
         Model(
             name="gemini-embedding-2",
             support_text=False,
-            support_temperature=False,
             support_image_understanding=False,
             support_embedding=True,
         )
     )
 
 if os.getenv("ANTHROPIC_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="claude-sonnet-4-6"))
+    AVAILABLE_MODELS.append(Model(name="claude-sonnet-5"))
 
 if os.getenv("OPENAI_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="gpt-5.5", support_temperature=False))
+    AVAILABLE_MODELS.append(Model(name="gpt-5.6-luna"))
     AVAILABLE_MODELS.append(
         Model(
             name="text-embedding-3-large",
             support_text=False,
-            support_temperature=False,
             support_image_understanding=False,
             support_embedding=True,
             client_type="openai-embedding",
         )
     )
 
+# per-protocol base URLs for the generic protocol clients (Z.AI entries use the
+# GLM Coding Plan base URLs)
+_PROTOCOL_MODES = ["openai-chat", "openai-responses", "ant-messages"]
+_PROTOCOL_BASE_URLS = {
+    "deepseek": {
+        "openai-chat": "https://api.deepseek.com",
+        "openai-responses": "https://api.deepseek.com",
+        "ant-messages": "https://api.deepseek.com/anthropic",
+    },
+    "zai": {
+        "openai-chat": "https://api.z.ai/api/coding/paas/v4",
+        "openai-responses": "https://api.z.ai/api/v1",
+        "ant-messages": "https://api.z.ai/api/anthropic",
+    },
+    "minimax": {
+        "openai-chat": "https://api.minimax.io/v1",
+        "openai-responses": "https://api.minimax.io/v1",
+        "ant-messages": "https://api.minimax.io/anthropic",
+    },
+    "openrouter": {
+        "openai-chat": "https://openrouter.ai/api/v1",
+        "openai-responses": "https://openrouter.ai/api/v1",
+        "ant-messages": "https://openrouter.ai/api",
+    },
+}
+
 if os.getenv("ZAI_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="glm-5.2", support_image_understanding=False))
 
 if os.getenv("MOONSHOT_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="kimi-k3", support_temperature=False))
+    AVAILABLE_MODELS.append(Model(name="kimi-k3"))
+
+if os.getenv("MINIMAX_API_KEY"):
+    AVAILABLE_MODELS.append(Model(name="MiniMax-M3", client_type="minimax-m3"))
 
 if os.getenv("DEEPSEEK_API_KEY"):
-    AVAILABLE_MODELS.append(
-        Model(name="deepseek-v4-flash", support_temperature=False, support_image_understanding=False)
-    )
+    AVAILABLE_MODELS.append(Model(name="deepseek-v4-flash", support_image_understanding=False))
+    for mode in _PROTOCOL_MODES:
+        AVAILABLE_MODELS.append(
+            Model(
+                name="deepseek-v4-flash",
+                provider="deepseek",
+                client_type=mode,
+                base_url=_PROTOCOL_BASE_URLS["deepseek"][mode],
+                support_image_understanding=False,
+            )
+        )
 
 if os.getenv("BEDROCK_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="global.anthropic.claude-sonnet-4-6", provider="bedrock"))
 
 if os.getenv("VERTEX_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="gemini-3.6-flash", provider="vertex", support_temperature=False))
+    AVAILABLE_MODELS.append(Model(name="gemini-3.7-flash", provider="vertex"))
     AVAILABLE_MODELS.append(
         Model(
             name="gemini-3.1-flash-image",
             provider="vertex",
             support_text=False,
-            support_temperature=False,
             support_image_understanding=False,
             support_image_generation=True,
         )
@@ -125,7 +161,6 @@ if os.getenv("VERTEX_API_KEY"):
             name="gemini-3.1-flash-tts-preview",
             provider="vertex",
             support_text=False,
-            support_temperature=False,
             support_image_understanding=False,
             support_tts=True,
         )
@@ -133,31 +168,61 @@ if os.getenv("VERTEX_API_KEY"):
 
 RUN_SLOW_TEST = os.getenv("RUN_SLOW_TEST", "0") == "1"
 
+if os.getenv("ZAI_API_KEY") and RUN_SLOW_TEST:
+    for mode in _PROTOCOL_MODES:
+        AVAILABLE_MODELS.append(
+            Model(
+                name="glm-5.2",
+                provider="zai",
+                client_type=mode,
+                base_url=_PROTOCOL_BASE_URLS["zai"][mode],
+                support_image_understanding=False,
+            )
+        )
+
+if os.getenv("MINIMAX_API_KEY") and RUN_SLOW_TEST:
+    for mode in _PROTOCOL_MODES:
+        AVAILABLE_MODELS.append(
+            Model(
+                name="MiniMax-M3",
+                provider="minimax",
+                client_type=mode,
+                base_url=_PROTOCOL_BASE_URLS["minimax"][mode],
+            )
+        )
+
 if os.getenv("OPENROUTER_API_KEY") and RUN_SLOW_TEST:
+    for mode in _PROTOCOL_MODES:
+        AVAILABLE_MODELS.append(
+            Model(
+                name="openai/gpt-5.6-luna",
+                provider="openrouter",
+                client_type=mode,
+                base_url=_PROTOCOL_BASE_URLS["openrouter"][mode],
+            )
+        )
     AVAILABLE_MODELS.append(Model(name="z-ai/glm-5.2", provider="openrouter", support_image_understanding=False))
-    AVAILABLE_MODELS.append(Model(name="qwen/qwen3.6-35b-a3b", provider="openrouter", client_type="openai"))
+    AVAILABLE_MODELS.append(Model(name="qwen/qwen3.6-35b-a3b", provider="openrouter", client_type="openai-chat"))
     AVAILABLE_MODELS.append(
         Model(
             name="qwen/qwen3-embedding-4b",
             support_text=False,
-            support_temperature=False,
             support_image_understanding=False,
             support_embedding=True,
             provider="openrouter",
             client_type="openai-embedding",
         )
     )
-    AVAILABLE_MODELS.append(Model(name="moonshotai/kimi-k3", provider="openrouter", support_temperature=False))
+    AVAILABLE_MODELS.append(Model(name="moonshotai/kimi-k3", provider="openrouter"))
 
 if os.getenv("SILICONFLOW_API_KEY") and RUN_SLOW_TEST:
     AVAILABLE_MODELS.append(Model(name="zai-org/GLM-5.2", provider="siliconflow", support_image_understanding=False))
-    AVAILABLE_MODELS.append(Model(name="Qwen/Qwen3.6-35B-A3B", provider="siliconflow", client_type="openai"))
-    AVAILABLE_MODELS.append(Model(name="Pro/moonshotai/Kimi-K2.6", provider="siliconflow", support_temperature=False))
+    AVAILABLE_MODELS.append(Model(name="Qwen/Qwen3.6-35B-A3B", provider="siliconflow", client_type="openai-chat"))
+    AVAILABLE_MODELS.append(Model(name="Pro/moonshotai/Kimi-K2.6", provider="siliconflow"))
     AVAILABLE_MODELS.append(
         Model(
             name="Qwen/Qwen3-Embedding-8B",
             support_text=False,
-            support_temperature=False,
             support_image_understanding=False,
             support_embedding=True,
             provider="siliconflow",
@@ -166,32 +231,36 @@ if os.getenv("SILICONFLOW_API_KEY") and RUN_SLOW_TEST:
     )
 
 if os.getenv("MODELVERSE_API_KEY") and RUN_SLOW_TEST:
-    AVAILABLE_MODELS.append(Model(name="claude-sonnet-4-6", provider="modelverse"))
-    AVAILABLE_MODELS.append(Model(name="gpt-5.5", provider="modelverse", support_temperature=False))
+    AVAILABLE_MODELS.append(
+        Model(name="claude-sonnet-4-6", provider="modelverse", base_url="https://api.modelverse.cn/")
+    )
+    AVAILABLE_MODELS.append(Model(name="gpt-5.5", provider="modelverse"))
+
+
+_PROVIDER_API_KEY_ENVS = {
+    "bedrock": "BEDROCK_API_KEY",
+    "vertex": "VERTEX_API_KEY",
+    "openrouter": "OPENROUTER_API_KEY",
+    "siliconflow": "SILICONFLOW_API_KEY",
+    "modelverse": "MODELVERSE_API_KEY",
+    "deepseek": "DEEPSEEK_API_KEY",
+    "zai": "ZAI_API_KEY",
+    "minimax": "MINIMAX_API_KEY",
+}
+
+_PROVIDER_BASE_URLS = {
+    "bedrock": "bedrock://us-east-1",
+    "openrouter": "https://openrouter.ai/api/v1",
+    "siliconflow": "https://api.siliconflow.cn/v1",
+    "modelverse": "https://api.modelverse.cn/v1",
+}
 
 
 async def _create_client(model: Model) -> AutoLLMClient:
     """Create a client for the given model."""
-    if model.provider == "bedrock":
-        api_key = os.getenv("BEDROCK_API_KEY")
-        base_url = "bedrock://us-east-1"
-    elif model.provider == "vertex":
-        api_key = os.getenv("VERTEX_API_KEY")
-        base_url = None
-    elif model.provider == "openrouter":
-        api_key = os.getenv("OPENROUTER_API_KEY")
-        base_url = "https://openrouter.ai/api/v1"
-    elif model.provider == "siliconflow":
-        api_key = os.getenv("SILICONFLOW_API_KEY")
-        base_url = "https://api.siliconflow.cn/v1"
-    elif model.provider == "modelverse":
-        api_key = os.getenv("MODELVERSE_API_KEY")
-        if model.name.startswith("claude-"):
-            base_url = "https://api.modelverse.cn/"
-        else:
-            base_url = "https://api.modelverse.cn/v1"
-    else:
-        api_key, base_url = None, None
+    key_env = _PROVIDER_API_KEY_ENVS.get(model.provider)
+    api_key = os.getenv(key_env) if key_env else None
+    base_url = model.base_url or _PROVIDER_BASE_URLS.get(model.provider)
 
     return AutoLLMClient(model=model.name, api_key=api_key, base_url=base_url, client_type=model.client_type)
 
@@ -277,22 +346,16 @@ async def test_streaming_response_with_all_parameters(model: Model):
 
     client = await _create_client(model)
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "What is 2+3?"}]}]
-    config = {"max_tokens": 8192, "temperature": 0.7, "thinking_summary": True, "thinking_level": ThinkingLevel.LOW}
+    config = {"max_tokens": 8192, "thinking_summary": True, "thinking_level": ThinkingLevel.LOW}
 
-    if not model.support_temperature:
-        context = pytest.raises(ValueError, match="not support")
-    else:
-        context = nullcontext()
+    text = ""
+    async for event in client.streaming_response(messages=messages, config=config):
+        await _check_event_integrity(event)
+        for item in event["content_items"]:
+            if item["type"] == "text":
+                text += item["text"]
 
-    with context:
-        text = ""
-        async for event in client.streaming_response(messages=messages, config=config):
-            await _check_event_integrity(event)
-            for item in event["content_items"]:
-                if item["type"] == "text":
-                    text += item["text"]
-
-        assert "5" in text  # 2 + 3 = 5
+    assert "5" in text  # 2 + 3 = 5
 
 
 @pytest.mark.asyncio
@@ -436,7 +499,10 @@ async def test_list_supported_models():
 @pytest.mark.parametrize(
     ("client_type", "client_name"),
     [
-        ("openai-compatible", "OpenaiClient"),
+        ("openai-compatible", "OpenaiChatClient"),
+        ("openai-chat-compatible", "OpenaiChatClient"),
+        ("openai-responses-compatible", "OpenaiResponsesClient"),
+        ("ant-messages-compatible", "AntMessagesClient"),
         ("openai-embedding-compatible", "OpenaiEmbeddingClient"),
     ],
 )
@@ -549,7 +615,10 @@ async def test_system_prompt(model: Model):
 
     client = await _create_client(model)
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "Hello"}]}]
-    config = {"system_prompt": "You are a kitten that must end with the word 'meow'."}
+    config = {
+        "system_prompt": "You are a kitten. Every reply MUST contain the exact word 'meow' — "
+        "never a variant like 'mreow' or a *purrs* action instead."
+    }
 
     text = ""
     async for event in client.streaming_response(messages=messages, config=config):
@@ -654,10 +723,13 @@ async def test_tool_result_with_image(model: Model):
     config = {"tools": [image_tool]}
     tool_call_id = None
 
-    message1 = {
-        "role": "user",
-        "content_items": [{"type": "text", "text": "Get me a random image and describe it briefly."}],
-    }
+    # Prescriptive on purpose: this test covers a tool *result* carrying an image, so reaching
+    # that state is setup. Natural tool selection is covered by test_tool_use.
+    tool_prompt = (
+        "Call get_image exactly once with seed 42. Make that function call your only action "
+        "this turn, then describe the returned image briefly."
+    )
+    message1 = {"role": "user", "content_items": [{"type": "text", "text": tool_prompt}]}
     async for event in client.streaming_response_stateful(message=message1, config=config):
         await _check_event_integrity(event)
         for item in event["content_items"]:

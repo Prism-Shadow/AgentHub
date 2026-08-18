@@ -46,66 +46,65 @@ class AutoLLMClient(LLMClient):
         self, model: str, api_key: str | None = None, base_url: str | None = None, client_type: str | None = None
     ) -> LLMClient:
         """Create the appropriate client for the given model."""
-        client_type = (client_type or os.getenv("CLIENT_TYPE", model)).lower()
-        # gemini-3.6 must be matched before the broader gemini-3 prefix below
+        client_type = (client_type or os.getenv("CLIENT_TYPE") or model).lower()
+        if client_type == "minimax-m3":
+            from .minimax_m3 import MiniMaxM3Client
+
+            return MiniMaxM3Client(model=model, api_key=api_key, base_url=base_url)
+        # every Gemini generation shares the unified client ("gemini-3" also matches the
+        # gemini-3.7/gemini-3.6/gemini-3.5-flash-lite client types)
         if any(
-            prefix in client_type for prefix in ("gemini-3.6", "gemini-3.5-flash-lite")
-        ):  # e.g., gemini-3.6-flash; gemini-3.5-flash-lite shares the sampling-parameter deprecation
-            from .gemini3_6 import Gemini3_6Client
-
-            return Gemini3_6Client(model=model, api_key=api_key, base_url=base_url)
-        elif any(
             prefix in client_type for prefix in ("gemini-3", "gemini-embedding")
-        ):  # e.g., gemini-3-flash-preview, gemini-embedding-2
-            from .gemini3 import Gemini3Client
+        ):  # e.g., gemini-3.7-flash, gemini-3-flash-preview, gemini-embedding-2
+            from .gemini3_7 import Gemini3_7Client
 
-            return Gemini3Client(model=model, api_key=api_key, base_url=base_url)
+            return Gemini3_7Client(model=model, api_key=api_key, base_url=base_url)
         elif "claude" in client_type and (
-            "4-7" in client_type or "4-8" in client_type or "-5" in client_type
-        ):  # e.g., claude-opus-4-7
+            "4-6" in client_type or "4-7" in client_type or "4-8" in client_type or "-5" in client_type
+        ):  # the whole Claude 4.6+ series shares the unified client, e.g., claude-sonnet-4-6
             from .claude5 import Claude5Client
 
             return Claude5Client(model=model, api_key=api_key, base_url=base_url)
-        elif "claude" in client_type and "4-6" in client_type:  # e.g., claude-sonnet-4-6
-            from .claude4_6 import Claude4_6Client
+        elif "gpt-5.4" in client_type or "gpt-5.5" in client_type or "gpt-5.6" in client_type:  # e.g., gpt-5.6
+            from .gpt5_6 import GPT5_6Client
 
-            return Claude4_6Client(model=model, api_key=api_key, base_url=base_url)
-        elif "gpt-5.4" in client_type or "gpt-5.5" in client_type:  # e.g., gpt-5.5
-            from .gpt5_5 import GPT5_5Client
+            return GPT5_6Client(model=model, api_key=api_key, base_url=base_url)
+        elif "glm-5" in client_type:  # the whole GLM series shares the unified client
+            from .glm5_3 import GLM5_3Client
 
-            return GPT5_5Client(model=model, api_key=api_key, base_url=base_url)
-        elif "glm-5.2" in client_type:
-            from .glm5_2 import GLM5_2Client
-
-            return GLM5_2Client(model=model, api_key=api_key, base_url=base_url)
-        elif "glm-5" in client_type or "glm-5.1" in client_type:
-            from .glm5_1 import GLM5_1Client
-
-            return GLM5_1Client(model=model, api_key=api_key, base_url=base_url)
-        elif "kimi-k3" in client_type:
+            return GLM5_3Client(model=model, api_key=api_key, base_url=base_url)
+        elif "kimi-k3" in client_type or "kimi-k2.5" in client_type or "kimi-k2.6" in client_type:
+            # the whole Kimi K2.5+ series shares the unified client
             from .kimi_k3 import KimiK3Client
 
             return KimiK3Client(model=model, api_key=api_key, base_url=base_url)
-        elif "kimi-k2.5" in client_type or "kimi-k2.6" in client_type:
-            from .kimi_k2_6 import KimiK2_6Client
-
-            return KimiK2_6Client(model=model, api_key=api_key, base_url=base_url)
         elif "deepseek-v4" in client_type:
             from .deepseek_v4 import DeepSeekV4Client
 
             return DeepSeekV4Client(model=model, api_key=api_key, base_url=base_url)
+        elif "ant-messages" in client_type:
+            from .ant_messages import AntMessagesClient
+
+            return AntMessagesClient(model=model, api_key=api_key, base_url=base_url)
+        elif "openai-responses" in client_type:
+            from .openai_responses import OpenaiResponsesClient
+
+            return OpenaiResponsesClient(model=model, api_key=api_key, base_url=base_url)
         elif "openai" in client_type and "embedding" in client_type:
             from .openai_embedding import OpenaiEmbeddingClient
 
             return OpenaiEmbeddingClient(model=model, api_key=api_key, base_url=base_url)
-        elif "openai" in client_type and "embedding" not in client_type:
-            from .openai import OpenaiClient
+        elif "openai" in client_type and "embedding" not in client_type:  # openai-chat, plus bare "openai" as alias
+            from .openai_chat import OpenaiChatClient
 
-            return OpenaiClient(model=model, api_key=api_key, base_url=base_url)
+            return OpenaiChatClient(model=model, api_key=api_key, base_url=base_url)
         else:
             raise ValueError(
                 f"{client_type} is not supported. "
-                "Supported client types: gemini-3.6, gemini-3, claude-5, claude-4-8, claude-4-7, claude-4-6, gpt-5.5, gpt-5.4, glm-5.2, glm-5.1, kimi-k3, kimi-k2.6, kimi-k2.5, deepseek-v4, openai-embedding, openai."
+                "Supported client types: minimax-m3, gemini-3.7, gemini-3.6, gemini-3, "
+                "claude-5, claude-4-8, claude-4-7, claude-4-6, gpt-5.6, gpt-5.5, gpt-5.4, "
+                "glm-5.3, glm-5.2, glm-5.1, kimi-k3, kimi-k2.6, kimi-k2.5, deepseek-v4, "
+                "openai-embedding, ant-messages, openai-responses, openai-chat."
             )
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> Any:
