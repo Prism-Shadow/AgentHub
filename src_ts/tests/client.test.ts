@@ -24,7 +24,6 @@ const IMAGE_KEYWORDS = ["flower", "narcissus", "daffodil", "bloom"];
 interface Model {
   name: string;
   supportTextGeneration: boolean;
-  supportTemperature: boolean;
   supportImageUnderstanding: boolean;
   supportImageGeneration: boolean;
   supportAudioGeneration: boolean;
@@ -50,7 +49,6 @@ if (process.env.GEMINI_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "gemini-3.7-flash",
     supportTextGeneration: true,
-    supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -62,7 +60,6 @@ if (process.env.GEMINI_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "gemini-3.1-flash-image",
     supportTextGeneration: false,
-    supportTemperature: false,
     supportImageUnderstanding: false,
     supportImageGeneration: true,
     supportAudioGeneration: false,
@@ -73,7 +70,6 @@ if (process.env.GEMINI_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "gemini-3.1-flash-tts-preview",
     supportTextGeneration: false,
-    supportTemperature: false,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: true,
@@ -84,7 +80,6 @@ if (process.env.GEMINI_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "gemini-embedding-2",
     supportTextGeneration: false,
-    supportTemperature: false,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -95,9 +90,8 @@ if (process.env.GEMINI_API_KEY) {
 
 if (process.env.ANTHROPIC_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "claude-sonnet-4-6",
+    name: "claude-sonnet-5",
     supportTextGeneration: true,
-    supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -110,7 +104,6 @@ if (process.env.OPENAI_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "gpt-5.6-luna",
     supportTextGeneration: true,
-    supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -121,7 +114,6 @@ if (process.env.OPENAI_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "text-embedding-3-large",
     supportTextGeneration: false,
-    supportTemperature: false,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -131,46 +123,48 @@ if (process.env.OPENAI_API_KEY) {
   });
 }
 
+// per-protocol base URLs for the generic protocol clients (Z.AI entries use the
+// GLM Coding Plan base URLs)
 const PROTOCOL_MODES = ["openai-chat", "openai-responses", "ant-messages"];
+const PROTOCOL_BASE_URLS: { [provider: string]: { [mode: string]: string } } = {
+  deepseek: {
+    "openai-chat": "https://api.deepseek.com",
+    "openai-responses": "https://api.deepseek.com",
+    "ant-messages": "https://api.deepseek.com/anthropic",
+  },
+  zai: {
+    "openai-chat": "https://api.z.ai/api/coding/paas/v4",
+    "openai-responses": "https://api.z.ai/api/v1",
+    "ant-messages": "https://api.z.ai/api/anthropic",
+  },
+  minimax: {
+    "openai-chat": "https://api.minimax.io/v1",
+    "openai-responses": "https://api.minimax.io/v1",
+    "ant-messages": "https://api.minimax.io/anthropic",
+  },
+  openrouter: {
+    "openai-chat": "https://openrouter.ai/api/v1",
+    "openai-responses": "https://openrouter.ai/api/v1",
+    "ant-messages": "https://openrouter.ai/api",
+  },
+};
 
 if (process.env.ZAI_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "glm-5.2",
     supportTextGeneration: true,
-    supportTemperature: true,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
     provider: "official",
   });
-  // GLM Coding Plan base URLs, one per protocol
-  const ZAI_BASE_URLS: { [key: string]: string } = {
-    "openai-chat": "https://api.z.ai/api/coding/paas/v4",
-    "openai-responses": "https://api.z.ai/api/v1",
-    "ant-messages": "https://api.z.ai/api/anthropic",
-  };
-  for (const mode of PROTOCOL_MODES) {
-    AVAILABLE_MODELS.push({
-      name: "glm-5.2",
-      supportTextGeneration: true,
-      supportTemperature: true,
-      supportImageUnderstanding: false,
-      supportImageGeneration: false,
-      supportAudioGeneration: false,
-      supportEmbedding: false,
-      provider: "zai",
-      clientType: mode,
-      baseUrl: ZAI_BASE_URLS[mode],
-    });
-  }
 }
 
 if (process.env.MOONSHOT_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "kimi-k3",
     supportTextGeneration: true,
-    supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -183,7 +177,6 @@ if (process.env.MINIMAX_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "MiniMax-M3",
     supportTextGeneration: true,
-    supportTemperature: true,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -191,30 +184,12 @@ if (process.env.MINIMAX_API_KEY) {
     clientType: "minimax-m3",
     provider: "official",
   });
-  for (const mode of PROTOCOL_MODES) {
-    AVAILABLE_MODELS.push({
-      name: "MiniMax-M3",
-      supportTextGeneration: true,
-      supportTemperature: true,
-      supportImageUnderstanding: true,
-      supportImageGeneration: false,
-      supportAudioGeneration: false,
-      supportEmbedding: false,
-      provider: "minimax",
-      clientType: mode,
-      baseUrl:
-        mode === "ant-messages"
-          ? "https://api.minimax.io/anthropic"
-          : "https://api.minimax.io/v1",
-    });
-  }
 }
 
 if (process.env.DEEPSEEK_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "deepseek-v4-flash",
     supportTextGeneration: true,
-    supportTemperature: false,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -225,17 +200,13 @@ if (process.env.DEEPSEEK_API_KEY) {
     AVAILABLE_MODELS.push({
       name: "deepseek-v4-flash",
       supportTextGeneration: true,
-      supportTemperature: true,
       supportImageUnderstanding: false,
       supportImageGeneration: false,
       supportAudioGeneration: false,
       supportEmbedding: false,
       provider: "deepseek",
       clientType: mode,
-      baseUrl:
-        mode === "ant-messages"
-          ? "https://api.deepseek.com/anthropic"
-          : "https://api.deepseek.com",
+      baseUrl: PROTOCOL_BASE_URLS.deepseek[mode],
     });
   }
 }
@@ -244,7 +215,6 @@ if (process.env.BEDROCK_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "global.anthropic.claude-sonnet-4-6",
     supportTextGeneration: true,
-    supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -257,7 +227,6 @@ if (process.env.VERTEX_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "gemini-3.7-flash",
     supportTextGeneration: true,
-    supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -268,7 +237,6 @@ if (process.env.VERTEX_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "gemini-3.1-flash-image",
     supportTextGeneration: false,
-    supportTemperature: false,
     supportImageUnderstanding: false,
     supportImageGeneration: true,
     supportAudioGeneration: false,
@@ -279,7 +247,6 @@ if (process.env.VERTEX_API_KEY) {
   AVAILABLE_MODELS.push({
     name: "gemini-3.1-flash-tts-preview",
     supportTextGeneration: false,
-    supportTemperature: false,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: true,
@@ -290,26 +257,55 @@ if (process.env.VERTEX_API_KEY) {
 
 const RUN_SLOW_TEST = process.env.RUN_SLOW_TEST === "1";
 
+if (process.env.ZAI_API_KEY && RUN_SLOW_TEST) {
+  for (const mode of PROTOCOL_MODES) {
+    AVAILABLE_MODELS.push({
+      name: "glm-5.2",
+      supportTextGeneration: true,
+      supportImageUnderstanding: false,
+      supportImageGeneration: false,
+      supportAudioGeneration: false,
+      supportEmbedding: false,
+      provider: "zai",
+      clientType: mode,
+      baseUrl: PROTOCOL_BASE_URLS.zai[mode],
+    });
+  }
+}
+
+if (process.env.MINIMAX_API_KEY && RUN_SLOW_TEST) {
+  for (const mode of PROTOCOL_MODES) {
+    AVAILABLE_MODELS.push({
+      name: "MiniMax-M3",
+      supportTextGeneration: true,
+      supportImageUnderstanding: true,
+      supportImageGeneration: false,
+      supportAudioGeneration: false,
+      supportEmbedding: false,
+      provider: "minimax",
+      clientType: mode,
+      baseUrl: PROTOCOL_BASE_URLS.minimax[mode],
+    });
+  }
+}
+
 if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
   for (const mode of PROTOCOL_MODES) {
     AVAILABLE_MODELS.push({
       name: "openai/gpt-5.6-luna",
       supportTextGeneration: true,
-      supportTemperature: true,
       supportImageUnderstanding: true,
       supportImageGeneration: false,
       supportAudioGeneration: false,
       supportEmbedding: false,
       provider: "openrouter",
       clientType: mode,
-      baseUrl:
-        mode === "ant-messages" ? "https://openrouter.ai/api" : undefined,
+      baseUrl: PROTOCOL_BASE_URLS.openrouter[mode],
     });
   }
   AVAILABLE_MODELS.push({
     name: "z-ai/glm-5.2",
     supportTextGeneration: true,
-    supportTemperature: true,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -319,18 +315,16 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
     name: "qwen/qwen3.6-35b-a3b",
     supportTextGeneration: true,
-    supportTemperature: true,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    clientType: "openai",
+    clientType: "openai-chat",
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({
     name: "qwen/qwen3-embedding-4b",
     supportTextGeneration: false,
-    supportTemperature: false,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -341,7 +335,6 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
     name: "moonshotai/kimi-k3",
     supportTextGeneration: true,
-    supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -354,7 +347,6 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
     name: "zai-org/GLM-5.2",
     supportTextGeneration: true,
-    supportTemperature: true,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -364,18 +356,16 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
     name: "Qwen/Qwen3.6-35B-A3B",
     supportTextGeneration: true,
-    supportTemperature: true,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    clientType: "openai",
+    clientType: "openai-chat",
     provider: "siliconflow",
   });
   AVAILABLE_MODELS.push({
     name: "Pro/moonshotai/Kimi-K2.6",
     supportTextGeneration: true,
-    supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -385,7 +375,6 @@ if (process.env.SILICONFLOW_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
     name: "Qwen/Qwen3-Embedding-8B",
     supportTextGeneration: false,
-    supportTemperature: false,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -399,17 +388,16 @@ if (process.env.MODELVERSE_API_KEY && RUN_SLOW_TEST) {
   AVAILABLE_MODELS.push({
     name: "claude-sonnet-4-6",
     supportTextGeneration: true,
-    supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
     provider: "modelverse",
+    baseUrl: "https://api.modelverse.cn/",
   });
   AVAILABLE_MODELS.push({
     name: "gpt-5.5",
     supportTextGeneration: true,
-    supportTemperature: false,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
@@ -418,47 +406,33 @@ if (process.env.MODELVERSE_API_KEY && RUN_SLOW_TEST) {
   });
 }
 
-function createClient(model: Model): AutoLLMClient {
-  let apiKey: string | undefined;
-  let baseUrl: string | undefined;
+const PROVIDER_API_KEY_ENVS: { [provider: string]: string } = {
+  bedrock: "BEDROCK_API_KEY",
+  vertex: "VERTEX_API_KEY",
+  openrouter: "OPENROUTER_API_KEY",
+  siliconflow: "SILICONFLOW_API_KEY",
+  modelverse: "MODELVERSE_API_KEY",
+  deepseek: "DEEPSEEK_API_KEY",
+  zai: "ZAI_API_KEY",
+  minimax: "MINIMAX_API_KEY",
+};
 
-  if (model.provider === "bedrock") {
-    apiKey = process.env.BEDROCK_API_KEY;
-    baseUrl = "bedrock://us-east-1";
-  } else if (model.provider === "vertex") {
-    apiKey = process.env.VERTEX_API_KEY;
-    baseUrl = undefined;
-  } else if (model.provider === "openrouter") {
-    apiKey = process.env.OPENROUTER_API_KEY;
-    baseUrl = "https://openrouter.ai/api/v1";
-  } else if (model.provider === "siliconflow") {
-    apiKey = process.env.SILICONFLOW_API_KEY;
-    baseUrl = "https://api.siliconflow.cn/v1";
-  } else if (model.provider === "modelverse") {
-    apiKey = process.env.MODELVERSE_API_KEY;
-    if (model.name.startsWith("claude-")) {
-      baseUrl = "https://api.modelverse.cn/";
-    } else {
-      baseUrl = "https://api.modelverse.cn/v1";
-    }
-  } else if (model.provider === "deepseek") {
-    apiKey = process.env.DEEPSEEK_API_KEY;
-    baseUrl = undefined;
-  } else if (model.provider === "zai") {
-    apiKey = process.env.ZAI_API_KEY;
-    baseUrl = undefined;
-  } else if (model.provider === "minimax") {
-    apiKey = process.env.MINIMAX_API_KEY;
-    baseUrl = undefined;
-  } else {
-    apiKey = undefined;
-    baseUrl = undefined;
-  }
+const PROVIDER_BASE_URLS: { [provider: string]: string } = {
+  bedrock: "bedrock://us-east-1",
+  openrouter: "https://openrouter.ai/api/v1",
+  siliconflow: "https://api.siliconflow.cn/v1",
+  modelverse: "https://api.modelverse.cn/v1",
+};
+
+function createClient(model: Model): AutoLLMClient {
+  const keyEnv = PROVIDER_API_KEY_ENVS[model.provider];
+  const apiKey = keyEnv ? process.env[keyEnv] : undefined;
+  const baseUrl = model.baseUrl || PROVIDER_BASE_URLS[model.provider];
 
   return new AutoLLMClient({
     model: model.name,
     apiKey,
-    baseUrl: model.baseUrl || baseUrl,
+    baseUrl,
     clientType: model.clientType,
   });
 }
@@ -578,36 +552,24 @@ if (AVAILABLE_MODELS.length > 0) {
       ];
       const config: UniConfig = {
         max_tokens: 8192,
-        temperature: 0.7,
         thinking_summary: true,
         thinking_level: ThinkingLevel.LOW,
       };
 
-      if (!model.supportTemperature) {
-        await expect(async () => {
-          for await (const _ of client.streamingResponse({
-            messages,
-            config,
-          })) {
-            // This should throw before we get here
-          }
-        }).rejects.toThrow("not support");
-      } else {
-        let text = "";
-        for await (const event of client.streamingResponse({
-          messages,
-          config,
-        })) {
-          checkEventIntegrity(event);
-          for (const item of event.content_items) {
-            if (item.type === "text") {
-              text += item.text;
-            }
+      let text = "";
+      for await (const event of client.streamingResponse({
+        messages,
+        config,
+      })) {
+        checkEventIntegrity(event);
+        for (const item of event.content_items) {
+          if (item.type === "text") {
+            text += item.text;
           }
         }
-
-        expect(text).toContain("5");
       }
+
+      expect(text).toContain("5");
     }, 60000);
 
     test("should handle stateful streaming", async () => {

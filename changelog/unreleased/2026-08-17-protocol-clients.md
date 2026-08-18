@@ -24,10 +24,12 @@
 - Both new clients pass `temperature` through, default `prompt_caching` to the provider's
   automatic cache (`ENABLE`; other values raise `UnsupportedParameterError`), and map
   `fast_mode` per [fast mode support](2026-08-17-fast-mode.md).
-- e2e coverage: `deepseek-v4-flash`, `glm-5.2` (GLM Coding Plan base URLs), and `MiniMax-M3`
-  run through all three protocol clients; `openai/gpt-5.6-luna` runs through all three via
-  OpenRouter under `RUN_SLOW_TEST`. The test `Model` gained a `base_url` override plus
-  `deepseek`/`zai`/`minimax` providers, and parametrize ids append the client type.
+- e2e coverage: `deepseek-v4-flash` runs through all three protocol clients in the fast
+  suite; `glm-5.2` (GLM Coding Plan base URLs), `MiniMax-M3`, and `openai/gpt-5.6-luna`
+  (via OpenRouter) run through all three under `RUN_SLOW_TEST`. The test `Model` gained a
+  `base_url` override plus `deepseek`/`zai`/`minimax` providers, provider and protocol base
+  URLs live in mappings, parametrize ids append the client type, and the shared tests no
+  longer exercise `temperature`.
 
 ## Protocol implementation
 

@@ -24,10 +24,11 @@
 - 两个新 client 均透传 `temperature`，`prompt_caching` 默认使用服务商的自动缓存
   （`ENABLE`；其他取值抛 `UnsupportedParameterError`），并按
   [fast mode 支持](2026-08-17-fast-mode.zh.md) 映射 `fast_mode`。
-- e2e 覆盖：`deepseek-v4-flash`、`glm-5.2`（GLM Coding Plan base URL）与 `MiniMax-M3`
-  通过三个协议 client 全量测试；`openai/gpt-5.6-luna` 在 `RUN_SLOW_TEST` 下经 OpenRouter
-  通过三个协议测试。测试的 `Model` 增加 `base_url` 覆盖字段与
-  `deepseek`/`zai`/`minimax` provider，parametrize id 追加 client type。
+- e2e 覆盖：`deepseek-v4-flash` 在快速套件中通过三个协议 client 全量测试；`glm-5.2`
+  （GLM Coding Plan base URL）、`MiniMax-M3` 与 `openai/gpt-5.6-luna`（经 OpenRouter）在
+  `RUN_SLOW_TEST` 下通过三个协议测试。测试的 `Model` 增加 `base_url` 覆盖字段与
+  `deepseek`/`zai`/`minimax` provider，provider 与协议 base URL 统一放在 mapping 里，
+  parametrize id 追加 client type，共享测试不再测试 `temperature`。
 
 ## 协议实现
 

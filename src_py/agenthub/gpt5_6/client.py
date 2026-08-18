@@ -142,17 +142,25 @@ class GPT5_6Client(LLMClient):
                 elif item["type"] == "image_url":
                     content_items.append({"type": "input_image", "image_url": item["image_url"]})
                 elif item["type"] == "thinking":
-                    fidelity = item["fidelity"]
-                    input_list.append(
-                        {
-                            "type": "reasoning",
-                            "id": fidelity["id"],
-                            "summary": [{"type": "summary_text", "text": item["thinking"]}]
-                            if item["thinking"]
-                            else [],
-                            "encrypted_content": fidelity["encrypted_content"],
-                        }
+                    # rebuild the reasoning item from the recorded wire fields: the thinking
+                    # text goes back through the channel that carried it (histories recorded
+                    # by the pre-channel client carry encrypted_content and stream summaries)
+                    fidelity = item.get("fidelity") or {}
+                    reasoning = {"type": "reasoning", "summary": []}
+                    summary_channel = fidelity.get("channel") == "summary" or (
+                        "channel" not in fidelity and fidelity.get("encrypted_content") is not None
                     )
+                    if summary_channel:
+                        if item["thinking"]:
+                            reasoning["summary"] = [{"type": "summary_text", "text": item["thinking"]}]
+                    elif item["thinking"]:
+                        reasoning["content"] = [{"type": "reasoning_text", "text": item["thinking"]}]
+
+                    for key in ("encrypted_content", "signature", "format"):
+                        if fidelity.get(key) is not None:
+                            reasoning[key] = fidelity[key]
+
+                    input_list.append(reasoning)
                 elif item["type"] == "tool_call":
                     input_list.append(
                         {
@@ -207,7 +215,7 @@ class GPT5_6Client(LLMClient):
             event_type = "delta"
             content_items.append({"type": "text", "text": model_output.delta})
 
-        elif openai_event_type == "response.reasoning_summary_text.delta":
+        elif openai_event_type in ("response.reasoning_summary_text.delta", "response.reasoning_text.delta"):
             event_type = "delta"
             content_items.append({"type": "thinking", "thinking": model_output.delta})
 
@@ -222,14 +230,6 @@ class GPT5_6Client(LLMClient):
                         "tool_call_id": model_output.item.call_id,
                     }
                 )
-            # adding the following thinking item leads to 400 invalid request error, why?
-            # elif model_output.item.type == "reasoning":
-            #     event_type = "delta"
-            #     fidelity = {
-            #         "id": model_output.item.id,
-            #         "encrypted_content": model_output.item.encrypted_content,
-            #     }
-            #     content_items.append({"type": "thinking", "thinking": "", "fidelity": fidelity})
             elif model_output.item.type == "message":
                 if hasattr(model_output.item, "phase"):
                     event_type = "delta"
@@ -238,18 +238,6 @@ class GPT5_6Client(LLMClient):
                     )
                 else:
                     event_type = "unused"
-            else:
-                event_type = "unused"
-
-        elif openai_event_type == "response.output_item.done":
-            # not sure about the signature of openai, need to check
-            if model_output.item.type == "reasoning":
-                event_type = "delta"
-                fidelity = {
-                    "id": model_output.item.id,
-                    "encrypted_content": model_output.item.encrypted_content,
-                }
-                content_items.append({"type": "thinking", "thinking": "", "fidelity": fidelity})
             else:
                 event_type = "unused"
 
@@ -262,7 +250,7 @@ class GPT5_6Client(LLMClient):
         elif openai_event_type == "response.function_call_arguments.done":
             event_type = "stop"
 
-        elif openai_event_type == "response.completed":
+        elif openai_event_type in ("response.completed", "response.incomplete"):
             event_type = "stop"
             finish_reason_mapping = {
                 "completed": "stop",
@@ -283,6 +271,26 @@ class GPT5_6Client(LLMClient):
                 "response_tokens": output_tokens - reasoning_tokens,
             }
 
+        elif openai_event_type == "response.output_item.done":
+            if model_output.item.type == "reasoning":
+                # the completed item carries the canonical wire fields to send back on the
+                # next turn (identical to the response.completed copy, but adjacent to the
+                # thinking deltas so the fidelity lands on the item that carried the text);
+                # record the channel plus the fields the server demands back
+                event_type = "delta"
+                fidelity = {}
+                if getattr(model_output.item, "summary", None):
+                    fidelity["channel"] = "summary"
+                elif getattr(model_output.item, "content", None):
+                    fidelity["channel"] = "content"
+                for key in ("encrypted_content", "signature", "format"):
+                    if getattr(model_output.item, key, None) is not None:
+                        fidelity[key] = getattr(model_output.item, key)
+
+                content_items.append({"type": "thinking", "thinking": "", "fidelity": fidelity})
+            else:
+                event_type = "unused"
+
         elif openai_event_type in [
             "response.created",
             "response.in_progress",
@@ -290,6 +298,7 @@ class GPT5_6Client(LLMClient):
             "response.reasoning_summary_part.added",
             "response.reasoning_summary_part.done",
             "response.reasoning_summary_text.done",
+            "response.reasoning_text.done",
             "response.content_part.added",
             "response.content_part.done",
         ]:

@@ -199,15 +199,34 @@ export class GPT5_6Client extends LLMClient {
             image_url: item.image_url,
           });
         } else if (item.type === "thinking") {
+          // rebuild the reasoning item from the recorded wire fields: the thinking
+          // text goes back through the channel that carried it (histories recorded
+          // by the pre-channel client carry encrypted_content and stream summaries)
           const fidelity = item.fidelity ?? {};
-          inputList.push({
-            type: "reasoning",
-            id: fidelity.id,
-            summary: item.thinking
-              ? [{ type: "summary_text", text: item.thinking }]
-              : [],
-            encrypted_content: fidelity.encrypted_content,
-          });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const reasoning: any = { type: "reasoning", summary: [] };
+          const summaryChannel =
+            fidelity.channel === "summary" ||
+            (!("channel" in fidelity) && fidelity.encrypted_content != null);
+          if (summaryChannel) {
+            if (item.thinking) {
+              reasoning.summary = [
+                { type: "summary_text", text: item.thinking },
+              ];
+            }
+          } else if (item.thinking) {
+            reasoning.content = [
+              { type: "reasoning_text", text: item.thinking },
+            ];
+          }
+
+          for (const key of ["encrypted_content", "signature", "format"]) {
+            if (fidelity[key] != null) {
+              reasoning[key] = fidelity[key];
+            }
+          }
+
+          inputList.push(reasoning);
         } else if (item.type === "tool_call") {
           inputList.push({
             type: "function_call",
@@ -266,7 +285,10 @@ export class GPT5_6Client extends LLMClient {
     if (openaiEventType === "response.output_text.delta") {
       eventType = "delta";
       contentItems.push({ type: "text", text: modelOutput.delta });
-    } else if (openaiEventType === "response.reasoning_summary_text.delta") {
+    } else if (
+      openaiEventType === "response.reasoning_summary_text.delta" ||
+      openaiEventType === "response.reasoning_text.delta"
+    ) {
       eventType = "delta";
       contentItems.push({ type: "thinking", thinking: modelOutput.delta });
     } else if (openaiEventType === "response.output_item.added") {
@@ -279,18 +301,6 @@ export class GPT5_6Client extends LLMClient {
           arguments: "",
           tool_call_id: item.call_id,
         });
-        // adding the following thinking item leads to 400 invalid request error, why?
-        // } else if (item.type === "reasoning") {
-        //   eventType = "delta";
-        //   const fidelity = {
-        //     id: item.id,
-        //     encrypted_content: item.encrypted_content,
-        //   };
-        //   contentItems.push({
-        //     type: "thinking",
-        //     thinking: "",
-        //     fidelity,
-        //   });
       } else if (item.type === "message") {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const phase = (item as any).phase as string | undefined;
@@ -304,19 +314,29 @@ export class GPT5_6Client extends LLMClient {
         eventType = "unused";
       }
     } else if (openaiEventType === "response.output_item.done") {
-      // not sure about the signature of openai, need to check
       const item = modelOutput.item;
       if (item.type === "reasoning") {
+        // the completed item carries the canonical wire fields to send back on the
+        // next turn (identical to the response.completed copy, but adjacent to the
+        // thinking deltas so the fidelity lands on the item that carried the text);
+        // record the channel plus the fields the server demands back
         eventType = "delta";
-        const fidelity = {
-          id: item.id,
-          encrypted_content: item.encrypted_content,
-        };
-        contentItems.push({
-          type: "thinking",
-          thinking: "",
-          fidelity,
-        });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const fidelity: any = {};
+        if (item.summary && item.summary.length > 0) {
+          fidelity.channel = "summary";
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } else if ((item as any).content?.length > 0) {
+          fidelity.channel = "content";
+        }
+        for (const key of ["encrypted_content", "signature", "format"]) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          if ((item as any)[key] != null) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            fidelity[key] = (item as any)[key];
+          }
+        }
+        contentItems.push({ type: "thinking", thinking: "", fidelity });
       } else {
         eventType = "unused";
       }
@@ -330,7 +350,10 @@ export class GPT5_6Client extends LLMClient {
       });
     } else if (openaiEventType === "response.function_call_arguments.done") {
       eventType = "stop";
-    } else if (openaiEventType === "response.completed") {
+    } else if (
+      openaiEventType === "response.completed" ||
+      openaiEventType === "response.incomplete"
+    ) {
       eventType = "stop";
       const response = modelOutput.response;
       const finishReasonMapping: { [key: string]: FinishReason } = {
@@ -338,7 +361,7 @@ export class GPT5_6Client extends LLMClient {
         incomplete: "length",
       };
       if (response.status) {
-        finishReason = finishReasonMapping[response.status];
+        finishReason = finishReasonMapping[response.status] || "unknown";
       }
       if (response.usage) {
         const inputTokens = response.usage.input_tokens;
@@ -363,6 +386,7 @@ export class GPT5_6Client extends LLMClient {
         "response.reasoning_summary_part.added",
         "response.reasoning_summary_part.done",
         "response.reasoning_summary_text.done",
+        "response.reasoning_text.done",
         "response.content_part.added",
         "response.content_part.done",
       ].includes(openaiEventType)

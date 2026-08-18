@@ -19,6 +19,7 @@
 - `thinking_summary` maps to `thinking.display: "summarized"` for the whole family
   (verified live: Claude 4.6 accepts the `display` field).
 - `fast_mode` raises on Claude 4.6 models, matching the API's model support.
+- The official Anthropic e2e entry moved from `claude-sonnet-4-6` to `claude-sonnet-5`.
 
 ## Compatibility
 

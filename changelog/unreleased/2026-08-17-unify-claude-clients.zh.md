@@ -19,6 +19,7 @@
 - `thinking_summary` 对全家族映射为 `thinking.display: "summarized"`（实测验证：
   Claude 4.6 接受 `display` 字段）。
 - `fast_mode` 在 Claude 4.6 模型上抛错，与 API 的模型支持范围一致。
+- 官方 Anthropic e2e 条目从 `claude-sonnet-4-6` 换为 `claude-sonnet-5`。
 
 ## 兼容性
 
