@@ -30,7 +30,7 @@ class OpenAICompatibleToolStreamCase:
 
 OPENAI_COMPATIBLE_TOOL_STREAM_CASES = [
     OpenAICompatibleToolStreamCase(
-        expected_client="OpenaiClient",
+        expected_client="OpenaiChatClient",
         model="gpt-5.5",
         client_type="openai",
     ),
@@ -40,7 +40,7 @@ OPENAI_COMPATIBLE_TOOL_STREAM_CASES = [
         client_type="glm-5.1",
     ),
     OpenAICompatibleToolStreamCase(
-        expected_client="KimiK2_6Client",
+        expected_client="KimiK3Client",
         model="kimi-k2.6",
         client_type="kimi-k2.6",
     ),

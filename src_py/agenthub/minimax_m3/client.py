@@ -99,6 +99,9 @@ class MiniMaxM3Client(LLMClient):
             minimax_config["tools"] = [{"type": "function", **tool} for tool in config["tools"]]
         if config.get("tool_choice") is not None:
             minimax_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
+        if config.get("fast_mode"):
+            minimax_config["service_tier"] = "priority"
+
         if config.get("prompt_caching") == PromptCaching.DISABLE:
             raise UnsupportedParameterError(
                 self.__class__.__name__,

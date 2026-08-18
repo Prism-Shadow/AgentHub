@@ -14,13 +14,13 @@
 
 import { LLMClient } from "./baseClient";
 import { Gemini3_7Client } from "./gemini3_7";
-import { Claude4_6Client } from "./claude4_6";
 import { Claude5Client } from "./claude5";
-import { GPT5_5Client } from "./gpt5_5";
+import { GPT5_6Client } from "./gpt5_6";
 import { GLM5_3Client } from "./glm5_3";
-import { KimiK2_6Client } from "./kimi_k2_6";
 import { KimiK3Client } from "./kimi_k3";
-import { OpenaiClient } from "./openai";
+import { OpenaiChatClient } from "./openai_chat";
+import { OpenaiResponsesClient } from "./openai_responses";
+import { AntMessagesClient } from "./ant_messages";
 import { OpenaiEmbeddingClient } from "./openai_embedding";
 import { DeepSeekV4Client } from "./deepseek_v4";
 import { MiniMaxM3Client } from "./minimax_m3";
@@ -85,30 +85,35 @@ export class AutoLLMClient extends LLMClient {
       return new Gemini3_7Client({ model, apiKey, baseUrl });
     } else if (
       clientType.includes("claude") &&
-      (clientType.includes("4-7") ||
+      (clientType.includes("4-6") ||
+        clientType.includes("4-7") ||
         clientType.includes("4-8") ||
         clientType.includes("-5"))
     ) {
+      // the whole Claude 4.6+ series shares the unified client
       return new Claude5Client({ model, apiKey, baseUrl });
-    } else if (clientType.includes("claude") && clientType.includes("4-6")) {
-      return new Claude4_6Client({ model, apiKey, baseUrl });
     } else if (
       clientType.includes("gpt-5.4") ||
-      clientType.includes("gpt-5.5")
+      clientType.includes("gpt-5.5") ||
+      clientType.includes("gpt-5.6")
     ) {
-      return new GPT5_5Client({ model, apiKey, baseUrl });
+      return new GPT5_6Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("glm-5")) {
       // the whole GLM series shares the unified client
       return new GLM5_3Client({ model, apiKey, baseUrl });
-    } else if (clientType.includes("kimi-k3")) {
-      return new KimiK3Client({ model, apiKey, baseUrl });
     } else if (
+      clientType.includes("kimi-k3") ||
       clientType.includes("kimi-k2.5") ||
       clientType.includes("kimi-k2.6")
     ) {
-      return new KimiK2_6Client({ model, apiKey, baseUrl });
+      // the whole Kimi K2.5+ series shares the unified client
+      return new KimiK3Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("deepseek-v4")) {
       return new DeepSeekV4Client({ model, apiKey, baseUrl });
+    } else if (clientType.includes("ant-messages")) {
+      return new AntMessagesClient({ model, apiKey, baseUrl });
+    } else if (clientType.includes("openai-responses")) {
+      return new OpenaiResponsesClient({ model, apiKey, baseUrl });
     } else if (
       clientType.includes("openai") &&
       clientType.includes("embedding")
@@ -118,14 +123,15 @@ export class AutoLLMClient extends LLMClient {
       clientType.includes("openai") &&
       !clientType.includes("embedding")
     ) {
-      return new OpenaiClient({ model, apiKey, baseUrl });
+      // openai-chat, plus bare "openai" as alias
+      return new OpenaiChatClient({ model, apiKey, baseUrl });
     } else {
       throw new Error(
         `${clientType} is not supported. ` +
           "Supported client types: minimax-m3, gemini-3.7, gemini-3.6, gemini-3, " +
           "claude-5, claude-4-8, claude-4-7, " +
-          "claude-4-6, gpt-5.5, gpt-5.4, glm-5.3, glm-5.2, glm-5.1, kimi-k3, kimi-k2.6, kimi-k2.5, " +
-          "deepseek-v4, openai-embedding, openai.",
+          "claude-4-6, gpt-5.6, gpt-5.5, gpt-5.4, glm-5.3, glm-5.2, glm-5.1, kimi-k3, kimi-k2.6, kimi-k2.5, " +
+          "deepseek-v4, openai-embedding, ant-messages, openai-responses, openai-chat.",
       );
     }
   }

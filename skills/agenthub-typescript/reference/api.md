@@ -20,7 +20,7 @@ const clientWithEndpoint = new AutoLLMClient({
 // Use OpenAI Chat Completions-compatible routing explicitly
 const clientWithType = new AutoLLMClient({
   model: "custom-model",
-  clientType: "openai",
+  clientType: "openai-chat",
 });
 ```
 

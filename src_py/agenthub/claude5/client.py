@@ -42,7 +42,7 @@ REDACTED_THINKING = "_REDACTED_THINKING"
 
 
 class Claude5Client(LLMClient):
-    """Claude 5-specific LLM client implementation."""
+    """Claude 5-specific LLM client implementation (also serves Claude 4.6 through 4.8)."""
 
     def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
         """Initialize Claude 5 client with model and API key."""
@@ -110,7 +110,11 @@ class Claude5Client(LLMClient):
             ThinkingLevel.LOW: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "low"}},
             ThinkingLevel.MEDIUM: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "medium"}},
             ThinkingLevel.HIGH: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "high"}},
-            ThinkingLevel.XHIGH: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "xhigh"}},
+            # Claude 4.6 has no xhigh effort, so XHIGH degrades to the closest supported level
+            ThinkingLevel.XHIGH: {
+                "thinking": {"type": "adaptive"},
+                "output_config": {"effort": "high" if "4-6" in self._model else "xhigh"},
+            },
         }
         return mapping.get(thinking_level)
 
@@ -152,7 +156,10 @@ class Claude5Client(LLMClient):
 
         if config.get("temperature") is not None and config["temperature"] != 1.0:
             raise UnsupportedParameterError(
-                self.__class__.__name__, "temperature", "Claude 4.8 does not support setting temperature."
+                self.__class__.__name__,
+                "temperature",
+                "Claude models do not support setting temperature; the API dropped it "
+                "starting with the 4.7 generation and the unified client rejects it for the whole family.",
             )
 
         if config.get("thinking_level") is not None:
@@ -175,6 +182,20 @@ class Claude5Client(LLMClient):
         # Convert tool_choice
         if config.get("tool_choice") is not None:
             claude_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
+
+        if config.get("fast_mode"):
+            if self._use_bedrock:
+                raise UnsupportedParameterError(
+                    self.__class__.__name__, "fast_mode", "Bedrock does not support fast mode."
+                )
+
+            if "4-6" in self._model:
+                raise UnsupportedParameterError(
+                    self.__class__.__name__, "fast_mode", "Claude 4.6 does not support fast mode."
+                )
+
+            claude_config["speed"] = "fast"
+            claude_config["betas"] = ["fast-mode-2026-02-01"]
 
         # Add cache_control if prompt caching is enabled
         # TODO: wait for bedrock to support cache_control in config

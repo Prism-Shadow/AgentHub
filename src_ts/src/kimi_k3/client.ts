@@ -39,7 +39,7 @@ import {
 import { fixOpenrouterUsageMetadata } from "../utils";
 
 /**
- * Kimi K3-specific LLM client implementation using OpenAI-compatible API.
+ * Kimi K3-specific LLM client implementation using OpenAI-compatible API (also serves K2.5 and K2.6).
  */
 export class KimiK3Client extends LLMClient {
   protected _model: string;
@@ -107,6 +107,22 @@ export class KimiK3Client extends LLMClient {
   }
 
   /**
+   * Convert ThinkingLevel enum to the K2-generation thinking configuration.
+   */
+  private _convertThinkingLevelToThinkingConfig(thinkingLevel: ThinkingLevel): {
+    [key: string]: string;
+  } {
+    const mapping: { [key: string]: { [key: string]: string } } = {
+      [ThinkingLevel.NONE]: { type: "disabled" },
+      [ThinkingLevel.LOW]: { type: "enabled", keep: "all" },
+      [ThinkingLevel.MEDIUM]: { type: "enabled", keep: "all" },
+      [ThinkingLevel.HIGH]: { type: "enabled", keep: "all" },
+      [ThinkingLevel.XHIGH]: { type: "enabled", keep: "all" },
+    };
+    return mapping[thinkingLevel];
+  }
+
+  /**
    * Convert ThinkingLevel enum to Kimi K3's reasoning_effort.
    *
    * K3 cannot disable reasoning, so NONE degrades to the lowest effort
@@ -133,15 +149,19 @@ export class KimiK3Client extends LLMClient {
       return "auto";
     } else if (toolChoice === "none") {
       return "none";
-    } else if (toolChoice === "required") {
+    } else if (
+      toolChoice === "required" &&
+      !this._model.toLowerCase().includes("k2.")
+    ) {
       return "required";
     } else {
-      // forcing a specific tool is incompatible with K3's always-on reasoning
+      // the K2 generation rejects "required"; forcing a specific tool is
+      // unsupported family-wide
       throw new UnsupportedParameterError({
         client: this.constructor.name,
         parameter: "tool_choice",
         message:
-          'Kimi K3 does not support forcing specific tools; only "auto", "none" and "required" are supported.',
+          "Kimi does not support this tool_choice ('required' needs Kimi K3).",
       });
     }
   }
@@ -166,14 +186,21 @@ export class KimiK3Client extends LLMClient {
       throw new UnsupportedParameterError({
         client: this.constructor.name,
         parameter: "temperature",
-        message: "Kimi K3 does not support setting temperature.",
+        message: "Kimi does not support setting temperature.",
       });
     }
 
     if (config.thinking_level !== undefined) {
-      kimiConfig.reasoning_effort = this._convertThinkingLevelToReasoningEffort(
-        config.thinking_level,
-      );
+      // the K2 generation configures thinking through extra_body and can disable
+      // it; K3 uses reasoning_effort and cannot
+      if (this._model.toLowerCase().includes("k2.")) {
+        kimiConfig.extra_body = kimiConfig.extra_body || {};
+        kimiConfig.extra_body.thinking =
+          this._convertThinkingLevelToThinkingConfig(config.thinking_level);
+      } else {
+        kimiConfig.reasoning_effort =
+          this._convertThinkingLevelToReasoningEffort(config.thinking_level);
+      }
     }
 
     if (config.tools !== undefined) {
@@ -187,6 +214,14 @@ export class KimiK3Client extends LLMClient {
       kimiConfig.tool_choice = this._convertToolChoice(config.tool_choice);
     }
 
+    if (config.fast_mode) {
+      throw new UnsupportedParameterError({
+        client: this.constructor.name,
+        parameter: "fast_mode",
+        message: "Kimi does not support fast mode.",
+      });
+    }
+
     if (
       config.prompt_caching !== undefined &&
       config.prompt_caching !== PromptCaching.ENABLE
@@ -194,12 +229,19 @@ export class KimiK3Client extends LLMClient {
       throw new UnsupportedParameterError({
         client: this.constructor.name,
         parameter: "prompt_caching",
-        message: "prompt_caching must be ENABLE for Kimi K3.",
+        message: "prompt_caching must be ENABLE for Kimi.",
       });
     }
 
-    // K3 context caching is automatic; trace_id is intentionally not sent
-    // as prompt_cache_key
+    // K3 context caching is automatic; the K2 generation keys its prompt
+    // cache on trace_id
+    if (
+      config.trace_id !== undefined &&
+      this._model.toLowerCase().includes("k2.")
+    ) {
+      kimiConfig.prompt_cache_key = config.trace_id;
+    }
+
     return kimiConfig;
   }
 

@@ -129,6 +129,10 @@ export class MiniMaxM3Client extends LLMClient {
     if (config.tool_choice !== undefined) {
       minimaxConfig.tool_choice = this._convertToolChoice(config.tool_choice);
     }
+    if (config.fast_mode) {
+      minimaxConfig.service_tier = "priority";
+    }
+
     if (config.prompt_caching === PromptCaching.DISABLE) {
       throw new UnsupportedParameterError({
         client: this.constructor.name,

@@ -109,6 +109,11 @@ class DeepSeekV4Client(LLMClient):
         if config.get("tool_choice") is not None:
             deepseek_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
 
+        if config.get("fast_mode"):
+            raise UnsupportedParameterError(
+                self.__class__.__name__, "fast_mode", "DeepSeek V4 does not support fast mode."
+            )
+
         if config.get("prompt_caching") is not None and config["prompt_caching"] != PromptCaching.ENABLE:
             raise UnsupportedParameterError(
                 self.__class__.__name__, "prompt_caching", "prompt_caching must be ENABLE for DeepSeek."
