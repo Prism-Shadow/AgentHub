@@ -3,6 +3,7 @@
 - **Date:** 2026-08-19
 - **Type:** fix
 - **Scope:** `integration`, `tests`
+- **PR:** [#180](https://github.com/Prism-Shadow/agenthub/pull/180)
 - **Issue:** [#178](https://github.com/Prism-Shadow/agenthub/issues/178)
 
 [中文版](2026-08-19-playground-models.zh.md)
