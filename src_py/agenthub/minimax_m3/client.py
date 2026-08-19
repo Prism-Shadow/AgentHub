@@ -248,6 +248,7 @@ class MiniMaxM3Client(LLMClient):
             "response.output_item.done",
             "response.content_part.added",
             "response.content_part.done",
+            "keepalive",  # gateway heartbeat on long generations; carries no content
         ):
             raise ValueError(f"Unknown output: {model_output}")
 

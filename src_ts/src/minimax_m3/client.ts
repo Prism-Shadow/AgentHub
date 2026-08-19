@@ -298,6 +298,8 @@ export class MiniMaxM3Client extends LLMClient {
         "response.output_item.done",
         "response.content_part.added",
         "response.content_part.done",
+        // gateway heartbeat on long generations; carries no content
+        "keepalive",
       ].includes(minimaxEventType)
     ) {
       throw new Error(`Unknown output: ${JSON.stringify(modelOutput)}`);
