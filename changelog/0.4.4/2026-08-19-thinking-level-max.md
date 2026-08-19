@@ -3,6 +3,7 @@
 - **Date:** 2026-08-19
 - **Type:** feature
 - **Scope:** `types`, `claude5`, `deepseek_v4`, `gemini3_7`, `tests`
+- **PR:** [#176](https://github.com/Prism-Shadow/agenthub/pull/176)
 
 [中文版](2026-08-19-thinking-level-max.zh.md)
 
