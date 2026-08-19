@@ -22,7 +22,7 @@
   加入 `devDependencies`。Jest 对整个 runtime 只维护一个 `isInsideTestCode` 标志，且在任意并发
   兄弟测试结束时就会清除它；gaxios（Vertex 服务账号鉴权所用的传输层）在首次请求时执行的动态
   `import()` 因此会让正在进行的测试以
-  `ReferenceError: You are trying to \`import\` a file outside of the scope of the test code` 失败。
+  `ReferenceError: You are trying to import a file outside of the scope of the test code` 失败。
 - `src_ts/jest.config.js` 把 `maxConcurrency` 提高到 64，使并发上限超过模型数量，而不是默认的 5。
 
 ## 测试名称

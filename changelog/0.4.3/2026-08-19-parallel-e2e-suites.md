@@ -25,7 +25,7 @@
   per runtime and clears it as soon as any concurrent sibling finishes, so the dynamic
   `import()` gaxios runs on its first request — the transport behind Vertex
   service-account auth — otherwise fails the in-flight tests with
-  `ReferenceError: You are trying to \`import\` a file outside of the scope of the test code`.
+  `ReferenceError: You are trying to import a file outside of the scope of the test code`.
 - `src_ts/jest.config.js` raises `maxConcurrency` to 64 so the concurrency cap clears the
   model count instead of the default 5.
 
