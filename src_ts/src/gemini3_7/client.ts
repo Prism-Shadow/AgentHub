@@ -551,6 +551,12 @@ export class Gemini3_7Client extends LLMClient {
     let usageMetadata: UsageMetadata | null = null;
     let finishReason: FinishReason | null = null;
 
+    if (!modelOutput.candidates?.length && !modelOutput.usageMetadata) {
+      // gateways inject heartbeat chunks on long generations; they map to a chunk
+      // with neither candidates nor usage, so there is nothing to emit
+      eventType = "unused";
+    }
+
     if (
       modelOutput.candidates?.length !== undefined &&
       modelOutput.candidates?.length > 0
@@ -721,6 +727,10 @@ export class Gemini3_7Client extends LLMClient {
 
     for await (const chunk of responseStream) {
       const event = this.transformModelOutputToUniEvent(chunk);
+      if (event.event_type === "unused") {
+        continue;
+      }
+
       for (const item of event.content_items) {
         if (item.type === "tool_call") {
           // gemini 3.7 does not support partial tool call, mock a partial tool call event

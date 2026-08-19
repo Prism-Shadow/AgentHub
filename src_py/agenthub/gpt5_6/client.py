@@ -301,6 +301,7 @@ class GPT5_6Client(LLMClient):
             "response.reasoning_text.done",
             "response.content_part.added",
             "response.content_part.done",
+            "keepalive",  # gateway heartbeat on long generations; carries no content
         ]:
             event_type = "unused"
 

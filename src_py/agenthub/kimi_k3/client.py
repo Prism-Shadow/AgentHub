@@ -267,7 +267,9 @@ class KimiK3Client(LLMClient):
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
 
-        if len(model_output.choices) > 0:
+        # gateways inject content-free heartbeat chunks on long generations, whose choices
+        # the SDK leaves as None rather than an empty list
+        if model_output.choices:
             choice = model_output.choices[0]
             delta = choice.delta
 

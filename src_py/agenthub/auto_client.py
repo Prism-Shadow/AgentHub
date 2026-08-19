@@ -47,10 +47,6 @@ class AutoLLMClient(LLMClient):
     ) -> LLMClient:
         """Create the appropriate client for the given model."""
         client_type = (client_type or os.getenv("CLIENT_TYPE") or model).lower()
-        if client_type == "minimax-m3":
-            from .minimax_m3 import MiniMaxM3Client
-
-            return MiniMaxM3Client(model=model, api_key=api_key, base_url=base_url)
         # every Gemini generation shares the unified client ("gemini-3" also matches the
         # gemini-3.7/gemini-3.6/gemini-3.5-flash-lite client types)
         if any(
@@ -78,6 +74,10 @@ class AutoLLMClient(LLMClient):
             from .kimi_k3 import KimiK3Client
 
             return KimiK3Client(model=model, api_key=api_key, base_url=base_url)
+        elif client_type == "minimax-m3":
+            from .minimax_m3 import MiniMaxM3Client
+
+            return MiniMaxM3Client(model=model, api_key=api_key, base_url=base_url)
         elif "deepseek-v4" in client_type:
             from .deepseek_v4 import DeepSeekV4Client
 

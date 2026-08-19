@@ -386,6 +386,8 @@ export class OpenaiResponsesClient extends LLMClient {
         "response.reasoning_summary_text.done",
         "response.content_part.added",
         "response.content_part.done",
+        // gateway heartbeat on long generations; carries no content
+        "keepalive",
       ].includes(openaiEventType)
     ) {
       eventType = "unused";

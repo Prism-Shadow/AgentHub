@@ -386,8 +386,12 @@ export class AntMessagesClient extends LLMClient {
     } else if (antEventType === "message_stop") {
       eventType = "stop";
     } else if (
-      ["text", "thinking", "signature", "input_json"].includes(antEventType)
+      ["text", "thinking", "signature", "input_json", "ping"].includes(
+        antEventType,
+      )
     ) {
+      // the SDK drops the "ping" heartbeat at the SSE layer; it reaches here only
+      // from gateways that relabel it onto another event
       eventType = "unused";
     } else {
       throw new Error(`Unknown output: ${JSON.stringify(modelOutput)}`);

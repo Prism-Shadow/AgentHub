@@ -73,9 +73,6 @@ export class AutoLLMClient extends LLMClient {
   ): LLMClient {
     clientType = (clientType || process.env.CLIENT_TYPE || model).toLowerCase();
 
-    if (clientType === "minimax-m3") {
-      return new MiniMaxM3Client({ model, apiKey, baseUrl });
-    }
     // every Gemini generation shares the unified client ("gemini-3" also matches the
     // gemini-3.7/gemini-3.6/gemini-3.5-flash-lite client types)
     if (
@@ -108,6 +105,8 @@ export class AutoLLMClient extends LLMClient {
     ) {
       // the whole Kimi K2.5+ series shares the unified client
       return new KimiK3Client({ model, apiKey, baseUrl });
+    } else if (clientType === "minimax-m3") {
+      return new MiniMaxM3Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("deepseek-v4")) {
       return new DeepSeekV4Client({ model, apiKey, baseUrl });
     } else if (clientType.includes("ant-messages")) {
