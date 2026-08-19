@@ -4,6 +4,8 @@
 
 在这里，我们记录模型的新增与移除时间、主要功能更新、缺陷修复，以及关键版本的发布时间。每个发布版本在此保留一行简述；逐条目的摘要位于 `changelog/<version>/README.md`，且每个条目都会链接到自己的详情文件。
 
+- [2026-08-19] [版本 0.4.4](changelog/0.4.4/README.zh.md)：思考档位在 `XHIGH` 之上新增 `MAX` 一档，各 client 按自家服务方的 effort 取值映射整条档位（DeepSeek 依其当前的 low/high/max 取值重排）。
+
 - [2026-08-18] [版本 0.4.3](changelog/0.4.3/README.zh.md)：所有流式 client 跳过网关在长生成期间注入的心跳事件，覆盖 OpenAI Responses、OpenAI Chat Completions、Anthropic Messages 与 Gemini 四种协议。
 
 - [2026-08-18] [版本 0.4.2](changelog/0.4.2/README.zh.md)：通用 OpenAI Responses 与 Anthropic Messages 协议 client，覆盖 OpenAI、OpenRouter、DeepSeek、Z.AI 与 MiniMax（通用 chat client 重命名为 `openai-chat`），支持 GPT-5.6，新增 `UniConfig.fast_mode`，并统一 Claude 与 Kimi 系列 client、对全家族拒绝 `temperature`。
