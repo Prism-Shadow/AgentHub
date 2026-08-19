@@ -37,7 +37,7 @@ Fields:
 - `temperature` (`number`): Sampling temperature; support varies by model.
 - `tools` (`ToolSchema[]`): Tools with `name`, `description`, and optional JSON Schema `parameters`.
 - `thinking_summary` (`boolean`): Request a thinking summary when supported.
-- `thinking_level` (`ThinkingLevel`): `NONE`, `LOW`, `MEDIUM`, `HIGH`, or `XHIGH`.
+- `thinking_level` (`ThinkingLevel`): `NONE`, `LOW`, `MEDIUM`, `HIGH`, `XHIGH`, or `MAX`.
 - `tool_choice` (`ToolChoice`): `auto`, `required`, `none`, or a list of tool names; support varies by model.
 - `system_prompt` (`string`): System instruction text.
 - `prompt_caching` (`PromptCaching`): `ENABLE`, `DISABLE`, or `ENHANCE`.

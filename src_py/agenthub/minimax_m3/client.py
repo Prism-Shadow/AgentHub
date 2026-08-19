@@ -63,6 +63,8 @@ class MiniMaxM3Client(LLMClient):
             ThinkingLevel.MEDIUM: "medium",
             ThinkingLevel.HIGH: "high",
             ThinkingLevel.XHIGH: "high",
+            # MiniMax stops at "high"
+            ThinkingLevel.MAX: "high",
         }
         return mapping[thinking_level]
 

@@ -233,6 +233,8 @@ export class Gemini3_7Client extends LLMClient {
       [ThinkingLevel.MEDIUM]: GeminiThinkingLevel.MEDIUM,
       [ThinkingLevel.HIGH]: GeminiThinkingLevel.HIGH,
       [ThinkingLevel.XHIGH]: GeminiThinkingLevel.HIGH,
+      // Gemini stops at "high", so both top levels land there before per-model clamping
+      [ThinkingLevel.MAX]: GeminiThinkingLevel.HIGH,
     };
     const level = mapping[thinkingLevel];
     if (level === undefined) {
@@ -551,12 +553,6 @@ export class Gemini3_7Client extends LLMClient {
     let usageMetadata: UsageMetadata | null = null;
     let finishReason: FinishReason | null = null;
 
-    if (!modelOutput.candidates?.length && !modelOutput.usageMetadata) {
-      // gateways inject heartbeat chunks on long generations; they map to a chunk
-      // with neither candidates nor usage, so there is nothing to emit
-      eventType = "unused";
-    }
-
     if (
       modelOutput.candidates?.length !== undefined &&
       modelOutput.candidates?.length > 0
@@ -627,6 +623,16 @@ export class Gemini3_7Client extends LLMClient {
         thoughts_tokens: modelOutput.usageMetadata.thoughtsTokenCount || null,
         response_tokens: modelOutput.usageMetadata.candidatesTokenCount || null,
       };
+    }
+
+    if (
+      contentItems.length === 0 &&
+      usageMetadata === null &&
+      finishReason === null
+    ) {
+      // nothing was read out of the chunk, so there is nothing to emit: a gateway
+      // heartbeat looks like this, and so does any other chunk we take no value from
+      eventType = "unused";
     }
 
     return {

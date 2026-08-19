@@ -164,6 +164,11 @@ export class Claude5Client extends LLMClient {
           effort: this._model.includes("4-6") ? "high" : "xhigh",
         },
       },
+      // every model this client serves is 4.6 or later, and max spans that whole range
+      [ThinkingLevel.MAX]: {
+        thinking: { type: "adaptive" },
+        output_config: { effort: "max" },
+      },
     };
     return mapping[thinkingLevel];
   }

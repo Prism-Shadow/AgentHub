@@ -1,5 +1,7 @@
 # Thinking Mode
 
+> Source: https://api-docs.deepseek.com/guides/thinking_mode (snapshot 2026-08-19)
+
 The DeepSeek model supports the thinking mode: before outputting the final answer, the model will first output a chain-of-thought reasoning to improve the accuracy of the final response.
 
 ## Thinking Mode Toggle and Effort Control
@@ -7,13 +9,15 @@ The DeepSeek model supports the thinking mode: before outputting the final answe
 |  | Control Parameter (OpenAI Format) | Control Parameter (Anthropic Format) |
 | --- | --- | --- |
 | Thinking Mode Toggle (1) | `{"thinking": {"type": "enabled/disabled"}}` | `{"thinking": {"type": "enabled/disabled"}}` |
-| Thinking Effort Control (2)(3) | `{"reasoning_effort": "high/max"}` | `{"output_config": {"effort": "high/max"}}` |
+| Thinking Effort Control (2)(3) | `{"reasoning_effort": "low/high/max"}` | `{"output_config": {"effort": "low/high/max"}}` |
 
 (1) The thinking toggle defaults to `enabled`.
 
 (2) In thinking mode, the default effort is `high` for regular requests; for some complex agent requests (such as Claude Code, OpenCode), effort is automatically set to `max`.
 
-(3) In thinking mode, for compatibility, `low` and `medium` are mapped to `high`, and `xhigh` is mapped to `max`.
+(3) In thinking mode, a requested effort maps to an actual effort as follows: `low` to `low`,
+`medium` to `high`, `high` to `high`, `xhigh` to `high`, and `max` to `max`. The same mapping
+applies to `deepseek-v4-flash` and `deepseek-v4-pro`.
 
 When using the OpenAI SDK, you need to pass the `thinking` parameter within `extra_body`:
 

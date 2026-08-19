@@ -54,17 +54,24 @@ class DeepSeekV4Client(LLMClient):
             ThinkingLevel.MEDIUM: {"type": "enabled"},
             ThinkingLevel.HIGH: {"type": "enabled"},
             ThinkingLevel.XHIGH: {"type": "enabled"},
+            ThinkingLevel.MAX: {"type": "enabled"},
         }
         return mapping[thinking_level]
 
     def _convert_reasoning_effort(self, thinking_level: ThinkingLevel) -> str | None:
-        """Convert ThinkingLevel enum to DeepSeek's reasoning_effort."""
+        """Convert ThinkingLevel enum to DeepSeek's reasoning_effort.
+
+        DeepSeek accepts low/high/max and maps medium and xhigh onto high server-side
+        (llmsdk_docs/deepseek_v4/docs/thinking-mode.md), so this sends the value the
+        server would settle on anyway.
+        """
         mapping = {
             ThinkingLevel.NONE: None,
-            ThinkingLevel.LOW: "high",
+            ThinkingLevel.LOW: "low",
             ThinkingLevel.MEDIUM: "high",
             ThinkingLevel.HIGH: "high",
-            ThinkingLevel.XHIGH: "max",
+            ThinkingLevel.XHIGH: "high",
+            ThinkingLevel.MAX: "max",
         }
         return mapping[thinking_level]
 

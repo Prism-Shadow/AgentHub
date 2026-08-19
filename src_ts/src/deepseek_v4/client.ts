@@ -65,17 +65,26 @@ export class DeepSeekV4Client extends LLMClient {
       [ThinkingLevel.MEDIUM]: { type: "enabled" },
       [ThinkingLevel.HIGH]: { type: "enabled" },
       [ThinkingLevel.XHIGH]: { type: "enabled" },
+      [ThinkingLevel.MAX]: { type: "enabled" },
     };
     return mapping[thinkingLevel];
   }
 
+  /**
+   * Convert ThinkingLevel enum to DeepSeek's reasoning_effort.
+   *
+   * DeepSeek accepts low/high/max and maps medium and xhigh onto high server-side
+   * (llmsdk_docs/deepseek_v4/docs/thinking-mode.md), so this sends the value the
+   * server would settle on anyway.
+   */
   private _convertReasoningEffort(thinkingLevel: ThinkingLevel): string | null {
     const mapping: { [key: string]: string | null } = {
       [ThinkingLevel.NONE]: null,
-      [ThinkingLevel.LOW]: "high",
+      [ThinkingLevel.LOW]: "low",
       [ThinkingLevel.MEDIUM]: "high",
       [ThinkingLevel.HIGH]: "high",
-      [ThinkingLevel.XHIGH]: "max",
+      [ThinkingLevel.XHIGH]: "high",
+      [ThinkingLevel.MAX]: "max",
     };
     return mapping[thinkingLevel];
   }

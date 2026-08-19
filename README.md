@@ -541,7 +541,7 @@ Example UniConfig:
     }
   ],
   "thinking_summary": true,
-  "thinking_level": "none | low | medium | high | xhigh",
+  "thinking_level": "none | low | medium | high | xhigh | max",
   "tool_choice": "auto | required | none | a list of allowed tool names",
   "system_prompt": "You are a helpful assistant.",
   "prompt_caching": "enable | disable | enhance",

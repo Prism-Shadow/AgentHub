@@ -81,6 +81,7 @@ class GLM5_3Client(LLMClient):
                 ThinkingLevel.MEDIUM: "high",
                 ThinkingLevel.HIGH: "high",
                 ThinkingLevel.XHIGH: "max",
+                ThinkingLevel.MAX: "max",
             }
             return mapping.get(thinking_level)
         if "glm-5.2" in model:
@@ -90,6 +91,7 @@ class GLM5_3Client(LLMClient):
                 ThinkingLevel.MEDIUM: "medium",
                 ThinkingLevel.HIGH: "high",
                 ThinkingLevel.XHIGH: "xhigh",
+                ThinkingLevel.MAX: "max",
             }
             return mapping.get(thinking_level)
         return None

@@ -78,6 +78,7 @@ class KimiK3Client(LLMClient):
             ThinkingLevel.MEDIUM: {"type": "enabled", "keep": "all"},
             ThinkingLevel.HIGH: {"type": "enabled", "keep": "all"},
             ThinkingLevel.XHIGH: {"type": "enabled", "keep": "all"},
+            ThinkingLevel.MAX: {"type": "enabled", "keep": "all"},
         }
         return mapping.get(thinking_level)
 
@@ -92,6 +93,7 @@ class KimiK3Client(LLMClient):
             ThinkingLevel.MEDIUM: "high",
             ThinkingLevel.HIGH: "high",
             ThinkingLevel.XHIGH: "max",
+            ThinkingLevel.MAX: "max",
         }
         return mapping.get(thinking_level)
 

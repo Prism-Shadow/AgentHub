@@ -115,6 +115,10 @@ export class AntMessagesClient extends LLMClient {
         thinking: { type: "adaptive" },
         output_config: { effort: "xhigh" },
       },
+      [ThinkingLevel.MAX]: {
+        thinking: { type: "adaptive" },
+        output_config: { effort: "max" },
+      },
     };
     return mapping[thinkingLevel];
   }

@@ -118,6 +118,7 @@ export class KimiK3Client extends LLMClient {
       [ThinkingLevel.MEDIUM]: { type: "enabled", keep: "all" },
       [ThinkingLevel.HIGH]: { type: "enabled", keep: "all" },
       [ThinkingLevel.XHIGH]: { type: "enabled", keep: "all" },
+      [ThinkingLevel.MAX]: { type: "enabled", keep: "all" },
     };
     return mapping[thinkingLevel];
   }
@@ -137,6 +138,7 @@ export class KimiK3Client extends LLMClient {
       [ThinkingLevel.MEDIUM]: "high",
       [ThinkingLevel.HIGH]: "high",
       [ThinkingLevel.XHIGH]: "max",
+      [ThinkingLevel.MAX]: "max",
     };
     return mapping[thinkingLevel];
   }
