@@ -323,6 +323,8 @@ export class Gemini3_7Client extends LLMClient {
       });
     }
 
+    // includeThoughts asks for thought summaries, but whether generateContent returns any
+    // is model-dependent (llmsdk_docs/gemini3_7/docs/thinking.md)
     const thinkingSummary = config.thinking_summary;
     const thinkingLevel = config.thinking_level;
     if (thinkingSummary !== undefined || thinkingLevel !== undefined) {

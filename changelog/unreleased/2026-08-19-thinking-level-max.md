@@ -20,6 +20,10 @@
   candidates and usage on the raw chunk. Streams that omit usage are unaffected either way.
 - The playground's thinking-level selector gained a `Max` option, and `XHigh` is described
   as the extended tier rather than the maximum one.
+- `gemini3_7` documented which models return thought summaries for `thinking_summary`:
+  probed live on 2026-08-19, `gemini-2.5-flash` and `gemini-3.1-pro-preview` return thought
+  parts while `gemini-3.5-flash`, `gemini-3.6-flash`, and `gemini-3.7-flash` return none.
+  The request already carries `include_thoughts`; no client change was needed.
 
 ## Thinking level mapping
 

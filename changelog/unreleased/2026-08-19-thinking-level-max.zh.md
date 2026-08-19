@@ -18,6 +18,10 @@
   `unused`，而不再依据原始 chunk 上缺少 candidates 与 usage 来推断这是网关心跳。不返回用量的流在
   两种写法下都不受影响。
 - playground 的思考档位选择器新增 `Max` 选项，`XHigh` 的描述也相应改为扩展档而非最高档。
+- `gemini3_7` 记录了 `thinking_summary` 在哪些模型上真的会返回思考摘要：2026-08-19 实测，
+  `gemini-2.5-flash` 与 `gemini-3.1-pro-preview` 会返回 thought part，而 `gemini-3.5-flash`、
+  `gemini-3.6-flash`、`gemini-3.7-flash` 都不返回。请求本就带上了 `include_thoughts`，
+  client 无需改动。
 
 ## 思考档位映射
 

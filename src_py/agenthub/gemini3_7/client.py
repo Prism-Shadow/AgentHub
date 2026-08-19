@@ -203,6 +203,8 @@ class Gemini3_7Client(LLMClient):
                 "sampling parameters starting with the 3.6 generation.",
             )
 
+        # include_thoughts asks for thought summaries, but whether generateContent returns any
+        # is model-dependent (llmsdk_docs/gemini3_7/docs/thinking.md)
         thinking_summary = config.get("thinking_summary")
         thinking_level = config.get("thinking_level")
         if thinking_summary is not None or thinking_level is not None:
