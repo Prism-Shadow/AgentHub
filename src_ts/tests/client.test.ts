@@ -15,7 +15,8 @@
 import { AutoLLMClient } from "../src/autoClient";
 import { listSupportedModels } from "../src/registry";
 import { ThinkingLevel, UniMessage, UniConfig, UniEvent } from "../src/types";
-import { expect, describe, test } from "@jest/globals";
+import { beforeAll, expect, describe, test } from "@jest/globals";
+import { Gaxios } from "gaxios";
 
 const IMAGE =
   "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg";
@@ -532,6 +533,18 @@ function modelTest(
 
 if (AVAILABLE_MODELS.length > 0) {
   describe("Client tests", () => {
+    beforeAll(async () => {
+      // gaxios, the transport behind Vertex service-account auth, `import()`s node-fetch
+      // on its first request and caches it on the class. Jest keeps one
+      // `isInsideTestCode` flag for the whole runtime and clears it the moment any
+      // concurrent sibling finishes, after which a dynamic import throws
+      // "trying to `import` a file outside of the scope of the test code". Priming the
+      // cache from a hook, where the flag is set, keeps that import out of the tests.
+      await new Gaxios()
+        .request({ url: "http://127.0.0.1:1/" })
+        .catch(() => {});
+    });
+
     modelTest("should stream basic response", 60000, async (model) => {
       if (!model.supportTextGeneration) {
         return;

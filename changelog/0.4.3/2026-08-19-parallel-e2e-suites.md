@@ -20,6 +20,12 @@
   describe blocks one after another and the tests inside one block concurrently, so the
   models of a check run in parallel while a single model never has two checks in flight.
   The helper takes its timeout ahead of the body.
+- `src_ts/tests/client.test.ts` primes gaxios' lazily imported fetch from a `beforeAll`
+  hook, and `gaxios` joins `devDependencies`. Jest keeps a single `isInsideTestCode` flag
+  per runtime and clears it as soon as any concurrent sibling finishes, so the dynamic
+  `import()` gaxios runs on its first request — the transport behind Vertex
+  service-account auth — otherwise fails the in-flight tests with
+  `ReferenceError: You are trying to \`import\` a file outside of the scope of the test code`.
 - `src_ts/jest.config.js` raises `maxConcurrency` to 64 so the concurrency cap clears the
   model count instead of the default 5.
 
