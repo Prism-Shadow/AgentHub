@@ -115,6 +115,8 @@ class Claude5Client(LLMClient):
                 "thinking": {"type": "adaptive"},
                 "output_config": {"effort": "high" if "4-6" in self._model else "xhigh"},
             },
+            # every model this client serves is 4.6 or later, and max spans that whole range
+            ThinkingLevel.MAX: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "max"}},
         }
         return mapping.get(thinking_level)
 

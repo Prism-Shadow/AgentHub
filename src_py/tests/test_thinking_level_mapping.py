@@ -30,6 +30,7 @@ GEMINI3_THINKING_LEVEL_CASES = [
     ("gemini-3.1-pro-preview", ThinkingLevel.MEDIUM, types.ThinkingLevel.MEDIUM),
     ("gemini-3.1-pro-preview", ThinkingLevel.HIGH, types.ThinkingLevel.HIGH),
     ("gemini-3.1-pro-preview", ThinkingLevel.XHIGH, types.ThinkingLevel.HIGH),
+    ("gemini-3.1-pro-preview", ThinkingLevel.MAX, types.ThinkingLevel.HIGH),
     ("gemini-3-pro-preview", ThinkingLevel.NONE, types.ThinkingLevel.LOW),
     ("gemini-3-pro-preview", ThinkingLevel.MEDIUM, types.ThinkingLevel.HIGH),
     ("gemini-3.1-flash-image", ThinkingLevel.NONE, types.ThinkingLevel.MINIMAL),
@@ -89,6 +90,8 @@ GEMINI3_7_THINKING_LEVEL_CASES = [
     ("gemini-3.7-flash", ThinkingLevel.MEDIUM, types.ThinkingLevel.MEDIUM),
     ("gemini-3.7-flash", ThinkingLevel.HIGH, types.ThinkingLevel.HIGH),
     ("gemini-3.7-flash", ThinkingLevel.XHIGH, types.ThinkingLevel.HIGH),
+    # Gemini has no level above "high", so MAX clamps there too.
+    ("gemini-3.7-flash", ThinkingLevel.MAX, types.ThinkingLevel.HIGH),
     ("gemini-3.6-flash", ThinkingLevel.NONE, types.ThinkingLevel.MINIMAL),
     ("gemini-3.5-flash-lite", ThinkingLevel.NONE, types.ThinkingLevel.MINIMAL),
 ]
@@ -113,9 +116,11 @@ GLM_THINKING_LEVEL_CASES = [
     ("glm-5.3", ThinkingLevel.MEDIUM, "enabled", "high"),
     ("glm-5.3", ThinkingLevel.HIGH, "enabled", "high"),
     ("glm-5.3", ThinkingLevel.XHIGH, "enabled", "max"),
+    ("glm-5.3", ThinkingLevel.MAX, "enabled", "max"),
     ("glm-5.2", ThinkingLevel.NONE, "disabled", None),
     ("glm-5.2", ThinkingLevel.MEDIUM, "enabled", "medium"),
     ("glm-5.2", ThinkingLevel.XHIGH, "enabled", "xhigh"),
+    ("glm-5.2", ThinkingLevel.MAX, "enabled", "max"),
     ("glm-5.1", ThinkingLevel.HIGH, "enabled", None),
     # Provider-hosted ids keep their own casing (SiliconFlow), so generation
     # detection must be case-insensitive.
@@ -133,3 +138,50 @@ def test_glm_thinking_level_maps_per_generation(
     config = client._client.transform_uni_config_to_model_config({"thinking_level": level})  # noqa: SLF001
     assert config["extra_body"]["thinking"]["type"] == thinking_type
     assert config.get("reasoning_effort") == effort
+
+
+# What each remaining client puts on the wire for a level, per its vendor's effort
+# vocabulary: OpenAI takes the full set, Claude tops out at max (xhigh only from 4.7),
+# DeepSeek and Kimi accept low/high/max, and MiniMax has no level above high.
+THINKING_EFFORT_CASES = [
+    ("gpt-5.6", None, ThinkingLevel.XHIGH, "xhigh"),
+    ("gpt-5.6", None, ThinkingLevel.MAX, "max"),
+    ("gpt-5.6", "openai-responses", ThinkingLevel.MAX, "max"),
+    ("claude-sonnet-5", None, ThinkingLevel.XHIGH, "xhigh"),
+    ("claude-sonnet-5", None, ThinkingLevel.MAX, "max"),
+    # 4.6 has no xhigh but does take max.
+    ("claude-sonnet-4-6", None, ThinkingLevel.XHIGH, "high"),
+    ("claude-sonnet-4-6", None, ThinkingLevel.MAX, "max"),
+    ("claude-sonnet-5", "ant-messages", ThinkingLevel.MAX, "max"),
+    ("deepseek-v4", None, ThinkingLevel.NONE, None),
+    ("deepseek-v4", None, ThinkingLevel.LOW, "low"),
+    ("deepseek-v4", None, ThinkingLevel.MEDIUM, "high"),
+    ("deepseek-v4", None, ThinkingLevel.HIGH, "high"),
+    # DeepSeek maps xhigh onto high server-side, so the client sends high.
+    ("deepseek-v4", None, ThinkingLevel.XHIGH, "high"),
+    ("deepseek-v4", None, ThinkingLevel.MAX, "max"),
+    ("kimi-k3", None, ThinkingLevel.LOW, "low"),
+    ("kimi-k3", None, ThinkingLevel.MEDIUM, "high"),
+    ("kimi-k3", None, ThinkingLevel.XHIGH, "max"),
+    ("kimi-k3", None, ThinkingLevel.MAX, "max"),
+    ("MiniMax-M3", "minimax-m3", ThinkingLevel.XHIGH, "high"),
+    ("MiniMax-M3", "minimax-m3", ThinkingLevel.MAX, "high"),
+]
+
+
+def _wire_effort(config: dict) -> str | None:
+    """Read the effort out of whichever config key the client used."""
+    if "reasoning" in config:
+        return config["reasoning"].get("effort")
+    if "output_config" in config:
+        return config["output_config"].get("effort")
+    return config.get("reasoning_effort")
+
+
+@pytest.mark.parametrize(("model", "client_type", "level", "expected"), THINKING_EFFORT_CASES)
+def test_thinking_level_maps_to_vendor_effort(
+    model: str, client_type: str | None, level: ThinkingLevel, expected: str | None
+):
+    client = AutoLLMClient(model=model, api_key="test-key", client_type=client_type)
+    config = client._client.transform_uni_config_to_model_config({"thinking_level": level})  # noqa: SLF001
+    assert _wire_effort(config) == expected

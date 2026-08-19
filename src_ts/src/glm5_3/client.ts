@@ -108,6 +108,7 @@ export class GLM5_3Client extends LLMClient {
         [ThinkingLevel.MEDIUM]: "high",
         [ThinkingLevel.HIGH]: "high",
         [ThinkingLevel.XHIGH]: "max",
+        [ThinkingLevel.MAX]: "max",
       };
       return mapping[thinkingLevel];
     }
@@ -117,6 +118,7 @@ export class GLM5_3Client extends LLMClient {
         [ThinkingLevel.MEDIUM]: "medium",
         [ThinkingLevel.HIGH]: "high",
         [ThinkingLevel.XHIGH]: "xhigh",
+        [ThinkingLevel.MAX]: "max",
       };
       return mapping[thinkingLevel];
     }
