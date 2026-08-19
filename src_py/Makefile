@@ -14,4 +14,4 @@ build:
 
 test:
 	uv pip install -e .[dev]
-	uv run pytest -vvv tests
+	uv run pytest -vvv -n 16 --dist loadgroup tests

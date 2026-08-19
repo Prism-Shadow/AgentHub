@@ -376,6 +376,11 @@ class Gemini3_7Client(LLMClient):
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
 
+        if not model_output.candidates and not model_output.usage_metadata:
+            # gateways inject heartbeat chunks on long generations; they map to a chunk with
+            # neither candidates nor usage, so there is nothing to emit
+            event_type = "unused"
+
         if model_output.candidates:
             candidate = model_output.candidates[0]
             content = getattr(candidate, "content", None)
@@ -511,6 +516,9 @@ class Gemini3_7Client(LLMClient):
         )
         async for chunk in response_stream:
             event = self.transform_model_output_to_uni_event(chunk)
+            if event["event_type"] == "unused":
+                continue
+
             for item in event["content_items"]:
                 if item["type"] == "tool_call":
                     # gemini 3.7 does not support partial tool call, mock a partial tool call event

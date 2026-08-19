@@ -4,6 +4,8 @@
 
 在这里，我们记录模型的新增与移除时间、主要功能更新、缺陷修复，以及关键版本的发布时间。每个发布版本在此保留一行简述；逐条目的摘要位于 `changelog/<version>/README.md`，且每个条目都会链接到自己的详情文件。
 
+- [2026-08-18] [版本 0.4.3](changelog/0.4.3/README.zh.md)：所有流式 client 跳过网关在长生成期间注入的心跳事件，覆盖 OpenAI Responses、OpenAI Chat Completions、Anthropic Messages 与 Gemini 四种协议。
+
 - [2026-08-18] [版本 0.4.2](changelog/0.4.2/README.zh.md)：通用 OpenAI Responses 与 Anthropic Messages 协议 client，覆盖 OpenAI、OpenRouter、DeepSeek、Z.AI 与 MiniMax（通用 chat client 重命名为 `openai-chat`），支持 GPT-5.6，新增 `UniConfig.fast_mode`，并统一 Claude 与 Kimi 系列 client、对全家族拒绝 `temperature`。
 
 - [2026-07-22] [版本 0.4.1](changelog/0.4.1/README.zh.md)：支持 Kimi K3、Gemini 3.6 代（gemini-3.6-flash、gemini-3.5-flash-lite）与 GLM-5.2，新增包含美元/人民币定价、上下文窗口与模态信息的受支持模型注册表，以及 `UnsupportedParameterError` 参数错误类。

@@ -244,7 +244,9 @@ export class DeepSeekV4Client extends LLMClient {
     let usageMetadata: UsageMetadata | null = null;
     let finishReason: FinishReason | null = null;
 
-    if (modelOutput.choices.length > 0) {
+    // gateways inject content-free heartbeat chunks on long generations, whose
+    // choices arrive as undefined rather than an empty list
+    if (modelOutput.choices?.length) {
       const choice = modelOutput.choices[0];
       const delta = choice?.delta;
 

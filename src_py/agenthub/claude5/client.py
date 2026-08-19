@@ -349,7 +349,9 @@ class Claude5Client(LLMClient):
         elif claude_event_type == "message_stop":
             event_type = "stop"
 
-        elif claude_event_type in ["text", "thinking", "signature", "input_json"]:
+        elif claude_event_type in ["text", "thinking", "signature", "input_json", "ping"]:
+            # the SDK drops the "ping" heartbeat at the SSE layer; it reaches here only from
+            # gateways that relabel it onto another event
             event_type = "unused"
 
         else:

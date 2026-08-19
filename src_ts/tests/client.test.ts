@@ -15,7 +15,8 @@
 import { AutoLLMClient } from "../src/autoClient";
 import { listSupportedModels } from "../src/registry";
 import { ThinkingLevel, UniMessage, UniConfig, UniEvent } from "../src/types";
-import { expect, describe, test } from "@jest/globals";
+import { beforeAll, expect, describe, test } from "@jest/globals";
+import { Gaxios } from "gaxios";
 
 const IMAGE =
   "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg";
@@ -45,7 +46,6 @@ interface Model {
 const AVAILABLE_MODELS: Model[] = [];
 
 if (process.env.GEMINI_API_KEY) {
-
   AVAILABLE_MODELS.push({
     name: "gemini-3.7-flash",
     supportTextGeneration: true,
@@ -55,7 +55,6 @@ if (process.env.GEMINI_API_KEY) {
     supportEmbedding: false,
     provider: "official",
   });
-
 
   AVAILABLE_MODELS.push({
     name: "gemini-3.1-flash-image",
@@ -501,16 +500,52 @@ function checkEventIntegrity(event: UniEvent): void {
   }
 }
 
+const MODEL_CASES = AVAILABLE_MODELS.map((m): [string, Model] => [
+  m.clientType
+    ? `${m.name}:${m.provider}:${m.clientType}`
+    : `${m.name}:${m.provider}`,
+  m,
+]);
+
+/**
+ * Declare one check across every available model.
+ *
+ * Each check becomes its own describe block, and jest-circus runs describe blocks one
+ * after another, so a single model never has two checks in flight — providers rate-limit
+ * per client. Inside a block the models run concurrently, which is the wall-clock saving.
+ */
+function modelTest(
+  name: string,
+  // ahead of the body so Prettier keeps the body hugged against the call
+  timeout: number,
+  body: (model: Model) => void | Promise<void>,
+): void {
+  describe(name, () => {
+    test.concurrent.each(MODEL_CASES)(
+      "%s",
+      async (_caseName, model) => {
+        await body(model);
+      },
+      timeout,
+    );
+  });
+}
+
 if (AVAILABLE_MODELS.length > 0) {
-  describe.each(
-    AVAILABLE_MODELS.map((m): [string, Model] => [
-      m.clientType
-        ? `${m.name}:${m.provider}:${m.clientType}`
-        : `${m.name}:${m.provider}`,
-      m,
-    ]),
-  )("Client tests for %s", (_name, model: Model) => {
-    test("should stream basic response", async () => {
+  describe("Client tests", () => {
+    beforeAll(async () => {
+      // gaxios, the transport behind Vertex service-account auth, `import()`s node-fetch
+      // on its first request and caches it on the class. Jest keeps one
+      // `isInsideTestCode` flag for the whole runtime and clears it the moment any
+      // concurrent sibling finishes, after which a dynamic import throws
+      // "trying to `import` a file outside of the scope of the test code". Priming the
+      // cache from a hook, where the flag is set, keeps that import out of the tests.
+      await new Gaxios()
+        .request({ url: "http://127.0.0.1:1/" })
+        .catch(() => {});
+    });
+
+    modelTest("should stream basic response", 60000, async (model) => {
       if (!model.supportTextGeneration) {
         return;
       }
@@ -537,42 +572,46 @@ if (AVAILABLE_MODELS.length > 0) {
       }
 
       expect(text).toContain("5");
-    }, 60000);
+    });
 
-    test("should stream response with all parameters", async () => {
-      if (!model.supportTextGeneration) {
-        return;
-      }
-      const client = createClient(model);
-      const messages: UniMessage[] = [
-        {
-          role: "user",
-          content_items: [{ type: "text", text: "What is 2+3?" }],
-        },
-      ];
-      const config: UniConfig = {
-        max_tokens: 8192,
-        thinking_summary: true,
-        thinking_level: ThinkingLevel.LOW,
-      };
+    modelTest(
+      "should stream response with all parameters",
+      60000,
+      async (model) => {
+        if (!model.supportTextGeneration) {
+          return;
+        }
+        const client = createClient(model);
+        const messages: UniMessage[] = [
+          {
+            role: "user",
+            content_items: [{ type: "text", text: "What is 2+3?" }],
+          },
+        ];
+        const config: UniConfig = {
+          max_tokens: 8192,
+          thinking_summary: true,
+          thinking_level: ThinkingLevel.LOW,
+        };
 
-      let text = "";
-      for await (const event of client.streamingResponse({
-        messages,
-        config,
-      })) {
-        checkEventIntegrity(event);
-        for (const item of event.content_items) {
-          if (item.type === "text") {
-            text += item.text;
+        let text = "";
+        for await (const event of client.streamingResponse({
+          messages,
+          config,
+        })) {
+          checkEventIntegrity(event);
+          for (const item of event.content_items) {
+            if (item.type === "text") {
+              text += item.text;
+            }
           }
         }
-      }
 
-      expect(text).toContain("5");
-    }, 60000);
+        expect(text).toContain("5");
+      },
+    );
 
-    test("should handle stateful streaming", async () => {
+    modelTest("should handle stateful streaming", 60000, async (model) => {
       if (!model.supportTextGeneration) {
         return;
       }
@@ -611,9 +650,9 @@ if (AVAILABLE_MODELS.length > 0) {
 
       expect(text.toLowerCase()).toContain("alice");
       expect(client.getHistory().length).toBe(4);
-    }, 60000);
+    });
 
-    test("should set history", () => {
+    modelTest("should set history", 5000, (model) => {
       const client = createClient(model);
       const newHistory: UniMessage[] = [
         { role: "user", content_items: [{ type: "text", text: "Hi" }] },
@@ -631,7 +670,7 @@ if (AVAILABLE_MODELS.length > 0) {
       expect(client.getHistory().length).toBe(2);
     });
 
-    test("should clear history", async () => {
+    modelTest("should clear history", 5000, async (model) => {
       const client = createClient(model);
       const newHistory: UniMessage[] = [
         { role: "user", content_items: [{ type: "text", text: "Hi" }] },
@@ -648,7 +687,7 @@ if (AVAILABLE_MODELS.length > 0) {
       expect(client.getHistory().length).toBe(0);
     });
 
-    test("should concatenate events to message", async () => {
+    modelTest("should concatenate events to message", 60000, async (model) => {
       if (!model.supportTextGeneration) {
         return;
       }
@@ -688,9 +727,9 @@ if (AVAILABLE_MODELS.length > 0) {
         .map((item) => (item as { type: "text"; text: string }).text)
         .join("");
       expect(allText).toBe(text);
-    }, 60000);
+    });
 
-    test("should handle tool use", async () => {
+    modelTest("should handle tool use", 60000, async (model) => {
       if (!model.supportTextGeneration) {
         return;
       }
@@ -784,9 +823,9 @@ if (AVAILABLE_MODELS.length > 0) {
       }
 
       expect(text).toContain("20");
-    }, 60000);
+    });
 
-    test("should handle system prompt", async () => {
+    modelTest("should handle system prompt", 60000, async (model) => {
       if (!model.supportTextGeneration) {
         return;
       }
@@ -817,9 +856,9 @@ if (AVAILABLE_MODELS.length > 0) {
       }
 
       expect(text.toLowerCase()).toContain("meow");
-    }, 60000);
+    });
 
-    test("should handle image understanding", async () => {
+    modelTest("should handle image understanding", 60000, async (model) => {
       if (!model.supportImageUnderstanding) {
         return;
       }
@@ -855,55 +894,61 @@ if (AVAILABLE_MODELS.length > 0) {
       expect(
         IMAGE_KEYWORDS.some((keyword) => text.toLowerCase().includes(keyword)),
       ).toBe(true);
-    }, 60000);
+    });
 
-    test("should handle base64 encoded image understanding", async () => {
-      if (!model.supportImageUnderstanding) {
-        return;
-      }
+    modelTest(
+      "should handle base64 encoded image understanding",
+      60000,
+      async (model) => {
+        if (!model.supportImageUnderstanding) {
+          return;
+        }
 
-      const client = createClient(model);
-      const config: UniConfig = {};
+        const client = createClient(model);
+        const config: UniConfig = {};
 
-      const mimeType = "image/jpeg";
-      const response = await fetch(IMAGE);
-      const imageBuffer = await response.arrayBuffer();
-      const base64Image = Buffer.from(imageBuffer).toString("base64");
+        const mimeType = "image/jpeg";
+        const response = await fetch(IMAGE);
+        const imageBuffer = await response.arrayBuffer();
+        const base64Image = Buffer.from(imageBuffer).toString("base64");
 
-      const dataUri = `data:${mimeType};base64,${base64Image}`;
+        const dataUri = `data:${mimeType};base64,${base64Image}`;
 
-      const messages: UniMessage[] = [
-        {
-          role: "user",
-          content_items: [
-            {
-              type: "text",
-              text: "What's in this image? Describe it briefly.",
-            },
-            { type: "image_url", image_url: dataUri },
-          ],
-        },
-      ];
+        const messages: UniMessage[] = [
+          {
+            role: "user",
+            content_items: [
+              {
+                type: "text",
+                text: "What's in this image? Describe it briefly.",
+              },
+              { type: "image_url", image_url: dataUri },
+            ],
+          },
+        ];
 
-      let text = "";
-      for await (const event of client.streamingResponse({
-        messages,
-        config,
-      })) {
-        checkEventIntegrity(event);
-        for (const item of event.content_items) {
-          if (item.type === "text") {
-            text += item.text;
+        let text = "";
+        for await (const event of client.streamingResponse({
+          messages,
+          config,
+        })) {
+          checkEventIntegrity(event);
+          for (const item of event.content_items) {
+            if (item.type === "text") {
+              text += item.text;
+            }
           }
         }
-      }
 
-      expect(
-        IMAGE_KEYWORDS.some((keyword) => text.toLowerCase().includes(keyword)),
-      ).toBe(true);
-    }, 60000);
+        expect(
+          IMAGE_KEYWORDS.some((keyword) =>
+            text.toLowerCase().includes(keyword),
+          ),
+        ).toBe(true);
+      },
+    );
 
-    test("should handle tool result with image", async () => {
+    modelTest("should handle tool result with image", 60000, async (model) => {
       if (!model.supportImageUnderstanding) {
         return;
       }
@@ -981,9 +1026,9 @@ if (AVAILABLE_MODELS.length > 0) {
       expect(
         IMAGE_KEYWORDS.some((keyword) => text.toLowerCase().includes(keyword)),
       ).toBe(true);
-    }, 60000);
+    });
 
-    test("should handle image generation", async () => {
+    modelTest("should handle image generation", 180000, async (model) => {
       if (!model.supportImageGeneration) {
         return;
       }
@@ -1021,9 +1066,9 @@ if (AVAILABLE_MODELS.length > 0) {
         inlineItems.some((item) => item.mime_type.startsWith("image/")),
       ).toBe(true);
       expect(inlineItems.every((item) => item.data.length > 0)).toBe(true);
-    }, 180000);
+    });
 
-    test("should handle tts generation", async () => {
+    modelTest("should handle tts generation", 180000, async (model) => {
       if (!model.supportAudioGeneration) {
         return;
       }
@@ -1066,9 +1111,9 @@ if (AVAILABLE_MODELS.length > 0) {
         ),
       ).toBe(true);
       expect(inlineItems.every((item) => item.data.length > 0)).toBe(true);
-    }, 180000);
+    });
 
-    test("should stream text embeddings", async () => {
+    modelTest("should stream text embeddings", 60000, async (model) => {
       if (!model.supportEmbedding) {
         return;
       }
@@ -1105,7 +1150,7 @@ if (AVAILABLE_MODELS.length > 0) {
         expect(item.embedding.length).toBe(768);
         expect(item.embedding.every((v) => typeof v === "number")).toBe(true);
       }
-    }, 60000);
+    });
   });
 }
 
