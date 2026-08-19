@@ -158,6 +158,15 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     pricing: usd(10.0, 50.0, 1.0),
   },
   {
+    model: "claude-opus-5",
+    base_url: ANTHROPIC,
+    client: "claude-5",
+    input_modalities: ["Text", "Image"],
+    output_modalities: ["Text"],
+    context_window: 1000000,
+    pricing: usd(5.0, 25.0, 0.5),
+  },
+  {
     model: "claude-sonnet-5",
     base_url: ANTHROPIC,
     client: "claude-5",
@@ -185,8 +194,8 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     pricing: usd(3.0, 15.0, 0.3),
   },
   {
-    // the gpt-5.6 alias routes to gpt-5.6-sol; official standard-tier list price
-    model: "gpt-5.6",
+    // official standard-tier list price; the bare gpt-5.6 alias also routes here
+    model: "gpt-5.6-sol",
     base_url: OPENAI,
     client: "gpt-5.6",
     input_modalities: ["Text", "Image"],
@@ -246,7 +255,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     input_modalities: ["Text"],
     output_modalities: ["Text"],
     context_window: 1000000,
-    // pricing omitted: the API is announced but not yet live and no price is published
+    pricing: usd(1.4, 4.4, 0.26),
   },
   {
     model: "glm-5.2",
@@ -315,6 +324,15 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     output_modalities: ["Text"],
     context_window: 1000000,
     pricing: usd(10.0, 50.0, 1.0),
+  },
+  {
+    model: "anthropic/claude-opus-5",
+    base_url: OPENROUTER,
+    client: "openai-chat",
+    input_modalities: ["Text", "Image"],
+    output_modalities: ["Text"],
+    context_window: 1000000,
+    pricing: usd(5.0, 25.0, 0.5),
   },
   {
     model: "anthropic/claude-opus-4.8",
@@ -497,13 +515,22 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     pricing: usd(0.14, 0.28, 0.0028),
   },
   {
+    model: "z-ai/glm-5.3",
+    base_url: OPENROUTER,
+    client: "glm-5.3",
+    input_modalities: ["Text"],
+    output_modalities: ["Text"],
+    context_window: 1048576,
+    pricing: usd(1.4, 4.4, 0.26),
+  },
+  {
     model: "z-ai/glm-5.2",
     base_url: OPENROUTER,
     client: "glm-5.2",
     input_modalities: ["Text"],
     output_modalities: ["Text"],
     context_window: 1048576,
-    pricing: usd(0.8204, 2.5784, 0.15236),
+    pricing: usd(0.966, 3.036, 0.1932),
   },
   {
     model: "z-ai/glm-5.1",

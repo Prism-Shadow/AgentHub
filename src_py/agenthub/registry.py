@@ -163,6 +163,15 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "pricing": _usd(10.0, 50.0, cached=1.0),
     },
     {
+        "model": "claude-opus-5",
+        "base_url": _ANTHROPIC,
+        "client": "claude-5",
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
+        "context_window": 1000000,
+        "pricing": _usd(5.0, 25.0, cached=0.5),
+    },
+    {
         "model": "claude-sonnet-5",
         "base_url": _ANTHROPIC,
         "client": "claude-5",
@@ -190,8 +199,8 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "pricing": _usd(3.0, 15.0, cached=0.3),
     },
     {
-        # the gpt-5.6 alias routes to gpt-5.6-sol; official standard-tier list price
-        "model": "gpt-5.6",
+        # official standard-tier list price; the bare gpt-5.6 alias also routes here
+        "model": "gpt-5.6-sol",
         "base_url": _OPENAI,
         "client": "gpt-5.6",
         "input_modalities": ["Text", "Image"],
@@ -251,7 +260,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
-        # pricing omitted: the API is announced but not yet live and no price is published
+        "pricing": _usd(1.4, 4.4, cached=0.26),
     },
     {
         "model": "glm-5.2",
@@ -320,6 +329,15 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "output_modalities": ["Text"],
         "context_window": 1000000,
         "pricing": _usd(10.0, 50.0, cached=1.0),
+    },
+    {
+        "model": "anthropic/claude-opus-5",
+        "base_url": _OPENROUTER,
+        "client": "openai-chat",
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
+        "context_window": 1000000,
+        "pricing": _usd(5.0, 25.0, cached=0.5),
     },
     {
         "model": "anthropic/claude-opus-4.8",
@@ -502,13 +520,22 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "pricing": _usd(0.14, 0.28, cached=0.0028),
     },
     {
+        "model": "z-ai/glm-5.3",
+        "base_url": _OPENROUTER,
+        "client": "glm-5.3",
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
+        "context_window": 1048576,
+        "pricing": _usd(1.4, 4.4, cached=0.26),
+    },
+    {
         "model": "z-ai/glm-5.2",
         "base_url": _OPENROUTER,
         "client": "glm-5.2",
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1048576,
-        "pricing": _usd(0.8204, 2.5784, cached=0.15236),
+        "pricing": _usd(0.966, 3.036, cached=0.1932),
     },
     {
         "model": "z-ai/glm-5.1",

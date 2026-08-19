@@ -108,7 +108,7 @@ def test_gemini3_7_thinking_level_clamps_to_model_support(
 
 
 # GLM-5.3 cannot disable thinking and accepts only low/high/max reasoning_effort
-# (llmsdk_docs/glm5_3/docs/thinking.md, docs-only: the API is not yet live); GLM-5.2
+# (llmsdk_docs/glm5_3/docs/thinking.md); GLM-5.2
 # keeps the full pass-through vocabulary and pre-5.2 models take no effort parameter.
 GLM_THINKING_LEVEL_CASES = [
     ("glm-5.3", ThinkingLevel.NONE, "enabled", "low"),

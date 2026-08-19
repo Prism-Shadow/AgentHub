@@ -150,7 +150,7 @@ const PROTOCOL_BASE_URLS: { [provider: string]: { [mode: string]: string } } = {
 
 if (process.env.ZAI_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "glm-5.2",
+    name: "glm-5.3",
     supportTextGeneration: true,
     supportImageUnderstanding: false,
     supportImageGeneration: false,
@@ -258,8 +258,11 @@ const RUN_SLOW_TEST = process.env.RUN_SLOW_TEST === "1";
 
 if (process.env.ZAI_API_KEY && RUN_SLOW_TEST) {
   for (const mode of PROTOCOL_MODES) {
+    // Z.AI's Anthropic-compatible gateway defaults to thinking disabled when a request
+    // carries no thinking config, which glm-5.3 rejects because it cannot disable
+    // thinking; that protocol stays on glm-5.2
     AVAILABLE_MODELS.push({
-      name: "glm-5.2",
+      name: mode === "ant-messages" ? "glm-5.2" : "glm-5.3",
       supportTextGeneration: true,
       supportImageUnderstanding: false,
       supportImageGeneration: false,
@@ -303,7 +306,7 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     });
   }
   AVAILABLE_MODELS.push({
-    name: "z-ai/glm-5.2",
+    name: "z-ai/glm-5.3",
     supportTextGeneration: true,
     supportImageUnderstanding: false,
     supportImageGeneration: false,

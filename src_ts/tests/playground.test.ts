@@ -65,8 +65,12 @@ describe("Playground", () => {
     expect(response.text).toContain('id="thinkingSummaryCombobox"');
     expect(response.text).toContain('id="toolChoiceCombobox"');
     expect(response.text).toContain(
-      'data-combobox-option data-value="gpt-5.5"',
+      'data-combobox-option data-value="gpt-5.6-luna"',
     );
+    expect(response.text).toContain(
+      'data-value="text-embedding-3-large" data-client-type="openai-embedding"',
+    );
+    expect(response.text).toContain("getSelectedClientType()");
     expect(response.text).toContain("toggleCombobox('modelCombobox')");
     expect(response.text).toContain(
       "selectComboboxOption('modelCombobox', this)",
