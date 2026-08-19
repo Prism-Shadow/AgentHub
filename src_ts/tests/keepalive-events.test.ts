@@ -118,9 +118,8 @@ function streamFromEvents(events: unknown[]): AsyncIterable<unknown> {
 }
 
 function installFakeStream(client: StreamClient, fakeClient: unknown): void {
-  const routedClient = (
-    client as unknown as { _client: { _client: unknown } }
-  )._client;
+  const routedClient = (client as unknown as { _client: { _client: unknown } })
+    ._client;
   routedClient._client = fakeClient;
 }
 
