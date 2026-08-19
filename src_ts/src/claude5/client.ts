@@ -450,8 +450,12 @@ export class Claude5Client extends LLMClient {
     } else if (claudeEventType === "message_stop") {
       eventType = "stop";
     } else if (
-      ["text", "thinking", "signature", "input_json"].includes(claudeEventType)
+      ["text", "thinking", "signature", "input_json", "ping"].includes(
+        claudeEventType,
+      )
     ) {
+      // the SDK drops the "ping" heartbeat at the SSE layer; it reaches here only
+      // from gateways that relabel it onto another event
       eventType = "unused";
     } else {
       throw new Error(`Unknown output: ${JSON.stringify(modelOutput)}`);
