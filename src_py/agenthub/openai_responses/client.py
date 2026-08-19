@@ -54,6 +54,7 @@ class OpenaiResponsesClient(LLMClient):
             ThinkingLevel.MEDIUM: "medium",
             ThinkingLevel.HIGH: "high",
             ThinkingLevel.XHIGH: "xhigh",
+            ThinkingLevel.MAX: "max",
         }
         return mapping.get(thinking_level)
 

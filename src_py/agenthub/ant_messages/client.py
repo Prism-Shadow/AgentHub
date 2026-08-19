@@ -75,6 +75,7 @@ class AntMessagesClient(LLMClient):
             ThinkingLevel.MEDIUM: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "medium"}},
             ThinkingLevel.HIGH: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "high"}},
             ThinkingLevel.XHIGH: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "xhigh"}},
+            ThinkingLevel.MAX: {"thinking": {"type": "adaptive"}, "output_config": {"effort": "max"}},
         }
         return mapping.get(thinking_level)
 

@@ -69,6 +69,7 @@ export class OpenaiResponsesClient extends LLMClient {
       [ThinkingLevel.MEDIUM]: "medium",
       [ThinkingLevel.HIGH]: "high",
       [ThinkingLevel.XHIGH]: "xhigh",
+      [ThinkingLevel.MAX]: "max",
     };
     return mapping[thinkingLevel];
   }

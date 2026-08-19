@@ -74,6 +74,8 @@ export class MiniMaxM3Client extends LLMClient {
       [ThinkingLevel.MEDIUM]: "medium",
       [ThinkingLevel.HIGH]: "high",
       [ThinkingLevel.XHIGH]: "high",
+      // MiniMax stops at "high"
+      [ThinkingLevel.MAX]: "high",
     };
     return mapping[thinkingLevel];
   }

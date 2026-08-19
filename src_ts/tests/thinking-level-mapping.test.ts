@@ -30,6 +30,7 @@ const GEMINI3_THINKING_LEVEL_CASES: Array<
   ["gemini-3.1-pro-preview", ThinkingLevel.MEDIUM, GeminiThinkingLevel.MEDIUM],
   ["gemini-3.1-pro-preview", ThinkingLevel.HIGH, GeminiThinkingLevel.HIGH],
   ["gemini-3.1-pro-preview", ThinkingLevel.XHIGH, GeminiThinkingLevel.HIGH],
+  ["gemini-3.1-pro-preview", ThinkingLevel.MAX, GeminiThinkingLevel.HIGH],
   ["gemini-3-pro-preview", ThinkingLevel.NONE, GeminiThinkingLevel.LOW],
   ["gemini-3-pro-preview", ThinkingLevel.MEDIUM, GeminiThinkingLevel.HIGH],
   ["gemini-3.1-flash-image", ThinkingLevel.NONE, GeminiThinkingLevel.MINIMAL],
@@ -101,6 +102,8 @@ const GEMINI3_7_THINKING_LEVEL_CASES: Array<
   ["gemini-3.7-flash", ThinkingLevel.MEDIUM, GeminiThinkingLevel.MEDIUM],
   ["gemini-3.7-flash", ThinkingLevel.HIGH, GeminiThinkingLevel.HIGH],
   ["gemini-3.7-flash", ThinkingLevel.XHIGH, GeminiThinkingLevel.HIGH],
+  // Gemini has no level above "high", so MAX clamps there too.
+  ["gemini-3.7-flash", ThinkingLevel.MAX, GeminiThinkingLevel.HIGH],
   ["gemini-3.6-flash", ThinkingLevel.NONE, GeminiThinkingLevel.MINIMAL],
   ["gemini-3.5-flash-lite", ThinkingLevel.NONE, GeminiThinkingLevel.MINIMAL],
 ];
@@ -132,9 +135,11 @@ const GLM_THINKING_LEVEL_CASES: Array<
   ["glm-5.3", ThinkingLevel.MEDIUM, "enabled", "high"],
   ["glm-5.3", ThinkingLevel.HIGH, "enabled", "high"],
   ["glm-5.3", ThinkingLevel.XHIGH, "enabled", "max"],
+  ["glm-5.3", ThinkingLevel.MAX, "enabled", "max"],
   ["glm-5.2", ThinkingLevel.NONE, "disabled", undefined],
   ["glm-5.2", ThinkingLevel.MEDIUM, "enabled", "medium"],
   ["glm-5.2", ThinkingLevel.XHIGH, "enabled", "xhigh"],
+  ["glm-5.2", ThinkingLevel.MAX, "enabled", "max"],
   ["glm-5.1", ThinkingLevel.HIGH, "enabled", undefined],
   // Provider-hosted ids keep their own casing (SiliconFlow), so generation
   // detection must be case-insensitive.
@@ -155,6 +160,62 @@ describe("glm thinking level mapping", () => {
       });
       expect(config.extra_body.thinking.type).toBe(thinkingType);
       expect(config.reasoning_effort).toBe(effort);
+    },
+  );
+});
+
+// What each remaining client puts on the wire for a level, per its vendor's effort
+// vocabulary: OpenAI takes the full set, Claude tops out at max (xhigh only from 4.7),
+// DeepSeek and Kimi accept low/high/max, and MiniMax has no level above high.
+const THINKING_EFFORT_CASES: Array<
+  [string, string | undefined, ThinkingLevel, string | undefined]
+> = [
+  ["gpt-5.6", undefined, ThinkingLevel.XHIGH, "xhigh"],
+  ["gpt-5.6", undefined, ThinkingLevel.MAX, "max"],
+  ["gpt-5.6", "openai-responses", ThinkingLevel.MAX, "max"],
+  ["claude-sonnet-5", undefined, ThinkingLevel.XHIGH, "xhigh"],
+  ["claude-sonnet-5", undefined, ThinkingLevel.MAX, "max"],
+  // 4.6 has no xhigh but does take max.
+  ["claude-sonnet-4-6", undefined, ThinkingLevel.XHIGH, "high"],
+  ["claude-sonnet-4-6", undefined, ThinkingLevel.MAX, "max"],
+  ["claude-sonnet-5", "ant-messages", ThinkingLevel.MAX, "max"],
+  ["deepseek-v4", undefined, ThinkingLevel.NONE, undefined],
+  ["deepseek-v4", undefined, ThinkingLevel.LOW, "low"],
+  ["deepseek-v4", undefined, ThinkingLevel.MEDIUM, "high"],
+  ["deepseek-v4", undefined, ThinkingLevel.HIGH, "high"],
+  // DeepSeek maps xhigh onto high server-side, so the client sends high.
+  ["deepseek-v4", undefined, ThinkingLevel.XHIGH, "high"],
+  ["deepseek-v4", undefined, ThinkingLevel.MAX, "max"],
+  ["kimi-k3", undefined, ThinkingLevel.LOW, "low"],
+  ["kimi-k3", undefined, ThinkingLevel.MEDIUM, "high"],
+  ["kimi-k3", undefined, ThinkingLevel.XHIGH, "max"],
+  ["kimi-k3", undefined, ThinkingLevel.MAX, "max"],
+  ["MiniMax-M3", "minimax-m3", ThinkingLevel.XHIGH, "high"],
+  ["MiniMax-M3", "minimax-m3", ThinkingLevel.MAX, "high"],
+];
+
+/** Read the effort out of whichever config key the client used. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function wireEffort(config: any): string | undefined {
+  if (config.reasoning) return config.reasoning.effort;
+  if (config.output_config) return config.output_config.effort;
+  return config.reasoning_effort;
+}
+
+describe("thinking level to vendor effort", () => {
+  test.each(THINKING_EFFORT_CASES)(
+    "%s (%s) maps %s to %s",
+    (model, clientType, level, expected) => {
+      const client = new AutoLLMClient({
+        model,
+        apiKey: "test-key",
+        clientType,
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const config = (client as any)._client.transformUniConfigToModelConfig({
+        thinking_level: level,
+      });
+      expect(wireEffort(config)).toBe(expected);
     },
   );
 });

@@ -142,6 +142,8 @@ class Gemini3_7Client(LLMClient):
             ThinkingLevel.MEDIUM: types.ThinkingLevel.MEDIUM,
             ThinkingLevel.HIGH: types.ThinkingLevel.HIGH,
             ThinkingLevel.XHIGH: types.ThinkingLevel.HIGH,
+            # Gemini stops at "high", so both top levels land there before per-model clamping
+            ThinkingLevel.MAX: types.ThinkingLevel.HIGH,
         }
         level = mapping.get(thinking_level)
         if level is None:
@@ -201,6 +203,8 @@ class Gemini3_7Client(LLMClient):
                 "sampling parameters starting with the 3.6 generation.",
             )
 
+        # include_thoughts asks for thought summaries, but whether generateContent returns any
+        # is model-dependent (llmsdk_docs/gemini3_7/docs/thinking.md)
         thinking_summary = config.get("thinking_summary")
         thinking_level = config.get("thinking_level")
         if thinking_summary is not None or thinking_level is not None:
@@ -376,11 +380,6 @@ class Gemini3_7Client(LLMClient):
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
 
-        if not model_output.candidates and not model_output.usage_metadata:
-            # gateways inject heartbeat chunks on long generations; they map to a chunk with
-            # neither candidates nor usage, so there is nothing to emit
-            event_type = "unused"
-
         if model_output.candidates:
             candidate = model_output.candidates[0]
             content = getattr(candidate, "content", None)
@@ -440,6 +439,11 @@ class Gemini3_7Client(LLMClient):
                 "thoughts_tokens": model_output.usage_metadata.thoughts_token_count,
                 "response_tokens": model_output.usage_metadata.candidates_token_count,
             }
+
+        if not content_items and usage_metadata is None and finish_reason is None:
+            # nothing was read out of the chunk, so there is nothing to emit: a gateway
+            # heartbeat looks like this, and so does any other chunk we take no value from
+            event_type = "unused"
 
         return {
             "role": "assistant",
