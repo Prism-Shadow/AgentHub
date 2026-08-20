@@ -57,6 +57,7 @@ export class AntMessagesClient extends LLMClient {
     apiKey?: string;
     baseUrl?: string | null;
     clientType?: string | null;
+    defaultHeaders?: Record<string, string>;
   }) {
     super();
     this._model = options.model;
@@ -68,6 +69,7 @@ export class AntMessagesClient extends LLMClient {
       apiKey: key,
       authToken: key,
       baseURL: url,
+      defaultHeaders: options.defaultHeaders,
     });
   }
 

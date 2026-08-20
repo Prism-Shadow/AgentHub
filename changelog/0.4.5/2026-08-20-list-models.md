@@ -18,8 +18,9 @@
 - `gemini3_7` returns the last path segment of each name, so both `models/gemini-3.7-flash` and
   `publishers/google/models/gemini-3.7-flash` become `gemini-3.7-flash` — the spelling
   `AutoLLMClient` takes as `model`.
-- `claude5` raises `UnsupportedParameterError` on a `bedrock://` base URL, because the Bedrock SDK
-  client carries no models resource in either language.
+- `UnsupportedOperationError` joined `errors` in both languages, reporting a capability the routed
+  client does not have rather than a rejected parameter value, and `claude5` raises it on a
+  `bedrock://` base URL because the Bedrock SDK client carries no models resource.
 - `LLMClient` declares the method abstract, so every client implements it.
 - The playground gained a **List models** button under its Base URL field, backed by a
   `POST /api/models` route that builds a client from the panel's model, API key, base URL and

@@ -34,6 +34,7 @@ interface PlaygroundConfig extends UniConfig {
   api_key?: string;
   base_url?: string;
   client_type?: string;
+  default_headers?: Record<string, string>;
 }
 
 interface PlaygroundClientOptions {
@@ -41,6 +42,7 @@ interface PlaygroundClientOptions {
   apiKey?: string;
   baseUrl?: string;
   clientType?: string;
+  defaultHeaders?: Record<string, string>;
 }
 
 function normalizeOptionalString(value: unknown): string | undefined {
@@ -53,6 +55,7 @@ function getClientOptions(config: PlaygroundConfig): PlaygroundClientOptions {
     apiKey: normalizeOptionalString(config.api_key),
     baseUrl: normalizeOptionalString(config.base_url),
     clientType: normalizeOptionalString(config.client_type),
+    defaultHeaders: config.default_headers,
   };
 }
 
@@ -62,6 +65,7 @@ function getRequestConfig(config: PlaygroundConfig): UniConfig {
   delete requestConfig.api_key;
   delete requestConfig.base_url;
   delete requestConfig.client_type;
+  delete requestConfig.default_headers;
   return requestConfig;
 }
 
@@ -74,7 +78,8 @@ function clientOptionsChanged(
     previous.model !== next.model ||
     previous.apiKey !== next.apiKey ||
     previous.baseUrl !== next.baseUrl ||
-    previous.clientType !== next.clientType
+    previous.clientType !== next.clientType ||
+    JSON.stringify(previous.defaultHeaders) !== JSON.stringify(next.defaultHeaders)
   );
 }
 
@@ -281,6 +286,10 @@ export function createChatApp(): Express {
                       <span id="listModelsStatus" class="text-xs text-gray-500"></span>
                   </div>
                   <pre id="listModelsResult" class="hidden mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap rounded-md border border-gray-200 bg-gray-50 p-2 text-xs font-mono text-gray-800"></pre>
+              </div>
+              <div class="flex flex-col">
+                  <label class="text-sm font-semibold text-gray-900 mb-1" for="extraHeadersInput">Extra Headers</label>
+                  <textarea id="extraHeadersInput" rows="2" spellcheck="false" placeholder='JSON, e.g. {"X-Title": "AgentHub"} — for endpoints that demand their own' class="px-3 py-2 border border-gray-300 rounded-md text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
               </div>
               <div class="flex flex-col">
                   <label class="text-sm font-semibold text-gray-900 mb-1" for="thinkingLevelComboboxButton">Thinking Level</label>
@@ -666,6 +675,25 @@ export function createChatApp(): Express {
               }
           }
 
+          function getExtraHeaders() {
+              const input = document.getElementById('extraHeadersInput');
+              const raw = input.value.trim();
+              input.classList.remove('border-red-500');
+              if (!raw) {
+                  return null;
+              }
+              try {
+                  const parsed = JSON.parse(raw);
+                  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                      return parsed;
+                  }
+              } catch (error) {
+                  // the invalid marker below covers both a parse failure and a non-object
+              }
+              input.classList.add('border-red-500');
+              return null;
+          }
+
           function getConfig() {
               const config = {
                   model: getSelectedModel()
@@ -686,6 +714,11 @@ export function createChatApp(): Express {
               const baseUrl = document.getElementById('baseUrlInput').value.trim();
               if (baseUrl) {
                   config.base_url = baseUrl;
+              }
+
+              const extraHeaders = getExtraHeaders();
+              if (extraHeaders) {
+                  config.default_headers = extraHeaders;
               }
 
               const thinkingLevel = document.getElementById('thinkingLevelSelect').value;

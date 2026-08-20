@@ -19,7 +19,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from agenthub import AutoLLMClient, UnsupportedParameterError
+from agenthub import AutoLLMClient, UnsupportedOperationError
 
 
 @dataclass
@@ -101,5 +101,5 @@ async def test_gemini_client_strips_the_path_from_model_names():
 async def test_claude_client_reports_that_bedrock_cannot_list_models():
     client = AutoLLMClient(model="claude-sonnet-5", api_key="access-key,secret-key", base_url="bedrock://us-east-1")
 
-    with pytest.raises(UnsupportedParameterError, match="Bedrock"):
+    with pytest.raises(UnsupportedOperationError, match="Bedrock"):
         await client.list_models()

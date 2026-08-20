@@ -38,12 +38,18 @@ from ..types import (
 class DeepSeekV4Client(LLMClient):
     """DeepSeek V4-specific LLM client implementation using OpenAI-compatible Chat Completions."""
 
-    def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
+    def __init__(
+        self,
+        model: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        default_headers: dict[str, str] | None = None,
+    ):
         """Initialize DeepSeek client with model, API key, and base URL."""
         self._model = model
         api_key = api_key or os.getenv("DEEPSEEK_API_KEY")
         base_url = base_url or os.getenv("DEEPSEEK_BASE_URL") or "https://api.deepseek.com"
-        self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+        self._client = AsyncOpenAI(api_key=api_key, base_url=base_url, default_headers=default_headers)
         self._history: list[UniMessage] = []
 
     def _convert_thinking_level_to_config(self, thinking_level: ThinkingLevel) -> dict[str, str]:

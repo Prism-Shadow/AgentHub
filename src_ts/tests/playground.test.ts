@@ -80,6 +80,8 @@ describe("Playground", () => {
     expect(response.text).not.toContain("<datalist");
     expect(response.text).toContain("apiKeyInput");
     expect(response.text).toContain('id="listModelsButton"');
+    expect(response.text).toContain('id="extraHeadersInput"');
+    expect(response.text).toContain("getExtraHeaders()");
     expect(response.text).toContain("listModels()");
     expect(response.text).toContain("/api/models");
     expect(response.text).toContain("apiKeyVisibilityToggle");
@@ -173,6 +175,7 @@ describe("Playground", () => {
           model: "gpt-5.5",
           api_key: "test-key",
           base_url: "https://example.test/v1",
+          default_headers: { "X-Title": "AgentHub" },
           thinking_level: "low",
         },
       });
@@ -183,6 +186,7 @@ describe("Playground", () => {
       model: "gpt-5.5",
       apiKey: "test-key",
       baseUrl: "https://example.test/v1",
+      defaultHeaders: { "X-Title": "AgentHub" },
     });
     expect(mockLastStreamingOptions?.config).toEqual({
       thinking_level: "low",

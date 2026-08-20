@@ -22,6 +22,7 @@ import { Stream } from "@anthropic-ai/sdk/core/streaming";
 import { LLMClient } from "../baseClient";
 import {
   parseToolCallArguments,
+  UnsupportedOperationError,
   UnsupportedParameterError,
 } from "../errors";
 import {
@@ -56,6 +57,7 @@ export class Claude5Client extends LLMClient {
     apiKey?: string;
     baseUrl?: string | null;
     clientType?: string | null;
+    defaultHeaders?: Record<string, string>;
   }) {
     super();
     this._model = options.model;
@@ -70,12 +72,14 @@ export class Claude5Client extends LLMClient {
         awsSecretKey: secretKey,
         awsAccessKey: accessKey,
         awsRegion: region,
+        defaultHeaders: options.defaultHeaders,
       });
       this._use_bedrock = true;
     } else {
       this._client = new Anthropic({
         apiKey: key,
         baseURL: url,
+        defaultHeaders: options.defaultHeaders,
       });
       this._use_bedrock = false;
     }
@@ -629,9 +633,9 @@ export class Claude5Client extends LLMClient {
    */
   async listModels(): Promise<string[]> {
     if (this._use_bedrock) {
-      throw new UnsupportedParameterError({
+      throw new UnsupportedOperationError({
         client: this.constructor.name,
-        parameter: "list_models",
+        operation: "list_models",
         message: "Bedrock does not support listing models.",
       });
     }

@@ -39,12 +39,18 @@ from ..utils import is_foreign_no_op_event
 class OpenaiResponsesClient(LLMClient):
     """OpenAI Responses-compatible client implementation."""
 
-    def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
+    def __init__(
+        self,
+        model: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        default_headers: dict[str, str] | None = None,
+    ):
         """Initialize OpenAI Responses-compatible client with model, API key, and base URL."""
         self._model = model
         api_key = api_key or os.getenv("OPENAI_API_KEY")
         base_url = base_url or os.getenv("OPENAI_BASE_URL")
-        self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+        self._client = AsyncOpenAI(api_key=api_key, base_url=base_url, default_headers=default_headers)
         self._history: list[UniMessage] = []
 
     def _convert_thinking_level_to_effort(self, thinking_level: ThinkingLevel) -> str:
@@ -124,15 +130,6 @@ class OpenaiResponsesClient(LLMClient):
             last_phase: str | None = None
 
             for item in msg["content_items"]:
-                # A top-level item follows the buffered text, so flush it first to keep the wire order.
-                if item["type"] not in ("text", "image_url") and content_items:
-                    entry = {"role": msg["role"], "content": content_items}
-                    if last_phase is not None:
-                        entry["phase"] = last_phase
-
-                    input_list.append(entry)
-                    content_items = []
-
                 if item["type"] == "text":
                     phase = (item.get("fidelity") or {}).get("phase")
                     if msg["role"] == "assistant" and phase:  # split different phases

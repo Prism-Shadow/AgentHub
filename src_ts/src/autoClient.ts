@@ -45,6 +45,7 @@ export class AutoLLMClient extends LLMClient {
     apiKey?: string;
     baseUrl?: string | null;
     clientType?: string | null;
+    defaultHeaders?: Record<string, string>;
   }) {
     super();
     this._client = this._createClientForModel(
@@ -52,6 +53,7 @@ export class AutoLLMClient extends LLMClient {
       options.apiKey,
       options.baseUrl,
       options.clientType,
+      options.defaultHeaders,
     );
   }
 
@@ -70,6 +72,7 @@ export class AutoLLMClient extends LLMClient {
     apiKey?: string,
     baseUrl?: string | null,
     clientType?: string | null,
+    defaultHeaders?: Record<string, string>,
   ): LLMClient {
     clientType = (clientType || process.env.CLIENT_TYPE || model).toLowerCase();
 
@@ -79,7 +82,7 @@ export class AutoLLMClient extends LLMClient {
       clientType.includes("gemini-3") ||
       clientType.includes("gemini-embedding")
     ) {
-      return new Gemini3_7Client({ model, apiKey, baseUrl });
+      return new Gemini3_7Client({ model, apiKey, baseUrl, defaultHeaders });
     } else if (
       clientType.includes("claude") &&
       (clientType.includes("4-6") ||
@@ -88,42 +91,42 @@ export class AutoLLMClient extends LLMClient {
         clientType.includes("-5"))
     ) {
       // the whole Claude 4.6+ series shares the unified client
-      return new Claude5Client({ model, apiKey, baseUrl });
+      return new Claude5Client({ model, apiKey, baseUrl, defaultHeaders });
     } else if (
       clientType.includes("gpt-5.4") ||
       clientType.includes("gpt-5.5") ||
       clientType.includes("gpt-5.6")
     ) {
-      return new GPT5_6Client({ model, apiKey, baseUrl });
+      return new GPT5_6Client({ model, apiKey, baseUrl, defaultHeaders });
     } else if (clientType.includes("glm-5")) {
       // the whole GLM series shares the unified client
-      return new GLM5_3Client({ model, apiKey, baseUrl });
+      return new GLM5_3Client({ model, apiKey, baseUrl, defaultHeaders });
     } else if (
       clientType.includes("kimi-k3") ||
       clientType.includes("kimi-k2.5") ||
       clientType.includes("kimi-k2.6")
     ) {
       // the whole Kimi K2.5+ series shares the unified client
-      return new KimiK3Client({ model, apiKey, baseUrl });
+      return new KimiK3Client({ model, apiKey, baseUrl, defaultHeaders });
     } else if (clientType === "minimax-m3") {
-      return new MiniMaxM3Client({ model, apiKey, baseUrl });
+      return new MiniMaxM3Client({ model, apiKey, baseUrl, defaultHeaders });
     } else if (clientType.includes("deepseek-v4")) {
-      return new DeepSeekV4Client({ model, apiKey, baseUrl });
+      return new DeepSeekV4Client({ model, apiKey, baseUrl, defaultHeaders });
     } else if (clientType.includes("ant-messages")) {
-      return new AntMessagesClient({ model, apiKey, baseUrl });
+      return new AntMessagesClient({ model, apiKey, baseUrl, defaultHeaders });
     } else if (clientType.includes("openai-responses")) {
-      return new OpenaiResponsesClient({ model, apiKey, baseUrl });
+      return new OpenaiResponsesClient({ model, apiKey, baseUrl, defaultHeaders });
     } else if (
       clientType.includes("openai") &&
       clientType.includes("embedding")
     ) {
-      return new OpenaiEmbeddingClient({ model, apiKey, baseUrl });
+      return new OpenaiEmbeddingClient({ model, apiKey, baseUrl, defaultHeaders });
     } else if (
       clientType.includes("openai") &&
       !clientType.includes("embedding")
     ) {
       // openai-chat, plus bare "openai" as alias
-      return new OpenaiChatClient({ model, apiKey, baseUrl });
+      return new OpenaiChatClient({ model, apiKey, baseUrl, defaultHeaders });
     } else {
       throw new Error(
         `${clientType} is not supported. ` +

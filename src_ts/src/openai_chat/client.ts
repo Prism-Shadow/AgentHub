@@ -52,12 +52,17 @@ export class OpenaiChatClient extends LLMClient {
     apiKey?: string;
     baseUrl?: string | null;
     clientType?: string | null;
+    defaultHeaders?: Record<string, string>;
   }) {
     super();
     this._model = options.model;
     const key = options.apiKey || process.env.OPENAI_API_KEY || undefined;
     const url = options.baseUrl || process.env.OPENAI_BASE_URL || undefined;
-    this._client = new OpenAI({ apiKey: key, baseURL: url });
+    this._client = new OpenAI({
+      apiKey: key,
+      baseURL: url,
+      defaultHeaders: options.defaultHeaders,
+    });
   }
 
   /**

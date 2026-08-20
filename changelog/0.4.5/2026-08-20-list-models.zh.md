@@ -17,8 +17,9 @@
 - `gemini3_7` 只取每个 name 的最后一段路径，因此 `models/gemini-3.7-flash` 与
   `publishers/google/models/gemini-3.7-flash` 都会变成 `gemini-3.7-flash`——也就是
   `AutoLLMClient` 的 `model` 参数所接受的写法。
-- `claude5` 在 `bedrock://` 形式的 base URL 上抛出 `UnsupportedParameterError`：两种语言的
-  Bedrock SDK client 都不带 models 资源。
+- 两种语言的 `errors` 新增 `UnsupportedOperationError`，用于报告所路由的 client 根本不具备的能力
+  （而不是某个参数值被拒），`claude5` 在 `bedrock://` 形式的 base URL 上抛出它，因为 Bedrock SDK
+  client 不带 models 资源。
 - `LLMClient` 将该方法声明为抽象方法，因此每个 client 都实现了它。
 - Playground 在 Base URL 输入框下方新增 **List models** 按钮，背后是 `POST /api/models` 路由：
   用面板上的 model、API key、base URL 与 client type 构造 client，返回 id 列表。被 endpoint 拒绝的

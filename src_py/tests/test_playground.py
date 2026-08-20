@@ -52,6 +52,8 @@ def test_chat_app_index_route():
         assert b"<datalist" not in response.data
         assert b"apiKeyInput" in response.data
         assert b'id="listModelsButton"' in response.data
+        assert b'id="extraHeadersInput"' in response.data
+        assert b"getExtraHeaders()" in response.data
         assert b"listModels()" in response.data
         assert b"/api/models" in response.data
         assert b"apiKeyVisibilityToggle" in response.data
@@ -102,12 +104,13 @@ def test_chat_app_lists_the_models_the_endpoint_serves(monkeypatch):
     captured = {}
 
     class FakeClient:
-        def __init__(self, model, api_key=None, base_url=None, client_type=None):
+        def __init__(self, model, api_key=None, base_url=None, client_type=None, default_headers=None):
             captured["client_options"] = {
                 "model": model,
                 "api_key": api_key,
                 "base_url": base_url,
                 "client_type": client_type,
+                "default_headers": default_headers,
             }
 
         async def list_models(self):
@@ -129,6 +132,7 @@ def test_chat_app_lists_the_models_the_endpoint_serves(monkeypatch):
         "api_key": "test-key",
         "base_url": "https://relay.test/v1",
         "client_type": None,
+        "default_headers": None,
     }
 
 
@@ -136,7 +140,7 @@ def test_chat_app_reports_a_failed_model_listing(monkeypatch):
     """Test that a rejected listing reaches the UI as an error rather than an empty list."""
 
     class FailingClient:
-        def __init__(self, model, api_key=None, base_url=None, client_type=None):
+        def __init__(self, model, api_key=None, base_url=None, client_type=None, default_headers=None):
             pass
 
         async def list_models(self):
@@ -157,12 +161,13 @@ def test_chat_app_uses_client_connection_options(monkeypatch):
     captured = {}
 
     class FakeClient:
-        def __init__(self, model, api_key=None, base_url=None, client_type=None):
+        def __init__(self, model, api_key=None, base_url=None, client_type=None, default_headers=None):
             captured["client_options"] = {
                 "model": model,
                 "api_key": api_key,
                 "base_url": base_url,
                 "client_type": client_type,
+                "default_headers": default_headers,
             }
 
         async def streaming_response_stateful(self, message, config, signal=None):
@@ -196,6 +201,7 @@ def test_chat_app_uses_client_connection_options(monkeypatch):
                     "api_key": "test-key",
                     "base_url": "https://example.test/v1",
                     "client_type": "gpt-5.5",
+                    "default_headers": {"X-Title": "AgentHub"},
                     "thinking_level": "low",
                 },
             },
@@ -209,6 +215,7 @@ def test_chat_app_uses_client_connection_options(monkeypatch):
         "api_key": "test-key",
         "base_url": "https://example.test/v1",
         "client_type": "gpt-5.5",
+        "default_headers": {"X-Title": "AgentHub"},
     }
     assert captured["request_config"] == {"thinking_level": "low"}
     assert isinstance(captured["signal"], AbortSignal)
@@ -219,7 +226,7 @@ def test_chat_app_accepts_large_image_payload(monkeypatch):
     captured = {}
 
     class FakeClient:
-        def __init__(self, model, api_key=None, base_url=None, client_type=None):
+        def __init__(self, model, api_key=None, base_url=None, client_type=None, default_headers=None):
             pass
 
         async def streaming_response_stateful(self, message, config, signal=None):

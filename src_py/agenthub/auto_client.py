@@ -29,7 +29,12 @@ class AutoLLMClient(LLMClient):
     """
 
     def __init__(
-        self, model: str, api_key: str | None = None, base_url: str | None = None, client_type: str | None = None
+        self,
+        model: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        client_type: str | None = None,
+        default_headers: dict[str, str] | None = None,
     ):
         """
         Initialize AutoLLMClient with a specific model.
@@ -39,11 +44,17 @@ class AutoLLMClient(LLMClient):
             api_key: Optional API key
             base_url: Optional base URL for API requests
             client_type: Optional client type override
+            default_headers: Optional headers sent with every request, for endpoints that demand their own
         """
-        self._client = self._create_client_for_model(model, api_key, base_url, client_type)
+        self._client = self._create_client_for_model(model, api_key, base_url, client_type, default_headers)
 
     def _create_client_for_model(
-        self, model: str, api_key: str | None = None, base_url: str | None = None, client_type: str | None = None
+        self,
+        model: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        client_type: str | None = None,
+        default_headers: dict[str, str] | None = None,
     ) -> LLMClient:
         """Create the appropriate client for the given model."""
         client_type = (client_type or os.getenv("CLIENT_TYPE") or model).lower()
@@ -54,50 +65,54 @@ class AutoLLMClient(LLMClient):
         ):  # e.g., gemini-3.7-flash, gemini-3-flash-preview, gemini-embedding-2
             from .gemini3_7 import Gemini3_7Client
 
-            return Gemini3_7Client(model=model, api_key=api_key, base_url=base_url)
+            return Gemini3_7Client(model=model, api_key=api_key, base_url=base_url, default_headers=default_headers)
         elif "claude" in client_type and (
             "4-6" in client_type or "4-7" in client_type or "4-8" in client_type or "-5" in client_type
         ):  # the whole Claude 4.6+ series shares the unified client, e.g., claude-sonnet-4-6
             from .claude5 import Claude5Client
 
-            return Claude5Client(model=model, api_key=api_key, base_url=base_url)
+            return Claude5Client(model=model, api_key=api_key, base_url=base_url, default_headers=default_headers)
         elif "gpt-5.4" in client_type or "gpt-5.5" in client_type or "gpt-5.6" in client_type:  # e.g., gpt-5.6
             from .gpt5_6 import GPT5_6Client
 
-            return GPT5_6Client(model=model, api_key=api_key, base_url=base_url)
+            return GPT5_6Client(model=model, api_key=api_key, base_url=base_url, default_headers=default_headers)
         elif "glm-5" in client_type:  # the whole GLM series shares the unified client
             from .glm5_3 import GLM5_3Client
 
-            return GLM5_3Client(model=model, api_key=api_key, base_url=base_url)
+            return GLM5_3Client(model=model, api_key=api_key, base_url=base_url, default_headers=default_headers)
         elif "kimi-k3" in client_type or "kimi-k2.5" in client_type or "kimi-k2.6" in client_type:
             # the whole Kimi K2.5+ series shares the unified client
             from .kimi_k3 import KimiK3Client
 
-            return KimiK3Client(model=model, api_key=api_key, base_url=base_url)
+            return KimiK3Client(model=model, api_key=api_key, base_url=base_url, default_headers=default_headers)
         elif client_type == "minimax-m3":
             from .minimax_m3 import MiniMaxM3Client
 
-            return MiniMaxM3Client(model=model, api_key=api_key, base_url=base_url)
+            return MiniMaxM3Client(model=model, api_key=api_key, base_url=base_url, default_headers=default_headers)
         elif "deepseek-v4" in client_type:
             from .deepseek_v4 import DeepSeekV4Client
 
-            return DeepSeekV4Client(model=model, api_key=api_key, base_url=base_url)
+            return DeepSeekV4Client(model=model, api_key=api_key, base_url=base_url, default_headers=default_headers)
         elif "ant-messages" in client_type:
             from .ant_messages import AntMessagesClient
 
-            return AntMessagesClient(model=model, api_key=api_key, base_url=base_url)
+            return AntMessagesClient(model=model, api_key=api_key, base_url=base_url, default_headers=default_headers)
         elif "openai-responses" in client_type:
             from .openai_responses import OpenaiResponsesClient
 
-            return OpenaiResponsesClient(model=model, api_key=api_key, base_url=base_url)
+            return OpenaiResponsesClient(
+                model=model, api_key=api_key, base_url=base_url, default_headers=default_headers
+            )
         elif "openai" in client_type and "embedding" in client_type:
             from .openai_embedding import OpenaiEmbeddingClient
 
-            return OpenaiEmbeddingClient(model=model, api_key=api_key, base_url=base_url)
+            return OpenaiEmbeddingClient(
+                model=model, api_key=api_key, base_url=base_url, default_headers=default_headers
+            )
         elif "openai" in client_type and "embedding" not in client_type:  # openai-chat, plus bare "openai" as alias
             from .openai_chat import OpenaiChatClient
 
-            return OpenaiChatClient(model=model, api_key=api_key, base_url=base_url)
+            return OpenaiChatClient(model=model, api_key=api_key, base_url=base_url, default_headers=default_headers)
         else:
             raise ValueError(
                 f"{client_type} is not supported. "

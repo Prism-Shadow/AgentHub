@@ -42,14 +42,22 @@ REDACTED_THINKING = "_REDACTED_THINKING"
 class AntMessagesClient(LLMClient):
     """Anthropic Messages-compatible client implementation."""
 
-    def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
+    def __init__(
+        self,
+        model: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        default_headers: dict[str, str] | None = None,
+    ):
         """Initialize Anthropic Messages-compatible client with model, API key, and base URL."""
         self._model = model
         api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         base_url = base_url or os.getenv("ANTHROPIC_BASE_URL")
         # send the credential through both header conventions: Anthropic and DeepSeek read
         # x-api-key while gateways such as OpenRouter and Z.AI read Authorization: Bearer
-        self._client = AsyncAnthropic(api_key=api_key, auth_token=api_key, base_url=base_url)
+        self._client = AsyncAnthropic(
+            api_key=api_key, auth_token=api_key, base_url=base_url, default_headers=default_headers
+        )
         self._history: list[UniMessage] = []
 
     def _convert_image_url_to_source(self, url: str) -> dict[str, Any]:

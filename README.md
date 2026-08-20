@@ -108,6 +108,8 @@ AgentHub provides Codex/Claude Code skill files for assistants that need to help
 
 `AutoLLMClient` is the main class for interacting with the AgentHub SDK. It provides the following methods:
 
+It is constructed with `model`, plus optional `api_key`, `base_url`, `client_type`, and `default_headers` — headers sent with every request, for endpoints that demand their own.
+
 - `(async) streaming_response(messages, config)`: Streams the response of LLMs in a stateless manner.
 - `(async) streaming_response_stateful(message, config)`: Streams the response of LLMs in a stateful manner.
 - `(async) list_models()`: Lists the model ids the configured endpoint serves.

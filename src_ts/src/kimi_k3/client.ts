@@ -53,6 +53,7 @@ export class KimiK3Client extends LLMClient {
     apiKey?: string;
     baseUrl?: string | null;
     clientType?: string | null;
+    defaultHeaders?: Record<string, string>;
   }) {
     super();
     this._model = options.model;
@@ -61,7 +62,11 @@ export class KimiK3Client extends LLMClient {
       options.baseUrl ||
       process.env.MOONSHOT_BASE_URL ||
       "https://api.moonshot.cn/v1";
-    this._client = new OpenAI({ apiKey: key, baseURL: url });
+    this._client = new OpenAI({
+      apiKey: key,
+      baseURL: url,
+      defaultHeaders: options.defaultHeaders,
+    });
   }
 
   /**

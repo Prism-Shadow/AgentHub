@@ -52,12 +52,17 @@ export class OpenaiResponsesClient extends LLMClient {
     apiKey?: string;
     baseUrl?: string | null;
     clientType?: string | null;
+    defaultHeaders?: Record<string, string>;
   }) {
     super();
     this._model = options.model;
     const key = options.apiKey || process.env.OPENAI_API_KEY || undefined;
     const url = options.baseUrl || process.env.OPENAI_BASE_URL || undefined;
-    this._client = new OpenAI({ apiKey: key, baseURL: url });
+    this._client = new OpenAI({
+      apiKey: key,
+      baseURL: url,
+      defaultHeaders: options.defaultHeaders,
+    });
   }
 
   /**
@@ -167,21 +172,6 @@ export class OpenaiResponsesClient extends LLMClient {
       let lastPhase: string | null = null;
 
       for (const item of msg.content_items) {
-        // A top-level item follows the buffered text, so flush it first to keep the wire order.
-        if (
-          item.type !== "text" &&
-          item.type !== "image_url" &&
-          contentItems.length > 0
-        ) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const entry: any = { role: msg.role, content: contentItems };
-          if (lastPhase !== null) {
-            entry.phase = lastPhase;
-          }
-          inputList.push(entry);
-          contentItems = [];
-        }
-
         if (item.type === "text") {
           const phase = item.fidelity?.phase;
           if (msg.role === "assistant" && phase) {

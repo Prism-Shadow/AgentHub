@@ -23,7 +23,7 @@ from anthropic import AsyncAnthropic, AsyncAnthropicBedrock
 from anthropic.types.beta import BetaMessageParam, BetaRawMessageStreamEvent
 
 from ..base_client import LLMClient
-from ..errors import UnsupportedParameterError, parse_tool_call_arguments
+from ..errors import UnsupportedOperationError, UnsupportedParameterError, parse_tool_call_arguments
 from ..types import (
     EventType,
     FinishReason,
@@ -45,7 +45,13 @@ REDACTED_THINKING = "_REDACTED_THINKING"
 class Claude5Client(LLMClient):
     """Claude 5-specific LLM client implementation (also serves Claude 4.6 through 4.8)."""
 
-    def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
+    def __init__(
+        self,
+        model: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        default_headers: dict[str, str] | None = None,
+    ):
         """Initialize Claude 5 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
@@ -54,11 +60,14 @@ class Claude5Client(LLMClient):
             region = base_url.replace("bedrock://", "")
             access_key, secret_key = api_key.split(",")
             self._client = AsyncAnthropicBedrock(
-                aws_secret_key=secret_key, aws_access_key=access_key, aws_region=region
+                aws_secret_key=secret_key,
+                aws_access_key=access_key,
+                aws_region=region,
+                default_headers=default_headers,
             )
             self._use_bedrock = True
         else:
-            self._client = AsyncAnthropic(api_key=api_key, base_url=base_url)
+            self._client = AsyncAnthropic(api_key=api_key, base_url=base_url, default_headers=default_headers)
             self._use_bedrock = False
 
         self._history: list[UniMessage] = []
@@ -480,7 +489,7 @@ class Claude5Client(LLMClient):
             list[str]: The model ids, in the order the endpoint returned them.
         """
         if self._use_bedrock:
-            raise UnsupportedParameterError(
+            raise UnsupportedOperationError(
                 self.__class__.__name__, "list_models", "Bedrock does not support listing models."
             )
 

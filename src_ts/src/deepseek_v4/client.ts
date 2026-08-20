@@ -45,6 +45,7 @@ export class DeepSeekV4Client extends LLMClient {
     apiKey?: string;
     baseUrl?: string | null;
     clientType?: string | null;
+    defaultHeaders?: Record<string, string>;
   }) {
     super();
     this._model = options.model;
@@ -53,7 +54,11 @@ export class DeepSeekV4Client extends LLMClient {
       options.baseUrl ||
       process.env.DEEPSEEK_BASE_URL ||
       "https://api.deepseek.com";
-    this._client = new OpenAI({ apiKey: key, baseURL: url });
+    this._client = new OpenAI({
+      apiKey: key,
+      baseURL: url,
+      defaultHeaders: options.defaultHeaders,
+    });
   }
 
   private _convertThinkingLevelToConfig(thinkingLevel: ThinkingLevel): {

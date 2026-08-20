@@ -50,6 +50,7 @@ export class MiniMaxM3Client extends LLMClient {
     apiKey?: string;
     baseUrl?: string | null;
     clientType?: string | null;
+    defaultHeaders?: Record<string, string>;
   }) {
     super();
     this._model = options.model;
@@ -63,6 +64,7 @@ export class MiniMaxM3Client extends LLMClient {
       apiKey,
       baseURL:
         options.baseUrl || process.env.MINIMAX_BASE_URL || DEFAULT_BASE_URL,
+      defaultHeaders: options.defaultHeaders,
     });
   }
 
@@ -167,16 +169,6 @@ export class MiniMaxM3Client extends LLMClient {
       let contentItems: any[] = [];
 
       for (const item of message.content_items) {
-        // A top-level item follows the buffered text, so flush it first to keep the wire order.
-        if (
-          item.type !== "text" &&
-          item.type !== "image_url" &&
-          contentItems.length > 0
-        ) {
-          inputList.push({ role: message.role, content: contentItems });
-          contentItems = [];
-        }
-
         if (item.type === "text") {
           contentItems.push({
             type: message.role === "user" ? "input_text" : "output_text",

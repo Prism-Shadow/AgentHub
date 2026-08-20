@@ -41,7 +41,7 @@ from .tracer import Tracer
 _event_loop: asyncio.AbstractEventLoop | None = None
 _loop_lock = threading.Lock()
 _session_clients: dict[str, AutoLLMClient] = {}
-_session_client_options: dict[str, tuple[str, str | None, str | None, str | None]] = {}
+_session_client_options: dict[str, tuple[str, str | None, str | None, str | None, dict[str, str] | None]] = {}
 _session_abort_signals: dict[str, AbortSignal] = {}
 
 
@@ -83,13 +83,16 @@ def _normalize_optional_string(value: Any) -> str | None:
     return None
 
 
-def _get_client_options(config: dict[str, Any]) -> tuple[str, str | None, str | None, str | None]:
+def _get_client_options(
+    config: dict[str, Any],
+) -> tuple[str, str | None, str | None, str | None, dict[str, str] | None]:
     """Extract client construction options from playground config."""
     model = _normalize_optional_string(config.get("model")) or "gpt-5.5"
     api_key = _normalize_optional_string(config.get("api_key"))
     base_url = _normalize_optional_string(config.get("base_url"))
     client_type = _normalize_optional_string(config.get("client_type"))
-    return model, api_key, base_url, client_type
+    default_headers = config.get("default_headers")
+    return model, api_key, base_url, client_type, default_headers if isinstance(default_headers, dict) else None
 
 
 def _get_request_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -99,6 +102,7 @@ def _get_request_config(config: dict[str, Any]) -> dict[str, Any]:
     request_config.pop("api_key", None)
     request_config.pop("base_url", None)
     request_config.pop("client_type", None)
+    request_config.pop("default_headers", None)
     return request_config
 
 
@@ -270,6 +274,10 @@ def create_chat_app() -> Flask:
                         <span id="listModelsStatus" class="text-xs text-gray-500"></span>
                     </div>
                     <pre id="listModelsResult" class="hidden mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap rounded-md border border-gray-200 bg-gray-50 p-2 text-xs font-mono text-gray-800"></pre>
+                </div>
+                <div class="flex flex-col">
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="extraHeadersInput">Extra Headers</label>
+                    <textarea id="extraHeadersInput" rows="2" spellcheck="false" placeholder='JSON, e.g. {"X-Title": "AgentHub"} — for endpoints that demand their own' class="px-3 py-2 border border-gray-300 rounded-md text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
                 </div>
                 <div class="flex flex-col">
                     <label class="text-sm font-semibold text-gray-900 mb-1" for="thinkingLevelComboboxButton">Thinking Level</label>
@@ -655,6 +663,25 @@ def create_chat_app() -> Flask:
                 }
             }
 
+            function getExtraHeaders() {
+                const input = document.getElementById('extraHeadersInput');
+                const raw = input.value.trim();
+                input.classList.remove('border-red-500');
+                if (!raw) {
+                    return null;
+                }
+                try {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                        return parsed;
+                    }
+                } catch (error) {
+                    // the invalid marker below covers both a parse failure and a non-object
+                }
+                input.classList.add('border-red-500');
+                return null;
+            }
+
             function getConfig() {
                 const config = {
                     model: getSelectedModel()
@@ -675,6 +702,11 @@ def create_chat_app() -> Flask:
                 const baseUrl = document.getElementById('baseUrlInput').value.trim();
                 if (baseUrl) {
                     config.base_url = baseUrl;
+                }
+
+                const extraHeaders = getExtraHeaders();
+                if (extraHeaders) {
+                    config.default_headers = extraHeaders;
                 }
 
                 const thinkingLevel = document.getElementById('thinkingLevelSelect').value;
@@ -1107,12 +1139,13 @@ def create_chat_app() -> Flask:
                 # Get or create client for this session
                 client_options = _get_client_options(config)
                 if session_id not in _session_clients or _session_client_options.get(session_id) != client_options:
-                    model, api_key, base_url, client_type = client_options
+                    model, api_key, base_url, client_type, default_headers = client_options
                     _session_clients[session_id] = AutoLLMClient(
                         model=model,
                         api_key=api_key,
                         base_url=base_url,
                         client_type=client_type,
+                        default_headers=default_headers,
                     )
                     _session_client_options[session_id] = client_options
 
@@ -1198,10 +1231,16 @@ def create_chat_app() -> Flask:
     def list_models() -> Response | tuple[Response, int]:
         """List the model ids the configured endpoint serves."""
         data = request.json or {}
-        model, api_key, base_url, client_type = _get_client_options(data.get("config") or {})
+        model, api_key, base_url, client_type, default_headers = _get_client_options(data.get("config") or {})
 
         try:
-            client = AutoLLMClient(model=model, api_key=api_key, base_url=base_url, client_type=client_type)
+            client = AutoLLMClient(
+                model=model,
+                api_key=api_key,
+                base_url=base_url,
+                client_type=client_type,
+                default_headers=default_headers,
+            )
             loop = _get_event_loop()
             models = asyncio.run_coroutine_threadsafe(client.list_models(), loop).result()
         except Exception as exc:  # a rejected key, an unreachable base URL, or a client that cannot list

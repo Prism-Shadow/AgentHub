@@ -95,12 +95,21 @@ export class Gemini3_7Client extends LLMClient {
     apiKey?: string;
     baseUrl?: string | null;
     clientType?: string | null;
+    defaultHeaders?: Record<string, string>;
   }) {
     super();
     this._model = options.model;
     const key = options.apiKey || process.env.GEMINI_API_KEY || undefined;
     const url = options.baseUrl || process.env.GEMINI_BASE_URL || undefined;
-    const httpOptions = url ? { baseUrl: url } : undefined;
+    // the Gemini SDK carries connection headers inside httpOptions rather than its own argument
+    const httpOptions: { baseUrl?: string; headers?: Record<string, string> } =
+      {};
+    if (url) {
+      httpOptions.baseUrl = url;
+    }
+    if (options.defaultHeaders) {
+      httpOptions.headers = options.defaultHeaders;
+    }
     if (key && key.startsWith("{")) {
       const credentials = JSON.parse(key);
       const googleAuthOptions = {

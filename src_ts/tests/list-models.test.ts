@@ -15,7 +15,7 @@
 
 import { expect, describe, test } from "@jest/globals";
 
-import { AutoLLMClient, UnsupportedParameterError } from "../src";
+import { AutoLLMClient, UnsupportedOperationError } from "../src";
 
 interface ListCase {
   expectedClient: string;
@@ -139,7 +139,7 @@ describe("listModels", () => {
     });
 
     await expect(client.listModels()).rejects.toThrow(
-      UnsupportedParameterError,
+      UnsupportedOperationError,
     );
   });
 });
