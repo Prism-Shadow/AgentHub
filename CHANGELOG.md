@@ -4,7 +4,7 @@
 
 Here, we record the addition and removal times of models, major functional updates, bug fixes, and release times of key versions. Each release keeps one brief line here; the per-entry summaries live in `changelog/<version>/README.md`, and every entry links its detail file.
 
-- [2026-08-19] [Version 0.4.5](changelog/0.4.5/README.md): streaming clients skip stream output they do not recognize unless `AGENTHUB_DEBUG` is set; `AutoLLMClient` lists the model ids an endpoint serves, and every client accepts default headers for endpoints that demand their own.
+- [2026-08-20] [Version 0.4.5](changelog/0.4.5/README.md): streaming clients skip output they do not recognize unless `AGENTHUB_DEBUG` is set, `AutoLLMClient` lists the model ids an endpoint serves, every client accepts default headers for endpoints that demand their own, GLM-5.3 and `claude-opus-5` join the registry, and the OpenRouter entries move to the `openai-responses` client.
 
 - [2026-08-19] [Version 0.4.4](changelog/0.4.4/README.md): thinking levels gain a `MAX` tier above `XHIGH`, and each client maps the ladder onto its vendor's effort vocabulary (DeepSeek re-mapped to its current low/high/max values).
 
