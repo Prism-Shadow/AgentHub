@@ -16,7 +16,7 @@ To use a specific model, please refer to its dedicated README:
 - **[Gemini 3.7](./gemini3_7/README.md)** - Google's Gemini 3.7 generation (gemini-3.7-flash): same wire contract as 3.6, drops the `minimal` thinking level
 - **[GLM-5.1](./glm5_1/README.md)** - Z.AI's GLM-5.1 API documentation and examples
 - **[GLM-5.2](./glm5_2/README.md)** - Z.AI's GLM-5.2 API documentation (reasoning_effort, thinking modes, tool streaming)
-- **[GLM-5.3](./glm5_3/README.md)** - Z.AI's GLM-5.3 pre-launch documentation (forced thinking, reasoning_effort restricted to low/high/max)
+- **[GLM-5.3](./glm5_3/README.md)** - Z.AI's GLM-5.3 API documentation (forced thinking, reasoning_effort restricted to low/high/max)
 - **[GPT-5.5](./gpt5_5/README.md)** - OpenAI's GPT-5.5 API documentation and examples
 - **[GPT-5.6](./gpt5_6/README.md)** - OpenAI's GPT-5.6 generation (sol/terra/luna): reasoning modes, fast mode, and Responses migration
 - **[Kimi K3](./kimi_k3/README.md)** - Moonshot's Kimi K3 API documentation (reasoning_effort, tool calling, vision, caching)

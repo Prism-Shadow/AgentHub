@@ -43,11 +43,11 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 | Model Name     | Vendor                              | Example Model ID       | Input Modalities | Output Modalities              |
 | -------------- | ----------------------------------- | ---------------------- | ---------------- | ------------------------------ |
 | Gemini 3-3.7   | Official/Google Vertex AI           | `gemini-3.7-flash`     | Text, Image      | Text, Image, Speech, Embedding |
-| Claude 4.6-5   | Official/Amazon Bedrock/UModelVerse | `claude-sonnet-5`      | Text, Image      | Text                           |
-| GPT-5.4-5.6    | Official/OpenRouter/UModelVerse     | `gpt-5.6`              | Text, Image      | Text, Embedding                |
+| Claude 4.6-5   | Official/Amazon Bedrock/UModelVerse | `claude-opus-5`        | Text, Image      | Text                           |
+| GPT-5.4-5.6    | Official/OpenRouter/UModelVerse     | `gpt-5.6-sol`          | Text, Image      | Text, Embedding                |
 | Kimi-K2.5/K2.6/K3 | Official/OpenRouter/SiliconFlow  | `kimi-k3`              | Text, Image      | Text                           |
 | DeepSeek V4    | Official/OpenRouter/SiliconFlow     | `deepseek-v4-pro`      | Text             | Text                           |
-| GLM-5.1-5.3 (5.3 API pre-launch) | Official/OpenRouter/SiliconFlow | `glm-5.2`        | Text             | Text                           |
+| GLM-5.1-5.3    | Official/OpenRouter/SiliconFlow     | `glm-5.3`              | Text             | Text                           |
 | MiniMax-M3     | Official                            | `MiniMax-M3`           | Text, Image      | Text                           |
 | Qwen3.6        | OpenRouter/SiliconFlow/vLLM         | `qwen/qwen3.6-35b-a3b` | Text, Image      | Text, Embedding                |
 
@@ -55,7 +55,9 @@ Beyond the model-specific clients, three generic protocol clients call any compa
 endpoint: `client_type="openai-chat"` (OpenAI Chat Completions; bare `"openai"` is an
 alias), `"openai-responses"` (OpenAI Responses, served by OpenAI, OpenRouter, DeepSeek,
 Z.AI, and MiniMax), and `"ant-messages"` (Anthropic Messages, served by Anthropic,
-OpenRouter, DeepSeek, Z.AI, and MiniMax).
+OpenRouter, DeepSeek, Z.AI, and MiniMax). Where a gateway serves more than one, prefer
+`"openai-responses"`: OpenRouter serves it for every model it hosts, while SiliconFlow
+serves Chat Completions only.
 
 The full machine-readable list — model, base URL, client, input/output modalities, context
 window, and per-million-token pricing in USD or CNY — is available via
@@ -136,7 +138,7 @@ from agenthub import AutoLLMClient
 os.environ["OPENAI_API_KEY"] = "your-openai-api-key"
 
 async def main():
-    client = AutoLLMClient(model="gpt-5.6")
+    client = AutoLLMClient(model="gpt-5.6-sol")
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -162,7 +164,7 @@ import { AutoLLMClient } from "@prismshadow/agenthub";
 process.env.OPENAI_API_KEY = "your-openai-api-key";
 
 async function main() {
-  const client = new AutoLLMClient({ model: "gpt-5.6" });
+  const client = new AutoLLMClient({ model: "gpt-5.6-sol" });
   for await (const event of client.streamingResponseStateful({
     message: {
       role: "user",
@@ -182,7 +184,7 @@ main().catch(console.error);
 // {'role': 'assistant', 'event_type': 'stop', 'content_items': [], 'usage_metadata': {'cached_tokens': 0, 'prompt_tokens': 12, 'thoughts_tokens': 0, 'response_tokens': 8}, 'finish_reason': 'stop'}
 ```
 
-### Anthropic Claude Sonnet 5
+### Anthropic Claude Opus 5
 
 <details><summary><strong>Python Example</strong></summary>
 
@@ -194,7 +196,7 @@ from agenthub import AutoLLMClient
 os.environ["ANTHROPIC_API_KEY"] = "your-anthropic-api-key"
 
 async def main():
-    client = AutoLLMClient(model="claude-sonnet-5")
+    client = AutoLLMClient(model="claude-opus-5")
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -217,7 +219,7 @@ import { AutoLLMClient } from "@prismshadow/agenthub";
 process.env.ANTHROPIC_API_KEY = "your-anthropic-api-key";
 
 async function main() {
-  const client = new AutoLLMClient({ model: "claude-sonnet-5" });
+  const client = new AutoLLMClient({ model: "claude-opus-5" });
   for await (const event of client.streamingResponseStateful({
     message: {
       role: "user",
@@ -234,7 +236,7 @@ main().catch(console.error);
 
 </details>
 
-### OpenRouter GLM-5.1
+### OpenRouter GLM-5.3
 
 <details><summary><strong>Python Example</strong></summary>
 
@@ -247,7 +249,7 @@ os.environ["ZAI_API_KEY"] = "your-openrouter-api-key"
 os.environ["ZAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 
 async def main():
-    client = AutoLLMClient(model="z-ai/glm-5.1")
+    client = AutoLLMClient(model="z-ai/glm-5.3")
     async for event in client.streaming_response_stateful(
         message={
             "role": "user",
@@ -270,7 +272,7 @@ process.env.ZAI_API_KEY = "your-openrouter-api-key";
 process.env.ZAI_BASE_URL = "https://openrouter.ai/api/v1";
 
 async function main() {
-  const client = new AutoLLMClient({ model: "z-ai/glm-5.1" });
+  const client = new AutoLLMClient({ model: "z-ai/glm-5.3" });
   for await (const event of client.streamingResponseStateful({
     message: {
       role: "user",

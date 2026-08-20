@@ -41,7 +41,9 @@ def test_chat_app_index_route():
         assert b'id="thinkingLevelCombobox"' in response.data
         assert b'id="thinkingSummaryCombobox"' in response.data
         assert b'id="toolChoiceCombobox"' in response.data
-        assert b'data-combobox-option data-value="gpt-5.5"' in response.data
+        assert b'data-combobox-option data-value="gpt-5.6-luna"' in response.data
+        assert b'data-value="text-embedding-3-large" data-client-type="openai-embedding"' in response.data
+        assert b"getSelectedClientType()" in response.data
         assert b"toggleCombobox('modelCombobox')" in response.data
         assert b"selectComboboxOption('modelCombobox', this)" in response.data
         assert b"customModelInput" in response.data

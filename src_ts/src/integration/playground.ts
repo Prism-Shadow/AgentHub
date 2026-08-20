@@ -51,7 +51,7 @@ function normalizeOptionalString(value: unknown): string | undefined {
 
 function getClientOptions(config: PlaygroundConfig): PlaygroundClientOptions {
   return {
-    model: normalizeOptionalString(config.model) || "gpt-5.5",
+    model: normalizeOptionalString(config.model) || "gpt-5.6-luna",
     apiKey: normalizeOptionalString(config.api_key),
     baseUrl: normalizeOptionalString(config.base_url),
     clientType: normalizeOptionalString(config.client_type),
@@ -193,7 +193,7 @@ export function createChatApp(): Express {
                       </div>
                   </div>
                   <div id="modelCombobox" class="relative" data-combobox>
-                      <input id="modelSelect" type="hidden" value="gpt-5.5" data-combobox-value>
+                      <input id="modelSelect" type="hidden" value="gpt-5.6-luna" data-combobox-value>
                       <button
                           id="modelComboboxButton"
                           type="button"
@@ -207,7 +207,7 @@ export function createChatApp(): Express {
                       >
                           <span class="flex items-center justify-between gap-3">
                               <span class="min-w-0">
-                                  <span class="block truncate text-sm font-medium text-gray-900" data-combobox-label>GPT 5.5</span>
+                                  <span class="block truncate text-sm font-medium text-gray-900" data-combobox-label>GPT 5.6 Luna</span>
                               </span>
                               <svg class="h-4 w-4 flex-none text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                   <path d="m6 9 6 6 6-6"></path>
@@ -215,35 +215,35 @@ export function createChatApp(): Express {
                           </span>
                       </button>
                       <div id="modelComboboxMenu" class="hidden absolute z-30 mt-2 max-h-72 w-full overflow-y-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg" role="listbox" aria-labelledby="modelComboboxButton" data-combobox-menu>
-                          <button type="button" role="option" aria-selected="true" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none bg-blue-50" data-combobox-option data-value="gpt-5.5" data-label="GPT 5.5" data-description="gpt-5.5" onclick="selectComboboxOption('modelCombobox', this)">
-                              <span class="block truncate text-sm font-medium text-gray-900">GPT 5.5</span>
+                          <button type="button" role="option" aria-selected="true" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none bg-blue-50" data-combobox-option data-value="gpt-5.6-luna" data-label="GPT 5.6 Luna" data-description="gpt-5.6-luna" onclick="selectComboboxOption('modelCombobox', this)">
+                              <span class="block truncate text-sm font-medium text-gray-900">GPT 5.6 Luna</span>
                           </button>
-                          <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-3.5-flash" data-label="Gemini 3.5 Flash" data-description="gemini-3.5-flash" onclick="selectComboboxOption('modelCombobox', this)">
-                              <span class="block truncate text-sm font-medium text-gray-900">Gemini 3.5 Flash</span>
+                          <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="text-embedding-3-large" data-client-type="openai-embedding" data-label="Text Embedding 3 Large" data-description="text-embedding-3-large" onclick="selectComboboxOption('modelCombobox', this)">
+                              <span class="block truncate text-sm font-medium text-gray-900">Text Embedding 3 Large</span>
                           </button>
-                          <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-embedding-2" data-label="Gemini Embedding 2" data-description="gemini-embedding-2" onclick="selectComboboxOption('modelCombobox', this)">
-                              <span class="block truncate text-sm font-medium text-gray-900">Gemini Embedding 2</span>
+                          <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-3.7-flash" data-label="Gemini 3.7 Flash" data-description="gemini-3.7-flash" onclick="selectComboboxOption('modelCombobox', this)">
+                              <span class="block truncate text-sm font-medium text-gray-900">Gemini 3.7 Flash</span>
                           </button>
-                          <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="claude-opus-4-7" data-label="Claude Opus 4.7" data-description="claude-opus-4-7" onclick="selectComboboxOption('modelCombobox', this)">
-                              <span class="block truncate text-sm font-medium text-gray-900">Claude Opus 4.7</span>
-                          </button>
-                          <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="claude-sonnet-4-6" data-label="Claude Sonnet 4.6" data-description="claude-sonnet-4-6" onclick="selectComboboxOption('modelCombobox', this)">
-                              <span class="block truncate text-sm font-medium text-gray-900">Claude Sonnet 4.6</span>
-                          </button>
-                          <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="kimi-k2.6" data-label="Kimi K2.6" data-description="kimi-k2.6" onclick="selectComboboxOption('modelCombobox', this)">
-                              <span class="block truncate text-sm font-medium text-gray-900">Kimi K2.6</span>
-                          </button>
-                          <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="glm-5.1" data-label="GLM 5.1" data-description="glm-5.1" onclick="selectComboboxOption('modelCombobox', this)">
-                              <span class="block truncate text-sm font-medium text-gray-900">GLM 5.1</span>
-                          </button>
-                          <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-3.1-flash-image-preview" data-label="Gemini 3.1 Flash Image" data-description="gemini-3.1-flash-image-preview" onclick="selectComboboxOption('modelCombobox', this)">
+                          <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-3.1-flash-image" data-label="Gemini 3.1 Flash Image" data-description="gemini-3.1-flash-image" onclick="selectComboboxOption('modelCombobox', this)">
                               <span class="block truncate text-sm font-medium text-gray-900">Gemini 3.1 Flash Image</span>
                           </button>
                           <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-3.1-flash-tts-preview" data-label="Gemini 3.1 Flash TTS" data-description="gemini-3.1-flash-tts-preview" onclick="selectComboboxOption('modelCombobox', this)">
                               <span class="block truncate text-sm font-medium text-gray-900">Gemini 3.1 Flash TTS</span>
                           </button>
-                          <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="deepseek-v4-pro" data-label="DeepSeek V4 Pro" data-description="deepseek-v4-pro" onclick="selectComboboxOption('modelCombobox', this)">
-                              <span class="block truncate text-sm font-medium text-gray-900">DeepSeek V4 Pro</span>
+                          <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-embedding-2" data-label="Gemini Embedding 2" data-description="gemini-embedding-2" onclick="selectComboboxOption('modelCombobox', this)">
+                              <span class="block truncate text-sm font-medium text-gray-900">Gemini Embedding 2</span>
+                          </button>
+                          <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="claude-sonnet-5" data-label="Claude Sonnet 5" data-description="claude-sonnet-5" onclick="selectComboboxOption('modelCombobox', this)">
+                              <span class="block truncate text-sm font-medium text-gray-900">Claude Sonnet 5</span>
+                          </button>
+                          <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="glm-5.3" data-label="GLM 5.3" data-description="glm-5.3" onclick="selectComboboxOption('modelCombobox', this)">
+                              <span class="block truncate text-sm font-medium text-gray-900">GLM 5.3</span>
+                          </button>
+                          <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="kimi-k3" data-label="Kimi K3" data-description="kimi-k3" onclick="selectComboboxOption('modelCombobox', this)">
+                              <span class="block truncate text-sm font-medium text-gray-900">Kimi K3</span>
+                          </button>
+                          <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="MiniMax-M3" data-label="MiniMax M3" data-description="MiniMax-M3" onclick="selectComboboxOption('modelCombobox', this)">
+                              <span class="block truncate text-sm font-medium text-gray-900">MiniMax M3</span>
                           </button>
                           <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="deepseek-v4-flash" data-label="DeepSeek V4 Flash" data-description="deepseek-v4-flash" onclick="selectComboboxOption('modelCombobox', this)">
                               <span class="block truncate text-sm font-medium text-gray-900">DeepSeek V4 Flash</span>
@@ -683,6 +683,18 @@ export function createChatApp(): Express {
                   return document.getElementById('customModelInput').value.trim();
               }
               return modelSelect.value;
+          }
+
+          function getSelectedClientType() {
+              const modelSelect = document.getElementById('modelSelect');
+              if (modelSelect.value === '__custom__') {
+                  return document.getElementById('customClientTypeInput').value.trim();
+              }
+              // built-in models whose id does not route on its own carry data-client-type
+              const option = document.querySelector(
+                  '#modelComboboxMenu [data-combobox-option][data-value="' + modelSelect.value + '"]'
+              );
+              return option ? (option.dataset.clientType || '') : '';
           }
 
           function toggleApiKeyVisibility() {
