@@ -33,6 +33,7 @@ from ..types import (
     UniMessage,
     UsageMetadata,
 )
+from ..utils import is_foreign_no_op_event
 
 
 class OpenaiResponsesClient(LLMClient):
@@ -301,6 +302,9 @@ class OpenaiResponsesClient(LLMClient):
             "response.content_part.done",
             "keepalive",  # gateway heartbeat on long generations; carries no content
         ):
+            event_type = "unused"
+
+        elif is_foreign_no_op_event(model_output, ("response.",)):
             event_type = "unused"
 
         else:

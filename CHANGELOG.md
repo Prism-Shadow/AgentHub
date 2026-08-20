@@ -4,6 +4,8 @@
 
 Here, we record the addition and removal times of models, major functional updates, bug fixes, and release times of key versions. Each release keeps one brief line here; the per-entry summaries live in `changelog/<version>/README.md`, and every entry links its detail file.
 
+- [2026-08-19] [Version 0.4.5](changelog/0.4.5/README.md): streaming clients skip the events a gateway injects from outside the protocol, including a heartbeat spelled the way another protocol spells it, and still raise on unknown events inside the protocol.
+
 - [2026-08-19] [Version 0.4.4](changelog/0.4.4/README.md): thinking levels gain a `MAX` tier above `XHIGH`, and each client maps the ladder onto its vendor's effort vocabulary (DeepSeek re-mapped to its current low/high/max values).
 
 - [2026-08-18] [Version 0.4.3](changelog/0.4.3/README.md): every streaming client skips the heartbeat events gateways inject on long generations, across the OpenAI Responses, OpenAI Chat Completions, Anthropic Messages, and Gemini protocols.

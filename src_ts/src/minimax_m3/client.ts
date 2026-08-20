@@ -34,6 +34,7 @@ import {
   UniMessage,
   UsageMetadata,
 } from "../types";
+import { isForeignNoOpEvent } from "../utils";
 
 const DEFAULT_BASE_URL = "https://api.minimax.io/v1";
 
@@ -302,7 +303,8 @@ export class MiniMaxM3Client extends LLMClient {
         "response.content_part.done",
         // gateway heartbeat on long generations; carries no content
         "keepalive",
-      ].includes(minimaxEventType)
+      ].includes(minimaxEventType) &&
+      !isForeignNoOpEvent(modelOutput, ["response."])
     ) {
       throw new Error(`Unknown output: ${JSON.stringify(modelOutput)}`);
     }

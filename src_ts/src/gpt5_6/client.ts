@@ -35,6 +35,7 @@ import {
   PromptCaching,
   UsageMetadata,
 } from "../types";
+import { isForeignNoOpEvent } from "../utils";
 
 /**
  * GPT-5.6-specific LLM client implementation (also serves GPT-5.4 and GPT-5.5).
@@ -394,6 +395,8 @@ export class GPT5_6Client extends LLMClient {
         "keepalive",
       ].includes(openaiEventType)
     ) {
+      eventType = "unused";
+    } else if (isForeignNoOpEvent(modelOutput, ["response."])) {
       eventType = "unused";
     } else {
       throw new Error(`Unknown output: ${JSON.stringify(modelOutput)}`);

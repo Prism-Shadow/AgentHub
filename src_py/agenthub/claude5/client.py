@@ -36,6 +36,7 @@ from ..types import (
     UniMessage,
     UsageMetadata,
 )
+from ..utils import is_foreign_no_op_event
 
 
 REDACTED_THINKING = "_REDACTED_THINKING"
@@ -354,6 +355,9 @@ class Claude5Client(LLMClient):
         elif claude_event_type in ["text", "thinking", "signature", "input_json", "ping"]:
             # the SDK drops the "ping" heartbeat at the SSE layer; it reaches here only from
             # gateways that relabel it onto another event
+            event_type = "unused"
+
+        elif is_foreign_no_op_event(model_output, ("message_", "content_block_")):
             event_type = "unused"
 
         else:

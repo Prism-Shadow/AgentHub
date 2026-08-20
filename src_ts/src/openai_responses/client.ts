@@ -35,6 +35,7 @@ import {
   PromptCaching,
   UsageMetadata,
 } from "../types";
+import { isForeignNoOpEvent } from "../utils";
 
 /**
  * OpenAI Responses-compatible client implementation.
@@ -391,6 +392,8 @@ export class OpenaiResponsesClient extends LLMClient {
         "keepalive",
       ].includes(openaiEventType)
     ) {
+      eventType = "unused";
+    } else if (isForeignNoOpEvent(modelOutput, ["response."])) {
       eventType = "unused";
     } else {
       throw new Error(`Unknown output: ${JSON.stringify(modelOutput)}`);

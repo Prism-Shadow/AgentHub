@@ -285,6 +285,31 @@ function geminiStopChunk(): unknown {
   };
 }
 
+// Events belonging to no protocol the clients parse. A gateway injects the first two on
+// long generations — the ping shape a relay sent into a Responses stream, carrying its own
+// cost field, and a bare heartbeat — while the last two carry something a client would
+// otherwise drop.
+function foreignPingEvent(): unknown {
+  return { type: "ping", cost: "@" };
+}
+
+function foreignHeartbeatEvent(): unknown {
+  return { type: "heartbeat" };
+}
+
+function foreignErrorEvent(): unknown {
+  return { type: "gateway_error", message: "upstream 502" };
+}
+
+function foreignPayloadEvent(): unknown {
+  return { type: "relay_frame", data: { text: "dropped" } };
+}
+
+const rejectedForeignEvents: [string, () => unknown][] = [
+  ["error", foreignErrorEvent],
+  ["payload", foreignPayloadEvent],
+];
+
 async function collectEvents(
   stream: AsyncIterable<UniEvent>,
 ): Promise<UniEvent[]> {
@@ -336,6 +361,38 @@ describe.each(RESPONSES_STREAM_CASES)(
         collectEvents(client.streamingResponse({ messages, config: {} })),
       ).rejects.toThrow("Unknown output");
     });
+
+    test("skips foreign gateway events", async () => {
+      const client = createAutoClient(testCase);
+      installFakeResponsesStream(client, [
+        foreignPingEvent(),
+        responsesTextDeltaEvent("Here is"),
+        foreignHeartbeatEvent(),
+        responsesTextDeltaEvent(" the memo."),
+        responsesCompletedEvent(),
+      ]);
+
+      const events = await collectEvents(
+        client.streamingResponse({ messages, config: {} }),
+      );
+      expect(collectedTexts(events)).toEqual(["Here is", " the memo."]);
+      expect(events[events.length - 1].finish_reason).toBe("stop");
+    });
+
+    test.each(rejectedForeignEvents)(
+      "still rejects a foreign event carrying %s",
+      async (_label, foreignEvent) => {
+        const client = createAutoClient(testCase);
+        installFakeResponsesStream(client, [
+          foreignEvent(),
+          responsesCompletedEvent(),
+        ]);
+
+        await expect(
+          collectEvents(client.streamingResponse({ messages, config: {} })),
+        ).rejects.toThrow("Unknown output");
+      },
+    );
   },
 );
 
@@ -390,7 +447,7 @@ describe.each(MESSAGES_STREAM_CASES)(
       const client = createAutoClient(testCase);
       installFakeMessagesStream(client, [
         messagesStartEvent(),
-        { type: "mystery_event" },
+        { type: "message_mystery" },
         messagesStopEvent(),
       ]);
 
@@ -398,6 +455,41 @@ describe.each(MESSAGES_STREAM_CASES)(
         collectEvents(client.streamingResponse({ messages, config: {} })),
       ).rejects.toThrow("Unknown output");
     });
+
+    test("skips foreign gateway events", async () => {
+      const client = createAutoClient(testCase);
+      installFakeMessagesStream(client, [
+        messagesStartEvent(),
+        // the Responses-protocol spelling, injected into a Messages stream
+        responsesKeepaliveEvent(1),
+        messagesTextDeltaEvent("Here is"),
+        foreignHeartbeatEvent(),
+        messagesTextDeltaEvent(" the memo."),
+        messagesStopEvent(),
+      ]);
+
+      const events = await collectEvents(
+        client.streamingResponse({ messages, config: {} }),
+      );
+      expect(collectedTexts(events)).toEqual(["Here is", " the memo."]);
+      expect(events[events.length - 1].finish_reason).toBe("stop");
+    });
+
+    test.each(rejectedForeignEvents)(
+      "still rejects a foreign event carrying %s",
+      async (_label, foreignEvent) => {
+        const client = createAutoClient(testCase);
+        installFakeMessagesStream(client, [
+          messagesStartEvent(),
+          foreignEvent(),
+          messagesStopEvent(),
+        ]);
+
+        await expect(
+          collectEvents(client.streamingResponse({ messages, config: {} })),
+        ).rejects.toThrow("Unknown output");
+      },
+    );
   },
 );
 

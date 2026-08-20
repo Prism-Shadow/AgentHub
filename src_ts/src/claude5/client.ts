@@ -36,6 +36,7 @@ import {
   UniMessage,
   UsageMetadata,
 } from "../types";
+import { isForeignNoOpEvent } from "../utils";
 
 const REDACTED_THINKING = "_REDACTED_THINKING";
 
@@ -461,6 +462,10 @@ export class Claude5Client extends LLMClient {
     ) {
       // the SDK drops the "ping" heartbeat at the SSE layer; it reaches here only
       // from gateways that relabel it onto another event
+      eventType = "unused";
+    } else if (
+      isForeignNoOpEvent(modelOutput, ["message_", "content_block_"])
+    ) {
       eventType = "unused";
     } else {
       throw new Error(`Unknown output: ${JSON.stringify(modelOutput)}`);
