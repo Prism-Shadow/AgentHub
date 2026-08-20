@@ -163,6 +163,15 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "pricing": _usd(10.0, 50.0, cached=1.0),
     },
     {
+        "model": "claude-opus-5",
+        "base_url": _ANTHROPIC,
+        "client": "claude-5",
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
+        "context_window": 1000000,
+        "pricing": _usd(5.0, 25.0, cached=0.5),
+    },
+    {
         "model": "claude-sonnet-5",
         "base_url": _ANTHROPIC,
         "client": "claude-5",
@@ -190,8 +199,8 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "pricing": _usd(3.0, 15.0, cached=0.3),
     },
     {
-        # the gpt-5.6 alias routes to gpt-5.6-sol; official standard-tier list price
-        "model": "gpt-5.6",
+        # official standard-tier list price; the bare gpt-5.6 alias also routes here
+        "model": "gpt-5.6-sol",
         "base_url": _OPENAI,
         "client": "gpt-5.6",
         "input_modalities": ["Text", "Image"],
@@ -251,7 +260,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
-        # pricing omitted: the API is announced but not yet live and no price is published
+        "pricing": _usd(1.4, 4.4, cached=0.26),
     },
     {
         "model": "glm-5.2",
@@ -315,16 +324,25 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "anthropic/claude-fable-5",
         "base_url": _OPENROUTER,
-        "client": "openai-chat",
+        "client": "openai-responses",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
         "pricing": _usd(10.0, 50.0, cached=1.0),
     },
     {
+        "model": "anthropic/claude-opus-5",
+        "base_url": _OPENROUTER,
+        "client": "openai-responses",
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
+        "context_window": 1000000,
+        "pricing": _usd(5.0, 25.0, cached=0.5),
+    },
+    {
         "model": "anthropic/claude-opus-4.8",
         "base_url": _OPENROUTER,
-        "client": "openai-chat",
+        "client": "openai-responses",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
@@ -333,7 +351,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "anthropic/claude-opus-4.7",
         "base_url": _OPENROUTER,
-        "client": "openai-chat",
+        "client": "openai-responses",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
@@ -342,7 +360,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "anthropic/claude-sonnet-5",
         "base_url": _OPENROUTER,
-        "client": "openai-chat",
+        "client": "openai-responses",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
@@ -369,7 +387,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "google/gemini-3.5-flash",
         "base_url": _OPENROUTER,
-        "client": "openai-chat",
+        "client": "openai-responses",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1048576,
@@ -378,7 +396,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "minimax/minimax-m3",
         "base_url": _OPENROUTER,
-        "client": "openai-chat",
+        "client": "openai-responses",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1048576,
@@ -405,7 +423,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
         "base_url": _OPENROUTER,
-        "client": "openai-chat",
+        "client": "openai-responses",
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
@@ -414,34 +432,34 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "openai/gpt-5.6-sol",
         "base_url": _OPENROUTER,
-        "client": "openai-chat",
+        "client": "openai-responses",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1050000,
-        "pricing": _usd(5.0, 30.0, cached=0.5),
+        "pricing": _usd(2.5, 15.0, cached=0.25),
     },
     {
         "model": "openai/gpt-5.6-terra",
         "base_url": _OPENROUTER,
-        "client": "openai-chat",
+        "client": "openai-responses",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1050000,
-        "pricing": _usd(1.0, 6.0, cached=0.1),
+        "pricing": _usd(2.0, 12.0, cached=0.2),
     },
     {
         "model": "openai/gpt-5.6-luna",
         "base_url": _OPENROUTER,
-        "client": "openai-chat",
+        "client": "openai-responses",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1050000,
-        "pricing": _usd(0.1, 0.6, cached=0.01),
+        "pricing": _usd(0.2, 1.2, cached=0.02),
     },
     {
         "model": "openai/gpt-5.5",
         "base_url": _OPENROUTER,
-        "client": "openai-chat",
+        "client": "openai-responses",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1050000,
@@ -450,7 +468,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "qwen/qwen3.6-35b-a3b",
         "base_url": _OPENROUTER,
-        "client": "openai-chat",
+        "client": "openai-responses",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 262144,
@@ -468,7 +486,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "stepfun/step-3.7-flash",
         "base_url": _OPENROUTER,
-        "client": "openai-chat",
+        "client": "openai-responses",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 262144,
@@ -477,7 +495,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "tencent/hy3",
         "base_url": _OPENROUTER,
-        "client": "openai-chat",
+        "client": "openai-responses",
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 262144,
@@ -486,7 +504,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "x-ai/grok-4.5",
         "base_url": _OPENROUTER,
-        "client": "openai-chat",
+        "client": "openai-responses",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 500000,
@@ -495,11 +513,20 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "xiaomi/mimo-v2.5",
         "base_url": _OPENROUTER,
-        "client": "openai-chat",
+        "client": "openai-responses",
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1050000,
         "pricing": _usd(0.14, 0.28, cached=0.0028),
+    },
+    {
+        "model": "z-ai/glm-5.3",
+        "base_url": _OPENROUTER,
+        "client": "glm-5.3",
+        "input_modalities": ["Text"],
+        "output_modalities": ["Text"],
+        "context_window": 1048576,
+        "pricing": _usd(1.4, 4.4, cached=0.26),
     },
     {
         "model": "z-ai/glm-5.2",
@@ -508,7 +535,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1048576,
-        "pricing": _usd(0.8204, 2.5784, cached=0.15236),
+        "pricing": _usd(0.966, 3.036, cached=0.1932),
     },
     {
         "model": "z-ai/glm-5.1",

@@ -158,6 +158,15 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     pricing: usd(10.0, 50.0, 1.0),
   },
   {
+    model: "claude-opus-5",
+    base_url: ANTHROPIC,
+    client: "claude-5",
+    input_modalities: ["Text", "Image"],
+    output_modalities: ["Text"],
+    context_window: 1000000,
+    pricing: usd(5.0, 25.0, 0.5),
+  },
+  {
     model: "claude-sonnet-5",
     base_url: ANTHROPIC,
     client: "claude-5",
@@ -185,8 +194,8 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     pricing: usd(3.0, 15.0, 0.3),
   },
   {
-    // the gpt-5.6 alias routes to gpt-5.6-sol; official standard-tier list price
-    model: "gpt-5.6",
+    // official standard-tier list price; the bare gpt-5.6 alias also routes here
+    model: "gpt-5.6-sol",
     base_url: OPENAI,
     client: "gpt-5.6",
     input_modalities: ["Text", "Image"],
@@ -246,7 +255,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     input_modalities: ["Text"],
     output_modalities: ["Text"],
     context_window: 1000000,
-    // pricing omitted: the API is announced but not yet live and no price is published
+    pricing: usd(1.4, 4.4, 0.26),
   },
   {
     model: "glm-5.2",
@@ -310,16 +319,25 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "anthropic/claude-fable-5",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1000000,
     pricing: usd(10.0, 50.0, 1.0),
   },
   {
+    model: "anthropic/claude-opus-5",
+    base_url: OPENROUTER,
+    client: "openai-responses",
+    input_modalities: ["Text", "Image"],
+    output_modalities: ["Text"],
+    context_window: 1000000,
+    pricing: usd(5.0, 25.0, 0.5),
+  },
+  {
     model: "anthropic/claude-opus-4.8",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1000000,
@@ -328,7 +346,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "anthropic/claude-opus-4.7",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1000000,
@@ -337,7 +355,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "anthropic/claude-sonnet-5",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1000000,
@@ -364,7 +382,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "google/gemini-3.5-flash",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1048576,
@@ -373,7 +391,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "minimax/minimax-m3",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1048576,
@@ -400,7 +418,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "nvidia/nemotron-3-ultra-550b-a55b:free",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text"],
     output_modalities: ["Text"],
     context_window: 1000000,
@@ -409,34 +427,34 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "openai/gpt-5.6-sol",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1050000,
-    pricing: usd(5.0, 30.0, 0.5),
+    pricing: usd(2.5, 15.0, 0.25),
   },
   {
     model: "openai/gpt-5.6-terra",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1050000,
-    pricing: usd(1.0, 6.0, 0.1),
+    pricing: usd(2.0, 12.0, 0.2),
   },
   {
     model: "openai/gpt-5.6-luna",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1050000,
-    pricing: usd(0.1, 0.6, 0.01),
+    pricing: usd(0.2, 1.2, 0.02),
   },
   {
     model: "openai/gpt-5.5",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1050000,
@@ -445,7 +463,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "qwen/qwen3.6-35b-a3b",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 262144,
@@ -463,7 +481,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "stepfun/step-3.7-flash",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 262144,
@@ -472,7 +490,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "tencent/hy3",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text"],
     output_modalities: ["Text"],
     context_window: 262144,
@@ -481,7 +499,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "x-ai/grok-4.5",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 500000,
@@ -490,11 +508,20 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "xiaomi/mimo-v2.5",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1050000,
     pricing: usd(0.14, 0.28, 0.0028),
+  },
+  {
+    model: "z-ai/glm-5.3",
+    base_url: OPENROUTER,
+    client: "glm-5.3",
+    input_modalities: ["Text"],
+    output_modalities: ["Text"],
+    context_window: 1048576,
+    pricing: usd(1.4, 4.4, 0.26),
   },
   {
     model: "z-ai/glm-5.2",
@@ -503,7 +530,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     input_modalities: ["Text"],
     output_modalities: ["Text"],
     context_window: 1048576,
-    pricing: usd(0.8204, 2.5784, 0.15236),
+    pricing: usd(0.966, 3.036, 0.1932),
   },
   {
     model: "z-ai/glm-5.1",

@@ -121,7 +121,7 @@ _PROTOCOL_BASE_URLS = {
 }
 
 if os.getenv("ZAI_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="glm-5.2", support_image_understanding=False))
+    AVAILABLE_MODELS.append(Model(name="glm-5.3", support_image_understanding=False))
 
 if os.getenv("MOONSHOT_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="kimi-k3"))
@@ -170,9 +170,12 @@ RUN_SLOW_TEST = os.getenv("RUN_SLOW_TEST", "0") == "1"
 
 if os.getenv("ZAI_API_KEY") and RUN_SLOW_TEST:
     for mode in _PROTOCOL_MODES:
+        # Z.AI's Anthropic-compatible gateway defaults to thinking disabled when a request
+        # carries no thinking config, which glm-5.3 rejects because it cannot disable
+        # thinking; that protocol stays on glm-5.2
         AVAILABLE_MODELS.append(
             Model(
-                name="glm-5.2",
+                name="glm-5.2" if mode == "ant-messages" else "glm-5.3",
                 provider="zai",
                 client_type=mode,
                 base_url=_PROTOCOL_BASE_URLS["zai"][mode],
@@ -201,8 +204,8 @@ if os.getenv("OPENROUTER_API_KEY") and RUN_SLOW_TEST:
                 base_url=_PROTOCOL_BASE_URLS["openrouter"][mode],
             )
         )
-    AVAILABLE_MODELS.append(Model(name="z-ai/glm-5.2", provider="openrouter", support_image_understanding=False))
-    AVAILABLE_MODELS.append(Model(name="qwen/qwen3.6-35b-a3b", provider="openrouter", client_type="openai-chat"))
+    AVAILABLE_MODELS.append(Model(name="z-ai/glm-5.3", provider="openrouter", support_image_understanding=False))
+    AVAILABLE_MODELS.append(Model(name="qwen/qwen3.6-35b-a3b", provider="openrouter", client_type="openai-responses"))
     AVAILABLE_MODELS.append(
         Model(
             name="qwen/qwen3-embedding-4b",
