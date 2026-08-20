@@ -25,12 +25,18 @@ from ..types import UniConfig, UniEvent, UniMessage
 class OpenaiEmbeddingClient(LLMClient):
     """OpenAI Embeddings-compatible client implementation."""
 
-    def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
+    def __init__(
+        self,
+        model: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        default_headers: dict[str, str] | None = None,
+    ):
         """Initialize OpenAI-compatible embedding client with model, API key, and base URL."""
         self._model = model
         api_key = api_key or os.getenv("OPENAI_API_KEY")
         base_url = base_url or os.getenv("OPENAI_BASE_URL")
-        self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+        self._client = AsyncOpenAI(api_key=api_key, base_url=base_url, default_headers=default_headers)
         self._history: list[UniMessage] = []
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
@@ -84,3 +90,12 @@ class OpenaiEmbeddingClient(LLMClient):
         params["input"] = self.transform_uni_message_to_model_input(messages)
         result = await self._client.embeddings.create(**params)
         yield self.transform_model_output_to_uni_event(result)
+
+    async def list_models(self) -> list[str]:
+        """
+        List the model ids the configured endpoint serves.
+
+        Returns:
+            list[str]: The model ids, in the order the endpoint returned them.
+        """
+        return [model.id async for model in self._client.models.list()]

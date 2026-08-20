@@ -108,13 +108,16 @@ AgentHub provides Codex/Claude Code skill files for assistants that need to help
 
 ## APIs
 
-`AutoLLMClient` is the main class for interacting with the AgentHub SDK. It provides the following methods:
+`AutoLLMClient` is the main class for interacting with the AgentHub SDK. It is constructed with `model`, plus optional `api_key`, `base_url`, `client_type`, and `default_headers` — headers sent with every request, for endpoints that demand their own. It provides the following methods:
 
 - `(async) streaming_response(messages, config)`: Streams the response of LLMs in a stateless manner.
 - `(async) streaming_response_stateful(message, config)`: Streams the response of LLMs in a stateful manner.
+- `(async) list_models()`: Lists the model ids the configured endpoint serves. A protocol client (`openai-chat`, `openai-responses`, `ant-messages`, `openai-embedding`) is named explicitly and lists everything the endpoint serves; a client deduced from a model id lists only the ids that deduce back to it.
 - `clear_history()`: Clears the history of the stateful LLM client.
 - `get_history()`: Returns the history of the stateful LLM client.
 - `set_history(history)`: Replaces the history of the stateful LLM client with a copy of the provided list.
+
+Streaming clients skip output they do not recognize, so a gateway's own frames cannot end a generation. Set `AGENTHUB_DEBUG` to anything other than `0`, `false`, `no` or `off` to make them raise instead.
 
 ## Basic Usage
 

@@ -39,3 +39,17 @@ export function fixOpenrouterUsageMetadata(
 
   return fixedUsageMetadata;
 }
+
+/**
+ * Whether AGENTHUB_DEBUG asks the clients to fail loudly on output they do not recognize.
+ *
+ * Streaming clients skip an unrecognized event so that a gateway's own frames cannot
+ * kill a long generation. The same silence hides a genuinely new provider event, so the
+ * guards stay one environment variable away.
+ *
+ * @returns Whether debug mode is on.
+ */
+export function isDebugEnabled(): boolean {
+  const flag = (process.env.AGENTHUB_DEBUG || "").trim().toLowerCase();
+  return !["", "0", "false", "no", "off"].includes(flag);
+}

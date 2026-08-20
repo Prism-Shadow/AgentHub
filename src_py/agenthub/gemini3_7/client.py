@@ -17,7 +17,7 @@ import json
 import mimetypes
 import os
 import re
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 
 import httpx
 from google import genai
@@ -40,6 +40,7 @@ from ..types import (
     UniMessage,
     UsageMetadata,
 )
+from ..utils import is_debug_enabled
 
 
 class Gemini3_7Client(LLMClient):
@@ -52,12 +53,23 @@ class Gemini3_7Client(LLMClient):
     applies that contract to the whole family: temperature is rejected everywhere.
     """
 
-    def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
+    def __init__(
+        self,
+        model: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        default_headers: dict[str, str] | None = None,
+    ):
         """Initialize Gemini 3.7 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("GEMINI_API_KEY")
         base_url = base_url or os.getenv("GEMINI_BASE_URL")
-        http_options = {"base_url": base_url} if base_url else None
+        # the Gemini SDK carries connection headers inside http_options rather than its own argument
+        http_options: dict[str, Any] = {}
+        if base_url:
+            http_options["base_url"] = base_url
+        if default_headers:
+            http_options["headers"] = default_headers
         if api_key and api_key.startswith("{"):
             service_account_info = json.loads(api_key)
             credentials = service_account.Credentials.from_service_account_info(
@@ -68,10 +80,10 @@ class Gemini3_7Client(LLMClient):
                 credentials=credentials,
                 project=service_account_info["project_id"],
                 location="global",
-                http_options=http_options,
+                http_options=http_options or None,
             )
         else:
-            self._client = genai.Client(api_key=api_key, http_options=http_options)
+            self._client = genai.Client(api_key=api_key, http_options=http_options or None)
 
         self._history: list[UniMessage] = []
 
@@ -417,7 +429,7 @@ class Gemini3_7Client(LLMClient):
                     )
                 elif part.text is not None:
                     content_items.append({"type": "text", "text": part.text, **self._part_fidelity(part)})
-                else:
+                elif is_debug_enabled():
                     raise ValueError(f"Unknown output: {part}")
 
             if candidate.finish_reason:
@@ -543,3 +555,13 @@ class Gemini3_7Client(LLMClient):
                     }
 
             yield event
+
+    async def list_models(self) -> list[str]:
+        """
+        List the model ids the configured endpoint serves.
+
+        Returns:
+            list[str]: The model ids, in the order the endpoint returned them.
+        """
+        # the API returns path-qualified names: models/gemini-3.7-flash, publishers/google/models/...
+        return [model.name.split("/")[-1] async for model in await self._client.aio.models.list() if model.name]

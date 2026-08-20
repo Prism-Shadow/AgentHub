@@ -17,6 +17,7 @@ export {
   AgentHubError,
   EmptyResponseError,
   ToolCallArgumentParseError,
+  UnsupportedOperationError,
   UnsupportedParameterError,
 } from "./errors";
 export {

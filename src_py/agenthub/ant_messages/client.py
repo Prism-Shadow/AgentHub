@@ -33,7 +33,7 @@ from ..types import (
     UniMessage,
     UsageMetadata,
 )
-from ..utils import fix_openrouter_usage_metadata
+from ..utils import fix_openrouter_usage_metadata, is_debug_enabled
 
 
 REDACTED_THINKING = "_REDACTED_THINKING"
@@ -42,14 +42,22 @@ REDACTED_THINKING = "_REDACTED_THINKING"
 class AntMessagesClient(LLMClient):
     """Anthropic Messages-compatible client implementation."""
 
-    def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
+    def __init__(
+        self,
+        model: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        default_headers: dict[str, str] | None = None,
+    ):
         """Initialize Anthropic Messages-compatible client with model, API key, and base URL."""
         self._model = model
         api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         base_url = base_url or os.getenv("ANTHROPIC_BASE_URL")
         # send the credential through both header conventions: Anthropic and DeepSeek read
         # x-api-key while gateways such as OpenRouter and Z.AI read Authorization: Bearer
-        self._client = AsyncAnthropic(api_key=api_key, auth_token=api_key, base_url=base_url)
+        self._client = AsyncAnthropic(
+            api_key=api_key, auth_token=api_key, base_url=base_url, default_headers=default_headers
+        )
         self._history: list[UniMessage] = []
 
     def _convert_image_url_to_source(self, url: str) -> dict[str, Any]:
@@ -306,8 +314,13 @@ class AntMessagesClient(LLMClient):
             # gateways that relabel it onto another event
             event_type = "unused"
 
-        else:
+        elif is_debug_enabled():
             raise ValueError(f"Unknown output: {model_output}")
+
+        else:
+            # a gateway injects its own events (heartbeats, cost tickers) into the stream, and
+            # killing a long generation over one costs more than dropping it
+            event_type = "unused"
 
         return {
             "role": "assistant",
@@ -412,3 +425,12 @@ class AntMessagesClient(LLMClient):
                         "finish_reason": event["finish_reason"],
                     }
                     partial_usage = {}
+
+    async def list_models(self) -> list[str]:
+        """
+        List the model ids the configured endpoint serves.
+
+        Returns:
+            list[str]: The model ids, in the order the endpoint returned them.
+        """
+        return [model.id async for model in self._client.models.list()]

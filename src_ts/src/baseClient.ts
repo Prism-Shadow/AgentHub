@@ -177,6 +177,13 @@ export abstract class LLMClient {
   }): AsyncGenerator<UniEvent>;
 
   /**
+   * List the model ids the configured endpoint serves.
+   *
+   * @returns The model ids, in the order the endpoint returned them.
+   */
+  abstract listModels(): Promise<string[]>;
+
+  /**
    * Generate content in streaming mode (stateless).
    *
    * This method should use transformUniConfigToModelConfig and

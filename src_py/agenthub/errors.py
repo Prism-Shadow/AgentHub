@@ -43,6 +43,20 @@ class UnsupportedParameterError(AgentHubError):
         super().__init__(message)
 
 
+class UnsupportedOperationError(AgentHubError):
+    """Raised when a client cannot perform an operation at all, whatever it is passed.
+
+    Distinct from UnsupportedParameterError, which rejects a UniConfig parameter value:
+    this one reports a capability the routed client does not have, such as listing models
+    through an SDK client that carries no models endpoint.
+    """
+
+    def __init__(self, client: str, operation: str, message: str) -> None:
+        self.client = client
+        self.operation = operation
+        super().__init__(message)
+
+
 class EmptyResponseError(AgentHubError):
     """Raised when a completed response carries no non-thinking content and no tool calls.
 

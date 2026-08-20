@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 from .types import UsageMetadata
 
 
@@ -33,3 +35,17 @@ def fix_openrouter_usage_metadata(usage_metadata: UsageMetadata, base_url: str) 
         fixed_usage_metadata["response_tokens"] += fixed_usage_metadata["thoughts_tokens"] or 0
 
     return fixed_usage_metadata
+
+
+def is_debug_enabled() -> bool:
+    """
+    Whether AGENTHUB_DEBUG asks the clients to fail loudly on output they do not recognize.
+
+    Streaming clients skip an unrecognized event so that a gateway's own frames cannot kill a
+    long generation. The same silence hides a genuinely new provider event, so the guards stay
+    one environment variable away.
+
+    Returns:
+        bool: Whether debug mode is on.
+    """
+    return os.getenv("AGENTHUB_DEBUG", "").strip().lower() not in ("", "0", "false", "no", "off")

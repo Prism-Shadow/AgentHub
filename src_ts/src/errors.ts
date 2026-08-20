@@ -54,6 +54,25 @@ export class UnsupportedParameterError extends AgentHubError {
  * particular); replaying such an assistant message on the next turn fails with a 400
  * error, so the response is rejected as soon as the stream completes.
  */
+/**
+ * Raised when a client cannot perform an operation at all, whatever it is passed.
+ *
+ * Distinct from UnsupportedParameterError, which rejects a UniConfig parameter value:
+ * this one reports a capability the routed client does not have, such as listing models
+ * through an SDK client that carries no models endpoint.
+ */
+export class UnsupportedOperationError extends AgentHubError {
+  readonly client: string;
+  readonly operation: string;
+
+  constructor(args: { client: string; operation: string; message: string }) {
+    super(args.message);
+    this.name = "UnsupportedOperationError";
+    this.client = args.client;
+    this.operation = args.operation;
+  }
+}
+
 export class EmptyResponseError extends AgentHubError {
   readonly client: string;
   readonly finishReason: string | null;

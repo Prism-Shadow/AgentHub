@@ -35,6 +35,7 @@ import {
   PromptCaching,
   UsageMetadata,
 } from "../types";
+import { isDebugEnabled } from "../utils";
 
 /**
  * OpenAI Responses-compatible client implementation.
@@ -51,12 +52,17 @@ export class OpenaiResponsesClient extends LLMClient {
     apiKey?: string;
     baseUrl?: string | null;
     clientType?: string | null;
+    defaultHeaders?: Record<string, string>;
   }) {
     super();
     this._model = options.model;
     const key = options.apiKey || process.env.OPENAI_API_KEY || undefined;
     const url = options.baseUrl || process.env.OPENAI_BASE_URL || undefined;
-    this._client = new OpenAI({ apiKey: key, baseURL: url });
+    this._client = new OpenAI({
+      apiKey: key,
+      baseURL: url,
+      defaultHeaders: options.defaultHeaders,
+    });
   }
 
   /**
@@ -189,28 +195,12 @@ export class OpenaiResponsesClient extends LLMClient {
           } else {
             contentItems.push({ type: "output_text", text: item.text });
           }
-          continue;
-        }
-        if (item.type === "image_url") {
+        } else if (item.type === "image_url") {
           contentItems.push({
             type: "input_image",
             image_url: item.image_url,
           });
-          continue;
-        }
-
-        // Top-level items follow, so flush buffered text first to keep the wire order.
-        if (contentItems.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const entry: any = { role: msg.role, content: contentItems };
-          if (lastPhase !== null) {
-            entry.phase = lastPhase;
-          }
-          inputList.push(entry);
-          contentItems = [];
-        }
-
-        if (item.type === "thinking") {
+        } else if (item.type === "thinking") {
           // the wire shape differs by server: OpenAI-style servers stream summaries and
           // demand the summary key back (with encrypted_content preserved), while
           // DeepSeek/Z.AI/MiniMax-style servers accept a reasoning item rebuilt from the
@@ -392,8 +382,12 @@ export class OpenaiResponsesClient extends LLMClient {
       ].includes(openaiEventType)
     ) {
       eventType = "unused";
-    } else {
+        } else if (isDebugEnabled()) {
       throw new Error(`Unknown output: ${JSON.stringify(modelOutput)}`);
+    } else {
+      // a gateway injects its own events (heartbeats, cost tickers) into the stream, and
+      // killing a long generation over one costs more than dropping it
+      eventType = "unused";
     }
 
     return {
@@ -486,5 +480,19 @@ export class OpenaiResponsesClient extends LLMClient {
         }
       }
     }
+  }
+
+  /**
+   * List the model ids the configured endpoint serves.
+   *
+   * @returns The model ids, in the order the endpoint returned them.
+   */
+  async listModels(): Promise<string[]> {
+    const models: string[] = [];
+    for await (const model of this._client.models.list()) {
+      models.push(model.id);
+    }
+
+    return models;
   }
 }

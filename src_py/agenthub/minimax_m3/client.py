@@ -33,6 +33,7 @@ from ..types import (
     UniMessage,
     UsageMetadata,
 )
+from ..utils import is_debug_enabled
 
 
 _DEFAULT_BASE_URL = "https://api.minimax.io/v1"
@@ -41,7 +42,13 @@ _DEFAULT_BASE_URL = "https://api.minimax.io/v1"
 class MiniMaxM3Client(LLMClient):
     """MiniMax M3 client using MiniMax's Responses API."""
 
-    def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
+    def __init__(
+        self,
+        model: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        default_headers: dict[str, str] | None = None,
+    ):
         """Initialize a MiniMax M3 Responses client with a Subscription Key or API key."""
         self._model = model
         # The wrapped OpenAI SDK falls back to OPENAI_API_KEY when handed None, which would send an
@@ -52,6 +59,7 @@ class MiniMaxM3Client(LLMClient):
         self._client = AsyncOpenAI(
             api_key=resolved_api_key,
             base_url=base_url or os.getenv("MINIMAX_BASE_URL") or _DEFAULT_BASE_URL,
+            default_headers=default_headers,
         )
         self._history: list[UniMessage] = []
 
@@ -133,17 +141,9 @@ class MiniMaxM3Client(LLMClient):
                             "text": item["text"],
                         }
                     )
-                    continue
-                if item["type"] == "image_url":
+                elif item["type"] == "image_url":
                     content_items.append({"type": "input_image", "image_url": item["image_url"]})
-                    continue
-
-                # Top-level items follow, so flush buffered text first to keep the wire order.
-                if content_items:
-                    input_list.append({"role": message["role"], "content": content_items})
-                    content_items = []
-
-                if item["type"] == "thinking":
+                elif item["type"] == "thinking":
                     # MiniMax accepts a reasoning item rebuilt from the thinking text alone, so no
                     # fidelity is recorded for it.
                     input_list.append(
@@ -242,15 +242,19 @@ class MiniMaxM3Client(LLMClient):
                     "response_tokens": response.usage.output_tokens - reasoning_tokens,
                 }
 
-        elif minimax_event_type not in (
-            "response.created",
-            "response.in_progress",
-            "response.output_text.done",
-            "response.reasoning_text.done",
-            "response.output_item.done",
-            "response.content_part.added",
-            "response.content_part.done",
-            "keepalive",  # gateway heartbeat on long generations; carries no content
+        elif (
+            minimax_event_type
+            not in (
+                "response.created",
+                "response.in_progress",
+                "response.output_text.done",
+                "response.reasoning_text.done",
+                "response.output_item.done",
+                "response.content_part.added",
+                "response.content_part.done",
+                "keepalive",  # gateway heartbeat on long generations; carries no content
+            )
+            and is_debug_enabled()
         ):
             raise ValueError(f"Unknown output: {model_output}")
 
@@ -316,3 +320,12 @@ class MiniMaxM3Client(LLMClient):
 
                 if event["finish_reason"] or event["usage_metadata"]:
                     yield event
+
+    async def list_models(self) -> list[str]:
+        """
+        List the model ids the configured endpoint serves.
+
+        Returns:
+            list[str]: The model ids, in the order the endpoint returned them.
+        """
+        return [model.id async for model in self._client.models.list()]

@@ -45,6 +45,7 @@ export class DeepSeekV4Client extends LLMClient {
     apiKey?: string;
     baseUrl?: string | null;
     clientType?: string | null;
+    defaultHeaders?: Record<string, string>;
   }) {
     super();
     this._model = options.model;
@@ -53,7 +54,11 @@ export class DeepSeekV4Client extends LLMClient {
       options.baseUrl ||
       process.env.DEEPSEEK_BASE_URL ||
       "https://api.deepseek.com";
-    this._client = new OpenAI({ apiKey: key, baseURL: url });
+    this._client = new OpenAI({
+      apiKey: key,
+      baseURL: url,
+      defaultHeaders: options.defaultHeaders,
+    });
   }
 
   private _convertThinkingLevelToConfig(thinkingLevel: ThinkingLevel): {
@@ -455,5 +460,19 @@ export class DeepSeekV4Client extends LLMClient {
         }
       }
     }
+  }
+
+  /**
+   * List the model ids the configured endpoint serves.
+   *
+   * @returns The model ids, in the order the endpoint returned them.
+   */
+  async listModels(): Promise<string[]> {
+    const models: string[] = [];
+    for await (const model of this._client.models.list()) {
+      models.push(model.id);
+    }
+
+    return models;
   }
 }

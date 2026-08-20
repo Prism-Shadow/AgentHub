@@ -26,6 +26,22 @@ import { DeepSeekV4Client } from "./deepseek_v4";
 import { MiniMaxM3Client } from "./minimax_m3";
 import { UniConfig, UniEvent, UniMessage } from "./types";
 
+type LLMClientConstructor = new (options: {
+  model: string;
+  apiKey?: string;
+  baseUrl?: string | null;
+  clientType?: string | null;
+  defaultHeaders?: Record<string, string>;
+}) => LLMClient;
+
+// The generic protocol clients are named explicitly rather than deduced from a model id.
+const PROTOCOL_CLIENT_TYPES = [
+  "openai-chat",
+  "openai-responses",
+  "ant-messages",
+  "openai-embedding",
+];
+
 /**
  * Auto-routing LLM client that dispatches to appropriate model-specific client.
  *
@@ -34,6 +50,7 @@ import { UniConfig, UniEvent, UniMessage } from "./types";
  */
 export class AutoLLMClient extends LLMClient {
   private _client: LLMClient;
+  private _clientType: string;
 
   /**
    * Initialize AutoLLMClient with a specific model.
@@ -45,13 +62,20 @@ export class AutoLLMClient extends LLMClient {
     apiKey?: string;
     baseUrl?: string | null;
     clientType?: string | null;
+    defaultHeaders?: Record<string, string>;
   }) {
     super();
+    this._clientType = (
+      options.clientType ||
+      process.env.CLIENT_TYPE ||
+      options.model
+    ).toLowerCase();
     this._client = this._createClientForModel(
       options.model,
       options.apiKey,
       options.baseUrl,
-      options.clientType,
+      this._clientType,
+      options.defaultHeaders,
     );
   }
 
@@ -65,21 +89,14 @@ export class AutoLLMClient extends LLMClient {
    * @returns Instance of the appropriate client
    * @throws Error when the requested client is not yet implemented
    */
-  private _createClientForModel(
-    model: string,
-    apiKey?: string,
-    baseUrl?: string | null,
-    clientType?: string | null,
-  ): LLMClient {
-    clientType = (clientType || process.env.CLIENT_TYPE || model).toLowerCase();
-
+  private _clientClassForModel(clientType: string): LLMClientConstructor | null {
     // every Gemini generation shares the unified client ("gemini-3" also matches the
     // gemini-3.7/gemini-3.6/gemini-3.5-flash-lite client types)
     if (
       clientType.includes("gemini-3") ||
       clientType.includes("gemini-embedding")
     ) {
-      return new Gemini3_7Client({ model, apiKey, baseUrl });
+      return Gemini3_7Client;
     } else if (
       clientType.includes("claude") &&
       (clientType.includes("4-6") ||
@@ -88,43 +105,56 @@ export class AutoLLMClient extends LLMClient {
         clientType.includes("-5"))
     ) {
       // the whole Claude 4.6+ series shares the unified client
-      return new Claude5Client({ model, apiKey, baseUrl });
+      return Claude5Client;
     } else if (
       clientType.includes("gpt-5.4") ||
       clientType.includes("gpt-5.5") ||
       clientType.includes("gpt-5.6")
     ) {
-      return new GPT5_6Client({ model, apiKey, baseUrl });
+      return GPT5_6Client;
     } else if (clientType.includes("glm-5")) {
       // the whole GLM series shares the unified client
-      return new GLM5_3Client({ model, apiKey, baseUrl });
+      return GLM5_3Client;
     } else if (
       clientType.includes("kimi-k3") ||
       clientType.includes("kimi-k2.5") ||
       clientType.includes("kimi-k2.6")
     ) {
       // the whole Kimi K2.5+ series shares the unified client
-      return new KimiK3Client({ model, apiKey, baseUrl });
+      return KimiK3Client;
     } else if (clientType === "minimax-m3") {
-      return new MiniMaxM3Client({ model, apiKey, baseUrl });
+      return MiniMaxM3Client;
     } else if (clientType.includes("deepseek-v4")) {
-      return new DeepSeekV4Client({ model, apiKey, baseUrl });
+      return DeepSeekV4Client;
     } else if (clientType.includes("ant-messages")) {
-      return new AntMessagesClient({ model, apiKey, baseUrl });
+      return AntMessagesClient;
     } else if (clientType.includes("openai-responses")) {
-      return new OpenaiResponsesClient({ model, apiKey, baseUrl });
+      return OpenaiResponsesClient;
     } else if (
       clientType.includes("openai") &&
       clientType.includes("embedding")
     ) {
-      return new OpenaiEmbeddingClient({ model, apiKey, baseUrl });
+      return OpenaiEmbeddingClient;
     } else if (
       clientType.includes("openai") &&
       !clientType.includes("embedding")
     ) {
       // openai-chat, plus bare "openai" as alias
-      return new OpenaiChatClient({ model, apiKey, baseUrl });
+      return OpenaiChatClient;
     } else {
+      return null;
+    }
+  }
+
+  private _createClientForModel(
+    model: string,
+    apiKey?: string,
+    baseUrl?: string | null,
+    clientType?: string | null,
+    defaultHeaders?: Record<string, string>,
+  ): LLMClient {
+    const ClientClass = this._clientClassForModel(clientType || model.toLowerCase());
+    if (ClientClass === null) {
       throw new Error(
         `${clientType} is not supported. ` +
           "Supported client types: minimax-m3, gemini-3.7, gemini-3.6, gemini-3, " +
@@ -133,6 +163,8 @@ export class AutoLLMClient extends LLMClient {
           "deepseek-v4, openai-embedding, ant-messages, openai-responses, openai-chat.",
       );
     }
+
+    return new ClientClass({ model, apiKey, baseUrl, defaultHeaders });
   }
 
   /**
@@ -231,5 +263,30 @@ export class AutoLLMClient extends LLMClient {
    */
   setHistory(history: UniMessage[]): void {
     this._client.setHistory(history);
+  }
+
+  /**
+   * List the model ids the endpoint serves that the routed client can be used for.
+   *
+   * A protocol client is chosen explicitly and speaks for whatever the endpoint serves, so
+   * its listing is returned whole. A client deduced from a model id serves only the ids that
+   * deduce back to it, so a gateway fronting many vendors is filtered down to that client's
+   * own models.
+   *
+   * @returns The model ids, in the order the endpoint returned them.
+   */
+  async listModels(): Promise<string[]> {
+    const modelIds = await this._client.listModels();
+    const protocolClasses = PROTOCOL_CLIENT_TYPES.map((clientType) =>
+      this._clientClassForModel(clientType),
+    );
+    const clientClass = this._client.constructor as LLMClientConstructor;
+    if (protocolClasses.includes(clientClass)) {
+      return modelIds;
+    }
+
+    return modelIds.filter(
+      (modelId) => this._clientClassForModel(modelId.toLowerCase()) === clientClass,
+    );
   }
 }

@@ -175,6 +175,15 @@ class LLMClient(ABC):
         """
         pass
 
+    @abstractmethod
+    async def list_models(self) -> list[str]:
+        """
+        List the model ids the configured endpoint serves.
+
+        Returns:
+            list[str]: The model ids, in the order the endpoint returned them.
+        """
+
     async def streaming_response(
         self,
         messages: list[UniMessage],
