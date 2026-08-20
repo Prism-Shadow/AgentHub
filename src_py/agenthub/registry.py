@@ -436,7 +436,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1050000,
-        "pricing": _usd(5.0, 30.0, cached=0.5),
+        "pricing": _usd(2.5, 15.0, cached=0.25),
     },
     {
         "model": "openai/gpt-5.6-terra",
@@ -445,7 +445,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1050000,
-        "pricing": _usd(1.0, 6.0, cached=0.1),
+        "pricing": _usd(2.0, 12.0, cached=0.2),
     },
     {
         "model": "openai/gpt-5.6-luna",
@@ -454,7 +454,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text", "Image"],
         "output_modalities": ["Text"],
         "context_window": 1050000,
-        "pricing": _usd(0.1, 0.6, cached=0.01),
+        "pricing": _usd(0.2, 1.2, cached=0.02),
     },
     {
         "model": "openai/gpt-5.5",
