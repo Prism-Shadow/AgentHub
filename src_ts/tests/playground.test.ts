@@ -81,6 +81,11 @@ describe("Playground", () => {
     expect(response.text).toContain("apiKeyInput");
     expect(response.text).toContain('id="listModelsButton"');
     expect(response.text).toContain('id="extraHeadersInput"');
+    expect(response.text).toContain('id="listModelsError"');
+    expect(response.text).toContain("addListedModels(");
+    expect(response.text).toContain("getSelectedClientType()");
+    expect(response.text).toContain(">Connection</span>");
+    expect(response.text).toContain(">Generation</span>");
     expect(response.text).toContain("getExtraHeaders()");
     expect(response.text).toContain("listModels()");
     expect(response.text).toContain("/api/models");

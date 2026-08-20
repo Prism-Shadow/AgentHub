@@ -14,19 +14,24 @@
   `gpt5_6`、`minimax_m3`、`deepseek_v4`、`glm5_3`、`kimi_k3`、`openai_embedding`）与 Anthropic
   Messages client（`claude5`、`ant_messages`）读取各自 SDK 的 `models.list()`；`gemini3_7` 读取
   Gemini 的模型列表。翻页由 SDK 负责，因此结果覆盖 endpoint 提供的全部页。
+- 列表会按所路由的 client 过滤。协议 client（`openai-chat`、`openai-responses`、`ant-messages`、
+  `openai-embedding`）是被显式指定的，代表 endpoint 提供的一切，因此原样返回；而由模型 id 推导出的
+  client 只保留能推导回它自己的 id，于是面对一个汇聚多家供应商的网关，列表会收窄到该 client 自己的
+  模型。
+- `AutoLLMClient._client_class_for_model` 把路由判断从 `_create_client_for_model` 中拆出，后者改为
+  先查类再构造。判断条件只存在于一处，同时回答两个问题：某个模型 id 该由哪个 client 服务，以及某个
+  列出的 id 是否属于手上这个 client。
 - `gemini3_7` 只取每个 name 的最后一段路径，因此 `models/gemini-3.7-flash` 与
   `publishers/google/models/gemini-3.7-flash` 都会变成 `gemini-3.7-flash`——也就是
   `AutoLLMClient` 的 `model` 参数所接受的写法。
 - 两种语言的 `errors` 新增 `UnsupportedOperationError`，用于报告所路由的 client 根本不具备的能力
   （而不是某个参数值被拒），`claude5` 在 `bedrock://` 形式的 base URL 上抛出它，因为 Bedrock SDK
   client 不带 models 资源。
-- `LLMClient` 将该方法声明为抽象方法，因此每个 client 都实现了它。
-- Playground 在 Base URL 的标签行上新增 **List models** 按钮，背后是 `POST /api/models` 路由：
-  用面板上的 model、API key、base URL 与 client type 构造 client，返回 id 列表，结果以浮层覆盖在
-  输入框上方而不撑开面板。被 endpoint 拒绝的
-  请求以 `400` 带上服务方的报错返回，因此 key 不对或 base URL 不通会显示成错误，而不是一个空列表。
-- 两种语言的离线测试把一个假的 models endpoint 接到全部 client 上，并钉住 Gemini 的路径截取与
-  Bedrock 的拒绝行为：`src_py/tests/test_list_models.py`、`src_ts/tests/list-models.test.ts`。
+- Playground 把结果列进自己的模型下拉框：Model 标签行上的 **List models** 控件调用
+  `POST /api/models`，把返回的每个 id 添加为一个选项，并标记该次列举所使用的 client type。请求被拒
+  时，服务方的报错显示在该字段下方。
+- 两种语言的离线测试把一个假的 models endpoint 接到全部 client 上，并钉住过滤规则、Gemini 的路径截取
+  与 Bedrock 的拒绝行为：`src_py/tests/test_list_models.py`、`src_ts/tests/list-models.test.ts`。
 
 ## 各协议对应的请求
 

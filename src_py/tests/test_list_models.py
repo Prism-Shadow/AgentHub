@@ -27,25 +27,54 @@ class ListCase:
     expected_client: str
     model: str
     client_type: str
+    expected: list[str]
 
 
-# Every client whose SDK exposes a models.list() endpoint returning ids.
-SDK_LIST_CASES = [
-    ListCase(expected_client="GPT5_6Client", model="gpt-5.6", client_type="gpt-5.6"),
-    ListCase(expected_client="OpenaiResponsesClient", model="gpt-5.6", client_type="openai-responses"),
-    ListCase(expected_client="MiniMaxM3Client", model="minimax-m3", client_type="minimax-m3"),
-    ListCase(expected_client="OpenaiChatClient", model="gpt-5.6", client_type="openai-chat"),
-    ListCase(expected_client="DeepSeekV4Client", model="deepseek-v4", client_type="deepseek-v4"),
-    ListCase(expected_client="GLM5_3Client", model="glm-5.3", client_type="glm-5.3"),
-    ListCase(expected_client="KimiK3Client", model="kimi-k3", client_type="kimi-k3"),
-    ListCase(expected_client="OpenaiEmbeddingClient", model="qwen3-embedding", client_type="openai-embedding"),
-    ListCase(expected_client="Claude5Client", model="claude-sonnet-5", client_type="claude-sonnet-5"),
-    ListCase(expected_client="AntMessagesClient", model="claude-sonnet-5", client_type="ant-messages"),
+# What a gateway fronting several vendors answers with.
+SERVED_IDS = [
+    "gpt-5.6",
+    "claude-sonnet-5",
+    "claude-opus-4-6",
+    "deepseek-v4",
+    "glm-5.3",
+    "kimi-k3",
+    "gemini-3.7-flash",
+    "MiniMax-M3",
 ]
 
-# What the endpoint serves is whatever it says it serves: a gateway fronting several vendors
-# answers with all of them, in its own order.
-SERVED_IDS = ["gpt-5.6", "claude-sonnet-5", "deepseek-v4"]
+# A protocol client is named explicitly and speaks for the whole listing; a client deduced from a
+# model id keeps only the ids that deduce back to it.
+SDK_LIST_CASES = [
+    ListCase(expected_client="GPT5_6Client", model="gpt-5.6", client_type="gpt-5.6", expected=["gpt-5.6"]),
+    ListCase(
+        expected_client="Claude5Client",
+        model="claude-sonnet-5",
+        client_type="claude-sonnet-5",
+        expected=["claude-sonnet-5", "claude-opus-4-6"],
+    ),
+    ListCase(
+        expected_client="DeepSeekV4Client", model="deepseek-v4", client_type="deepseek-v4", expected=["deepseek-v4"]
+    ),
+    ListCase(expected_client="GLM5_3Client", model="glm-5.3", client_type="glm-5.3", expected=["glm-5.3"]),
+    ListCase(expected_client="KimiK3Client", model="kimi-k3", client_type="kimi-k3", expected=["kimi-k3"]),
+    ListCase(expected_client="MiniMaxM3Client", model="minimax-m3", client_type="minimax-m3", expected=["MiniMax-M3"]),
+    ListCase(expected_client="OpenaiChatClient", model="gpt-5.6", client_type="openai-chat", expected=SERVED_IDS),
+    ListCase(
+        expected_client="OpenaiResponsesClient", model="gpt-5.6", client_type="openai-responses", expected=SERVED_IDS
+    ),
+    ListCase(
+        expected_client="AntMessagesClient",
+        model="claude-sonnet-5",
+        client_type="ant-messages",
+        expected=SERVED_IDS,
+    ),
+    ListCase(
+        expected_client="OpenaiEmbeddingClient",
+        model="qwen3-embedding",
+        client_type="openai-embedding",
+        expected=SERVED_IDS,
+    ),
+]
 
 
 async def _aiter(items: list[object]) -> AsyncIterator[object]:
@@ -84,7 +113,7 @@ async def test_clients_return_the_ids_the_endpoint_serves(case: ListCase):
     assert type(client._client).__name__ == case.expected_client  # noqa: SLF001
     _install_fake_models(client, _FakeModelsEndpoint(SERVED_IDS))
 
-    assert await client.list_models() == SERVED_IDS
+    assert await client.list_models() == case.expected
 
 
 @pytest.mark.asyncio

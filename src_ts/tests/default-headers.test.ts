@@ -30,14 +30,32 @@ interface HeaderCase {
   clientType: string;
   model: string;
   baseUrlSuffix: string;
+  expected: string[];
 }
 
 // One case per SDK: the OpenAI and Anthropic clients take defaultHeaders directly, while the
 // Gemini SDK carries them inside httpOptions.
 const HEADER_CASES: HeaderCase[] = [
-  { clientType: "openai-chat", model: "gpt-5.6", baseUrlSuffix: "/v1" },
-  { clientType: "ant-messages", model: "claude-sonnet-5", baseUrlSuffix: "" },
-  { clientType: "gemini-3.7", model: "gemini-3.7-flash", baseUrlSuffix: "" },
+  {
+    clientType: "openai-chat",
+    model: "gpt-5.6",
+    baseUrlSuffix: "/v1",
+    expected: ["m1", "m2"],
+  },
+  {
+    clientType: "ant-messages",
+    model: "claude-sonnet-5",
+    baseUrlSuffix: "",
+    expected: ["m1", "m2"],
+  },
+  {
+    clientType: "gemini-3.7",
+    model: "gemini-3.7-flash",
+    baseUrlSuffix: "",
+    // the Gemini client is deduced from the model id, so its listing keeps only ids that
+    // deduce back to it
+    expected: ["gemini-3.7-flash", "gemini-3.7-pro"],
+  },
 ];
 
 const extraHeaders = {
@@ -60,7 +78,12 @@ beforeAll(async () => {
       ]),
     );
     const payload = req.url?.includes("v1beta")
-      ? { models: [{ name: "models/m1" }, { name: "models/m2" }] }
+      ? {
+          models: [
+            { name: "models/gemini-3.7-flash" },
+            { name: "models/gemini-3.7-pro" },
+          ],
+        }
       : { object: "list", data: [{ id: "m1" }, { id: "m2" }], has_more: false };
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(payload));
@@ -91,7 +114,7 @@ describe.each(HEADER_CASES)("defaultHeaders for $clientType", (testCase) => {
       defaultHeaders: extraHeaders,
     });
 
-    await expect(client.listModels()).resolves.toEqual(["m1", "m2"]);
+    await expect(client.listModels()).resolves.toEqual(testCase.expected);
     expect(receivedHeaders["x-app"]).toBe("cli");
     expect(receivedHeaders["http-referer"]).toBe("https://example.test");
   });

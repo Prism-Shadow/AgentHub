@@ -25,6 +25,7 @@ import asyncio
 import base64
 import concurrent.futures
 import json
+import os
 import threading
 from typing import Any
 
@@ -167,9 +168,19 @@ def create_chat_app() -> Flask:
         </div>
 
         <div class="bg-white border-b border-gray-200 px-6 py-4" id="configPanel">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div class="flex items-center gap-3 mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Connection</span>
+                <span class="h-px flex-1 bg-gray-200"></span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-4 gap-y-3 mb-4">
                 <div class="flex flex-col">
-                    <label class="text-sm font-semibold text-gray-900 mb-1" for="modelComboboxButton">Model</label>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-sm font-semibold text-gray-900" for="modelComboboxButton">Model</label>
+                        <div class="flex items-center gap-2">
+                            <span id="listModelsStatus" class="text-xs text-gray-500"></span>
+                            <button type="button" id="listModelsButton" class="text-xs font-medium text-blue-600 transition hover:text-blue-700 focus:outline-none focus:underline disabled:opacity-50" onclick="listModels()">List models</button>
+                        </div>
+                    </div>
                     <div id="modelCombobox" class="relative" data-combobox>
                         <input id="modelSelect" type="hidden" value="gpt-5.5" data-combobox-value>
                         <button
@@ -231,6 +242,7 @@ def create_chat_app() -> Flask:
                             </button>
                         </div>
                     </div>
+                    <p id="listModelsError" class="hidden mt-1 text-xs text-red-600 break-words"></p>
                     <div id="customModelWrapper" class="hidden mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <input
                             id="customModelInput"
@@ -267,22 +279,19 @@ def create_chat_app() -> Flask:
                     </div>
                 </div>
                 <div class="flex flex-col">
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="text-sm font-semibold text-gray-900" for="baseUrlInput">Base URL</label>
-                        <div class="flex items-center gap-2">
-                            <span id="listModelsStatus" class="text-xs text-gray-500"></span>
-                            <button type="button" id="listModelsButton" class="text-xs font-medium text-blue-600 transition hover:text-blue-700 focus:outline-none focus:underline disabled:opacity-50" onclick="listModels()">List models</button>
-                        </div>
-                    </div>
-                    <div class="relative">
-                        <input type="url" id="baseUrlInput" placeholder="Use provider default when empty" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <pre id="listModelsResult" class="hidden absolute z-30 mt-1 max-h-56 w-full overflow-y-auto whitespace-pre-wrap rounded-md border border-gray-200 bg-white p-2 text-xs font-mono text-gray-800 shadow-lg" title="Click to dismiss" onclick="this.classList.add('hidden')"></pre>
-                    </div>
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="baseUrlInput">Base URL</label>
+                    <input type="url" id="baseUrlInput" placeholder="Use provider default when empty" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 <div class="flex flex-col">
                     <label class="text-sm font-semibold text-gray-900 mb-1" for="extraHeadersInput">Extra Headers</label>
                     <textarea id="extraHeadersInput" rows="2" spellcheck="false" placeholder='JSON, e.g. {"X-Title": "AgentHub"} — for endpoints that demand their own' class="px-3 py-2 border border-gray-300 rounded-md text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
                 </div>
+            </div>
+            <div class="flex items-center gap-3 mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Generation</span>
+                <span class="h-px flex-1 bg-gray-200"></span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-4 gap-y-3">
                 <div class="flex flex-col">
                     <label class="text-sm font-semibold text-gray-900 mb-1" for="thinkingLevelComboboxButton">Thinking Level</label>
                     <div id="thinkingLevelCombobox" class="relative" data-combobox>
@@ -351,19 +360,17 @@ def create_chat_app() -> Flask:
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="flex flex-col">
-                    <label class="text-sm font-semibold text-gray-900 mb-1" for="systemPromptInput">System Prompt</label>
-                    <textarea id="systemPromptInput" rows="2" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"></textarea>
-                </div>
-                <div class="flex flex-col">
-                    <label class="text-sm font-semibold text-gray-900 mb-1" for="toolsInput">Tools (JSON Array)</label>
-                    <textarea id="toolsInput" rows="3" placeholder='[{"name": "function_name", "description": "...", "parameters": {...}}]' class="px-3 py-2 border border-gray-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"></textarea>
-                </div>
                 <div class="flex flex-col">
                     <label class="text-sm font-semibold text-gray-900 mb-1" for="traceIdInput">Trace ID</label>
                     <input type="text" id="traceIdInput" placeholder="e.g., session_001" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="flex flex-col sm:col-span-2">
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="systemPromptInput">System Prompt</label>
+                    <textarea id="systemPromptInput" rows="3" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"></textarea>
+                </div>
+                <div class="flex flex-col sm:col-span-2">
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="toolsInput">Tools (JSON Array)</label>
+                    <textarea id="toolsInput" rows="3" placeholder='[{"name": "function_name", "description": "...", "parameters": {...}}]' class="px-3 py-2 border border-gray-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"></textarea>
                 </div>
             </div>
         </div>
@@ -638,14 +645,66 @@ def create_chat_app() -> Flask:
                 hideIcon.classList.toggle('hidden', shouldShow);
             }
 
+            function getSelectedClientType() {
+                const modelSelect = document.getElementById('modelSelect');
+                if (modelSelect.value === '__custom__') {
+                    return document.getElementById('customClientTypeInput').value.trim();
+                }
+
+                // a listed model carries the client type its listing ran under
+                const option = document.querySelector(
+                    '#modelComboboxMenu [data-combobox-option][data-value="' + modelSelect.value + '"]'
+                );
+                return (option && option.dataset.clientType) || '';
+            }
+
+            function addListedModels(modelIds) {
+                const menu = document.getElementById('modelComboboxMenu');
+                const options = Array.from(menu.querySelectorAll('[data-combobox-option]'));
+                const known = new Set(options.map((option) => option.dataset.value));
+                const customOption = options.find((option) => option.dataset.value === '__custom__') || null;
+                const clientType = getSelectedClientType();
+
+                let added = 0;
+                modelIds.forEach((modelId) => {
+                    if (known.has(modelId)) {
+                        return;
+                    }
+
+                    const option = document.createElement('button');
+                    option.type = 'button';
+                    option.setAttribute('role', 'option');
+                    option.setAttribute('aria-selected', 'false');
+                    option.className = 'w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none';
+                    option.setAttribute('data-combobox-option', '');
+                    option.dataset.value = modelId;
+                    option.dataset.label = modelId;
+                    option.dataset.description = modelId;
+                    if (clientType) {
+                        option.dataset.clientType = clientType;
+                    }
+                    option.onclick = () => selectComboboxOption('modelCombobox', option);
+
+                    const label = document.createElement('span');
+                    label.className = 'block truncate text-sm font-medium text-gray-900';
+                    label.textContent = modelId;
+                    option.appendChild(label);
+                    menu.insertBefore(option, customOption);
+                    known.add(modelId);
+                    added += 1;
+                });
+
+                return added;
+            }
+
             async function listModels() {
                 const button = document.getElementById('listModelsButton');
                 const status = document.getElementById('listModelsStatus');
-                const result = document.getElementById('listModelsResult');
+                const error = document.getElementById('listModelsError');
 
                 button.disabled = true;
                 status.textContent = 'Listing...';
-                result.classList.add('hidden');
+                error.classList.add('hidden');
                 try {
                     const response = await fetch('/api/models', {
                         method: 'POST',
@@ -656,14 +715,15 @@ def create_chat_app() -> Flask:
                     if (!response.ok) {
                         throw new Error(data.error || 'Request failed');
                     }
-                    status.textContent = data.models.length + ' models';
-                    result.textContent = data.models.join('\\n');
-                } catch (error) {
+
+                    const added = addListedModels(data.models);
+                    status.textContent = data.models.length + ' models, ' + added + ' added';
+                } catch (err) {
                     status.textContent = 'Failed';
-                    result.textContent = error.message || String(error);
+                    error.textContent = err.message || String(err);
+                    error.classList.remove('hidden');
                 } finally {
                     button.disabled = false;
-                    result.classList.remove('hidden');
                 }
             }
 
@@ -696,11 +756,9 @@ def create_chat_app() -> Flask:
                     config.api_key = apiKey;
                 }
 
-                if (document.getElementById('modelSelect').value === '__custom__') {
-                    const clientType = document.getElementById('customClientTypeInput').value.trim();
-                    if (clientType) {
-                        config.client_type = clientType;
-                    }
+                const clientType = getSelectedClientType();
+                if (clientType) {
+                    config.client_type = clientType;
                 }
 
                 const baseUrl = document.getElementById('baseUrlInput').value.trim();
@@ -1267,6 +1325,9 @@ def start_playground_server(host: str = "127.0.0.1", port: int = 25751, debug: b
         port: Port number to listen on
         debug: Enable debug mode
     """
+    # the playground exists to show what a model and its endpoint actually send, so unknown
+    # stream output fails loudly here unless the caller says otherwise
+    os.environ.setdefault("AGENTHUB_DEBUG", "1")
     app = create_chat_app()
     print(f"Starting LLM Playground at http://{host}:{port}")
     app.run(host=host, port=port, debug=debug)

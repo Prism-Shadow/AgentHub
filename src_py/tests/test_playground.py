@@ -53,6 +53,11 @@ def test_chat_app_index_route():
         assert b"apiKeyInput" in response.data
         assert b'id="listModelsButton"' in response.data
         assert b'id="extraHeadersInput"' in response.data
+        assert b'id="listModelsError"' in response.data
+        assert b"addListedModels(" in response.data
+        assert b"getSelectedClientType()" in response.data
+        assert b">Connection</span>" in response.data
+        assert b">Generation</span>" in response.data
         assert b"getExtraHeaders()" in response.data
         assert b"listModels()" in response.data
         assert b"/api/models" in response.data

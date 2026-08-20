@@ -28,14 +28,22 @@ class HeaderCase:
     client_type: str
     model: str
     base_url_suffix: str
+    expected: list[str]
 
 
 # One case per SDK: the OpenAI and Anthropic clients take default_headers directly, while the
 # Gemini SDK carries them inside http_options.
 HEADER_CASES = [
-    HeaderCase(client_type="openai-chat", model="gpt-5.6", base_url_suffix="/v1"),
-    HeaderCase(client_type="ant-messages", model="claude-sonnet-5", base_url_suffix=""),
-    HeaderCase(client_type="gemini-3.7", model="gemini-3.7-flash", base_url_suffix=""),
+    HeaderCase(client_type="openai-chat", model="gpt-5.6", base_url_suffix="/v1", expected=["m1", "m2"]),
+    HeaderCase(client_type="ant-messages", model="claude-sonnet-5", base_url_suffix="", expected=["m1", "m2"]),
+    HeaderCase(
+        client_type="gemini-3.7",
+        model="gemini-3.7-flash",
+        base_url_suffix="",
+        # the Gemini client is deduced from the model id, so its listing keeps only ids that
+        # deduce back to it
+        expected=["gemini-3.7-flash", "gemini-3.7-pro"],
+    ),
 ]
 
 EXTRA_HEADERS = {"X-App": "cli", "HTTP-Referer": "https://example.test"}
@@ -51,7 +59,7 @@ class _ModelListHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802 - the name is BaseHTTPRequestHandler's
         type(self).received_headers = {name.lower(): value for name, value in self.headers.items()}
         if "v1beta" in self.path:
-            payload = {"models": [{"name": "models/m1"}, {"name": "models/m2"}]}
+            payload = {"models": [{"name": "models/gemini-3.7-flash"}, {"name": "models/gemini-3.7-pro"}]}
         else:
             payload = {"object": "list", "data": [{"id": "m1"}, {"id": "m2"}], "has_more": False}
 
@@ -89,7 +97,7 @@ async def test_default_headers_reach_the_endpoint(case: HeaderCase, model_list_s
         default_headers=EXTRA_HEADERS,
     )
 
-    assert await client.list_models() == ["m1", "m2"]
+    assert await client.list_models() == case.expected
     assert _ModelListHandler.received_headers["x-app"] == "cli"
     assert _ModelListHandler.received_headers["http-referer"] == "https://example.test"
 

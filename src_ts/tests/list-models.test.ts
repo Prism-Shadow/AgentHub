@@ -21,53 +21,85 @@ interface ListCase {
   expectedClient: string;
   model: string;
   clientType: string;
+  expected: string[];
 }
 
-// Every client whose SDK exposes a models.list() endpoint returning ids.
+// What a gateway fronting several vendors answers with.
+const servedIds = [
+  "gpt-5.6",
+  "claude-sonnet-5",
+  "claude-opus-4-6",
+  "deepseek-v4",
+  "glm-5.3",
+  "kimi-k3",
+  "gemini-3.7-flash",
+  "MiniMax-M3",
+];
+
+// A protocol client is named explicitly and speaks for the whole listing; a client deduced from
+// a model id keeps only the ids that deduce back to it.
 const SDK_LIST_CASES: ListCase[] = [
-  { expectedClient: "GPT5_6Client", model: "gpt-5.6", clientType: "gpt-5.6" },
   {
-    expectedClient: "OpenaiResponsesClient",
+    expectedClient: "GPT5_6Client",
     model: "gpt-5.6",
-    clientType: "openai-responses",
-  },
-  {
-    expectedClient: "MiniMaxM3Client",
-    model: "minimax-m3",
-    clientType: "minimax-m3",
-  },
-  {
-    expectedClient: "OpenaiChatClient",
-    model: "gpt-5.6",
-    clientType: "openai-chat",
-  },
-  {
-    expectedClient: "DeepSeekV4Client",
-    model: "deepseek-v4",
-    clientType: "deepseek-v4",
-  },
-  { expectedClient: "GLM5_3Client", model: "glm-5.3", clientType: "glm-5.3" },
-  { expectedClient: "KimiK3Client", model: "kimi-k3", clientType: "kimi-k3" },
-  {
-    expectedClient: "OpenaiEmbeddingClient",
-    model: "qwen3-embedding",
-    clientType: "openai-embedding",
+    clientType: "gpt-5.6",
+    expected: ["gpt-5.6"],
   },
   {
     expectedClient: "Claude5Client",
     model: "claude-sonnet-5",
     clientType: "claude-sonnet-5",
+    expected: ["claude-sonnet-5", "claude-opus-4-6"],
+  },
+  {
+    expectedClient: "DeepSeekV4Client",
+    model: "deepseek-v4",
+    clientType: "deepseek-v4",
+    expected: ["deepseek-v4"],
+  },
+  {
+    expectedClient: "GLM5_3Client",
+    model: "glm-5.3",
+    clientType: "glm-5.3",
+    expected: ["glm-5.3"],
+  },
+  {
+    expectedClient: "KimiK3Client",
+    model: "kimi-k3",
+    clientType: "kimi-k3",
+    expected: ["kimi-k3"],
+  },
+  {
+    expectedClient: "MiniMaxM3Client",
+    model: "minimax-m3",
+    clientType: "minimax-m3",
+    expected: ["MiniMax-M3"],
+  },
+  {
+    expectedClient: "OpenaiChatClient",
+    model: "gpt-5.6",
+    clientType: "openai-chat",
+    expected: servedIds,
+  },
+  {
+    expectedClient: "OpenaiResponsesClient",
+    model: "gpt-5.6",
+    clientType: "openai-responses",
+    expected: servedIds,
   },
   {
     expectedClient: "AntMessagesClient",
     model: "claude-sonnet-5",
     clientType: "ant-messages",
+    expected: servedIds,
+  },
+  {
+    expectedClient: "OpenaiEmbeddingClient",
+    model: "qwen3-embedding",
+    clientType: "openai-embedding",
+    expected: servedIds,
   },
 ];
-
-// What the endpoint serves is whatever it says it serves: a gateway fronting several
-// vendors answers with all of them, in its own order.
-const servedIds = ["gpt-5.6", "claude-sonnet-5", "deepseek-v4"];
 
 function asyncIterable(items: unknown[]): AsyncIterable<unknown> {
   return {
@@ -101,7 +133,7 @@ describe.each(SDK_LIST_CASES)("listModels for $clientType", (testCase) => {
       models: { list: () => asyncIterable(servedIds.map((id) => ({ id }))) },
     });
 
-    await expect(client.listModels()).resolves.toEqual(servedIds);
+    await expect(client.listModels()).resolves.toEqual(testCase.expected);
   });
 });
 
