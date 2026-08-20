@@ -276,6 +276,11 @@ export function createChatApp(): Express {
               <div class="flex flex-col">
                   <label class="text-sm font-semibold text-gray-900 mb-1" for="baseUrlInput">Base URL</label>
                   <input type="url" id="baseUrlInput" placeholder="Use provider default when empty" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                  <div class="mt-2 flex items-center gap-2">
+                      <button type="button" id="listModelsButton" class="px-3 py-1.5 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50" onclick="listModels()">List models</button>
+                      <span id="listModelsStatus" class="text-xs text-gray-500"></span>
+                  </div>
+                  <pre id="listModelsResult" class="hidden mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap rounded-md border border-gray-200 bg-gray-50 p-2 text-xs font-mono text-gray-800"></pre>
               </div>
               <div class="flex flex-col">
                   <label class="text-sm font-semibold text-gray-900 mb-1" for="thinkingLevelComboboxButton">Thinking Level</label>
@@ -630,6 +635,35 @@ export function createChatApp(): Express {
               toggle.setAttribute('title', shouldShow ? 'Hide API key' : 'Show API key');
               showIcon.classList.toggle('hidden', !shouldShow);
               hideIcon.classList.toggle('hidden', shouldShow);
+          }
+
+          async function listModels() {
+              const button = document.getElementById('listModelsButton');
+              const status = document.getElementById('listModelsStatus');
+              const result = document.getElementById('listModelsResult');
+
+              button.disabled = true;
+              status.textContent = 'Listing...';
+              result.classList.add('hidden');
+              try {
+                  const response = await fetch('/api/models', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ config: getConfig() })
+                  });
+                  const data = await response.json();
+                  if (!response.ok) {
+                      throw new Error(data.error || 'Request failed');
+                  }
+                  status.textContent = data.models.length + ' models';
+                  result.textContent = data.models.join('\\n');
+              } catch (error) {
+                  status.textContent = 'Failed';
+                  result.textContent = error.message || String(error);
+              } finally {
+                  button.disabled = false;
+                  result.classList.remove('hidden');
+              }
           }
 
           function getConfig() {
@@ -1166,6 +1200,20 @@ export function createChatApp(): Express {
     }
 
     res.json({ status: "success" });
+  });
+
+  app.post("/api/models", async (req: Request, res: Response) => {
+    const { config } = req.body as { config?: PlaygroundConfig };
+
+    try {
+      const client = new AutoLLMClient(getClientOptions(config || {}));
+      res.json({ models: await client.listModels() });
+    } catch (error) {
+      // a rejected key, an unreachable base URL, or a client that cannot list
+      res.status(400).json({
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   });
 
   return app;

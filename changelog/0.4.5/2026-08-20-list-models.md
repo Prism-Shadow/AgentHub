@@ -2,7 +2,7 @@
 
 - **Date:** 2026-08-20
 - **Type:** feature
-- **Scope:** `base_client`, `auto_client`, `claude5`, `gemini3_7`, `tests`
+- **Scope:** `auto_client`, `claude5`, `gemini3_7`, `integration`, `tests`
 - **PR:** [#181](https://github.com/Prism-Shadow/agenthub/pull/181)
 
 [中文版](2026-08-20-list-models.zh.md)
@@ -21,6 +21,11 @@
 - `claude5` raises `UnsupportedParameterError` on a `bedrock://` base URL, because the Bedrock SDK
   client carries no models resource in either language.
 - `LLMClient` declares the method abstract, so every client implements it.
+- The playground gained a **List models** button under its Base URL field, backed by a
+  `POST /api/models` route that builds a client from the panel's model, API key, base URL and
+  client type and answers with the ids. A listing the endpoint rejects comes back as a `400`
+  carrying the provider's message, so a bad key or an unreachable base URL reads as an error
+  rather than an empty list.
 - Offline tests in both languages route a fake models endpoint through every client and pin the
   Gemini path stripping and the Bedrock rejection: `src_py/tests/test_list_models.py`,
   `src_ts/tests/list-models.test.ts`.

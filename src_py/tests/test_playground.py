@@ -51,6 +51,9 @@ def test_chat_app_index_route():
         assert b"<select" not in response.data
         assert b"<datalist" not in response.data
         assert b"apiKeyInput" in response.data
+        assert b'id="listModelsButton"' in response.data
+        assert b"listModels()" in response.data
+        assert b"/api/models" in response.data
         assert b"apiKeyVisibilityToggle" in response.data
         assert b"toggleApiKeyVisibility()" in response.data
         assert b'id="stopButton"' in response.data
@@ -92,6 +95,61 @@ def test_chat_app_mounts_tracer():
         assert response.status_code == 200
         assert b"Tracer" in response.data
         assert b'href="/tracer/"' in response.data
+
+
+def test_chat_app_lists_the_models_the_endpoint_serves(monkeypatch):
+    """Test that the playground lists models through the configured client options."""
+    captured = {}
+
+    class FakeClient:
+        def __init__(self, model, api_key=None, base_url=None, client_type=None):
+            captured["client_options"] = {
+                "model": model,
+                "api_key": api_key,
+                "base_url": base_url,
+                "client_type": client_type,
+            }
+
+        async def list_models(self):
+            return ["gpt-5.6", "claude-sonnet-5"]
+
+    monkeypatch.setattr(playground, "AutoLLMClient", FakeClient)
+
+    app = create_chat_app()
+    with app.test_client() as client:
+        response = client.post(
+            "/api/models",
+            json={"config": {"model": "gpt-5.6", "api_key": "test-key", "base_url": "https://relay.test/v1"}},
+        )
+
+    assert response.status_code == 200
+    assert response.get_json() == {"models": ["gpt-5.6", "claude-sonnet-5"]}
+    assert captured["client_options"] == {
+        "model": "gpt-5.6",
+        "api_key": "test-key",
+        "base_url": "https://relay.test/v1",
+        "client_type": None,
+    }
+
+
+def test_chat_app_reports_a_failed_model_listing(monkeypatch):
+    """Test that a rejected listing reaches the UI as an error rather than an empty list."""
+
+    class FailingClient:
+        def __init__(self, model, api_key=None, base_url=None, client_type=None):
+            pass
+
+        async def list_models(self):
+            raise RuntimeError("401 unauthorized")
+
+    monkeypatch.setattr(playground, "AutoLLMClient", FailingClient)
+
+    app = create_chat_app()
+    with app.test_client() as client:
+        response = client.post("/api/models", json={"config": {"model": "gpt-5.6"}})
+
+    assert response.status_code == 400
+    assert "401 unauthorized" in response.get_json()["error"]
 
 
 def test_chat_app_uses_client_connection_options(monkeypatch):

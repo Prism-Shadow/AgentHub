@@ -265,6 +265,11 @@ def create_chat_app() -> Flask:
                 <div class="flex flex-col">
                     <label class="text-sm font-semibold text-gray-900 mb-1" for="baseUrlInput">Base URL</label>
                     <input type="url" id="baseUrlInput" placeholder="Use provider default when empty" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <div class="mt-2 flex items-center gap-2">
+                        <button type="button" id="listModelsButton" class="px-3 py-1.5 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50" onclick="listModels()">List models</button>
+                        <span id="listModelsStatus" class="text-xs text-gray-500"></span>
+                    </div>
+                    <pre id="listModelsResult" class="hidden mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap rounded-md border border-gray-200 bg-gray-50 p-2 text-xs font-mono text-gray-800"></pre>
                 </div>
                 <div class="flex flex-col">
                     <label class="text-sm font-semibold text-gray-900 mb-1" for="thinkingLevelComboboxButton">Thinking Level</label>
@@ -619,6 +624,35 @@ def create_chat_app() -> Flask:
                 toggle.setAttribute('title', shouldShow ? 'Hide API key' : 'Show API key');
                 showIcon.classList.toggle('hidden', !shouldShow);
                 hideIcon.classList.toggle('hidden', shouldShow);
+            }
+
+            async function listModels() {
+                const button = document.getElementById('listModelsButton');
+                const status = document.getElementById('listModelsStatus');
+                const result = document.getElementById('listModelsResult');
+
+                button.disabled = true;
+                status.textContent = 'Listing...';
+                result.classList.add('hidden');
+                try {
+                    const response = await fetch('/api/models', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ config: getConfig() })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Request failed');
+                    }
+                    status.textContent = data.models.length + ' models';
+                    result.textContent = data.models.join('\\n');
+                } catch (error) {
+                    status.textContent = 'Failed';
+                    result.textContent = error.message || String(error);
+                } finally {
+                    button.disabled = false;
+                    result.classList.remove('hidden');
+                }
             }
 
             function getConfig() {
@@ -1159,6 +1193,21 @@ def create_chat_app() -> Flask:
             _session_client_options.pop(session_id, None)
 
         return jsonify({"status": "success"})
+
+    @app.route("/api/models", methods=["POST"])
+    def list_models() -> Response | tuple[Response, int]:
+        """List the model ids the configured endpoint serves."""
+        data = request.json or {}
+        model, api_key, base_url, client_type = _get_client_options(data.get("config") or {})
+
+        try:
+            client = AutoLLMClient(model=model, api_key=api_key, base_url=base_url, client_type=client_type)
+            loop = _get_event_loop()
+            models = asyncio.run_coroutine_threadsafe(client.list_models(), loop).result()
+        except Exception as exc:  # a rejected key, an unreachable base URL, or a client that cannot list
+            return jsonify({"error": str(exc)}), 400
+
+        return jsonify({"models": models})
 
     tracer_app = Tracer().create_web_app(base_path="/tracer")
     app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {"/tracer": tracer_app.wsgi_app})
