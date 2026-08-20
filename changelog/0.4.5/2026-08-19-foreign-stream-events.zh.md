@@ -3,6 +3,7 @@
 - **Date:** 2026-08-19
 - **Type:** fix
 - **Scope:** `utils`, `ant_messages`, `claude5`, `openai_responses`, `tests`
+- **PR:** [#181](https://github.com/Prism-Shadow/agenthub/pull/181)
 
 [English](2026-08-19-foreign-stream-events.md)
 
