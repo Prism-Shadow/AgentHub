@@ -381,3 +381,12 @@ class GPT5_6Client(LLMClient):
 
                 if event["finish_reason"] or event["usage_metadata"]:
                     yield event
+
+    async def list_models(self) -> list[str]:
+        """
+        List the model ids the configured endpoint serves.
+
+        Returns:
+            list[str]: The model ids, in the order the endpoint returned them.
+        """
+        return [model.id async for model in self._client.models.list()]

@@ -39,6 +39,9 @@ class SlowStreamingClient(LLMClient):
     def transform_model_output_to_uni_event(self, model_output: UniEvent) -> UniEvent:
         return model_output
 
+    async def list_models(self) -> list[str]:
+        return []
+
     async def _streaming_response_internal(
         self,
         messages: list[UniMessage],
@@ -78,6 +81,9 @@ class MultiEventStreamingClient(LLMClient):
 
     def transform_model_output_to_uni_event(self, model_output: UniEvent) -> UniEvent:
         return model_output
+
+    async def list_models(self) -> list[str]:
+        return []
 
     async def _streaming_response_internal(
         self,

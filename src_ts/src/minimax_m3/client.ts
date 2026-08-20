@@ -167,25 +167,24 @@ export class MiniMaxM3Client extends LLMClient {
       let contentItems: any[] = [];
 
       for (const item of message.content_items) {
+        // A top-level item follows the buffered text, so flush it first to keep the wire order.
+        if (
+          item.type !== "text" &&
+          item.type !== "image_url" &&
+          contentItems.length > 0
+        ) {
+          inputList.push({ role: message.role, content: contentItems });
+          contentItems = [];
+        }
+
         if (item.type === "text") {
           contentItems.push({
             type: message.role === "user" ? "input_text" : "output_text",
             text: item.text,
           });
-          continue;
-        }
-        if (item.type === "image_url") {
+        } else if (item.type === "image_url") {
           contentItems.push({ type: "input_image", image_url: item.image_url });
-          continue;
-        }
-
-        // Top-level items follow, so flush buffered text first to keep the wire order.
-        if (contentItems.length > 0) {
-          inputList.push({ role: message.role, content: contentItems });
-          contentItems = [];
-        }
-
-        if (item.type === "thinking") {
+        } else if (item.type === "thinking") {
           // MiniMax accepts a reasoning item rebuilt from the thinking text alone, so no fidelity
           // is recorded for it.
           inputList.push({
@@ -398,5 +397,19 @@ export class MiniMaxM3Client extends LLMClient {
         }
       }
     }
+  }
+
+  /**
+   * List the model ids the configured endpoint serves.
+   *
+   * @returns The model ids, in the order the endpoint returned them.
+   */
+  async listModels(): Promise<string[]> {
+    const models: string[] = [];
+    for await (const model of this._client.models.list()) {
+      models.push(model.id);
+    }
+
+    return models;
   }
 }

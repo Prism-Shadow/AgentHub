@@ -165,3 +165,7 @@ class AutoLLMClient(LLMClient):
     def set_history(self, history: list[UniMessage]) -> None:
         """Set history in the underlying client."""
         self._client.set_history(history)
+
+    async def list_models(self) -> list[str]:
+        """List the model ids the endpoint serves in the underlying client."""
+        return await self._client.list_models()

@@ -621,4 +621,26 @@ export class Claude5Client extends LLMClient {
       }
     }
   }
+
+  /**
+   * List the model ids the configured endpoint serves.
+   *
+   * @returns The model ids, in the order the endpoint returned them.
+   */
+  async listModels(): Promise<string[]> {
+    if (this._use_bedrock) {
+      throw new UnsupportedParameterError({
+        client: this.constructor.name,
+        parameter: "list_models",
+        message: "Bedrock does not support listing models.",
+      });
+    }
+
+    const models: string[] = [];
+    for await (const model of (this._client as Anthropic).models.list()) {
+      models.push(model.id);
+    }
+
+    return models;
+  }
 }

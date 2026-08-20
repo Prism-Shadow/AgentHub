@@ -127,6 +127,11 @@ class MiniMaxM3Client(LLMClient):
         for message in messages:
             content_items: list[dict[str, Any]] = []
             for item in message["content_items"]:
+                # A top-level item follows the buffered text, so flush it first to keep the wire order.
+                if item["type"] not in ("text", "image_url") and content_items:
+                    input_list.append({"role": message["role"], "content": content_items})
+                    content_items = []
+
                 if item["type"] == "text":
                     content_items.append(
                         {
@@ -134,17 +139,9 @@ class MiniMaxM3Client(LLMClient):
                             "text": item["text"],
                         }
                     )
-                    continue
-                if item["type"] == "image_url":
+                elif item["type"] == "image_url":
                     content_items.append({"type": "input_image", "image_url": item["image_url"]})
-                    continue
-
-                # Top-level items follow, so flush buffered text first to keep the wire order.
-                if content_items:
-                    input_list.append({"role": message["role"], "content": content_items})
-                    content_items = []
-
-                if item["type"] == "thinking":
+                elif item["type"] == "thinking":
                     # MiniMax accepts a reasoning item rebuilt from the thinking text alone, so no
                     # fidelity is recorded for it.
                     input_list.append(
@@ -317,3 +314,12 @@ class MiniMaxM3Client(LLMClient):
 
                 if event["finish_reason"] or event["usage_metadata"]:
                     yield event
+
+    async def list_models(self) -> list[str]:
+        """
+        List the model ids the configured endpoint serves.
+
+        Returns:
+            list[str]: The model ids, in the order the endpoint returned them.
+        """
+        return [model.id async for model in self._client.models.list()]

@@ -471,3 +471,17 @@ class Claude5Client(LLMClient):
                         "finish_reason": event["finish_reason"],
                     }
                     partial_usage = {}
+
+    async def list_models(self) -> list[str]:
+        """
+        List the model ids the configured endpoint serves.
+
+        Returns:
+            list[str]: The model ids, in the order the endpoint returned them.
+        """
+        if self._use_bedrock:
+            raise UnsupportedParameterError(
+                self.__class__.__name__, "list_models", "Bedrock does not support listing models."
+            )
+
+        return [model.id async for model in self._client.models.list()]

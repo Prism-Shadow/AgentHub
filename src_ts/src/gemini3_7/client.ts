@@ -763,4 +763,23 @@ export class Gemini3_7Client extends LLMClient {
       yield event;
     }
   }
+
+  /**
+   * List the model ids the configured endpoint serves.
+   *
+   * @returns The model ids, in the order the endpoint returned them.
+   */
+  async listModels(): Promise<string[]> {
+    const models: string[] = [];
+    for await (const model of await this._client.models.list()) {
+      // the API returns path-qualified names: models/gemini-3.7-flash,
+      // publishers/google/models/gemini-3.7-flash
+      const id = model.name?.split("/").pop();
+      if (id) {
+        models.push(id);
+      }
+    }
+
+    return models;
+  }
 }

@@ -462,3 +462,12 @@ class KimiK3Client(LLMClient):
                         "finish_reason": partial_usage["finish_reason"],
                     }
                     partial_usage = {}
+
+    async def list_models(self) -> list[str]:
+        """
+        List the model ids the configured endpoint serves.
+
+        Returns:
+            list[str]: The model ids, in the order the endpoint returned them.
+        """
+        return [model.id async for model in self._client.models.list()]

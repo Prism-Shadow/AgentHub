@@ -167,6 +167,21 @@ export class OpenaiResponsesClient extends LLMClient {
       let lastPhase: string | null = null;
 
       for (const item of msg.content_items) {
+        // A top-level item follows the buffered text, so flush it first to keep the wire order.
+        if (
+          item.type !== "text" &&
+          item.type !== "image_url" &&
+          contentItems.length > 0
+        ) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const entry: any = { role: msg.role, content: contentItems };
+          if (lastPhase !== null) {
+            entry.phase = lastPhase;
+          }
+          inputList.push(entry);
+          contentItems = [];
+        }
+
         if (item.type === "text") {
           const phase = item.fidelity?.phase;
           if (msg.role === "assistant" && phase) {
@@ -190,28 +205,12 @@ export class OpenaiResponsesClient extends LLMClient {
           } else {
             contentItems.push({ type: "output_text", text: item.text });
           }
-          continue;
-        }
-        if (item.type === "image_url") {
+        } else if (item.type === "image_url") {
           contentItems.push({
             type: "input_image",
             image_url: item.image_url,
           });
-          continue;
-        }
-
-        // Top-level items follow, so flush buffered text first to keep the wire order.
-        if (contentItems.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const entry: any = { role: msg.role, content: contentItems };
-          if (lastPhase !== null) {
-            entry.phase = lastPhase;
-          }
-          inputList.push(entry);
-          contentItems = [];
-        }
-
-        if (item.type === "thinking") {
+        } else if (item.type === "thinking") {
           // the wire shape differs by server: OpenAI-style servers stream summaries and
           // demand the summary key back (with encrypted_content preserved), while
           // DeepSeek/Z.AI/MiniMax-style servers accept a reasoning item rebuilt from the
@@ -489,5 +488,19 @@ export class OpenaiResponsesClient extends LLMClient {
         }
       }
     }
+  }
+
+  /**
+   * List the model ids the configured endpoint serves.
+   *
+   * @returns The model ids, in the order the endpoint returned them.
+   */
+  async listModels(): Promise<string[]> {
+    const models: string[] = [];
+    for await (const model of this._client.models.list()) {
+      models.push(model.id);
+    }
+
+    return models;
   }
 }

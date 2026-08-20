@@ -84,3 +84,12 @@ class OpenaiEmbeddingClient(LLMClient):
         params["input"] = self.transform_uni_message_to_model_input(messages)
         result = await self._client.embeddings.create(**params)
         yield self.transform_model_output_to_uni_event(result)
+
+    async def list_models(self) -> list[str]:
+        """
+        List the model ids the configured endpoint serves.
+
+        Returns:
+            list[str]: The model ids, in the order the endpoint returned them.
+        """
+        return [model.id async for model in self._client.models.list()]

@@ -543,3 +543,13 @@ class Gemini3_7Client(LLMClient):
                     }
 
             yield event
+
+    async def list_models(self) -> list[str]:
+        """
+        List the model ids the configured endpoint serves.
+
+        Returns:
+            list[str]: The model ids, in the order the endpoint returned them.
+        """
+        # the API returns path-qualified names: models/gemini-3.7-flash, publishers/google/models/...
+        return [model.name.split("/")[-1] async for model in await self._client.aio.models.list() if model.name]

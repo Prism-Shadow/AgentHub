@@ -232,4 +232,11 @@ export class AutoLLMClient extends LLMClient {
   setHistory(history: UniMessage[]): void {
     this._client.setHistory(history);
   }
+
+  /**
+   * List the model ids the endpoint serves in the underlying client.
+   */
+  async listModels(): Promise<string[]> {
+    return this._client.listModels();
+  }
 }
