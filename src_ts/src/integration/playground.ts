@@ -632,6 +632,8 @@ export function createChatApp(): Express {
                   return '';
               }
 
+              // a built-in whose id does not route on its own declares data-client-type, and a
+              // listed model carries the client type its listing ran under
               const option = document.querySelector(
                   '#modelComboboxMenu [data-combobox-option][data-value="' + modelSelect.value + '"]'
               );
@@ -658,15 +660,13 @@ export function createChatApp(): Express {
               const useCustom = document.getElementById('modelSelect').value === '__custom__';
               const modelInput = document.getElementById('customModelInput');
               const clientTypeInput = document.getElementById('customClientTypeInput');
-              const optionClientType = selectedOptionClientType();
-
-              // a listed model carries the client type its listing ran under: show it rather than
-              // routing by something the panel does not display
+              // a listed model's protocol is known only from its listing, so it is shown and can be
+              // corrected; a built-in declares its own and keeps it
+              const showClientType = useCustom || selectedOptionIsListed();
               if (!useCustom) {
-                  clientTypeInput.value = optionClientType;
+                  clientTypeInput.value = showClientType ? selectedOptionClientType() : '';
               }
 
-              const showClientType = useCustom || Boolean(optionClientType);
               modelInput.classList.toggle('hidden', !useCustom);
               clientTypeInput.classList.toggle('hidden', !showClientType);
               // with the model id field hidden it is the only control in the row
@@ -685,18 +685,6 @@ export function createChatApp(): Express {
               return modelSelect.value;
           }
 
-          function getSelectedClientType() {
-              const modelSelect = document.getElementById('modelSelect');
-              if (modelSelect.value === '__custom__') {
-                  return document.getElementById('customClientTypeInput').value.trim();
-              }
-              // built-in models whose id does not route on its own carry data-client-type
-              const option = document.querySelector(
-                  '#modelComboboxMenu [data-combobox-option][data-value="' + modelSelect.value + '"]'
-              );
-              return option ? (option.dataset.clientType || '') : '';
-          }
-
           function toggleApiKeyVisibility() {
               const input = document.getElementById('apiKeyInput');
               const toggle = document.getElementById('apiKeyVisibilityToggle');
@@ -711,15 +699,24 @@ export function createChatApp(): Express {
               hideIcon.classList.toggle('hidden', shouldShow);
           }
 
+          function selectedOptionIsListed() {
+              const modelSelect = document.getElementById('modelSelect');
+              const option = document.querySelector(
+                  '#modelComboboxMenu [data-combobox-option][data-value="' + modelSelect.value + '"]'
+              );
+              return Boolean(option && option.dataset.listed);
+          }
+
           function getSelectedClientType() {
-              // the field is on screen whenever a client type is in effect, so it is the one source
+              // the box is on screen for a custom or a listed model and is then the one source; a
+              // built-in keeps the client type it declares for itself
               const wrapper = document.getElementById('customModelWrapper');
               const clientTypeInput = document.getElementById('customClientTypeInput');
-              if (wrapper.classList.contains('hidden') || clientTypeInput.classList.contains('hidden')) {
-                  return '';
+              if (!wrapper.classList.contains('hidden') && !clientTypeInput.classList.contains('hidden')) {
+                  return clientTypeInput.value.trim();
               }
 
-              return clientTypeInput.value.trim();
+              return selectedOptionClientType();
           }
 
           function addListedModels(modelIds) {
@@ -744,6 +741,7 @@ export function createChatApp(): Express {
                   option.dataset.value = modelId;
                   option.dataset.label = modelId;
                   option.dataset.description = modelId;
+                  option.dataset.listed = 'true';
                   if (clientType) {
                       option.dataset.clientType = clientType;
                   }
