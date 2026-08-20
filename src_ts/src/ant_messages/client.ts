@@ -37,7 +37,7 @@ import {
 } from "../types";
 import {
   fixOpenrouterUsageMetadata,
-  isForeignNoOpEvent,
+  isDebugEnabled,
 } from "../utils";
 
 const REDACTED_THINKING = "_REDACTED_THINKING";
@@ -402,12 +402,12 @@ export class AntMessagesClient extends LLMClient {
       // the SDK drops the "ping" heartbeat at the SSE layer; it reaches here only
       // from gateways that relabel it onto another event
       eventType = "unused";
-    } else if (
-      isForeignNoOpEvent(modelOutput, ["message_", "content_block_"])
-    ) {
-      eventType = "unused";
-    } else {
+        } else if (isDebugEnabled()) {
       throw new Error(`Unknown output: ${JSON.stringify(modelOutput)}`);
+    } else {
+      // a gateway injects its own events (heartbeats, cost tickers) into the stream, and
+      // killing a long generation over one costs more than dropping it
+      eventType = "unused";
     }
 
     return {

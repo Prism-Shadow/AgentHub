@@ -33,7 +33,7 @@ from ..types import (
     UniMessage,
     UsageMetadata,
 )
-from ..utils import is_foreign_no_op_event
+from ..utils import is_debug_enabled
 
 
 _DEFAULT_BASE_URL = "https://api.minimax.io/v1"
@@ -242,16 +242,20 @@ class MiniMaxM3Client(LLMClient):
                     "response_tokens": response.usage.output_tokens - reasoning_tokens,
                 }
 
-        elif minimax_event_type not in (
-            "response.created",
-            "response.in_progress",
-            "response.output_text.done",
-            "response.reasoning_text.done",
-            "response.output_item.done",
-            "response.content_part.added",
-            "response.content_part.done",
-            "keepalive",  # gateway heartbeat on long generations; carries no content
-        ) and not is_foreign_no_op_event(model_output, ("response.",)):
+        elif (
+            minimax_event_type
+            not in (
+                "response.created",
+                "response.in_progress",
+                "response.output_text.done",
+                "response.reasoning_text.done",
+                "response.output_item.done",
+                "response.content_part.added",
+                "response.content_part.done",
+                "keepalive",  # gateway heartbeat on long generations; carries no content
+            )
+            and is_debug_enabled()
+        ):
             raise ValueError(f"Unknown output: {model_output}")
 
         return {

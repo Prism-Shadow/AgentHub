@@ -35,7 +35,7 @@ import {
   PromptCaching,
   UsageMetadata,
 } from "../types";
-import { isForeignNoOpEvent } from "../utils";
+import { isDebugEnabled } from "../utils";
 
 /**
  * GPT-5.6-specific LLM client implementation (also serves GPT-5.4 and GPT-5.5).
@@ -401,10 +401,12 @@ export class GPT5_6Client extends LLMClient {
       ].includes(openaiEventType)
     ) {
       eventType = "unused";
-    } else if (isForeignNoOpEvent(modelOutput, ["response."])) {
-      eventType = "unused";
-    } else {
+        } else if (isDebugEnabled()) {
       throw new Error(`Unknown output: ${JSON.stringify(modelOutput)}`);
+    } else {
+      // a gateway injects its own events (heartbeats, cost tickers) into the stream, and
+      // killing a long generation over one costs more than dropping it
+      eventType = "unused";
     }
 
     return {

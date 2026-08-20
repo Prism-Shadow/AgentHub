@@ -41,48 +41,15 @@ export function fixOpenrouterUsageMetadata(
 }
 
 /**
- * Whether a stream event came from outside the protocol and carries nothing.
+ * Whether AGENTHUB_DEBUG asks the clients to fail loudly on output they do not recognize.
  *
- * Gateways in front of a model API (one-api-style proxies, OpenRouter) inject
- * their own events into the SSE stream — heartbeats, cost tickers — and the
- * unknown-event guard used to kill the whole stream on one, e.g.
- * `{"type":"ping","cost":"@"}`. Skipping is safe only where all three hold: the
- * event type sits outside the protocol's own namespace, so a provider event the
- * client has not learned yet — `response.output_text.annotation.added`, say —
- * still raises; the type does not name an error, so a gateway reporting an
- * upstream failure still raises; and no field holds a non-empty object or
- * array, so an event carrying a payload the client would silently drop still
- * raises.
+ * Streaming clients skip an unrecognized event so that a gateway's own frames cannot
+ * kill a long generation. The same silence hides a genuinely new provider event, so the
+ * guards stay one environment variable away.
  *
- * @param modelOutput - The stream event.
- * @param protocolPrefixes - The event type prefixes the protocol owns.
- * @returns Whether the event can be skipped.
+ * @returns Whether debug mode is on.
  */
-export function isForeignNoOpEvent(
-  modelOutput: unknown,
-  protocolPrefixes: readonly string[],
-): boolean {
-  if (typeof modelOutput !== "object" || modelOutput === null) {
-    return false;
-  }
-
-  const fields = modelOutput as Record<string, unknown>;
-  const eventType = typeof fields.type === "string" ? fields.type : "";
-  if (
-    protocolPrefixes.some((prefix) => eventType.startsWith(prefix)) ||
-    eventType.includes("error") ||
-    eventType.includes("fail")
-  ) {
-    return false;
-  }
-
-  return !Object.values(fields).some((value) => {
-    if (typeof value !== "object" || value === null) {
-      return false;
-    }
-
-    return Array.isArray(value)
-      ? value.length > 0
-      : Object.keys(value).length > 0;
-  });
+export function isDebugEnabled(): boolean {
+  const flag = (process.env.AGENTHUB_DEBUG || "").trim().toLowerCase();
+  return !["", "0", "false", "no", "off"].includes(flag);
 }

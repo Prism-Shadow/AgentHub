@@ -110,6 +110,8 @@ AgentHub provides Codex/Claude Code skill files for assistants that need to help
 
 It is constructed with `model`, plus optional `api_key`, `base_url`, `client_type`, and `default_headers` — headers sent with every request, for endpoints that demand their own.
 
+Streaming clients skip output they do not recognize, so a gateway's own frames cannot end a generation. Set `AGENTHUB_DEBUG` to anything other than `0`, `false`, `no` or `off` to make them raise instead.
+
 - `(async) streaming_response(messages, config)`: Streams the response of LLMs in a stateless manner.
 - `(async) streaming_response_stateful(message, config)`: Streams the response of LLMs in a stateful manner.
 - `(async) list_models()`: Lists the model ids the configured endpoint serves.

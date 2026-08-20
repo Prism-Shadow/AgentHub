@@ -267,13 +267,17 @@ def create_chat_app() -> Flask:
                     </div>
                 </div>
                 <div class="flex flex-col">
-                    <label class="text-sm font-semibold text-gray-900 mb-1" for="baseUrlInput">Base URL</label>
-                    <input type="url" id="baseUrlInput" placeholder="Use provider default when empty" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    <div class="mt-2 flex items-center gap-2">
-                        <button type="button" id="listModelsButton" class="px-3 py-1.5 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50" onclick="listModels()">List models</button>
-                        <span id="listModelsStatus" class="text-xs text-gray-500"></span>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-sm font-semibold text-gray-900" for="baseUrlInput">Base URL</label>
+                        <div class="flex items-center gap-2">
+                            <span id="listModelsStatus" class="text-xs text-gray-500"></span>
+                            <button type="button" id="listModelsButton" class="text-xs font-medium text-blue-600 transition hover:text-blue-700 focus:outline-none focus:underline disabled:opacity-50" onclick="listModels()">List models</button>
+                        </div>
                     </div>
-                    <pre id="listModelsResult" class="hidden mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap rounded-md border border-gray-200 bg-gray-50 p-2 text-xs font-mono text-gray-800"></pre>
+                    <div class="relative">
+                        <input type="url" id="baseUrlInput" placeholder="Use provider default when empty" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <pre id="listModelsResult" class="hidden absolute z-30 mt-1 max-h-56 w-full overflow-y-auto whitespace-pre-wrap rounded-md border border-gray-200 bg-white p-2 text-xs font-mono text-gray-800 shadow-lg" title="Click to dismiss" onclick="this.classList.add('hidden')"></pre>
+                    </div>
                 </div>
                 <div class="flex flex-col">
                     <label class="text-sm font-semibold text-gray-900 mb-1" for="extraHeadersInput">Extra Headers</label>

@@ -21,8 +21,9 @@
   （而不是某个参数值被拒），`claude5` 在 `bedrock://` 形式的 base URL 上抛出它，因为 Bedrock SDK
   client 不带 models 资源。
 - `LLMClient` 将该方法声明为抽象方法，因此每个 client 都实现了它。
-- Playground 在 Base URL 输入框下方新增 **List models** 按钮，背后是 `POST /api/models` 路由：
-  用面板上的 model、API key、base URL 与 client type 构造 client，返回 id 列表。被 endpoint 拒绝的
+- Playground 在 Base URL 的标签行上新增 **List models** 按钮，背后是 `POST /api/models` 路由：
+  用面板上的 model、API key、base URL 与 client type 构造 client，返回 id 列表，结果以浮层覆盖在
+  输入框上方而不撑开面板。被 endpoint 拒绝的
   请求以 `400` 带上服务方的报错返回，因此 key 不对或 base URL 不通会显示成错误，而不是一个空列表。
 - 两种语言的离线测试把一个假的 models endpoint 接到全部 client 上，并钉住 Gemini 的路径截取与
   Bedrock 的拒绝行为：`src_py/tests/test_list_models.py`、`src_ts/tests/list-models.test.ts`。

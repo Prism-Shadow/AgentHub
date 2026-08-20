@@ -40,6 +40,7 @@ from ..types import (
     UniMessage,
     UsageMetadata,
 )
+from ..utils import is_debug_enabled
 
 
 class Gemini3_7Client(LLMClient):
@@ -428,7 +429,7 @@ class Gemini3_7Client(LLMClient):
                     )
                 elif part.text is not None:
                     content_items.append({"type": "text", "text": part.text, **self._part_fidelity(part)})
-                else:
+                elif is_debug_enabled():
                     raise ValueError(f"Unknown output: {part}")
 
             if candidate.finish_reason:

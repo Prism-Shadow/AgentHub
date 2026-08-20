@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { expect, describe, test } from "@jest/globals";
+import { expect, describe, test, afterEach } from "@jest/globals";
 import {
   AutoLLMClient,
   TextContentItem,
@@ -266,6 +266,14 @@ function geminiKeepaliveChunk(): unknown {
   return {};
 }
 
+function geminiUnknownPartChunk(): unknown {
+  // a part the client recognizes by none of its fields, e.g. a modality added after this
+  // client: the SDK leaves what it does not know undefined rather than null
+  return {
+    candidates: [{ content: { parts: [{}] }, finishReason: null }],
+  };
+}
+
 function geminiTextChunk(text: string): unknown {
   return {
     candidates: [{ content: { parts: [{ text: text }] }, finishReason: null }],
@@ -305,7 +313,16 @@ function foreignPayloadEvent(): unknown {
   return { type: "relay_frame", data: { text: "dropped" } };
 }
 
-const rejectedForeignEvents: [string, () => unknown][] = [
+// One shape per reason an event can be unrecognized: inside the protocol's own namespace,
+// an error the gateway reports, and a frame carrying a payload.
+const unknownResponsesEvents: [string, () => unknown][] = [
+  ["in-protocol", () => ({ type: "response.mystery_event" })],
+  ["error", foreignErrorEvent],
+  ["payload", foreignPayloadEvent],
+];
+
+const unknownMessagesEvents: [string, () => unknown][] = [
+  ["in-protocol", () => ({ type: "message_mystery" })],
   ["error", foreignErrorEvent],
   ["payload", foreignPayloadEvent],
 ];
@@ -328,8 +345,12 @@ function collectedTexts(events: UniEvent[]): string[] {
   );
 }
 
+afterEach(() => {
+  delete process.env.AGENTHUB_DEBUG;
+});
+
 describe.each(RESPONSES_STREAM_CASES)(
-  "Keepalive handling for $clientType",
+  "Stream event handling for $clientType",
   (testCase) => {
     test("skips gateway keepalive heartbeats between stream events", async () => {
       const client = createAutoClient(testCase);
@@ -350,17 +371,19 @@ describe.each(RESPONSES_STREAM_CASES)(
       expect(events[events.length - 1].finish_reason).toBe("stop");
     });
 
-    test("still rejects genuinely unknown events", async () => {
-      const client = createAutoClient(testCase);
-      installFakeResponsesStream(client, [
-        { type: "response.mystery_event" },
-        responsesCompletedEvent(),
-      ]);
+    test.each(unknownResponsesEvents)(
+      "skips an unknown event that is %s",
+      async (_label, unknownEvent) => {
+        const client = createAutoClient(testCase);
+        installFakeResponsesStream(client, [unknownEvent(), responsesTextDeltaEvent("Here is"), responsesCompletedEvent()]);
 
-      await expect(
-        collectEvents(client.streamingResponse({ messages, config: {} })),
-      ).rejects.toThrow("Unknown output");
-    });
+        const events = await collectEvents(
+          client.streamingResponse({ messages, config: {} }),
+        );
+        expect(collectedTexts(events)).toEqual(["Here is"]);
+        expect(events[events.length - 1].finish_reason).toBe("stop");
+      },
+    );
 
     test("skips foreign gateway events", async () => {
       const client = createAutoClient(testCase);
@@ -379,14 +402,12 @@ describe.each(RESPONSES_STREAM_CASES)(
       expect(events[events.length - 1].finish_reason).toBe("stop");
     });
 
-    test.each(rejectedForeignEvents)(
-      "still rejects a foreign event carrying %s",
-      async (_label, foreignEvent) => {
+    test.each(unknownResponsesEvents)(
+      "rejects an unknown event that is %s with AGENTHUB_DEBUG set",
+      async (_label, unknownEvent) => {
+        process.env.AGENTHUB_DEBUG = "1";
         const client = createAutoClient(testCase);
-        installFakeResponsesStream(client, [
-          foreignEvent(),
-          responsesCompletedEvent(),
-        ]);
+        installFakeResponsesStream(client, [unknownEvent(), responsesCompletedEvent()]);
 
         await expect(
           collectEvents(client.streamingResponse({ messages, config: {} })),
@@ -397,7 +418,7 @@ describe.each(RESPONSES_STREAM_CASES)(
 );
 
 describe.each(CHAT_STREAM_CASES)(
-  "Keepalive handling for $clientType",
+  "Stream event handling for $clientType",
   (testCase) => {
     test("skips gateway keepalive heartbeats between stream chunks", async () => {
       const client = createAutoClient(testCase);
@@ -421,7 +442,7 @@ describe.each(CHAT_STREAM_CASES)(
 );
 
 describe.each(MESSAGES_STREAM_CASES)(
-  "Keepalive handling for $clientType",
+  "Stream event handling for $clientType",
   (testCase) => {
     test("skips gateway ping heartbeats between stream events", async () => {
       const client = createAutoClient(testCase);
@@ -443,18 +464,19 @@ describe.each(MESSAGES_STREAM_CASES)(
       expect(events[events.length - 1].finish_reason).toBe("stop");
     });
 
-    test("still rejects genuinely unknown events", async () => {
-      const client = createAutoClient(testCase);
-      installFakeMessagesStream(client, [
-        messagesStartEvent(),
-        { type: "message_mystery" },
-        messagesStopEvent(),
-      ]);
+    test.each(unknownMessagesEvents)(
+      "skips an unknown event that is %s",
+      async (_label, unknownEvent) => {
+        const client = createAutoClient(testCase);
+        installFakeMessagesStream(client, [unknownEvent(), messagesStartEvent(), messagesTextDeltaEvent("Here is"), messagesStopEvent()]);
 
-      await expect(
-        collectEvents(client.streamingResponse({ messages, config: {} })),
-      ).rejects.toThrow("Unknown output");
-    });
+        const events = await collectEvents(
+          client.streamingResponse({ messages, config: {} }),
+        );
+        expect(collectedTexts(events)).toEqual(["Here is"]);
+        expect(events[events.length - 1].finish_reason).toBe("stop");
+      },
+    );
 
     test("skips foreign gateway events", async () => {
       const client = createAutoClient(testCase);
@@ -475,15 +497,12 @@ describe.each(MESSAGES_STREAM_CASES)(
       expect(events[events.length - 1].finish_reason).toBe("stop");
     });
 
-    test.each(rejectedForeignEvents)(
-      "still rejects a foreign event carrying %s",
-      async (_label, foreignEvent) => {
+    test.each(unknownMessagesEvents)(
+      "rejects an unknown event that is %s with AGENTHUB_DEBUG set",
+      async (_label, unknownEvent) => {
+        process.env.AGENTHUB_DEBUG = "1";
         const client = createAutoClient(testCase);
-        installFakeMessagesStream(client, [
-          messagesStartEvent(),
-          foreignEvent(),
-          messagesStopEvent(),
-        ]);
+        installFakeMessagesStream(client, [unknownEvent(), messagesStartEvent(), messagesStopEvent()]);
 
         await expect(
           collectEvents(client.streamingResponse({ messages, config: {} })),
@@ -494,8 +513,36 @@ describe.each(MESSAGES_STREAM_CASES)(
 );
 
 describe.each(GEMINI_STREAM_CASES)(
-  "Keepalive handling for $clientType",
+  "Stream event handling for $clientType",
   (testCase) => {
+    test("skips an unknown part", async () => {
+      const client = createAutoClient(testCase);
+      installFakeGeminiStream(client, [
+        geminiUnknownPartChunk(),
+        geminiTextChunk("Here is"),
+        geminiStopChunk(),
+      ]);
+
+      const events = await collectEvents(
+        client.streamingResponse({ messages, config: {} }),
+      );
+      expect(collectedTexts(events)).toEqual(["Here is"]);
+      expect(events[events.length - 1].finish_reason).toBe("stop");
+    });
+
+    test("rejects an unknown part with AGENTHUB_DEBUG set", async () => {
+      process.env.AGENTHUB_DEBUG = "1";
+      const client = createAutoClient(testCase);
+      installFakeGeminiStream(client, [
+        geminiUnknownPartChunk(),
+        geminiStopChunk(),
+      ]);
+
+      await expect(
+        collectEvents(client.streamingResponse({ messages, config: {} })),
+      ).rejects.toThrow("Unknown output");
+    });
+
     test("skips gateway keepalive heartbeats between stream chunks", async () => {
       const client = createAutoClient(testCase);
       expect(routedClientName(client)).toBe(testCase.expectedClient);

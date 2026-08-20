@@ -22,9 +22,10 @@
   client does not have rather than a rejected parameter value, and `claude5` raises it on a
   `bedrock://` base URL because the Bedrock SDK client carries no models resource.
 - `LLMClient` declares the method abstract, so every client implements it.
-- The playground gained a **List models** button under its Base URL field, backed by a
+- The playground gained a **List models** button on its Base URL label row, backed by a
   `POST /api/models` route that builds a client from the panel's model, API key, base URL and
-  client type and answers with the ids. A listing the endpoint rejects comes back as a `400`
+  client type and answers with the ids, shown in a panel that overlays the field rather than
+  displacing it. A listing the endpoint rejects comes back as a `400`
   carrying the provider's message, so a bad key or an unreachable base URL reads as an error
   rather than an empty list.
 - Offline tests in both languages route a fake models endpoint through every client and pin the

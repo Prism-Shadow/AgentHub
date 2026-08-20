@@ -52,6 +52,7 @@ import {
   UniMessage,
   UsageMetadata,
 } from "../types";
+import { isDebugEnabled } from "../utils";
 
 /**
  * Wrap a part's thought signature as a fidelity payload, or nothing when absent.
@@ -606,7 +607,7 @@ export class Gemini3_7Client extends LLMClient {
             text: part.text,
             ...partFidelity(part),
           });
-        } else {
+        } else if (isDebugEnabled()) {
           throw new Error(`Unknown output: ${JSON.stringify(part)}`);
         }
       }

@@ -33,7 +33,7 @@ from ..types import (
     UniMessage,
     UsageMetadata,
 )
-from ..utils import is_foreign_no_op_event
+from ..utils import is_debug_enabled
 
 
 class GPT5_6Client(LLMClient):
@@ -313,11 +313,13 @@ class GPT5_6Client(LLMClient):
         ]:
             event_type = "unused"
 
-        elif is_foreign_no_op_event(model_output, ("response.",)):
-            event_type = "unused"
+        elif is_debug_enabled():
+            raise ValueError(f"Unknown output: {model_output}")
 
         else:
-            raise ValueError(f"Unknown output: {model_output}")
+            # a gateway injects its own events (heartbeats, cost tickers) into the stream, and
+            # killing a long generation over one costs more than dropping it
+            event_type = "unused"
 
         return {
             "role": "assistant",
