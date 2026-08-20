@@ -517,19 +517,52 @@ const MODEL_CASES = AVAILABLE_MODELS.map((m): [string, Model] => [
  * after another, so a single model never has two checks in flight — providers rate-limit
  * per client. Inside a block the models run concurrently, which is the wall-clock saving.
  */
+// Providers throttle live E2E traffic; a 429 says "later", not "broken", so retry it
+// rather than failing the run. Every other error propagates on the first attempt.
+// mirrors the pytest job's --reruns 5 --reruns-delay 30
+const RATE_LIMIT_RETRIES = 5;
+const RATE_LIMIT_RETRY_DELAY_MS = 30_000;
+
+function isRateLimited(error: unknown): boolean {
+  const status = (error as { status?: number })?.status;
+  const message = (error as { message?: string })?.message ?? "";
+  return status === 429 || /rate limit|429/i.test(message);
+}
+
+async function withRateLimitRetry(run: () => Promise<void>): Promise<void> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await run();
+      return;
+    } catch (error) {
+      if (attempt >= RATE_LIMIT_RETRIES || !isRateLimited(error)) {
+        throw error;
+      }
+      await new Promise((resolve) =>
+        setTimeout(resolve, RATE_LIMIT_RETRY_DELAY_MS),
+      );
+    }
+  }
+}
+
 function modelTest(
   name: string,
   // ahead of the body so Prettier keeps the body hugged against the call
   timeout: number,
   body: (model: Model) => void | Promise<void>,
 ): void {
+  // the deadline covers every retried attempt plus the waits between them
+  const retryBudget =
+    RATE_LIMIT_RETRIES * (timeout + RATE_LIMIT_RETRY_DELAY_MS);
   describe(name, () => {
     test.concurrent.each(MODEL_CASES)(
       "%s",
       async (_caseName, model) => {
-        await body(model);
+        await withRateLimitRetry(async () => {
+          await body(model);
+        });
       },
-      timeout,
+      timeout + retryBudget,
     );
   });
 }

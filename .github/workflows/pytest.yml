@@ -53,7 +53,9 @@ jobs:
       - name: Run tests
         working-directory: ./src_py
         run: |
-          uv run pytest -vvv -n 16 --dist loadgroup tests
+          uv run pytest -vvv -n 16 --dist loadgroup \
+            --reruns 5 --reruns-delay 30 --only-rerun RateLimitError --only-rerun 429 \
+            tests
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
