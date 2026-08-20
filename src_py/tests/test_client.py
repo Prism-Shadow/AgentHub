@@ -205,7 +205,7 @@ if os.getenv("OPENROUTER_API_KEY") and RUN_SLOW_TEST:
             )
         )
     AVAILABLE_MODELS.append(Model(name="z-ai/glm-5.3", provider="openrouter", support_image_understanding=False))
-    AVAILABLE_MODELS.append(Model(name="qwen/qwen3.6-35b-a3b", provider="openrouter", client_type="openai-chat"))
+    AVAILABLE_MODELS.append(Model(name="qwen/qwen3.6-35b-a3b", provider="openrouter", client_type="openai-responses"))
     AVAILABLE_MODELS.append(
         Model(
             name="qwen/qwen3-embedding-4b",

@@ -48,7 +48,7 @@ Common gateway base URLs:
 - ModelVerse: `https://api.modelverse.cn/v1` (`https://api.modelverse.cn/` for Claude)
 - vLLM: `http://127.0.0.1:8000/v1/`
 
-For models accessed through OpenAI-compatible APIs (e.g., Qwen series models via SiliconFlow or OpenRouter), pass `clientType: "openai-chat"` (bare `"openai"` is an alias; `"openai-embedding"` for embedding endpoints, `"openai-responses"` for OpenAI Responses endpoints, `"ant-messages"` for Anthropic Messages endpoints). These models use `OPENAI_API_KEY` and `OPENAI_BASE_URL` (`ANTHROPIC_API_KEY`/`ANTHROPIC_BASE_URL` for `ant-messages`):
+For models accessed through OpenAI-compatible APIs (e.g., Qwen series models via SiliconFlow or OpenRouter), pass a generic protocol client type. Prefer `clientType: "openai-responses"` on gateways that serve the OpenAI Responses protocol, which OpenRouter does for every model it hosts; SiliconFlow serves Chat Completions only, so use `clientType: "openai-chat"` there (bare `"openai"` is an alias). Use `"openai-embedding"` for embedding endpoints and `"ant-messages"` for Anthropic Messages endpoints. These models use `OPENAI_API_KEY` and `OPENAI_BASE_URL` (`ANTHROPIC_API_KEY`/`ANTHROPIC_BASE_URL` for `ant-messages`):
 
 ```typescript
 const client = new AutoLLMClient({ model: "Qwen/Qwen3-Embedding-0.6B", clientType: "openai-embedding" });

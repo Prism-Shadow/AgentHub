@@ -321,7 +321,7 @@ if (process.env.OPENROUTER_API_KEY && RUN_SLOW_TEST) {
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,
-    clientType: "openai-chat",
+    clientType: "openai-responses",
     provider: "openrouter",
   });
   AVAILABLE_MODELS.push({

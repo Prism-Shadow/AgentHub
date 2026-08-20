@@ -319,7 +319,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "anthropic/claude-fable-5",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1000000,
@@ -328,7 +328,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "anthropic/claude-opus-5",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1000000,
@@ -337,7 +337,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "anthropic/claude-opus-4.8",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1000000,
@@ -346,7 +346,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "anthropic/claude-opus-4.7",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1000000,
@@ -355,7 +355,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "anthropic/claude-sonnet-5",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1000000,
@@ -382,7 +382,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "google/gemini-3.5-flash",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1048576,
@@ -391,7 +391,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "minimax/minimax-m3",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1048576,
@@ -418,7 +418,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "nvidia/nemotron-3-ultra-550b-a55b:free",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text"],
     output_modalities: ["Text"],
     context_window: 1000000,
@@ -427,7 +427,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "openai/gpt-5.6-sol",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1050000,
@@ -436,7 +436,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "openai/gpt-5.6-terra",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1050000,
@@ -445,7 +445,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "openai/gpt-5.6-luna",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1050000,
@@ -454,7 +454,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "openai/gpt-5.5",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1050000,
@@ -463,7 +463,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "qwen/qwen3.6-35b-a3b",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 262144,
@@ -481,7 +481,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "stepfun/step-3.7-flash",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 262144,
@@ -490,7 +490,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "tencent/hy3",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text"],
     output_modalities: ["Text"],
     context_window: 262144,
@@ -499,7 +499,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "x-ai/grok-4.5",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 500000,
@@ -508,7 +508,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "xiaomi/mimo-v2.5",
     base_url: OPENROUTER,
-    client: "openai-chat",
+    client: "openai-responses",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Text"],
     context_window: 1050000,
