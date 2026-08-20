@@ -625,12 +625,38 @@ export function createChatApp(): Express {
               }
           });
 
+          function selectedOptionClientType() {
+              const modelSelect = document.getElementById('modelSelect');
+              if (modelSelect.value === '__custom__') {
+                  return '';
+              }
+
+              const option = document.querySelector(
+                  '#modelComboboxMenu [data-combobox-option][data-value="' + modelSelect.value + '"]'
+              );
+              return (option && option.dataset.clientType) || '';
+          }
+
           function handleModelSelectChange() {
               const useCustom = document.getElementById('modelSelect').value === '__custom__';
-              const wrapper = document.getElementById('customModelWrapper');
-              wrapper.classList.toggle('hidden', !useCustom);
+              const modelInput = document.getElementById('customModelInput');
+              const clientTypeInput = document.getElementById('customClientTypeInput');
+              const optionClientType = selectedOptionClientType();
+
+              // a listed model carries the client type its listing ran under: show it rather than
+              // routing by something the panel does not display
+              if (!useCustom) {
+                  clientTypeInput.value = optionClientType;
+              }
+
+              const showClientType = useCustom || Boolean(optionClientType);
+              modelInput.classList.toggle('hidden', !useCustom);
+              clientTypeInput.classList.toggle('hidden', !showClientType);
+              // with the model id field hidden it is the only control in the row
+              clientTypeInput.classList.toggle('sm:col-span-2', !useCustom);
+              document.getElementById('customModelWrapper').classList.toggle('hidden', !showClientType);
               if (useCustom) {
-                  document.getElementById('customModelInput').focus();
+                  modelInput.focus();
               }
           }
 
@@ -657,16 +683,14 @@ export function createChatApp(): Express {
           }
 
           function getSelectedClientType() {
-              const modelSelect = document.getElementById('modelSelect');
-              if (modelSelect.value === '__custom__') {
-                  return document.getElementById('customClientTypeInput').value.trim();
+              // the field is on screen whenever a client type is in effect, so it is the one source
+              const wrapper = document.getElementById('customModelWrapper');
+              const clientTypeInput = document.getElementById('customClientTypeInput');
+              if (wrapper.classList.contains('hidden') || clientTypeInput.classList.contains('hidden')) {
+                  return '';
               }
 
-              // a listed model carries the client type its listing ran under
-              const option = document.querySelector(
-                  '#modelComboboxMenu [data-combobox-option][data-value="' + modelSelect.value + '"]'
-              );
-              return (option && option.dataset.clientType) || '';
+              return clientTypeInput.value.trim();
           }
 
           function addListedModels(modelIds) {
