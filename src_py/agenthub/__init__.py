@@ -13,7 +13,13 @@
 # limitations under the License.
 
 from .auto_client import AutoLLMClient
-from .errors import AgentHubError, EmptyResponseError, ToolCallArgumentParseError, UnsupportedParameterError
+from .errors import (
+    AgentHubError,
+    EmptyResponseError,
+    ToolCallArgumentParseError,
+    UnsupportedOperationError,
+    UnsupportedParameterError,
+)
 from .registry import Currency, Modality, ModelPricing, SupportedModel, list_supported_models
 from .types import PromptCaching, ThinkingLevel
 
@@ -29,6 +35,7 @@ __all__ = [
     "SupportedModel",
     "ThinkingLevel",
     "ToolCallArgumentParseError",
+    "UnsupportedOperationError",
     "UnsupportedParameterError",
     "list_supported_models",
 ]

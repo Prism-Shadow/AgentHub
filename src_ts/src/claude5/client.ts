@@ -22,6 +22,7 @@ import { Stream } from "@anthropic-ai/sdk/core/streaming";
 import { LLMClient } from "../baseClient";
 import {
   parseToolCallArguments,
+  UnsupportedOperationError,
   UnsupportedParameterError,
 } from "../errors";
 import {
@@ -36,6 +37,7 @@ import {
   UniMessage,
   UsageMetadata,
 } from "../types";
+import { isDebugEnabled } from "../utils";
 
 const REDACTED_THINKING = "_REDACTED_THINKING";
 
@@ -55,6 +57,7 @@ export class Claude5Client extends LLMClient {
     apiKey?: string;
     baseUrl?: string | null;
     clientType?: string | null;
+    defaultHeaders?: Record<string, string>;
   }) {
     super();
     this._model = options.model;
@@ -69,12 +72,14 @@ export class Claude5Client extends LLMClient {
         awsSecretKey: secretKey,
         awsAccessKey: accessKey,
         awsRegion: region,
+        defaultHeaders: options.defaultHeaders,
       });
       this._use_bedrock = true;
     } else {
       this._client = new Anthropic({
         apiKey: key,
         baseURL: url,
+        defaultHeaders: options.defaultHeaders,
       });
       this._use_bedrock = false;
     }
@@ -462,8 +467,12 @@ export class Claude5Client extends LLMClient {
       // the SDK drops the "ping" heartbeat at the SSE layer; it reaches here only
       // from gateways that relabel it onto another event
       eventType = "unused";
-    } else {
+        } else if (isDebugEnabled()) {
       throw new Error(`Unknown output: ${JSON.stringify(modelOutput)}`);
+    } else {
+      // a gateway injects its own events (heartbeats, cost tickers) into the stream, and
+      // killing a long generation over one costs more than dropping it
+      eventType = "unused";
     }
 
     return {
@@ -615,5 +624,27 @@ export class Claude5Client extends LLMClient {
         }
       }
     }
+  }
+
+  /**
+   * List the model ids the configured endpoint serves.
+   *
+   * @returns The model ids, in the order the endpoint returned them.
+   */
+  async listModels(): Promise<string[]> {
+    if (this._use_bedrock) {
+      throw new UnsupportedOperationError({
+        client: this.constructor.name,
+        operation: "list_models",
+        message: "Bedrock does not support listing models.",
+      });
+    }
+
+    const models: string[] = [];
+    for await (const model of (this._client as Anthropic).models.list()) {
+      models.push(model.id);
+    }
+
+    return models;
   }
 }

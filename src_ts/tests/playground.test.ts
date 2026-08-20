@@ -42,6 +42,7 @@ jest.mock("../src/autoClient", () => ({
       };
     },
     clearHistory: jest.fn(),
+    listModels: async (): Promise<string[]> => ["gpt-5.6", "claude-sonnet-5"],
   })),
 }));
 
@@ -65,8 +66,12 @@ describe("Playground", () => {
     expect(response.text).toContain('id="thinkingSummaryCombobox"');
     expect(response.text).toContain('id="toolChoiceCombobox"');
     expect(response.text).toContain(
-      'data-combobox-option data-value="gpt-5.5"',
+      'data-combobox-option data-value="gpt-5.6-luna"',
     );
+    expect(response.text).toContain(
+      'data-value="text-embedding-3-large" data-client-type="openai-embedding"',
+    );
+    expect(response.text).toContain("getSelectedClientType()");
     expect(response.text).toContain("toggleCombobox('modelCombobox')");
     expect(response.text).toContain(
       "selectComboboxOption('modelCombobox', this)",
@@ -78,6 +83,18 @@ describe("Playground", () => {
     expect(response.text).not.toContain("<select");
     expect(response.text).not.toContain("<datalist");
     expect(response.text).toContain("apiKeyInput");
+    expect(response.text).toContain('id="listModelsButton"');
+    expect(response.text).toContain('id="extraHeadersInput"');
+    expect(response.text).toContain('id="listModelsError"');
+    expect(response.text).toContain("addListedModels(");
+    expect(response.text).toContain("getSelectedClientType()");
+    expect(response.text).toContain("selectedOptionClientType()");
+    expect(response.text).toContain("handleClientTypeInput()");
+    expect(response.text).toContain(">Connection</span>");
+    expect(response.text).toContain(">Generation</span>");
+    expect(response.text).toContain("getExtraHeaders()");
+    expect(response.text).toContain("listModels()");
+    expect(response.text).toContain("/api/models");
     expect(response.text).toContain("apiKeyVisibilityToggle");
     expect(response.text).toContain("toggleApiKeyVisibility()");
     expect(response.text).toContain('id="stopButton"');
@@ -102,6 +119,45 @@ describe("Playground", () => {
     );
     expect(response.text).not.toContain("temperatureInput");
     expect(response.text).not.toContain("maxTokensInput");
+  });
+
+  test("should list the models the endpoint serves", async () => {
+    const app = createChatApp();
+
+    const response = await request(app)
+      .post("/api/models")
+      .send({
+        config: {
+          model: "gpt-5.6",
+          api_key: "test-key",
+          base_url: "https://relay.test/v1",
+        },
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ models: ["gpt-5.6", "claude-sonnet-5"] });
+    expect(AutoLLMClient).toHaveBeenCalledWith({
+      model: "gpt-5.6",
+      apiKey: "test-key",
+      baseUrl: "https://relay.test/v1",
+      clientType: undefined,
+    });
+  });
+
+  test("should report a failed model listing", async () => {
+    (AutoLLMClient as unknown as jest.Mock).mockImplementationOnce(() => ({
+      listModels: async (): Promise<string[]> => {
+        throw new Error("401 unauthorized");
+      },
+    }));
+    const app = createChatApp();
+
+    const response = await request(app)
+      .post("/api/models")
+      .send({ config: { model: "gpt-5.6" } });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toContain("401 unauthorized");
   });
 
   test("should mount tracer on the same app", async () => {
@@ -130,6 +186,7 @@ describe("Playground", () => {
           model: "gpt-5.5",
           api_key: "test-key",
           base_url: "https://example.test/v1",
+          default_headers: { "X-Title": "AgentHub" },
           thinking_level: "low",
         },
       });
@@ -140,6 +197,7 @@ describe("Playground", () => {
       model: "gpt-5.5",
       apiKey: "test-key",
       baseUrl: "https://example.test/v1",
+      defaultHeaders: { "X-Title": "AgentHub" },
     });
     expect(mockLastStreamingOptions?.config).toEqual({
       thinking_level: "low",

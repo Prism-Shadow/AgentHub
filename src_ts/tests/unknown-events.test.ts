@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { expect, describe, test } from "@jest/globals";
+import { expect, describe, test, afterEach } from "@jest/globals";
 import {
   AutoLLMClient,
   TextContentItem,
@@ -266,6 +266,14 @@ function geminiKeepaliveChunk(): unknown {
   return {};
 }
 
+function geminiUnknownPartChunk(): unknown {
+  // a part the client recognizes by none of its fields, e.g. a modality added after this
+  // client: the SDK leaves what it does not know undefined rather than null
+  return {
+    candidates: [{ content: { parts: [{}] }, finishReason: null }],
+  };
+}
+
 function geminiTextChunk(text: string): unknown {
   return {
     candidates: [{ content: { parts: [{ text: text }] }, finishReason: null }],
@@ -285,6 +293,40 @@ function geminiStopChunk(): unknown {
   };
 }
 
+// Events belonging to no protocol the clients parse. A gateway injects the first two on
+// long generations — the ping shape a relay sent into a Responses stream, carrying its own
+// cost field, and a bare heartbeat — while the last two carry something a client would
+// otherwise drop.
+function foreignPingEvent(): unknown {
+  return { type: "ping", cost: "@" };
+}
+
+function foreignHeartbeatEvent(): unknown {
+  return { type: "heartbeat" };
+}
+
+function foreignErrorEvent(): unknown {
+  return { type: "gateway_error", message: "upstream 502" };
+}
+
+function foreignPayloadEvent(): unknown {
+  return { type: "relay_frame", data: { text: "dropped" } };
+}
+
+// One shape per reason an event can be unrecognized: inside the protocol's own namespace,
+// an error the gateway reports, and a frame carrying a payload.
+const unknownResponsesEvents: [string, () => unknown][] = [
+  ["in-protocol", () => ({ type: "response.mystery_event" })],
+  ["error", foreignErrorEvent],
+  ["payload", foreignPayloadEvent],
+];
+
+const unknownMessagesEvents: [string, () => unknown][] = [
+  ["in-protocol", () => ({ type: "message_mystery" })],
+  ["error", foreignErrorEvent],
+  ["payload", foreignPayloadEvent],
+];
+
 async function collectEvents(
   stream: AsyncIterable<UniEvent>,
 ): Promise<UniEvent[]> {
@@ -303,8 +345,12 @@ function collectedTexts(events: UniEvent[]): string[] {
   );
 }
 
+afterEach(() => {
+  delete process.env.AGENTHUB_DEBUG;
+});
+
 describe.each(RESPONSES_STREAM_CASES)(
-  "Keepalive handling for $clientType",
+  "Stream event handling for $clientType",
   (testCase) => {
     test("skips gateway keepalive heartbeats between stream events", async () => {
       const client = createAutoClient(testCase);
@@ -325,22 +371,54 @@ describe.each(RESPONSES_STREAM_CASES)(
       expect(events[events.length - 1].finish_reason).toBe("stop");
     });
 
-    test("still rejects genuinely unknown events", async () => {
+    test.each(unknownResponsesEvents)(
+      "skips an unknown event that is %s",
+      async (_label, unknownEvent) => {
+        const client = createAutoClient(testCase);
+        installFakeResponsesStream(client, [unknownEvent(), responsesTextDeltaEvent("Here is"), responsesCompletedEvent()]);
+
+        const events = await collectEvents(
+          client.streamingResponse({ messages, config: {} }),
+        );
+        expect(collectedTexts(events)).toEqual(["Here is"]);
+        expect(events[events.length - 1].finish_reason).toBe("stop");
+      },
+    );
+
+    test("skips foreign gateway events", async () => {
       const client = createAutoClient(testCase);
       installFakeResponsesStream(client, [
-        { type: "response.mystery_event" },
+        foreignPingEvent(),
+        responsesTextDeltaEvent("Here is"),
+        foreignHeartbeatEvent(),
+        responsesTextDeltaEvent(" the memo."),
         responsesCompletedEvent(),
       ]);
 
-      await expect(
-        collectEvents(client.streamingResponse({ messages, config: {} })),
-      ).rejects.toThrow("Unknown output");
+      const events = await collectEvents(
+        client.streamingResponse({ messages, config: {} }),
+      );
+      expect(collectedTexts(events)).toEqual(["Here is", " the memo."]);
+      expect(events[events.length - 1].finish_reason).toBe("stop");
     });
+
+    test.each(unknownResponsesEvents)(
+      "rejects an unknown event that is %s with AGENTHUB_DEBUG set",
+      async (_label, unknownEvent) => {
+        process.env.AGENTHUB_DEBUG = "1";
+        const client = createAutoClient(testCase);
+        installFakeResponsesStream(client, [unknownEvent(), responsesCompletedEvent()]);
+
+        await expect(
+          collectEvents(client.streamingResponse({ messages, config: {} })),
+        ).rejects.toThrow("Unknown output");
+      },
+    );
   },
 );
 
 describe.each(CHAT_STREAM_CASES)(
-  "Keepalive handling for $clientType",
+  "Stream event handling for $clientType",
   (testCase) => {
     test("skips gateway keepalive heartbeats between stream chunks", async () => {
       const client = createAutoClient(testCase);
@@ -364,7 +442,7 @@ describe.each(CHAT_STREAM_CASES)(
 );
 
 describe.each(MESSAGES_STREAM_CASES)(
-  "Keepalive handling for $clientType",
+  "Stream event handling for $clientType",
   (testCase) => {
     test("skips gateway ping heartbeats between stream events", async () => {
       const client = createAutoClient(testCase);
@@ -386,24 +464,85 @@ describe.each(MESSAGES_STREAM_CASES)(
       expect(events[events.length - 1].finish_reason).toBe("stop");
     });
 
-    test("still rejects genuinely unknown events", async () => {
+    test.each(unknownMessagesEvents)(
+      "skips an unknown event that is %s",
+      async (_label, unknownEvent) => {
+        const client = createAutoClient(testCase);
+        installFakeMessagesStream(client, [unknownEvent(), messagesStartEvent(), messagesTextDeltaEvent("Here is"), messagesStopEvent()]);
+
+        const events = await collectEvents(
+          client.streamingResponse({ messages, config: {} }),
+        );
+        expect(collectedTexts(events)).toEqual(["Here is"]);
+        expect(events[events.length - 1].finish_reason).toBe("stop");
+      },
+    );
+
+    test("skips foreign gateway events", async () => {
       const client = createAutoClient(testCase);
       installFakeMessagesStream(client, [
         messagesStartEvent(),
-        { type: "mystery_event" },
+        // the Responses-protocol spelling, injected into a Messages stream
+        responsesKeepaliveEvent(1),
+        messagesTextDeltaEvent("Here is"),
+        foreignHeartbeatEvent(),
+        messagesTextDeltaEvent(" the memo."),
         messagesStopEvent(),
+      ]);
+
+      const events = await collectEvents(
+        client.streamingResponse({ messages, config: {} }),
+      );
+      expect(collectedTexts(events)).toEqual(["Here is", " the memo."]);
+      expect(events[events.length - 1].finish_reason).toBe("stop");
+    });
+
+    test.each(unknownMessagesEvents)(
+      "rejects an unknown event that is %s with AGENTHUB_DEBUG set",
+      async (_label, unknownEvent) => {
+        process.env.AGENTHUB_DEBUG = "1";
+        const client = createAutoClient(testCase);
+        installFakeMessagesStream(client, [unknownEvent(), messagesStartEvent(), messagesStopEvent()]);
+
+        await expect(
+          collectEvents(client.streamingResponse({ messages, config: {} })),
+        ).rejects.toThrow("Unknown output");
+      },
+    );
+  },
+);
+
+describe.each(GEMINI_STREAM_CASES)(
+  "Stream event handling for $clientType",
+  (testCase) => {
+    test("skips an unknown part", async () => {
+      const client = createAutoClient(testCase);
+      installFakeGeminiStream(client, [
+        geminiUnknownPartChunk(),
+        geminiTextChunk("Here is"),
+        geminiStopChunk(),
+      ]);
+
+      const events = await collectEvents(
+        client.streamingResponse({ messages, config: {} }),
+      );
+      expect(collectedTexts(events)).toEqual(["Here is"]);
+      expect(events[events.length - 1].finish_reason).toBe("stop");
+    });
+
+    test("rejects an unknown part with AGENTHUB_DEBUG set", async () => {
+      process.env.AGENTHUB_DEBUG = "1";
+      const client = createAutoClient(testCase);
+      installFakeGeminiStream(client, [
+        geminiUnknownPartChunk(),
+        geminiStopChunk(),
       ]);
 
       await expect(
         collectEvents(client.streamingResponse({ messages, config: {} })),
       ).rejects.toThrow("Unknown output");
     });
-  },
-);
 
-describe.each(GEMINI_STREAM_CASES)(
-  "Keepalive handling for $clientType",
-  (testCase) => {
     test("skips gateway keepalive heartbeats between stream chunks", async () => {
       const client = createAutoClient(testCase);
       expect(routedClientName(client)).toBe(testCase.expectedClient);

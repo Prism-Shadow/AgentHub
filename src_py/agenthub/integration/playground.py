@@ -25,6 +25,7 @@ import asyncio
 import base64
 import concurrent.futures
 import json
+import os
 import threading
 from typing import Any
 
@@ -41,7 +42,7 @@ from .tracer import Tracer
 _event_loop: asyncio.AbstractEventLoop | None = None
 _loop_lock = threading.Lock()
 _session_clients: dict[str, AutoLLMClient] = {}
-_session_client_options: dict[str, tuple[str, str | None, str | None, str | None]] = {}
+_session_client_options: dict[str, tuple[str, str | None, str | None, str | None, dict[str, str] | None]] = {}
 _session_abort_signals: dict[str, AbortSignal] = {}
 
 
@@ -83,13 +84,16 @@ def _normalize_optional_string(value: Any) -> str | None:
     return None
 
 
-def _get_client_options(config: dict[str, Any]) -> tuple[str, str | None, str | None, str | None]:
+def _get_client_options(
+    config: dict[str, Any],
+) -> tuple[str, str | None, str | None, str | None, dict[str, str] | None]:
     """Extract client construction options from playground config."""
-    model = _normalize_optional_string(config.get("model")) or "gpt-5.5"
+    model = _normalize_optional_string(config.get("model")) or "gpt-5.6-luna"
     api_key = _normalize_optional_string(config.get("api_key"))
     base_url = _normalize_optional_string(config.get("base_url"))
     client_type = _normalize_optional_string(config.get("client_type"))
-    return model, api_key, base_url, client_type
+    default_headers = config.get("default_headers")
+    return model, api_key, base_url, client_type, default_headers if isinstance(default_headers, dict) else None
 
 
 def _get_request_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -99,6 +103,7 @@ def _get_request_config(config: dict[str, Any]) -> dict[str, Any]:
     request_config.pop("api_key", None)
     request_config.pop("base_url", None)
     request_config.pop("client_type", None)
+    request_config.pop("default_headers", None)
     return request_config
 
 
@@ -163,11 +168,21 @@ def create_chat_app() -> Flask:
         </div>
 
         <div class="bg-white border-b border-gray-200 px-6 py-4" id="configPanel">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div class="flex items-center gap-3 mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Connection</span>
+                <span class="h-px flex-1 bg-gray-200"></span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-4 gap-y-3 mb-4">
                 <div class="flex flex-col">
-                    <label class="text-sm font-semibold text-gray-900 mb-1" for="modelComboboxButton">Model</label>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-sm font-semibold text-gray-900" for="modelComboboxButton">Model</label>
+                        <div class="flex items-center gap-2">
+                            <span id="listModelsStatus" class="text-xs text-gray-500"></span>
+                            <button type="button" id="listModelsButton" class="text-xs font-medium text-blue-600 transition hover:text-blue-700 focus:outline-none focus:underline disabled:opacity-50" onclick="listModels()">List models</button>
+                        </div>
+                    </div>
                     <div id="modelCombobox" class="relative" data-combobox>
-                        <input id="modelSelect" type="hidden" value="gpt-5.5" data-combobox-value>
+                        <input id="modelSelect" type="hidden" value="gpt-5.6-luna" data-combobox-value>
                         <button
                             id="modelComboboxButton"
                             type="button"
@@ -181,7 +196,7 @@ def create_chat_app() -> Flask:
                         >
                             <span class="flex items-center justify-between gap-3">
                                 <span class="min-w-0">
-                                    <span class="block truncate text-sm font-medium text-gray-900" data-combobox-label>GPT 5.5</span>
+                                    <span class="block truncate text-sm font-medium text-gray-900" data-combobox-label>GPT 5.6 Luna</span>
                                 </span>
                                 <svg class="h-4 w-4 flex-none text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <path d="m6 9 6 6 6-6"></path>
@@ -189,35 +204,35 @@ def create_chat_app() -> Flask:
                             </span>
                         </button>
                         <div id="modelComboboxMenu" class="hidden absolute z-30 mt-2 max-h-72 w-full overflow-y-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg" role="listbox" aria-labelledby="modelComboboxButton" data-combobox-menu>
-                            <button type="button" role="option" aria-selected="true" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none bg-blue-50" data-combobox-option data-value="gpt-5.5" data-label="GPT 5.5" data-description="gpt-5.5" onclick="selectComboboxOption('modelCombobox', this)">
-                                <span class="block truncate text-sm font-medium text-gray-900">GPT 5.5</span>
+                            <button type="button" role="option" aria-selected="true" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none bg-blue-50" data-combobox-option data-value="gpt-5.6-luna" data-label="GPT 5.6 Luna" data-description="gpt-5.6-luna" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">GPT 5.6 Luna</span>
                             </button>
-                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-3.5-flash" data-label="Gemini 3.5 Flash" data-description="gemini-3.5-flash" onclick="selectComboboxOption('modelCombobox', this)">
-                                <span class="block truncate text-sm font-medium text-gray-900">Gemini 3.5 Flash</span>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="text-embedding-3-large" data-client-type="openai-embedding" data-label="Text Embedding 3 Large" data-description="text-embedding-3-large" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">Text Embedding 3 Large</span>
                             </button>
-                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-embedding-2" data-label="Gemini Embedding 2" data-description="gemini-embedding-2" onclick="selectComboboxOption('modelCombobox', this)">
-                                <span class="block truncate text-sm font-medium text-gray-900">Gemini Embedding 2</span>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-3.7-flash" data-label="Gemini 3.7 Flash" data-description="gemini-3.7-flash" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">Gemini 3.7 Flash</span>
                             </button>
-                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="claude-opus-4-7" data-label="Claude Opus 4.7" data-description="claude-opus-4-7" onclick="selectComboboxOption('modelCombobox', this)">
-                                <span class="block truncate text-sm font-medium text-gray-900">Claude Opus 4.7</span>
-                            </button>
-                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="claude-sonnet-4-6" data-label="Claude Sonnet 4.6" data-description="claude-sonnet-4-6" onclick="selectComboboxOption('modelCombobox', this)">
-                                <span class="block truncate text-sm font-medium text-gray-900">Claude Sonnet 4.6</span>
-                            </button>
-                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="kimi-k2.6" data-label="Kimi K2.6" data-description="kimi-k2.6" onclick="selectComboboxOption('modelCombobox', this)">
-                                <span class="block truncate text-sm font-medium text-gray-900">Kimi K2.6</span>
-                            </button>
-                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="glm-5.1" data-label="GLM 5.1" data-description="glm-5.1" onclick="selectComboboxOption('modelCombobox', this)">
-                                <span class="block truncate text-sm font-medium text-gray-900">GLM 5.1</span>
-                            </button>
-                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-3.1-flash-image-preview" data-label="Gemini 3.1 Flash Image" data-description="gemini-3.1-flash-image-preview" onclick="selectComboboxOption('modelCombobox', this)">
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-3.1-flash-image" data-label="Gemini 3.1 Flash Image" data-description="gemini-3.1-flash-image" onclick="selectComboboxOption('modelCombobox', this)">
                                 <span class="block truncate text-sm font-medium text-gray-900">Gemini 3.1 Flash Image</span>
                             </button>
                             <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-3.1-flash-tts-preview" data-label="Gemini 3.1 Flash TTS" data-description="gemini-3.1-flash-tts-preview" onclick="selectComboboxOption('modelCombobox', this)">
                                 <span class="block truncate text-sm font-medium text-gray-900">Gemini 3.1 Flash TTS</span>
                             </button>
-                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="deepseek-v4-pro" data-label="DeepSeek V4 Pro" data-description="deepseek-v4-pro" onclick="selectComboboxOption('modelCombobox', this)">
-                                <span class="block truncate text-sm font-medium text-gray-900">DeepSeek V4 Pro</span>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="gemini-embedding-2" data-label="Gemini Embedding 2" data-description="gemini-embedding-2" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">Gemini Embedding 2</span>
+                            </button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="claude-sonnet-5" data-label="Claude Sonnet 5" data-description="claude-sonnet-5" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">Claude Sonnet 5</span>
+                            </button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="glm-5.3" data-label="GLM 5.3" data-description="glm-5.3" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">GLM 5.3</span>
+                            </button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="kimi-k3" data-label="Kimi K3" data-description="kimi-k3" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">Kimi K3</span>
+                            </button>
+                            <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="MiniMax-M3" data-label="MiniMax M3" data-description="MiniMax-M3" onclick="selectComboboxOption('modelCombobox', this)">
+                                <span class="block truncate text-sm font-medium text-gray-900">MiniMax M3</span>
                             </button>
                             <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="deepseek-v4-flash" data-label="DeepSeek V4 Flash" data-description="deepseek-v4-flash" onclick="selectComboboxOption('modelCombobox', this)">
                                 <span class="block truncate text-sm font-medium text-gray-900">DeepSeek V4 Flash</span>
@@ -227,6 +242,7 @@ def create_chat_app() -> Flask:
                             </button>
                         </div>
                     </div>
+                    <p id="listModelsError" class="hidden mt-1 text-xs text-red-600 break-words"></p>
                     <div id="customModelWrapper" class="hidden mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <input
                             id="customModelInput"
@@ -237,6 +253,7 @@ def create_chat_app() -> Flask:
                         />
                         <input
                             id="customClientTypeInput"
+                            oninput="handleClientTypeInput()"
                             type="text"
                             autocomplete="off"
                             placeholder="Client type"
@@ -266,6 +283,16 @@ def create_chat_app() -> Flask:
                     <label class="text-sm font-semibold text-gray-900 mb-1" for="baseUrlInput">Base URL</label>
                     <input type="url" id="baseUrlInput" placeholder="Use provider default when empty" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
+                <div class="flex flex-col">
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="extraHeadersInput">Extra Headers</label>
+                    <textarea id="extraHeadersInput" rows="2" spellcheck="false" placeholder='JSON, e.g. {"X-Title": "AgentHub"} — for endpoints that demand their own' class="px-3 py-2 border border-gray-300 rounded-md text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Generation</span>
+                <span class="h-px flex-1 bg-gray-200"></span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-4 gap-y-3">
                 <div class="flex flex-col">
                     <label class="text-sm font-semibold text-gray-900 mb-1" for="thinkingLevelComboboxButton">Thinking Level</label>
                     <div id="thinkingLevelCombobox" class="relative" data-combobox>
@@ -334,19 +361,17 @@ def create_chat_app() -> Flask:
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="flex flex-col">
-                    <label class="text-sm font-semibold text-gray-900 mb-1" for="systemPromptInput">System Prompt</label>
-                    <textarea id="systemPromptInput" rows="2" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"></textarea>
-                </div>
-                <div class="flex flex-col">
-                    <label class="text-sm font-semibold text-gray-900 mb-1" for="toolsInput">Tools (JSON Array)</label>
-                    <textarea id="toolsInput" rows="3" placeholder='[{"name": "function_name", "description": "...", "parameters": {...}}]' class="px-3 py-2 border border-gray-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"></textarea>
-                </div>
                 <div class="flex flex-col">
                     <label class="text-sm font-semibold text-gray-900 mb-1" for="traceIdInput">Trace ID</label>
                     <input type="text" id="traceIdInput" placeholder="e.g., session_001" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="flex flex-col sm:col-span-2">
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="systemPromptInput">System Prompt</label>
+                    <textarea id="systemPromptInput" rows="3" class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"></textarea>
+                </div>
+                <div class="flex flex-col sm:col-span-2">
+                    <label class="text-sm font-semibold text-gray-900 mb-1" for="toolsInput">Tools (JSON Array)</label>
+                    <textarea id="toolsInput" rows="3" placeholder='[{"name": "function_name", "description": "...", "parameters": {...}}]' class="px-3 py-2 border border-gray-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"></textarea>
                 </div>
             </div>
         </div>
@@ -590,12 +615,54 @@ def create_chat_app() -> Flask:
                 }
             });
 
+            function selectedOptionClientType() {
+                const modelSelect = document.getElementById('modelSelect');
+                if (modelSelect.value === '__custom__') {
+                    return '';
+                }
+
+                // a built-in whose id does not route on its own declares data-client-type, and a
+                // listed model carries the client type its listing ran under
+                const option = document.querySelector(
+                    '#modelComboboxMenu [data-combobox-option][data-value="' + modelSelect.value + '"]'
+                );
+                return (option && option.dataset.clientType) || '';
+            }
+
+            function handleClientTypeInput() {
+                const modelSelect = document.getElementById('modelSelect');
+                if (modelSelect.value === '__custom__') {
+                    return;
+                }
+
+                // the option carries the protocol for its id, so an edit belongs on the option and
+                // not only in the box, which the next selection refills
+                const option = document.querySelector(
+                    '#modelComboboxMenu [data-combobox-option][data-value="' + modelSelect.value + '"]'
+                );
+                if (option) {
+                    option.dataset.clientType = document.getElementById('customClientTypeInput').value.trim();
+                }
+            }
+
             function handleModelSelectChange() {
                 const useCustom = document.getElementById('modelSelect').value === '__custom__';
-                const wrapper = document.getElementById('customModelWrapper');
-                wrapper.classList.toggle('hidden', !useCustom);
+                const modelInput = document.getElementById('customModelInput');
+                const clientTypeInput = document.getElementById('customClientTypeInput');
+                // a listed model's protocol is known only from its listing, so it is shown and can be
+                // corrected; a built-in declares its own and keeps it
+                const showClientType = useCustom || selectedOptionIsListed();
+                if (!useCustom) {
+                    clientTypeInput.value = showClientType ? selectedOptionClientType() : '';
+                }
+
+                modelInput.classList.toggle('hidden', !useCustom);
+                clientTypeInput.classList.toggle('hidden', !showClientType);
+                // with the model id field hidden it is the only control in the row
+                clientTypeInput.classList.toggle('sm:col-span-2', !useCustom);
+                document.getElementById('customModelWrapper').classList.toggle('hidden', !showClientType);
                 if (useCustom) {
-                    document.getElementById('customModelInput').focus();
+                    modelInput.focus();
                 }
             }
 
@@ -621,6 +688,115 @@ def create_chat_app() -> Flask:
                 hideIcon.classList.toggle('hidden', shouldShow);
             }
 
+            function selectedOptionIsListed() {
+                const modelSelect = document.getElementById('modelSelect');
+                const option = document.querySelector(
+                    '#modelComboboxMenu [data-combobox-option][data-value="' + modelSelect.value + '"]'
+                );
+                return Boolean(option && option.dataset.listed);
+            }
+
+            function getSelectedClientType() {
+                // the box is on screen for a custom or a listed model and is then the one source; a
+                // built-in keeps the client type it declares for itself
+                const wrapper = document.getElementById('customModelWrapper');
+                const clientTypeInput = document.getElementById('customClientTypeInput');
+                if (!wrapper.classList.contains('hidden') && !clientTypeInput.classList.contains('hidden')) {
+                    return clientTypeInput.value.trim();
+                }
+
+                return selectedOptionClientType();
+            }
+
+            function addListedModels(modelIds) {
+                const menu = document.getElementById('modelComboboxMenu');
+                const options = Array.from(menu.querySelectorAll('[data-combobox-option]'));
+                const known = new Set(options.map((option) => option.dataset.value));
+                const customOption = options.find((option) => option.dataset.value === '__custom__') || null;
+                const clientType = getSelectedClientType();
+
+                let added = 0;
+                modelIds.forEach((modelId) => {
+                    if (known.has(modelId)) {
+                        return;
+                    }
+
+                    const option = document.createElement('button');
+                    option.type = 'button';
+                    option.setAttribute('role', 'option');
+                    option.setAttribute('aria-selected', 'false');
+                    option.className = 'w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none';
+                    option.setAttribute('data-combobox-option', '');
+                    option.dataset.value = modelId;
+                    option.dataset.label = modelId;
+                    option.dataset.description = modelId;
+                    option.dataset.listed = 'true';
+                    if (clientType) {
+                        option.dataset.clientType = clientType;
+                    }
+                    option.onclick = () => selectComboboxOption('modelCombobox', option);
+
+                    const label = document.createElement('span');
+                    label.className = 'block truncate text-sm font-medium text-gray-900';
+                    label.textContent = modelId;
+                    option.appendChild(label);
+                    menu.insertBefore(option, customOption);
+                    known.add(modelId);
+                    added += 1;
+                });
+
+                return added;
+            }
+
+            async function listModels() {
+                const button = document.getElementById('listModelsButton');
+                const status = document.getElementById('listModelsStatus');
+                const error = document.getElementById('listModelsError');
+
+                button.disabled = true;
+                status.textContent = 'Listing...';
+                error.classList.add('hidden');
+                try {
+                    const response = await fetch('/api/models', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ config: getConfig() })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Request failed');
+                    }
+
+                    const added = addListedModels(data.models);
+                    status.textContent = data.models.length + ' models, ' + added + ' added';
+                } catch (err) {
+                    status.textContent = 'Failed';
+                    error.textContent = err.message || String(err);
+                    error.classList.remove('hidden');
+                } finally {
+                    button.disabled = false;
+                }
+            }
+
+            function getExtraHeaders() {
+                const input = document.getElementById('extraHeadersInput');
+                const raw = input.value.trim();
+                input.classList.remove('border-red-500');
+                if (!raw) {
+                    return null;
+                }
+                try {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                        return parsed;
+                    }
+                } catch (error) {
+                    // the invalid marker below covers both a parse failure and a non-object
+                }
+                input.classList.add('border-red-500');
+                return null;
+            }
+
             function getConfig() {
                 const config = {
                     model: getSelectedModel()
@@ -631,16 +807,19 @@ def create_chat_app() -> Flask:
                     config.api_key = apiKey;
                 }
 
-                if (document.getElementById('modelSelect').value === '__custom__') {
-                    const clientType = document.getElementById('customClientTypeInput').value.trim();
-                    if (clientType) {
-                        config.client_type = clientType;
-                    }
+                const clientType = getSelectedClientType();
+                if (clientType) {
+                    config.client_type = clientType;
                 }
 
                 const baseUrl = document.getElementById('baseUrlInput').value.trim();
                 if (baseUrl) {
                     config.base_url = baseUrl;
+                }
+
+                const extraHeaders = getExtraHeaders();
+                if (extraHeaders) {
+                    config.default_headers = extraHeaders;
                 }
 
                 const thinkingLevel = document.getElementById('thinkingLevelSelect').value;
@@ -1073,12 +1252,13 @@ def create_chat_app() -> Flask:
                 # Get or create client for this session
                 client_options = _get_client_options(config)
                 if session_id not in _session_clients or _session_client_options.get(session_id) != client_options:
-                    model, api_key, base_url, client_type = client_options
+                    model, api_key, base_url, client_type, default_headers = client_options
                     _session_clients[session_id] = AutoLLMClient(
                         model=model,
                         api_key=api_key,
                         base_url=base_url,
                         client_type=client_type,
+                        default_headers=default_headers,
                     )
                     _session_client_options[session_id] = client_options
 
@@ -1160,6 +1340,27 @@ def create_chat_app() -> Flask:
 
         return jsonify({"status": "success"})
 
+    @app.route("/api/models", methods=["POST"])
+    def list_models() -> Response | tuple[Response, int]:
+        """List the model ids the configured endpoint serves."""
+        data = request.json or {}
+        model, api_key, base_url, client_type, default_headers = _get_client_options(data.get("config") or {})
+
+        try:
+            client = AutoLLMClient(
+                model=model,
+                api_key=api_key,
+                base_url=base_url,
+                client_type=client_type,
+                default_headers=default_headers,
+            )
+            loop = _get_event_loop()
+            models = asyncio.run_coroutine_threadsafe(client.list_models(), loop).result()
+        except Exception as exc:  # a rejected key, an unreachable base URL, or a client that cannot list
+            return jsonify({"error": str(exc)}), 400
+
+        return jsonify({"models": models})
+
     tracer_app = Tracer().create_web_app(base_path="/tracer")
     app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {"/tracer": tracer_app.wsgi_app})
 
@@ -1175,6 +1376,9 @@ def start_playground_server(host: str = "127.0.0.1", port: int = 25751, debug: b
         port: Port number to listen on
         debug: Enable debug mode
     """
+    # the playground exists to show what a model and its endpoint actually send, so unknown
+    # stream output fails loudly here unless the caller says otherwise
+    os.environ.setdefault("AGENTHUB_DEBUG", "1")
     app = create_chat_app()
     print(f"Starting LLM Playground at http://{host}:{port}")
     app.run(host=host, port=port, debug=debug)

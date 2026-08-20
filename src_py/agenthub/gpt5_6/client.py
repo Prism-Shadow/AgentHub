@@ -33,17 +33,24 @@ from ..types import (
     UniMessage,
     UsageMetadata,
 )
+from ..utils import is_debug_enabled
 
 
 class GPT5_6Client(LLMClient):
     """GPT-5.6-specific LLM client implementation (also serves GPT-5.4 and GPT-5.5)."""
 
-    def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
+    def __init__(
+        self,
+        model: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        default_headers: dict[str, str] | None = None,
+    ):
         """Initialize GPT-5.6 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("OPENAI_API_KEY")
         base_url = base_url or os.getenv("OPENAI_BASE_URL")
-        self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+        self._client = AsyncOpenAI(api_key=api_key, base_url=base_url, default_headers=default_headers)
         self._history: list[UniMessage] = []
 
     def _convert_thinking_level_to_effort(self, thinking_level: ThinkingLevel) -> str:
@@ -306,8 +313,13 @@ class GPT5_6Client(LLMClient):
         ]:
             event_type = "unused"
 
-        else:
+        elif is_debug_enabled():
             raise ValueError(f"Unknown output: {model_output}")
+
+        else:
+            # a gateway injects its own events (heartbeats, cost tickers) into the stream, and
+            # killing a long generation over one costs more than dropping it
+            event_type = "unused"
 
         return {
             "role": "assistant",
@@ -377,3 +389,12 @@ class GPT5_6Client(LLMClient):
 
                 if event["finish_reason"] or event["usage_metadata"]:
                     yield event
+
+    async def list_models(self) -> list[str]:
+        """
+        List the model ids the configured endpoint serves.
+
+        Returns:
+            list[str]: The model ids, in the order the endpoint returned them.
+        """
+        return [model.id async for model in self._client.models.list()]

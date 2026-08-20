@@ -55,6 +55,7 @@ export class GLM5_3Client extends LLMClient {
     apiKey?: string;
     baseUrl?: string | null;
     clientType?: string | null;
+    defaultHeaders?: Record<string, string>;
   }) {
     super();
     this._model = options.model;
@@ -63,7 +64,11 @@ export class GLM5_3Client extends LLMClient {
       options.baseUrl ||
       process.env.ZAI_BASE_URL ||
       "https://api.z.ai/api/paas/v4/";
-    this._client = new OpenAI({ apiKey: key, baseURL: url });
+    this._client = new OpenAI({
+      apiKey: key,
+      baseURL: url,
+      defaultHeaders: options.defaultHeaders,
+    });
   }
 
   /**
@@ -543,5 +548,19 @@ export class GLM5_3Client extends LLMClient {
         }
       }
     }
+  }
+
+  /**
+   * List the model ids the configured endpoint serves.
+   *
+   * @returns The model ids, in the order the endpoint returned them.
+   */
+  async listModels(): Promise<string[]> {
+    const models: string[] = [];
+    for await (const model of this._client.models.list()) {
+      models.push(model.id);
+    }
+
+    return models;
   }
 }

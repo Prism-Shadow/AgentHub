@@ -1,6 +1,6 @@
 [project]
 name = "agenthub-python"
-version = "0.4.4"
+version = "0.4.5"
 description = "AgentHub is the LLM API Hub for the Agent era, built for high-precision autonomous agents."
 keywords = ["agent", "llm", "gemini", "claude", "gpt"]
 readme = "README.md"
@@ -17,7 +17,7 @@ Repository = "https://github.com/Prism-Shadow/agenthub"
 Issues = "https://github.com/Prism-Shadow/agenthub/issues"
 
 [project.optional-dependencies]
-dev = ["httpx[socks]", "pytest>=8.4.2", "pytest-asyncio>=0.23.0", "pytest-xdist>=3.6.0", "ruff>=0.14.3", "pillow>=10.0.0"]
+dev = ["httpx[socks]", "pytest>=8.4.2", "pytest-asyncio>=0.23.0", "pytest-xdist>=3.6.0", "pytest-rerunfailures>=15.0", "ruff>=0.14.3", "pillow>=10.0.0"]
 
 [build-system]
 requires = ["uv_build>=0.9.16,<0.10.0"]

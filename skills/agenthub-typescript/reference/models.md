@@ -16,10 +16,12 @@ Use exact model IDs. If a model ID is not listed, ask the user to confirm the ex
 | Claude 4.7 | Bedrock | `global.anthropic.claude-opus-4-7` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
 | Claude 4.8 | Official / ModelVerse | `claude-opus-4-8` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
 | Claude 4.8 | Bedrock | `global.anthropic.claude-opus-4-8` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
-| Claude 5 | Official / ModelVerse | `claude-fable-5` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
+| Claude 5 | Official / ModelVerse | `claude-fable-5`, `claude-opus-5`, `claude-sonnet-5` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
 | Claude 5 | Bedrock | `global.anthropic.claude-fable-5` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` |
 | GPT 5.4 | Official / ModelVerse | `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` |
 | GPT 5.5 | Official / ModelVerse | `gpt-5.5` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` |
+| GPT 5.6 | Official | `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` |
+| GPT 5.6 | OpenRouter | `openai/gpt-5.6-sol`, `openai/gpt-5.6-terra`, `openai/gpt-5.6-luna` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` |
 | OpenAI Embedding | Official | `text-embedding-3-small`, `text-embedding-3-large` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` |
 | Kimi-K2.6 | Official | `kimi-k2.6` | `MOONSHOT_API_KEY` | `MOONSHOT_BASE_URL` |
 | Kimi-K2.6 | OpenRouter | `moonshotai/kimi-k2.6` | `MOONSHOT_API_KEY` | `MOONSHOT_BASE_URL` |
@@ -35,7 +37,8 @@ Use exact model IDs. If a model ID is not listed, ask the user to confirm the ex
 | GLM-5.2 | Official | `glm-5.2` | `ZAI_API_KEY` | `ZAI_BASE_URL` |
 | GLM-5.2 | OpenRouter | `z-ai/glm-5.2` | `ZAI_API_KEY` | `ZAI_BASE_URL` |
 | GLM-5.2 | SiliconFlow | `zai-org/GLM-5.2` | `ZAI_API_KEY` | `ZAI_BASE_URL` |
-| GLM-5.3 | Official | `glm-5.3` (API not yet live) | `ZAI_API_KEY` | `ZAI_BASE_URL` |
+| GLM-5.3 | Official | `glm-5.3` | `ZAI_API_KEY` | `ZAI_BASE_URL` |
+| GLM-5.3 | OpenRouter | `z-ai/glm-5.3` | `ZAI_API_KEY` | `ZAI_BASE_URL` |
 | MiniMax-M3 | Official | `MiniMax-M3` | `MINIMAX_API_KEY` | `MINIMAX_BASE_URL` |
 
 Common gateway base URLs:
@@ -45,7 +48,7 @@ Common gateway base URLs:
 - ModelVerse: `https://api.modelverse.cn/v1` (`https://api.modelverse.cn/` for Claude)
 - vLLM: `http://127.0.0.1:8000/v1/`
 
-For models accessed through OpenAI-compatible APIs (e.g., Qwen series models via SiliconFlow or OpenRouter), pass `clientType: "openai-chat"` (bare `"openai"` is an alias; `"openai-embedding"` for embedding endpoints, `"openai-responses"` for OpenAI Responses endpoints, `"ant-messages"` for Anthropic Messages endpoints). These models use `OPENAI_API_KEY` and `OPENAI_BASE_URL` (`ANTHROPIC_API_KEY`/`ANTHROPIC_BASE_URL` for `ant-messages`):
+For models accessed through OpenAI-compatible APIs (e.g., Qwen series models via SiliconFlow or OpenRouter), pass a generic protocol client type. Prefer `clientType: "openai-responses"` on gateways that serve the OpenAI Responses protocol, which OpenRouter does for every model it hosts; SiliconFlow serves Chat Completions only, so use `clientType: "openai-chat"` there (bare `"openai"` is an alias). Use `"openai-embedding"` for embedding endpoints and `"ant-messages"` for Anthropic Messages endpoints. These models use `OPENAI_API_KEY` and `OPENAI_BASE_URL` (`ANTHROPIC_API_KEY`/`ANTHROPIC_BASE_URL` for `ant-messages`):
 
 ```typescript
 const client = new AutoLLMClient({ model: "Qwen/Qwen3-Embedding-0.6B", clientType: "openai-embedding" });

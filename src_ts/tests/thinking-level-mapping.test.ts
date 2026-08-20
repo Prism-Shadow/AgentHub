@@ -125,7 +125,7 @@ describe("gemini3_7 thinking level clamping", () => {
 });
 
 // GLM-5.3 cannot disable thinking and accepts only low/high/max reasoning_effort
-// (llmsdk_docs/glm5_3/docs/thinking.md, docs-only: the API is not yet live); GLM-5.2
+// (llmsdk_docs/glm5_3/docs/thinking.md); GLM-5.2
 // keeps the full pass-through vocabulary and pre-5.2 models take no effort parameter.
 const GLM_THINKING_LEVEL_CASES: Array<
   [string, ThinkingLevel, string, string | undefined]

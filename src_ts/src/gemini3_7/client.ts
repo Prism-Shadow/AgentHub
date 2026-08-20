@@ -52,6 +52,7 @@ import {
   UniMessage,
   UsageMetadata,
 } from "../types";
+import { isDebugEnabled } from "../utils";
 
 /**
  * Wrap a part's thought signature as a fidelity payload, or nothing when absent.
@@ -95,12 +96,21 @@ export class Gemini3_7Client extends LLMClient {
     apiKey?: string;
     baseUrl?: string | null;
     clientType?: string | null;
+    defaultHeaders?: Record<string, string>;
   }) {
     super();
     this._model = options.model;
     const key = options.apiKey || process.env.GEMINI_API_KEY || undefined;
     const url = options.baseUrl || process.env.GEMINI_BASE_URL || undefined;
-    const httpOptions = url ? { baseUrl: url } : undefined;
+    // the Gemini SDK carries connection headers inside httpOptions rather than its own argument
+    const httpOptions: { baseUrl?: string; headers?: Record<string, string> } =
+      {};
+    if (url) {
+      httpOptions.baseUrl = url;
+    }
+    if (options.defaultHeaders) {
+      httpOptions.headers = options.defaultHeaders;
+    }
     if (key && key.startsWith("{")) {
       const credentials = JSON.parse(key);
       const googleAuthOptions = {
@@ -597,7 +607,7 @@ export class Gemini3_7Client extends LLMClient {
             text: part.text,
             ...partFidelity(part),
           });
-        } else {
+        } else if (isDebugEnabled()) {
           throw new Error(`Unknown output: ${JSON.stringify(part)}`);
         }
       }
@@ -762,5 +772,24 @@ export class Gemini3_7Client extends LLMClient {
 
       yield event;
     }
+  }
+
+  /**
+   * List the model ids the configured endpoint serves.
+   *
+   * @returns The model ids, in the order the endpoint returned them.
+   */
+  async listModels(): Promise<string[]> {
+    const models: string[] = [];
+    for await (const model of await this._client.models.list()) {
+      // the API returns path-qualified names: models/gemini-3.7-flash,
+      // publishers/google/models/gemini-3.7-flash
+      const id = model.name?.split("/").pop();
+      if (id) {
+        models.push(id);
+      }
+    }
+
+    return models;
   }
 }

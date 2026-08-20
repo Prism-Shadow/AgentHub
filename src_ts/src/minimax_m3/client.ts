@@ -34,6 +34,7 @@ import {
   UniMessage,
   UsageMetadata,
 } from "../types";
+import { isDebugEnabled } from "../utils";
 
 const DEFAULT_BASE_URL = "https://api.minimax.io/v1";
 
@@ -49,6 +50,7 @@ export class MiniMaxM3Client extends LLMClient {
     apiKey?: string;
     baseUrl?: string | null;
     clientType?: string | null;
+    defaultHeaders?: Record<string, string>;
   }) {
     super();
     this._model = options.model;
@@ -62,6 +64,7 @@ export class MiniMaxM3Client extends LLMClient {
       apiKey,
       baseURL:
         options.baseUrl || process.env.MINIMAX_BASE_URL || DEFAULT_BASE_URL,
+      defaultHeaders: options.defaultHeaders,
     });
   }
 
@@ -171,20 +174,9 @@ export class MiniMaxM3Client extends LLMClient {
             type: message.role === "user" ? "input_text" : "output_text",
             text: item.text,
           });
-          continue;
-        }
-        if (item.type === "image_url") {
+        } else if (item.type === "image_url") {
           contentItems.push({ type: "input_image", image_url: item.image_url });
-          continue;
-        }
-
-        // Top-level items follow, so flush buffered text first to keep the wire order.
-        if (contentItems.length > 0) {
-          inputList.push({ role: message.role, content: contentItems });
-          contentItems = [];
-        }
-
-        if (item.type === "thinking") {
+        } else if (item.type === "thinking") {
           // MiniMax accepts a reasoning item rebuilt from the thinking text alone, so no fidelity
           // is recorded for it.
           inputList.push({
@@ -302,7 +294,8 @@ export class MiniMaxM3Client extends LLMClient {
         "response.content_part.done",
         // gateway heartbeat on long generations; carries no content
         "keepalive",
-      ].includes(minimaxEventType)
+      ].includes(minimaxEventType) &&
+      isDebugEnabled()
     ) {
       throw new Error(`Unknown output: ${JSON.stringify(modelOutput)}`);
     }
@@ -396,5 +389,19 @@ export class MiniMaxM3Client extends LLMClient {
         }
       }
     }
+  }
+
+  /**
+   * List the model ids the configured endpoint serves.
+   *
+   * @returns The model ids, in the order the endpoint returned them.
+   */
+  async listModels(): Promise<string[]> {
+    const models: string[] = [];
+    for await (const model of this._client.models.list()) {
+      models.push(model.id);
+    }
+
+    return models;
   }
 }

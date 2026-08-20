@@ -35,7 +35,10 @@ import {
   UniMessage,
   UsageMetadata,
 } from "../types";
-import { fixOpenrouterUsageMetadata } from "../utils";
+import {
+  fixOpenrouterUsageMetadata,
+  isDebugEnabled,
+} from "../utils";
 
 const REDACTED_THINKING = "_REDACTED_THINKING";
 
@@ -54,6 +57,7 @@ export class AntMessagesClient extends LLMClient {
     apiKey?: string;
     baseUrl?: string | null;
     clientType?: string | null;
+    defaultHeaders?: Record<string, string>;
   }) {
     super();
     this._model = options.model;
@@ -65,6 +69,7 @@ export class AntMessagesClient extends LLMClient {
       apiKey: key,
       authToken: key,
       baseURL: url,
+      defaultHeaders: options.defaultHeaders,
     });
   }
 
@@ -397,8 +402,12 @@ export class AntMessagesClient extends LLMClient {
       // the SDK drops the "ping" heartbeat at the SSE layer; it reaches here only
       // from gateways that relabel it onto another event
       eventType = "unused";
-    } else {
+        } else if (isDebugEnabled()) {
       throw new Error(`Unknown output: ${JSON.stringify(modelOutput)}`);
+    } else {
+      // a gateway injects its own events (heartbeats, cost tickers) into the stream, and
+      // killing a long generation over one costs more than dropping it
+      eventType = "unused";
     }
 
     return {
@@ -529,5 +538,19 @@ export class AntMessagesClient extends LLMClient {
         }
       }
     }
+  }
+
+  /**
+   * List the model ids the configured endpoint serves.
+   *
+   * @returns The model ids, in the order the endpoint returned them.
+   */
+  async listModels(): Promise<string[]> {
+    const models: string[] = [];
+    for await (const model of this._client.models.list()) {
+      models.push(model.id);
+    }
+
+    return models;
   }
 }
