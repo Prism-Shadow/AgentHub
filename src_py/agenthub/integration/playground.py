@@ -253,6 +253,7 @@ def create_chat_app() -> Flask:
                         />
                         <input
                             id="customClientTypeInput"
+                            oninput="handleClientTypeInput()"
                             type="text"
                             autocomplete="off"
                             placeholder="Client type"
@@ -624,6 +625,22 @@ def create_chat_app() -> Flask:
                     '#modelComboboxMenu [data-combobox-option][data-value="' + modelSelect.value + '"]'
                 );
                 return (option && option.dataset.clientType) || '';
+            }
+
+            function handleClientTypeInput() {
+                const modelSelect = document.getElementById('modelSelect');
+                if (modelSelect.value === '__custom__') {
+                    return;
+                }
+
+                // the option carries the protocol for its id, so an edit belongs on the option and
+                // not only in the box, which the next selection refills
+                const option = document.querySelector(
+                    '#modelComboboxMenu [data-combobox-option][data-value="' + modelSelect.value + '"]'
+                );
+                if (option) {
+                    option.dataset.clientType = document.getElementById('customClientTypeInput').value.trim();
+                }
             }
 
             function handleModelSelectChange() {

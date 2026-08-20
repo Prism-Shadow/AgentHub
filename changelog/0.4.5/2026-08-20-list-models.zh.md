@@ -29,8 +29,8 @@
   client 不带 models 资源。
 - Playground 把结果列进自己的模型下拉框：Model 标签行上的 **List models** 控件调用
   `POST /api/models`，把返回的每个 id 添加为一个选项，并标记该次列举所使用的 client type。选中之后
-  该 client type 会留在 Client type 输入框里，可看可改，而不是用面板上看不见的东西去路由。请求被拒
-  时，服务方的报错显示在该字段下方。
+  该 client type 会留在 Client type 输入框里，而不是用面板上看不见的东西去路由；在框里的修改会写回
+  该选项，因此下次再选中它时依然生效。请求被拒时，服务方的报错显示在该字段下方。
 - 两种语言的离线测试把一个假的 models endpoint 接到全部 client 上，并钉住过滤规则、Gemini 的路径截取
   与 Bedrock 的拒绝行为：`src_py/tests/test_list_models.py`、`src_ts/tests/list-models.test.ts`。
 

@@ -85,6 +85,7 @@ describe("Playground", () => {
     expect(response.text).toContain("addListedModels(");
     expect(response.text).toContain("getSelectedClientType()");
     expect(response.text).toContain("selectedOptionClientType()");
+    expect(response.text).toContain("handleClientTypeInput()");
     expect(response.text).toContain(">Connection</span>");
     expect(response.text).toContain(">Generation</span>");
     expect(response.text).toContain("getExtraHeaders()");

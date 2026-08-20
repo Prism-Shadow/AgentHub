@@ -33,8 +33,9 @@
 - The playground lists into its own Model dropdown: a **List models** control on the Model label
   row calls `POST /api/models` and adds each returned id as an option, tagged with the client type
   the listing ran under. Selecting one keeps that client type on screen in the Client type field,
-  where it can be read and edited, rather than routing by something the panel does not show. A
-  rejected listing shows the provider's message under the field instead.
+  rather than routing by something the panel does not show, and an edit there is written back to
+  the option so it survives the next selection. A rejected listing shows the provider's message
+  under the field instead.
 - Offline tests in both languages route a fake models endpoint through every client and pin the
   filtering, the Gemini path stripping and the Bedrock rejection:
   `src_py/tests/test_list_models.py`, `src_ts/tests/list-models.test.ts`.
