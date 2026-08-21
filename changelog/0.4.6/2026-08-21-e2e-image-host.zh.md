@@ -3,6 +3,7 @@
 - **Date:** 2026-08-21
 - **Type:** process
 - **Scope:** `tests`
+- **PR:** [#188](https://github.com/Prism-Shadow/agenthub/pull/188)
 
 [English](2026-08-21-e2e-image-host.md)
 
