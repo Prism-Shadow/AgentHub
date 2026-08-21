@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { EmptyResponseError } from "./errors";
+import { isDebugEnabled } from "./utils";
 import {
   Fidelity,
   FinishReason,
@@ -142,6 +143,22 @@ export abstract class LLMClient {
           }
         } else if (item.type === "partial_tool_call") {
           // Skip partial_tool_call items - they should already be converted to tool_call
+        } else if (
+          item.type === "inline_data" &&
+          item.mime_type.startsWith("audio/")
+        ) {
+          const lastItem = contentItems[contentItems.length - 1];
+          // a spoken response streams as many small audio chunks; the message keeps the
+          // whole utterance as one playable item
+          if (
+            lastItem &&
+            lastItem.type === "inline_data" &&
+            lastItem.mime_type === item.mime_type
+          ) {
+            lastItem.data = Buffer.concat([lastItem.data, item.data]);
+          } else {
+            contentItems.push({ ...item });
+          }
         } else {
           contentItems.push({ ...item });
         }
@@ -210,6 +227,18 @@ export abstract class LLMClient {
     let lastEvent: UniEvent | null = null;
     const events: UniEvent[] = [];
     for await (const event of this._streamingResponseInternal(options)) {
+      if (event.event_type === "unused") {
+        // a client marks a wire event it has nothing to emit for as "unused"; that is its own
+        // bookkeeping and must not reach a caller
+        if (isDebugEnabled()) {
+          throw new Error(
+            `${this.constructor.name} yielded an internal unused event: ${JSON.stringify(event)}`,
+          );
+        }
+
+        continue;
+      }
+
       event.created_at = Date.now();
       lastEvent = event;
       events.push(event);

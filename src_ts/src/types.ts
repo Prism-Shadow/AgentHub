@@ -35,6 +35,9 @@ export enum PromptCaching {
 
 export type ToolChoice = ("auto" | "required" | "none") | string[];
 export type Role = "user" | "assistant";
+// "start" opens an item, "delta" carries content, and "stop" closes the response with usage and
+// a finish reason. "unused" is a client's own marker for a wire event that carries nothing
+// universal, and never leaves the client.
 export type EventType = "start" | "delta" | "stop" | "unused";
 export type FinishReason = "stop" | "length" | "tool_call" | "unknown";
 export type AspectRatio =

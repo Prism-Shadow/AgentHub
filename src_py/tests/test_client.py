@@ -25,7 +25,7 @@ import pytest
 from agenthub import AutoLLMClient, ThinkingLevel, list_supported_models
 
 
-IMAGE = "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg"
+IMAGE = "https://sghimages.shobserver.com/img/catch/2022/01/22/c1ae0300-9402-4128-a7e6-1244d3874167.jpg"
 IMAGE_KEYWORDS = ("flower", "narcissus", "daffodil", "bloom")
 
 
@@ -130,7 +130,7 @@ if os.getenv("MINIMAX_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="MiniMax-M3", client_type="minimax-m3"))
 
 if os.getenv("DEEPSEEK_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="deepseek-v4-flash", support_image_understanding=False))
+    AVAILABLE_MODELS.append(Model(name="deepseek-v4-flash-vision-exp"))
     for mode in _PROTOCOL_MODES:
         AVAILABLE_MODELS.append(
             Model(

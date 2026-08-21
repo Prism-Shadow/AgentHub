@@ -28,6 +28,7 @@ from .types import (
     UniMessage,
     UsageMetadata,
 )
+from .utils import is_debug_enabled
 
 
 class LLMClient(ABC):
@@ -139,6 +140,17 @@ class LLMClient(ABC):
                 elif item["type"] == "partial_tool_call":
                     # Skip partial_tool_call items - they should already be converted to tool_call
                     pass
+                elif item["type"] == "inline_data" and (item.get("mime_type") or "").startswith("audio/"):
+                    # a spoken response streams as many small audio chunks; the message keeps the
+                    # whole utterance as one playable item
+                    if (
+                        content_items
+                        and content_items[-1]["type"] == "inline_data"
+                        and content_items[-1].get("mime_type") == item["mime_type"]
+                    ):
+                        content_items[-1]["data"] += item["data"]
+                    else:
+                        content_items.append(item.copy())
                 else:
                     content_items.append(item.copy())
 
@@ -253,6 +265,14 @@ class LLMClient(ABC):
                     raise
                 finally:
                     waiting_for_stream = False
+
+                if event["event_type"] == "unused":
+                    # a client marks a wire event it has nothing to emit for as "unused"; that is
+                    # its own bookkeeping and must not reach a caller
+                    if is_debug_enabled():
+                        raise ValueError(f"{self.__class__.__name__} yielded an internal unused event: {event}")
+
+                    continue
 
                 event["created_at"] = int(time.time() * 1000)
                 last_event = event

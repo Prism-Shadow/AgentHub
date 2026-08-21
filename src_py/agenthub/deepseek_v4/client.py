@@ -17,7 +17,7 @@ import os
 from typing import Any, AsyncIterator
 
 from openai import AsyncOpenAI
-from openai.types.chat import ChatCompletionChunk, ChatCompletionMessageParam
+from openai.types.responses import ResponseInputParam, ResponseStreamEvent
 
 from ..base_client import LLMClient
 from ..errors import UnsupportedParameterError, parse_tool_call_arguments
@@ -33,10 +33,11 @@ from ..types import (
     UniMessage,
     UsageMetadata,
 )
+from ..utils import is_debug_enabled
 
 
 class DeepSeekV4Client(LLMClient):
-    """DeepSeek V4-specific LLM client implementation using OpenAI-compatible Chat Completions."""
+    """DeepSeek V4-specific LLM client implementation using the OpenAI-compatible Responses API."""
 
     def __init__(
         self,
@@ -52,27 +53,17 @@ class DeepSeekV4Client(LLMClient):
         self._client = AsyncOpenAI(api_key=api_key, base_url=base_url, default_headers=default_headers)
         self._history: list[UniMessage] = []
 
-    def _convert_thinking_level_to_config(self, thinking_level: ThinkingLevel) -> dict[str, str]:
-        """Convert ThinkingLevel enum to DeepSeek's thinking configuration."""
-        mapping = {
-            ThinkingLevel.NONE: {"type": "disabled"},
-            ThinkingLevel.LOW: {"type": "enabled"},
-            ThinkingLevel.MEDIUM: {"type": "enabled"},
-            ThinkingLevel.HIGH: {"type": "enabled"},
-            ThinkingLevel.XHIGH: {"type": "enabled"},
-            ThinkingLevel.MAX: {"type": "enabled"},
-        }
-        return mapping[thinking_level]
-
-    def _convert_reasoning_effort(self, thinking_level: ThinkingLevel) -> str | None:
-        """Convert ThinkingLevel enum to DeepSeek's reasoning_effort.
+    def _convert_thinking_level_to_effort(self, thinking_level: ThinkingLevel) -> str:
+        """Convert ThinkingLevel enum to DeepSeek's reasoning effort.
 
         DeepSeek accepts low/high/max and maps medium and xhigh onto high server-side
         (llmsdk_docs/deepseek_v4/docs/thinking-mode.md), so this sends the value the
-        server would settle on anyway.
+        server would settle on anyway. Effort "none" is what turns thinking off on this
+        endpoint: the Chat Completions `thinking` toggle is ignored here (verified live
+        2026-08-21).
         """
         mapping = {
-            ThinkingLevel.NONE: None,
+            ThinkingLevel.NONE: "none",
             ThinkingLevel.LOW: "low",
             ThinkingLevel.MEDIUM: "high",
             ThinkingLevel.HIGH: "high",
@@ -82,7 +73,7 @@ class DeepSeekV4Client(LLMClient):
         return mapping[thinking_level]
 
     def _convert_tool_choice(self, tool_choice: ToolChoice) -> str:
-        """Convert ToolChoice to DeepSeek's OpenAI-compatible tool_choice format."""
+        """Convert ToolChoice to DeepSeek's Responses-compatible tool_choice format."""
         if tool_choice in ["auto", "none"]:
             return tool_choice
         raise UnsupportedParameterError(
@@ -99,25 +90,25 @@ class DeepSeekV4Client(LLMClient):
         Returns:
             DeepSeek configuration dictionary
         """
-        deepseek_config = {"model": self._model, "stream": True, "stream_options": {"include_usage": True}}
+        deepseek_config = {"model": self._model, "store": False}
+
+        if config.get("system_prompt") is not None:
+            deepseek_config["instructions"] = config["system_prompt"]
 
         if config.get("max_tokens") is not None:
-            deepseek_config["max_tokens"] = config["max_tokens"]
+            deepseek_config["max_output_tokens"] = config["max_tokens"]
 
         if config.get("temperature") is not None and config["temperature"] != 1.0:
             raise UnsupportedParameterError(
                 self.__class__.__name__, "temperature", "DeepSeek V4 does not support setting temperature."
             )
 
-        thinking_level = config.get("thinking_level")
-        if thinking_level is not None:
-            deepseek_config["extra_body"] = {"thinking": self._convert_thinking_level_to_config(thinking_level)}
-            reasoning_effort = self._convert_reasoning_effort(thinking_level)
-            if reasoning_effort is not None:
-                deepseek_config["reasoning_effort"] = reasoning_effort
+        # a thinking summary is accepted but never generated, so the parameter is left out
+        if config.get("thinking_level") is not None:
+            deepseek_config["reasoning"] = {"effort": self._convert_thinking_level_to_effort(config["thinking_level"])}
 
         if config.get("tools") is not None:
-            deepseek_config["tools"] = [{"type": "function", "function": tool} for tool in config["tools"]]
+            deepseek_config["tools"] = [{"type": "function", **tool} for tool in config["tools"]]
 
         if config.get("tool_choice") is not None:
             deepseek_config["tool_choice"] = self._convert_tool_choice(config["tool_choice"])
@@ -134,82 +125,92 @@ class DeepSeekV4Client(LLMClient):
 
         return deepseek_config
 
-    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[ChatCompletionMessageParam]:
+    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> ResponseInputParam:
         """
-        Transform universal message format to DeepSeek's OpenAI-compatible message format.
+        Transform universal message format to DeepSeek's Responses-compatible input format.
 
         Args:
             messages: List of universal message dictionaries
 
         Returns:
-            List of OpenAI-compatible message dictionaries
+            List of input items for the Responses API
         """
-        deepseek_messages = []
+        # only a vision model reads image parts; every other DeepSeek model answers from a
+        # placeholder instead of failing (llmsdk_docs/deepseek_v4/docs/responses-api.md), so an
+        # image is refused here rather than silently dropped
+        supports_image = "vision" in self._model.lower()
+        input_list: list[ResponseInputParam] = []
 
         for msg in messages:
-            content_parts = []  # may be empty for tool results
-            tool_calls = []  # may be empty for no tool calls
-            thinking = ""
+            content_items: list = []
+
             for item in msg["content_items"]:
+                # anything that is not message content becomes an input item of its own, so the
+                # text collected so far is flushed first to keep the original order: DeepSeek
+                # merges a function call into the adjacent assistant message and answers a call
+                # whose output does not follow it with "No tool output found for tool call"
+                # (verified live 2026-08-21)
+                if item["type"] not in ("text", "image_url") and content_items:
+                    input_list.append({"role": msg["role"], "content": content_items})
+                    content_items = []
+
                 if item["type"] == "text":
-                    content_parts.append({"type": "text", "text": item["text"]})
+                    if msg["role"] == "user":
+                        content_items.append({"type": "input_text", "text": item["text"]})
+                    else:
+                        content_items.append({"type": "output_text", "text": item["text"]})
                 elif item["type"] == "image_url":
-                    raise ValueError("DeepSeek does not support image url inputs.")
+                    if not supports_image:
+                        raise ValueError(f"DeepSeek {self._model} does not support image inputs.")
+
+                    content_items.append({"type": "input_image", "image_url": item["image_url"]})
                 elif item["type"] == "thinking":
-                    thinking += item["thinking"]
+                    # DeepSeek carries the chain of thought as plain reasoning_text and ignores the
+                    # summary and encrypted_content channels, so the item is rebuilt from the text
+                    reasoning = {"type": "reasoning", "summary": []}
+                    if item["thinking"]:
+                        reasoning["content"] = [{"type": "reasoning_text", "text": item["thinking"]}]
+
+                    input_list.append(reasoning)
                 elif item["type"] == "tool_call":
-                    tool_calls.append(
+                    input_list.append(
                         {
-                            "id": item["tool_call_id"],
-                            "type": "function",
-                            "function": {
-                                "name": item["name"],
-                                "arguments": json.dumps(item["arguments"], ensure_ascii=False),
-                            },
+                            "type": "function_call",
+                            "call_id": item["tool_call_id"],
+                            "name": item["name"],
+                            "arguments": json.dumps(item["arguments"], ensure_ascii=False),
                         }
                     )
                 elif item["type"] == "tool_result":
                     if "tool_call_id" not in item:
                         raise ValueError("tool_call_id is required for tool result.")
 
-                    content = [{"type": "text", "text": item["text"]}]
+                    # NOTE: tool results are input items
+                    tool_result = [{"type": "input_text", "text": item["text"]}]
+                    if "images" in item:
+                        if not supports_image:
+                            raise ValueError(f"DeepSeek {self._model} does not support images in tool results.")
 
-                    if "images" in item and item["images"]:
-                        raise ValueError("DeepSeek does not support images in tool results.")
+                        for image_url in item["images"]:
+                            tool_result.append({"type": "input_image", "image_url": image_url})
 
-                    # Tool results are sent as separate messages
-                    deepseek_messages.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": item["tool_call_id"],
-                            "content": content,
-                        }
+                    input_list.append(
+                        {"type": "function_call_output", "call_id": item["tool_call_id"], "output": tool_result}
                     )
                 else:
-                    raise ValueError(f"Unknown item type: {item['type']}")
+                    raise ValueError(f"Unknown item: {item}")
 
-            message = {"role": msg["role"]}
-            if content_parts:
-                message["content"] = content_parts
+            if content_items:
+                input_list.append({"role": msg["role"], "content": content_items})
 
-            if tool_calls:
-                message["tool_calls"] = tool_calls
+        return input_list
 
-            if thinking:
-                message["reasoning_content"] = thinking
-
-            # message may be empty for tool results
-            if len(message.keys()) > 1:
-                deepseek_messages.append(message)
-
-        return deepseek_messages
-
-    def transform_model_output_to_uni_event(self, model_output: ChatCompletionChunk) -> UniEvent:
+    def transform_model_output_to_uni_event(self, model_output: ResponseStreamEvent) -> UniEvent:
         """
-        Transform DeepSeek streaming chunk to universal event format.
+        Transform DeepSeek streaming event to universal event format.
 
         Args:
-            model_output: OpenAI-compatible streaming chunk
+            model_output: Responses API streaming event
 
         Returns:
             Universal event dictionary
@@ -219,64 +220,77 @@ class DeepSeekV4Client(LLMClient):
         usage_metadata: UsageMetadata | None = None
         finish_reason: FinishReason | None = None
 
-        # gateways inject content-free heartbeat chunks on long generations, whose choices
-        # the SDK leaves as None rather than an empty list
-        if model_output.choices:
-            choice = model_output.choices[0]
-            delta = choice.delta
+        deepseek_event_type = model_output.type
+        if deepseek_event_type == "response.output_text.delta":
+            event_type = "delta"
+            content_items.append({"type": "text", "text": model_output.delta})
 
-            if getattr(delta, "reasoning_content", None):
-                event_type = "delta"
-                # record the wire field so a replay through another OpenAI-compatible
-                # client reproduces the exact field DeepSeek produced
+        elif deepseek_event_type == "response.reasoning_text.delta":
+            event_type = "delta"
+            content_items.append({"type": "thinking", "thinking": model_output.delta})
+
+        elif deepseek_event_type == "response.output_item.added":
+            if model_output.item.type == "function_call":
+                event_type = "start"
                 content_items.append(
                     {
-                        "type": "thinking",
-                        "thinking": getattr(delta, "reasoning_content"),
-                        "fidelity": {"reasoning_field": "reasoning_content"},
+                        "type": "partial_tool_call",
+                        "name": model_output.item.name,
+                        "arguments": "",
+                        "tool_call_id": model_output.item.call_id,
                     }
                 )
+            else:
+                event_type = "unused"
 
-            if delta.content:
-                event_type = "delta"
-                content_items.append({"type": "text", "text": delta.content})
-
-            if delta.tool_calls:
-                event_type = "delta"
-                for tool_call in delta.tool_calls:
-                    content_item: PartialContentItem = {
-                        "type": "partial_tool_call",
-                        "name": tool_call.function.name or "",
-                        "arguments": tool_call.function.arguments or "",
-                        "tool_call_id": tool_call.id or "",
-                    }
-                    content_items.append(content_item)
-
-            if choice.finish_reason:
-                event_type = event_type or "stop"
-                finish_reason_mapping = {
-                    "stop": "stop",
-                    "length": "length",
-                    "tool_calls": "tool_call",
-                    "content_filter": "stop",
-                }
-                finish_reason = finish_reason_mapping.get(choice.finish_reason, "unknown")
-
-        if model_output.usage:
-            event_type = event_type or "stop"
-            completion_token_details = model_output.usage.completion_tokens_details
-            reasoning_tokens = (
-                getattr(completion_token_details, "reasoning_tokens", None) if completion_token_details else None
+        elif deepseek_event_type == "response.function_call_arguments.delta":
+            event_type = "delta"
+            content_items.append(
+                {"type": "partial_tool_call", "name": "", "arguments": model_output.delta, "tool_call_id": ""}
             )
-            response_tokens = model_output.usage.completion_tokens - (reasoning_tokens or 0)
 
-            # usage.prompt_tokens = prompt_cache_hit_tokens + prompt_cache_miss_tokens
-            usage_metadata = {
-                "cached_tokens": getattr(model_output.usage, "prompt_cache_hit_tokens", 0),
-                "prompt_tokens": getattr(model_output.usage, "prompt_cache_miss_tokens", 0),
-                "thoughts_tokens": reasoning_tokens,
-                "response_tokens": response_tokens,
+        elif deepseek_event_type == "response.function_call_arguments.done":
+            event_type = "stop"
+
+        elif deepseek_event_type in ("response.completed", "response.incomplete"):
+            event_type = "stop"
+            finish_reason_mapping = {
+                "completed": "stop",
+                "incomplete": "length",
             }
+            finish_reason = finish_reason_mapping.get(model_output.response.status, "unknown")
+
+            if model_output.response.usage:
+                input_details = model_output.response.usage.input_tokens_details
+                output_details = model_output.response.usage.output_tokens_details
+                cached_tokens = input_details.cached_tokens if input_details else 0
+                reasoning_tokens = output_details.reasoning_tokens if output_details else 0
+                usage_metadata = {
+                    "cached_tokens": cached_tokens,
+                    "prompt_tokens": model_output.response.usage.input_tokens - cached_tokens,
+                    "thoughts_tokens": reasoning_tokens,
+                    "response_tokens": model_output.response.usage.output_tokens - reasoning_tokens,
+                }
+
+        elif deepseek_event_type in (
+            "response.created",
+            "response.in_progress",
+            "response.output_item.done",
+            "response.output_text.done",
+            "response.reasoning_text.done",
+            "response.content_part.added",
+            "response.content_part.done",
+            "keepalive",  # gateway heartbeat on long generations; carries no content
+        ):
+            event_type = "unused"
+
+        elif is_debug_enabled():
+            raise ValueError(f"Unknown output: {model_output}")
+
+        else:
+            # a gateway injects its own events (heartbeats, cost tickers) into the stream, and
+            # killing a long generation over one costs more than dropping it
+            event_type = "unused"
 
         return {
             "role": "assistant",
@@ -291,65 +305,38 @@ class DeepSeekV4Client(LLMClient):
         messages: list[UniMessage],
         config: UniConfig,
     ) -> AsyncIterator[UniEvent]:
-        """Stream generate using DeepSeek's OpenAI-compatible Chat Completions API."""
+        """Stream generate using DeepSeek's OpenAI-compatible Responses API."""
+        # Use unified config conversion
         deepseek_config = self.transform_uni_config_to_model_config(config)
-        deepseek_messages = self.transform_uni_message_to_model_input(messages)
 
-        if config.get("system_prompt"):
-            deepseek_messages.insert(0, {"role": "system", "content": config["system_prompt"]})
+        # Use unified message conversion
+        input_list = self.transform_uni_message_to_model_input(messages)
 
-        stream = await self._client.chat.completions.create(**deepseek_config, messages=deepseek_messages)
-
+        # Stream generate
         partial_tool_call = {}
-        partial_usage = {}
-        async for chunk in stream:
-            event = self.transform_model_output_to_uni_event(chunk)
-            partial_usage["finish_reason"] = event["finish_reason"] or partial_usage.get("finish_reason")
-            partial_usage["usage_metadata"] = event["usage_metadata"] or partial_usage.get("usage_metadata")
-
-            if event["event_type"] == "delta":
+        stream = await self._client.responses.create(**deepseek_config, input=input_list, stream=True)
+        async for event in stream:
+            event = self.transform_model_output_to_uni_event(event)
+            if event["event_type"] == "start":
                 for item in event["content_items"]:
                     if item["type"] == "partial_tool_call":
-                        if not partial_tool_call:
-                            partial_tool_call = {
-                                "name": item["name"],
-                                "arguments": item["arguments"],
-                                "tool_call_id": item["tool_call_id"],
-                            }
-                        elif item["name"]:
-                            yield {
-                                "role": "assistant",
-                                "event_type": "delta",
-                                "content_items": [
-                                    {
-                                        "type": "tool_call",
-                                        "name": partial_tool_call["name"],
-                                        "arguments": parse_tool_call_arguments(
-                                            partial_tool_call["arguments"],
-                                            self.__class__.__name__,
-                                            partial_tool_call["name"],
-                                            partial_tool_call["tool_call_id"],
-                                        ),
-                                        "tool_call_id": partial_tool_call["tool_call_id"],
-                                    }
-                                ],
-                                "usage_metadata": None,
-                                "finish_reason": None,
-                            }
-                            partial_tool_call = {
-                                "name": item["name"],
-                                "arguments": item["arguments"],
-                                "tool_call_id": item["tool_call_id"],
-                            }
-                        else:
-                            partial_tool_call["arguments"] += item["arguments"]
-                            partial_tool_call["tool_call_id"] = (
-                                item["tool_call_id"] or partial_tool_call["tool_call_id"]
-                            )
+                        # initialize partial_tool_call
+                        partial_tool_call = {
+                            "name": item["name"],
+                            "arguments": "",
+                            "tool_call_id": item["tool_call_id"],
+                        }
+                        yield event
+            elif event["event_type"] == "delta":
+                for item in event["content_items"]:
+                    if item["type"] == "partial_tool_call":
+                        # update partial_tool_call
+                        partial_tool_call["arguments"] += item["arguments"]
 
                 yield event
             elif event["event_type"] == "stop":
-                if partial_tool_call:
+                if "name" in partial_tool_call and "arguments" in partial_tool_call:
+                    # finish partial_tool_call
                     yield {
                         "role": "assistant",
                         "event_type": "delta",
@@ -371,15 +358,8 @@ class DeepSeekV4Client(LLMClient):
                     }
                     partial_tool_call = {}
 
-                if partial_usage.get("finish_reason") and partial_usage.get("usage_metadata"):
-                    yield {
-                        "role": "assistant",
-                        "event_type": "stop",
-                        "content_items": event["content_items"],
-                        "usage_metadata": partial_usage["usage_metadata"],
-                        "finish_reason": partial_usage["finish_reason"],
-                    }
-                    partial_usage = {}
+                if event["finish_reason"] or event["usage_metadata"]:
+                    yield event
 
     async def list_models(self) -> list[str]:
         """

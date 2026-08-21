@@ -166,7 +166,8 @@ describe("glm thinking level mapping", () => {
 
 // What each remaining client puts on the wire for a level, per its vendor's effort
 // vocabulary: OpenAI takes the full set, Claude tops out at max (xhigh only from 4.7),
-// DeepSeek and Kimi accept low/high/max, and MiniMax has no level above high.
+// DeepSeek and Kimi accept low/high/max, DeepSeek turns thinking off with none, and
+// MiniMax has no level above high.
 const THINKING_EFFORT_CASES: Array<
   [string, string | undefined, ThinkingLevel, string | undefined]
 > = [
@@ -179,7 +180,7 @@ const THINKING_EFFORT_CASES: Array<
   ["claude-sonnet-4-6", undefined, ThinkingLevel.XHIGH, "high"],
   ["claude-sonnet-4-6", undefined, ThinkingLevel.MAX, "max"],
   ["claude-sonnet-5", "ant-messages", ThinkingLevel.MAX, "max"],
-  ["deepseek-v4", undefined, ThinkingLevel.NONE, undefined],
+  ["deepseek-v4", undefined, ThinkingLevel.NONE, "none"],
   ["deepseek-v4", undefined, ThinkingLevel.LOW, "low"],
   ["deepseek-v4", undefined, ThinkingLevel.MEDIUM, "high"],
   ["deepseek-v4", undefined, ThinkingLevel.HIGH, "high"],

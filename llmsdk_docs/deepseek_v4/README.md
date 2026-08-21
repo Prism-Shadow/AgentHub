@@ -11,8 +11,10 @@ This directory contains documentation for using the DeepSeek API with OpenAI-com
 The `docs/` folder contains focused guides for DeepSeek API features:
 
 - [chat_completion_api.md](./docs/chat_completion_api.md) - DeepSeek Chat Completion API reference
+- [responses-api.md](./docs/responses-api.md) - Responses API support: streaming events, image input, parameter and input-item coverage
 - [kv-cache.md](./docs/kv-cache.md) - Default context caching, hit rules, and usage counters
 - [multi-round-chat.md](./docs/multi-round-chat.md) - Stateless multi-turn conversation history
+- [vision.md](./docs/vision.md) - Image input on deepseek-v4-flash-vision-exp across the three API formats, with detail levels and limits
 - [thinking-mode.md](./docs/thinking-mode.md) - Thinking mode, reasoning content, effort control, and tool-call context rules
 - [tool-calls.md](./docs/tool-calls.md) - Tool calling, thinking-mode tool calls, and strict mode
 

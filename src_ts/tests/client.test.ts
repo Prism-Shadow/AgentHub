@@ -19,7 +19,7 @@ import { beforeAll, expect, describe, test } from "@jest/globals";
 import { Gaxios } from "gaxios";
 
 const IMAGE =
-  "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg";
+  "https://sghimages.shobserver.com/img/catch/2022/01/22/c1ae0300-9402-4128-a7e6-1244d3874167.jpg";
 const IMAGE_KEYWORDS = ["flower", "narcissus", "daffodil", "bloom"];
 
 interface Model {
@@ -187,9 +187,9 @@ if (process.env.MINIMAX_API_KEY) {
 
 if (process.env.DEEPSEEK_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "deepseek-v4-flash",
+    name: "deepseek-v4-flash-vision-exp",
     supportTextGeneration: true,
-    supportImageUnderstanding: false,
+    supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,

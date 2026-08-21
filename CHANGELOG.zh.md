@@ -4,6 +4,8 @@
 
 在这里，我们记录模型的新增与移除时间、主要功能更新、缺陷修复，以及关键版本的发布时间。每个发布版本在此保留一行简述；逐条目的摘要位于 `changelog/<version>/README.md`，且每个条目都会链接到自己的详情文件。
 
+- [2026-08-21] [版本 0.4.6](changelog/0.4.6/README.zh.md)：注册表新增 `deepseek-v4-flash-vision-exp`，提示词与工具返回里的图片都能读；DeepSeek client 改用 OpenAI Responses 协议；全部 Responses client 按模型产出的顺序回放内容条目；内部的 `unused` 事件不会流到调用方；Playground 把语音回复合成一条音频播放，并在刷新后保留配置。
+
 - [2026-08-20] [版本 0.4.5](changelog/0.4.5/README.zh.md)：流式 client 默认静默跳过自己不认识的输出，`AGENTHUB_DEBUG` 开启时才抛出；`AutoLLMClient` 可以列出 endpoint 提供的模型 id；全部 client 支持传入默认 header 以对接要求特定 header 的 endpoint；注册表新增 GLM-5.3 与 `claude-opus-5`；OpenRouter 条目改用 `openai-responses` client。
 
 - [2026-08-19] [版本 0.4.4](changelog/0.4.4/README.zh.md)：思考档位在 `XHIGH` 之上新增 `MAX` 一档，各 client 按自家服务方的 effort 取值映射整条档位（DeepSeek 依其当前的 low/high/max 取值重排）。

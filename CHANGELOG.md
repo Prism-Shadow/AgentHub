@@ -4,6 +4,8 @@
 
 Here, we record the addition and removal times of models, major functional updates, bug fixes, and release times of key versions. Each release keeps one brief line here; the per-entry summaries live in `changelog/<version>/README.md`, and every entry links its detail file.
 
+- [2026-08-21] [Version 0.4.6](changelog/0.4.6/README.md): `deepseek-v4-flash-vision-exp` joins the registry and reads images in a prompt and in a tool result, the DeepSeek client moves onto the OpenAI Responses protocol, every Responses client replays content items in the order the model produced them, an internal `unused` event never reaches a caller, and the playground plays a spoken answer as one clip and keeps its configuration across a reload.
+
 - [2026-08-20] [Version 0.4.5](changelog/0.4.5/README.md): streaming clients skip output they do not recognize unless `AGENTHUB_DEBUG` is set, `AutoLLMClient` lists the model ids an endpoint serves, every client accepts default headers for endpoints that demand their own, GLM-5.3 and `claude-opus-5` join the registry, and the OpenRouter entries move to the `openai-responses` client.
 
 - [2026-08-19] [Version 0.4.4](changelog/0.4.4/README.md): thinking levels gain a `MAX` tier above `XHIGH`, and each client maps the ladder onto its vendor's effort vocabulary (DeepSeek re-mapped to its current low/high/max values).

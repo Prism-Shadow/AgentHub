@@ -172,6 +172,25 @@ export class OpenaiResponsesClient extends LLMClient {
       let lastPhase: string | null = null;
 
       for (const item of msg.content_items) {
+        // anything that is not message content becomes an input item of its own, so the
+        // text collected so far is flushed first to keep the original order: a server that
+        // merges a function call into the adjacent assistant message rejects a call whose
+        // output does not follow it (DeepSeek answers "No tool output found for tool call")
+        if (
+          item.type !== "text" &&
+          item.type !== "image_url" &&
+          contentItems.length > 0
+        ) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const entry: any = { role: msg.role, content: contentItems };
+          if (lastPhase !== null) {
+            entry.phase = lastPhase;
+          }
+
+          inputList.push(entry);
+          contentItems = [];
+        }
+
         if (item.type === "text") {
           const phase = item.fidelity?.phase;
           if (msg.role === "assistant" && phase) {

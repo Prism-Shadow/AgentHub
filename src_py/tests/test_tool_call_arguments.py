@@ -26,6 +26,7 @@ class OpenAICompatibleToolStreamCase:
     expected_client: str
     model: str
     client_type: str
+    protocol: str = "chat"  # the wire shape the client parses: "chat" or "responses"
 
 
 OPENAI_COMPATIBLE_TOOL_STREAM_CASES = [
@@ -45,9 +46,16 @@ OPENAI_COMPATIBLE_TOOL_STREAM_CASES = [
         client_type="kimi-k2.6",
     ),
     OpenAICompatibleToolStreamCase(
+        expected_client="OpenaiResponsesClient",
+        model="gpt-5.6",
+        client_type="openai-responses",
+        protocol="responses",
+    ),
+    OpenAICompatibleToolStreamCase(
         expected_client="DeepSeekV4Client",
         model="deepseek-v4",
         client_type="deepseek-v4",
+        protocol="responses",
     ),
 ]
 
@@ -61,7 +69,9 @@ async def _stream_from_chunks(chunks: list[object]) -> AsyncIterator[object]:
         yield chunk
 
 
-class _FakeOpenAICompatibleCompletions:
+class _FakeCreateEndpoint:
+    """Stands in for an SDK endpoint whose create() returns a stream."""
+
     def __init__(self, chunks: list[object]) -> None:
         self._chunks = chunks
 
@@ -69,14 +79,14 @@ class _FakeOpenAICompatibleCompletions:
         return _stream_from_chunks(self._chunks)
 
 
-class _FakeOpenAICompatibleClient:
-    def __init__(self, chunks: list[object]) -> None:
-        self.base_url = "https://api.test.invalid/v1"
-        self.chat = SimpleNamespace(completions=_FakeOpenAICompatibleCompletions(chunks))
-
-
-def _install_fake_openai_compatible_stream(client: AutoLLMClient, chunks: list[object]) -> None:
-    client._client._client = _FakeOpenAICompatibleClient(chunks)  # noqa: SLF001
+def _install_fake_stream(client: AutoLLMClient, case: OpenAICompatibleToolStreamCase, chunks: list[object]) -> None:
+    endpoint = _FakeCreateEndpoint(chunks)
+    if case.protocol == "responses":
+        client._client._client = SimpleNamespace(responses=endpoint)  # noqa: SLF001
+    else:
+        client._client._client = SimpleNamespace(  # noqa: SLF001
+            base_url="https://api.test.invalid/v1", chat=SimpleNamespace(completions=endpoint)
+        )
 
 
 def _tool_delta_chunk(tool_call_id: str, name: str, arguments: str) -> object:
@@ -113,6 +123,41 @@ def _tool_stop_chunk() -> object:
     )
 
 
+def _tool_stream(case: OpenAICompatibleToolStreamCase, tool_call_id: str, name: str, *fragments: str) -> list[object]:
+    """Build a streamed tool call in the wire shape the case's client parses."""
+    if case.protocol == "responses":
+        events = [
+            SimpleNamespace(
+                type="response.output_item.added",
+                item=SimpleNamespace(type="function_call", name=name, call_id=tool_call_id),
+            )
+        ]
+        events += [
+            SimpleNamespace(type="response.function_call_arguments.delta", delta=fragment) for fragment in fragments
+        ]
+        events.append(SimpleNamespace(type="response.function_call_arguments.done"))
+        events.append(
+            SimpleNamespace(
+                type="response.completed",
+                response=SimpleNamespace(
+                    status="completed",
+                    usage=SimpleNamespace(
+                        input_tokens=1,
+                        output_tokens=1,
+                        input_tokens_details=SimpleNamespace(cached_tokens=0),
+                        output_tokens_details=SimpleNamespace(reasoning_tokens=0),
+                    ),
+                ),
+            )
+        )
+        return events
+
+    chunks = [_tool_delta_chunk(tool_call_id, name, fragments[0])]
+    chunks += [_tool_delta_chunk("", "", fragment) for fragment in fragments[1:]]
+    chunks.append(_tool_stop_chunk())
+    return chunks
+
+
 async def _capture_tool_argument_error(stream: AsyncIterator[object]) -> ToolCallArgumentParseError:
     with pytest.raises(ToolCallArgumentParseError) as exc_info:
         async for _event in stream:
@@ -130,14 +175,7 @@ async def test_openai_compatible_clients_combine_streamed_tool_call_arguments(
     case: OpenAICompatibleToolStreamCase,
 ):
     client = _create_auto_client(case)
-    _install_fake_openai_compatible_stream(
-        client,
-        [
-            _tool_delta_chunk("call_ok", "exec_command", '{"cmd":'),
-            _tool_delta_chunk("", "", '"echo ok"}'),
-            _tool_stop_chunk(),
-        ],
-    )
+    _install_fake_stream(client, case, _tool_stream(case, "call_ok", "exec_command", '{"cmd":', '"echo ok"}'))
 
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "Create a memo."}]}]
     events = [event async for event in client.streaming_response(messages, {})]
@@ -163,13 +201,7 @@ async def test_openai_compatible_clients_report_malformed_streamed_tool_call_arg
     case: OpenAICompatibleToolStreamCase,
 ):
     client = _create_auto_client(case)
-    _install_fake_openai_compatible_stream(
-        client,
-        [
-            _tool_delta_chunk("call_bad", "exec_command", '{"cmd":"python create_docx.py'),
-            _tool_stop_chunk(),
-        ],
-    )
+    _install_fake_stream(client, case, _tool_stream(case, "call_bad", "exec_command", '{"cmd":"python create_docx.py'))
 
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "Create a memo."}]}]
     parse_error = await _capture_tool_argument_error(client.streaming_response(messages, {}))
@@ -195,13 +227,7 @@ async def test_openai_compatible_clients_report_non_object_streamed_tool_call_ar
     case: OpenAICompatibleToolStreamCase,
 ):
     client = _create_auto_client(case)
-    _install_fake_openai_compatible_stream(
-        client,
-        [
-            _tool_delta_chunk("call_array", "exec_command", "[]"),
-            _tool_stop_chunk(),
-        ],
-    )
+    _install_fake_stream(client, case, _tool_stream(case, "call_array", "exec_command", "[]"))
 
     messages = [{"role": "user", "content_items": [{"type": "text", "text": "Create a memo."}]}]
     parse_error = await _capture_tool_argument_error(client.streaming_response(messages, {}))
