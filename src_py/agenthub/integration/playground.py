@@ -415,13 +415,53 @@ def create_chat_app() -> Flask:
                 return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
             }
 
-            function pcmBase64ToWavDataUrl(pcmBase64, sampleRate = 24000, channels = 1, bitsPerSample = 16) {
-                const binary = atob(pcmBase64);
-                const pcmBytes = new Uint8Array(binary.length);
-                for (let i = 0; i < binary.length; i++) {
-                    pcmBytes[i] = binary.charCodeAt(i);
-                }
+            const AUDIO_MIME_TYPES = ['audio/wav', 'audio/x-wav', 'audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/webm', 'audio/flac', 'audio/aac', 'audio/mp4'];
 
+            function isAudioMimeType(mimeType) {
+                const value = (mimeType || '').toLowerCase();
+                return !value || value === 'application/octet-stream' || value.startsWith('audio/');
+            }
+
+            function base64ToBytes(base64) {
+                const binary = atob(base64);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                    bytes[i] = binary.charCodeAt(i);
+                }
+                return bytes;
+            }
+
+            function bytesToBase64(bytes) {
+                let binary = '';
+                const chunkSize = 0x8000;
+                for (let i = 0; i < bytes.length; i += chunkSize) {
+                    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+                }
+                return btoa(binary);
+            }
+
+            function concatBase64Chunks(chunks) {
+                const parts = chunks.map(base64ToBytes);
+                const bytes = new Uint8Array(parts.reduce((total, part) => total + part.length, 0));
+                let offset = 0;
+                for (const part of parts) {
+                    bytes.set(part, offset);
+                    offset += part.length;
+                }
+                return bytes;
+            }
+
+            function pcmFormatFromMimeType(mimeType) {
+                // Gemini TTS labels its raw PCM as "audio/l16; rate=24000; channels=1"
+                const params = {};
+                for (const parameter of (mimeType || '').split(';').slice(1)) {
+                    const [key, value] = parameter.split('=');
+                    params[key.trim()] = Number(value);
+                }
+                return { sampleRate: params.rate || 24000, channels: params.channels || 1 };
+            }
+
+            function pcmBytesToWavDataUrl(pcmBytes, sampleRate = 24000, channels = 1, bitsPerSample = 16) {
                 const header = new ArrayBuffer(44);
                 const view = new DataView(header);
                 const byteRate = sampleRate * channels * bitsPerSample / 8;
@@ -450,13 +490,56 @@ def create_chat_app() -> Flask:
                 const wavBytes = new Uint8Array(44 + pcmBytes.length);
                 wavBytes.set(new Uint8Array(header), 0);
                 wavBytes.set(pcmBytes, 44);
+                return `data:audio/wav;base64,${bytesToBase64(wavBytes)}`;
+            }
 
-                let wavBinary = '';
-                const chunkSize = 0x8000;
-                for (let i = 0; i < wavBytes.length; i += chunkSize) {
-                    wavBinary += String.fromCharCode(...wavBytes.subarray(i, i + chunkSize));
+            function renderAudioPlayer(mimeType, chunks) {
+                const bytes = concatBase64Chunks(chunks);
+                if (AUDIO_MIME_TYPES.includes(mimeType)) {
+                    return `<audio controls preload="metadata" class="max-w-xs"><source src="data:${mimeType};base64,${bytesToBase64(bytes)}" type="${mimeType}"></audio>`;
                 }
-                return `data:audio/wav;base64,${btoa(wavBinary)}`;
+
+                const format = pcmFormatFromMimeType(mimeType);
+                const wavDataUrl = pcmBytesToWavDataUrl(bytes, format.sampleRate, format.channels);
+                return `<audio controls preload="metadata" class="max-w-xs"><source src="${wavDataUrl}" type="audio/wav"></audio>`;
+            }
+
+            function audioProgressLabel(audioStream) {
+                if (AUDIO_MIME_TYPES.includes(audioStream.mimeType)) {
+                    return `🔊 Receiving audio... ${Math.round(audioStream.bytes / 1024)} KB`;
+                }
+
+                // raw PCM carries no duration, so 16-bit samples turn the byte count into seconds
+                const format = pcmFormatFromMimeType(audioStream.mimeType);
+                const seconds = audioStream.bytes / (format.sampleRate * format.channels * 2);
+                return `🔊 Receiving audio... ${seconds.toFixed(1)}s`;
+            }
+
+            function appendAudioChunk(contentDiv, item, audioStream) {
+                if (!audioStream.container) {
+                    audioStream.mimeType = (item.mime_type || '').toLowerCase();
+                    audioStream.container = document.createElement('div');
+                    audioStream.container.className = 'mb-3 text-sm text-gray-500';
+                    contentDiv.appendChild(audioStream.container);
+                }
+
+                audioStream.chunks.push(item.data);
+                audioStream.bytes += Math.floor(item.data.length * 3 / 4);
+                audioStream.container.textContent = audioProgressLabel(audioStream);
+            }
+
+            function finalizeAudioStream(audioStream, autoplay = false) {
+                if (audioStream.finalized || !audioStream.container) {
+                    return;
+                }
+
+                audioStream.finalized = true;
+                audioStream.container.className = 'mb-3';
+                audioStream.container.innerHTML = renderAudioPlayer(audioStream.mimeType, audioStream.chunks);
+                if (autoplay) {
+                    // a browser that blocks autoplay leaves the player sitting there ready to press
+                    audioStream.container.querySelector('audio').play().catch(() => {});
+                }
             }
 
             function renderInlineData(item) {
@@ -465,17 +548,7 @@ def create_chat_app() -> Flask:
                     return `<div class="mb-3"><img src="data:${mimeType || 'image/png'};base64,${item.data}" class="max-w-xs rounded border border-gray-300"></div>`;
                 }
 
-                const audioMimeTypes = ['audio/wav', 'audio/x-wav', 'audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/webm', 'audio/flac', 'audio/aac', 'audio/mp4'];
-                const isAudio = !mimeType || mimeType === 'application/octet-stream' || mimeType.startsWith('audio/');
-                if (!isAudio) {
-                    return `<div class="mb-3 rounded border border-gray-300 bg-gray-50 px-3 py-2 text-xs text-gray-600">Inline data: ${escapeHtml(item.mime_type || 'application/octet-stream')}</div>`;
-                }
-
-                const playableMimeType = audioMimeTypes.includes(mimeType);
-                const audioSrc = playableMimeType
-                    ? `data:${mimeType || 'application/octet-stream'};base64,${item.data}`
-                    : pcmBase64ToWavDataUrl(item.data);
-                return `<div class="mb-3"><audio controls preload="metadata" class="max-w-xs"><source src="${audioSrc}" type="${playableMimeType ? mimeType : 'audio/wav'}"></audio></div>`;
+                return `<div class="mb-3 rounded border border-gray-300 bg-gray-50 px-3 py-2 text-xs text-gray-600">Inline data: ${escapeHtml(item.mime_type || 'application/octet-stream')}</div>`;
             }
 
             function renderEmbedding(item) {
@@ -594,6 +667,8 @@ def create_chat_app() -> Flask:
                 if (comboboxId === 'modelCombobox') {
                     handleModelSelectChange();
                 }
+
+                saveConfig();
             }
 
             function handleComboboxKeydown(event, comboboxId) {
@@ -860,6 +935,85 @@ def create_chat_app() -> Flask:
                 return config;
             }
 
+            const CONFIG_STORAGE_KEY = 'agenthub.playground.config';
+            // saved as typed rather than as parsed values, so an unfinished JSON edit survives too
+            const CONFIG_TEXT_INPUTS = [
+                'apiKeyInput', 'baseUrlInput', 'extraHeadersInput', 'systemPromptInput', 'toolsInput', 'traceIdInput'
+            ];
+            const CONFIG_COMBOBOXES = [
+                ['thinkingLevelCombobox', 'thinkingLevelSelect'],
+                ['thinkingSummaryCombobox', 'thinkingSummaryCheckbox'],
+                ['toolChoiceCombobox', 'toolChoiceSelect']
+            ];
+            let restoringConfig = false;
+
+            function comboboxOption(comboboxId, value) {
+                return document.querySelector('#' + comboboxId + ' [data-combobox-option][data-value="' + value + '"]');
+            }
+
+            function saveConfig() {
+                if (restoringConfig) {
+                    return;
+                }
+
+                const saved = { model: getSelectedModel(), client_type: getSelectedClientType() };
+                CONFIG_TEXT_INPUTS.forEach((id) => {
+                    saved[id] = document.getElementById(id).value;
+                });
+                CONFIG_COMBOBOXES.forEach(([, valueId]) => {
+                    saved[valueId] = document.getElementById(valueId).value;
+                });
+                try {
+                    localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(saved));
+                } catch (error) {
+                    // a browser that refuses storage still runs the playground, just without the memory
+                }
+            }
+
+            function restoreConfig() {
+                let saved = null;
+                try {
+                    saved = JSON.parse(localStorage.getItem(CONFIG_STORAGE_KEY) || 'null');
+                } catch (error) {
+                    saved = null;
+                }
+                if (!saved) {
+                    return;
+                }
+
+                restoringConfig = true;
+                try {
+                    CONFIG_TEXT_INPUTS.forEach((id) => {
+                        if (typeof saved[id] === 'string') {
+                            document.getElementById(id).value = saved[id];
+                        }
+                    });
+                    CONFIG_COMBOBOXES.forEach(([comboboxId, valueId]) => {
+                        const option = comboboxOption(comboboxId, saved[valueId] || '');
+                        if (option) {
+                            selectComboboxOption(comboboxId, option);
+                        }
+                    });
+
+                    // a model the menu does not list — one that was listed, or typed in — comes back as a custom entry
+                    const modelOption = saved.model ? comboboxOption('modelCombobox', saved.model) : null;
+                    if (modelOption) {
+                        selectComboboxOption('modelCombobox', modelOption);
+                    } else if (saved.model) {
+                        document.getElementById('customModelInput').value = saved.model;
+                        selectComboboxOption('modelCombobox', comboboxOption('modelCombobox', '__custom__'));
+                        // the custom option focuses its id field on selection, which a page load should not do
+                        document.getElementById('customModelInput').blur();
+                    }
+                    if (saved.client_type) {
+                        document.getElementById('customClientTypeInput').value = saved.client_type;
+                        handleClientTypeInput();
+                    }
+                } finally {
+                    restoringConfig = false;
+                }
+            }
+
             function addMessageCard(role, content, metadata = null, images = [], timestamp = null, tookMs = null) {
                 const container = document.getElementById('messagesContainer');
 
@@ -973,6 +1127,8 @@ def create_chat_app() -> Flask:
 
                 const assistantCard = addMessageCard('assistant', '');
                 const contentDiv = assistantCard.querySelector('.message-content');
+                // a spoken response streams as many small chunks that only play as one clip
+                const audioStream = { mimeType: '', chunks: [], bytes: 0, container: null, finalized: false };
 
                 try {
                     const config = getConfig();
@@ -1086,10 +1242,14 @@ def create_chat_app() -> Flask:
                                             toolResultDiv.innerHTML = `<strong class="text-sm">✅ Tool Result:</strong><br><div class="mt-1 text-xs whitespace-pre-wrap">${escapeHtml(item.text)}</div>`;
                                             contentDiv.appendChild(toolResultDiv);
                                         } else if (item.type === 'inline_data') {
-                                            const inlineDataDiv = document.createElement('div');
-                                            inlineDataDiv.innerHTML = renderInlineData(item);
-                                            if (inlineDataDiv.firstChild) {
-                                                contentDiv.appendChild(inlineDataDiv.firstChild);
+                                            if (isAudioMimeType(item.mime_type)) {
+                                                appendAudioChunk(contentDiv, item, audioStream);
+                                            } else {
+                                                const inlineDataDiv = document.createElement('div');
+                                                inlineDataDiv.innerHTML = renderInlineData(item);
+                                                if (inlineDataDiv.firstChild) {
+                                                    contentDiv.appendChild(inlineDataDiv.firstChild);
+                                                }
                                             }
                                         } else if (item.type === 'embedding') {
                                             const embeddingDiv = document.createElement('div');
@@ -1128,6 +1288,8 @@ def create_chat_app() -> Flask:
                         }
                     }
 
+                    finalizeAudioStream(audioStream, true);
+
                     if (lastCreatedAt) {
                         const timestampEl = assistantCard.querySelector('.msg-timestamp');
                         if (timestampEl) {
@@ -1156,11 +1318,13 @@ def create_chat_app() -> Flask:
                             metadataHtml += `<div class="flex items-center gap-1">🏁 ${metadata.finish_reason}</div>`;
                         }
                         metadataHtml += '</div>';
-                        assistantCard.innerHTML += metadataHtml;
+                        // appended rather than re-parsed into the card, which would restart a playing clip
+                        assistantCard.insertAdjacentHTML('beforeend', metadataHtml);
                     }
 
                 } catch (error) {
                     if (error.name === 'AbortError') {
+                        finalizeAudioStream(audioStream);
                         markInterrupted(contentDiv);
                     } else {
                         contentDiv.textContent = `Error: ${error.message}`;
@@ -1217,6 +1381,9 @@ def create_chat_app() -> Flask:
             }
             textarea.addEventListener('input', resizeMessageInput);
             resizeMessageInput();
+
+            document.getElementById('configPanel').addEventListener('input', saveConfig);
+            restoreConfig();
 
         </script>
     </body>

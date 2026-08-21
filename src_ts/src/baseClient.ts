@@ -142,6 +142,22 @@ export abstract class LLMClient {
           }
         } else if (item.type === "partial_tool_call") {
           // Skip partial_tool_call items - they should already be converted to tool_call
+        } else if (
+          item.type === "inline_data" &&
+          item.mime_type.startsWith("audio/")
+        ) {
+          const lastItem = contentItems[contentItems.length - 1];
+          // a spoken response streams as many small audio chunks; the message keeps the
+          // whole utterance as one playable item
+          if (
+            lastItem &&
+            lastItem.type === "inline_data" &&
+            lastItem.mime_type === item.mime_type
+          ) {
+            lastItem.data = Buffer.concat([lastItem.data, item.data]);
+          } else {
+            contentItems.push({ ...item });
+          }
         } else {
           contentItems.push({ ...item });
         }
