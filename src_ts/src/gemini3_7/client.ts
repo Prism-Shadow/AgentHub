@@ -315,14 +315,6 @@ export class Gemini3_7Client extends LLMClient {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const configParams: any = {};
 
-    if (config.system_prompt !== undefined) {
-      configParams.systemInstruction = config.system_prompt;
-    }
-
-    if (config.max_tokens !== undefined) {
-      configParams.maxOutputTokens = config.max_tokens;
-    }
-
     if (config.temperature !== undefined) {
       throw new UnsupportedParameterError({
         client: this.constructor.name,
@@ -331,30 +323,6 @@ export class Gemini3_7Client extends LLMClient {
           "Gemini models do not support setting temperature; the API deprecated " +
           "sampling parameters starting with the 3.6 generation.",
       });
-    }
-
-    // includeThoughts asks for thought summaries, but whether generateContent returns any
-    // is model-dependent (llmsdk_docs/gemini3_7/docs/thinking.md)
-    const thinkingSummary = config.thinking_summary;
-    const thinkingLevel = config.thinking_level;
-    if (thinkingSummary !== undefined || thinkingLevel !== undefined) {
-      configParams.thinkingConfig = {
-        includeThoughts: thinkingSummary,
-        thinkingLevel: this._convertThinkingLevel(thinkingLevel),
-      } as ThinkingConfig;
-    }
-
-    if (config.tools !== undefined) {
-      configParams.tools = [{ functionDeclarations: config.tools } as Tool];
-      const toolChoice = config.tool_choice;
-      if (toolChoice !== undefined) {
-        const toolConfig = this._convertToolChoice(toolChoice);
-        if (toolConfig) {
-          configParams.toolConfig = {
-            functionCallingConfig: toolConfig,
-          } as ToolConfig;
-        }
-      }
     }
 
     if (config.fast_mode) {
@@ -376,15 +344,14 @@ export class Gemini3_7Client extends LLMClient {
       });
     }
 
-    if (config.image_config !== undefined) {
-      configParams.imageConfig = {
-        aspectRatio: config.image_config.aspect_ratio,
-        imageSize: config.image_config.image_size,
-      } as GeminiImageConfig;
+    if (config.max_tokens !== undefined) {
+      configParams.maxOutputTokens = config.max_tokens;
     }
 
-    const isTtsModel = this._model.toLowerCase().includes("tts");
-    if (isTtsModel) {
+    // A TTS model takes the speech settings and nothing else: a system instruction, a
+    // thinking config, or a tool declaration each comes back as a 400 (verified live
+    // 2026-08-20), so the rest of the universal config never reaches the request.
+    if (this._model.toLowerCase().includes("tts")) {
       configParams.responseModalities = ["AUDIO"];
       const ttsConfig = config.tts_config ?? [{ voice: "Kore" }];
       if (![1, 2].includes(ttsConfig.length)) {
@@ -423,6 +390,43 @@ export class Gemini3_7Client extends LLMClient {
           } as MultiSpeakerVoiceConfig,
         } as SpeechConfig;
       }
+
+      return configParams as GenerateContentConfig;
+    }
+
+    if (config.system_prompt !== undefined) {
+      configParams.systemInstruction = config.system_prompt;
+    }
+
+    // includeThoughts asks for thought summaries, but whether generateContent returns any
+    // is model-dependent (llmsdk_docs/gemini3_7/docs/thinking.md)
+    const thinkingSummary = config.thinking_summary;
+    const thinkingLevel = config.thinking_level;
+    if (thinkingSummary !== undefined || thinkingLevel !== undefined) {
+      configParams.thinkingConfig = {
+        includeThoughts: thinkingSummary,
+        thinkingLevel: this._convertThinkingLevel(thinkingLevel),
+      } as ThinkingConfig;
+    }
+
+    if (config.tools !== undefined) {
+      configParams.tools = [{ functionDeclarations: config.tools } as Tool];
+      const toolChoice = config.tool_choice;
+      if (toolChoice !== undefined) {
+        const toolConfig = this._convertToolChoice(toolChoice);
+        if (toolConfig) {
+          configParams.toolConfig = {
+            functionCallingConfig: toolConfig,
+          } as ToolConfig;
+        }
+      }
+    }
+
+    if (config.image_config !== undefined) {
+      configParams.imageConfig = {
+        aspectRatio: config.image_config.aspect_ratio,
+        imageSize: config.image_config.image_size,
+      } as GeminiImageConfig;
     }
 
     return Object.keys(configParams).length > 0
@@ -715,10 +719,14 @@ export class Gemini3_7Client extends LLMClient {
       return;
     }
 
-    // check if all items are text for tts model
-    const isTtsModel = this._model.toLowerCase().includes("tts");
-    if (isTtsModel) {
-      const invalidItem = options.messages
+    // A TTS model synthesizes a single text turn: a conversation comes back as "Multiturn chat
+    // is not enabled for this model" and an audio part as "Audio input modality is not enabled
+    // for this model" (verified live 2026-08-20), so only the newest message is sent and the
+    // audio a stateful session records stays out of the request.
+    let messages = options.messages;
+    if (this._model.toLowerCase().includes("tts")) {
+      messages = messages.slice(-1);
+      const invalidItem = messages
         .flatMap((message) => message.content_items)
         .find((item) => item.type !== "text");
       if (invalidItem) {
@@ -733,7 +741,7 @@ export class Gemini3_7Client extends LLMClient {
       options.signal,
     );
     const contents = await this.transformUniMessageToModelInput(
-      options.messages,
+      messages,
       options.signal,
     );
 

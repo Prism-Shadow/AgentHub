@@ -201,12 +201,6 @@ class Gemini3_7Client(LLMClient):
             Gemini GenerateContentConfig object or None if no config needed
         """
         config_params = {}
-        if config.get("system_prompt") is not None:
-            config_params["system_instruction"] = config["system_prompt"]
-
-        if config.get("max_tokens") is not None:
-            config_params["max_output_tokens"] = config["max_tokens"]
-
         if config.get("temperature") is not None:
             raise UnsupportedParameterError(
                 self.__class__.__name__,
@@ -214,22 +208,6 @@ class Gemini3_7Client(LLMClient):
                 "Gemini models do not support setting temperature; the API deprecated "
                 "sampling parameters starting with the 3.6 generation.",
             )
-
-        # include_thoughts asks for thought summaries, but whether generateContent returns any
-        # is model-dependent (llmsdk_docs/gemini3_7/docs/thinking.md)
-        thinking_summary = config.get("thinking_summary")
-        thinking_level = config.get("thinking_level")
-        if thinking_summary is not None or thinking_level is not None:
-            config_params["thinking_config"] = types.ThinkingConfig(
-                include_thoughts=thinking_summary, thinking_level=self._convert_thinking_level(thinking_level)
-            )
-
-        if config.get("tools") is not None:
-            config_params["tools"] = [types.Tool(function_declarations=config["tools"])]
-            tool_choice = config.get("tool_choice")
-            if tool_choice is not None:
-                tool_config = self._convert_tool_choice(tool_choice)
-                config_params["tool_config"] = types.ToolConfig(function_calling_config=tool_config)
 
         if config.get("fast_mode"):
             raise UnsupportedParameterError(self.__class__.__name__, "fast_mode", "Gemini does not support fast mode.")
@@ -239,10 +217,12 @@ class Gemini3_7Client(LLMClient):
                 self.__class__.__name__, "prompt_caching", "prompt_caching must be ENABLE for Gemini."
             )
 
-        if config.get("image_config") is not None:
-            config_params["image_config"] = types.ImageConfig(**config["image_config"])
+        if config.get("max_tokens") is not None:
+            config_params["max_output_tokens"] = config["max_tokens"]
 
-        # tts config
+        # A TTS model takes the speech settings and nothing else: a system instruction, a
+        # thinking config, or a tool declaration each comes back as a 400 (verified live
+        # 2026-08-20), so the rest of the universal config never reaches the request.
         if "tts" in self._model.lower():
             config_params["response_modalities"] = ["AUDIO"]
             tts_config = config.get("tts_config") or [{"voice": "Kore"}]
@@ -276,6 +256,30 @@ class Gemini3_7Client(LLMClient):
                         speaker_voice_configs=speaker_voice_configs
                     )
                 )
+
+            return types.GenerateContentConfig(**config_params)
+
+        if config.get("system_prompt") is not None:
+            config_params["system_instruction"] = config["system_prompt"]
+
+        # include_thoughts asks for thought summaries, but whether generateContent returns any
+        # is model-dependent (llmsdk_docs/gemini3_7/docs/thinking.md)
+        thinking_summary = config.get("thinking_summary")
+        thinking_level = config.get("thinking_level")
+        if thinking_summary is not None or thinking_level is not None:
+            config_params["thinking_config"] = types.ThinkingConfig(
+                include_thoughts=thinking_summary, thinking_level=self._convert_thinking_level(thinking_level)
+            )
+
+        if config.get("tools") is not None:
+            config_params["tools"] = [types.Tool(function_declarations=config["tools"])]
+            tool_choice = config.get("tool_choice")
+            if tool_choice is not None:
+                tool_config = self._convert_tool_choice(tool_choice)
+                config_params["tool_config"] = types.ToolConfig(function_calling_config=tool_config)
+
+        if config.get("image_config") is not None:
+            config_params["image_config"] = types.ImageConfig(**config["image_config"])
 
         return types.GenerateContentConfig(**config_params) if config_params else None
 
@@ -514,8 +518,12 @@ class Gemini3_7Client(LLMClient):
         # Use unified config conversion
         gemini_config = self.transform_uni_config_to_model_config(config)
 
-        # check if all items are text for tts model
+        # A TTS model synthesizes a single text turn: a conversation comes back as "Multiturn chat
+        # is not enabled for this model" and an audio part as "Audio input modality is not enabled
+        # for this model" (verified live 2026-08-20), so only the newest message is sent and the
+        # audio a stateful session records stays out of the request.
         if "tts" in self._model.lower():
+            messages = messages[-1:]
             invalid_item = next(
                 (item for message in messages for item in message["content_items"] if item["type"] != "text"),
                 None,
