@@ -24,13 +24,14 @@ import {
   UniMessage,
 } from "../src";
 
-type FakeOpenAICompatibleClient = {
-  baseURL: string;
-  chat: {
-    completions: {
-      create: () => Promise<AsyncIterable<unknown>>;
-    };
-  };
+type FakeCreateEndpoint = {
+  create: () => Promise<AsyncIterable<unknown>>;
+};
+
+type FakeStreamClient = {
+  baseURL?: string;
+  chat?: { completions: FakeCreateEndpoint };
+  responses?: FakeCreateEndpoint;
 };
 
 type ReasoningStreamClient = {
@@ -44,6 +45,8 @@ interface ReasoningStreamCase {
   expectedClient: string;
   model: string;
   clientType: string;
+  // the wire shape the client parses: "chat" or "responses"
+  protocol?: "chat" | "responses";
 }
 
 const REASONING_STREAM_CASES: ReasoningStreamCase[] = [
@@ -63,9 +66,16 @@ const REASONING_STREAM_CASES: ReasoningStreamCase[] = [
     clientType: "kimi-k2.6",
   },
   {
+    expectedClient: "OpenaiResponsesClient",
+    model: "gpt-5.6",
+    clientType: "openai-responses",
+    protocol: "responses",
+  },
+  {
     expectedClient: "DeepSeekV4Client",
     model: "deepseek-v4",
     clientType: "deepseek-v4",
+    protocol: "responses",
   },
 ];
 
@@ -86,20 +96,23 @@ function streamFromChunks(chunks: unknown[]): AsyncIterable<unknown> {
   };
 }
 
-function installFakeOpenAICompatibleStream(
+function installFakeStream(
   client: ReasoningStreamClient,
+  testCase: ReasoningStreamCase,
   chunks: unknown[],
 ): void {
-  const fakeClient: FakeOpenAICompatibleClient = {
-    baseURL: "https://api.test.invalid/v1",
-    chat: {
-      completions: {
-        create: async () => streamFromChunks(chunks),
-      },
-    },
+  const endpoint: FakeCreateEndpoint = {
+    create: async () => streamFromChunks(chunks),
   };
+  const fakeClient: FakeStreamClient =
+    testCase.protocol === "responses"
+      ? { responses: endpoint }
+      : {
+          baseURL: "https://api.test.invalid/v1",
+          chat: { completions: endpoint },
+        };
   const routedClient = (
-    client as unknown as { _client: { _client: FakeOpenAICompatibleClient } }
+    client as unknown as { _client: { _client: FakeStreamClient } }
   )._client;
   routedClient._client = fakeClient;
 }
@@ -135,6 +148,59 @@ function stopChunk(finishReason: string): unknown {
   };
 }
 
+function responsesStopEvent(finishReason: string): unknown {
+  const status = finishReason === "length" ? "incomplete" : "completed";
+  return {
+    type: `response.${status}`,
+    response: {
+      status,
+      usage: {
+        input_tokens: 1,
+        output_tokens: 1,
+        input_tokens_details: { cached_tokens: 0 },
+        output_tokens_details: { reasoning_tokens: 1 },
+      },
+    },
+  };
+}
+
+/** Build a thinking/text/stop stream in the wire shape the case's client parses. */
+function reasoningStream(
+  testCase: ReasoningStreamCase,
+  options: { thinking?: string; text?: string; finishReason?: string },
+): unknown[] {
+  const finishReason = options.finishReason ?? "stop";
+  if (testCase.protocol === "responses") {
+    const events: unknown[] = [];
+    if (options.thinking) {
+      events.push({
+        type: "response.reasoning_text.delta",
+        delta: options.thinking,
+      });
+    }
+    if (options.text) {
+      events.push({
+        type: "response.output_text.delta",
+        delta: options.text,
+      });
+    }
+
+    events.push(responsesStopEvent(finishReason));
+    return events;
+  }
+
+  const chunks: unknown[] = [];
+  if (options.thinking) {
+    chunks.push(deltaChunk({ reasoning_content: options.thinking }));
+  }
+  if (options.text) {
+    chunks.push(deltaChunk({ content: options.text }));
+  }
+
+  chunks.push(stopChunk(finishReason));
+  return chunks;
+}
+
 async function collectEvents(
   stream: AsyncIterable<UniEvent>,
 ): Promise<UniEvent[]> {
@@ -162,10 +228,11 @@ describe.each(REASONING_STREAM_CASES)(
   (testCase) => {
     test("rejects thinking-only responses", async () => {
       const client = createAutoClient(testCase);
-      installFakeOpenAICompatibleStream(client, [
-        deltaChunk({ reasoning_content: "Let me think about the memo." }),
-        stopChunk("stop"),
-      ]);
+      installFakeStream(
+        client,
+        testCase,
+        reasoningStream(testCase, { thinking: "Let me think about the memo." }),
+      );
 
       const capturedError = await captureStreamError(
         client.streamingResponse({ messages, config: {} }),
@@ -180,7 +247,11 @@ describe.each(REASONING_STREAM_CASES)(
 
     test("rejects responses without any content", async () => {
       const client = createAutoClient(testCase);
-      installFakeOpenAICompatibleStream(client, [stopChunk("length")]);
+      installFakeStream(
+        client,
+        testCase,
+        reasoningStream(testCase, { finishReason: "length" }),
+      );
 
       const capturedError = await captureStreamError(
         client.streamingResponse({ messages, config: {} }),
@@ -192,11 +263,14 @@ describe.each(REASONING_STREAM_CASES)(
 
     test("accepts responses with text content", async () => {
       const client = createAutoClient(testCase);
-      installFakeOpenAICompatibleStream(client, [
-        deltaChunk({ reasoning_content: "Let me think about the memo." }),
-        deltaChunk({ content: "Here is the memo." }),
-        stopChunk("stop"),
-      ]);
+      installFakeStream(
+        client,
+        testCase,
+        reasoningStream(testCase, {
+          thinking: "Let me think about the memo.",
+          text: "Here is the memo.",
+        }),
+      );
 
       const events = await collectEvents(
         client.streamingResponse({ messages, config: {} }),

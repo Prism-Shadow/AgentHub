@@ -47,6 +47,11 @@ const RESPONSES_STREAM_CASES: StreamCase[] = [
     clientType: "openai-responses",
   },
   {
+    expectedClient: "DeepSeekV4Client",
+    model: "deepseek-v4",
+    clientType: "deepseek-v4",
+  },
+  {
     expectedClient: "MiniMaxM3Client",
     model: "minimax-m3",
     clientType: "minimax-m3",
@@ -59,11 +64,6 @@ const CHAT_STREAM_CASES: StreamCase[] = [
     expectedClient: "OpenaiChatClient",
     model: "gpt-5.6",
     clientType: "openai-chat",
-  },
-  {
-    expectedClient: "DeepSeekV4Client",
-    model: "deepseek-v4",
-    clientType: "deepseek-v4",
   },
   {
     expectedClient: "GLM5_3Client",

@@ -26,6 +26,7 @@ class ReasoningStreamCase:
     expected_client: str
     model: str
     client_type: str
+    protocol: str = "chat"  # the wire shape the client parses: "chat" or "responses"
 
 
 REASONING_STREAM_CASES = [
@@ -45,9 +46,16 @@ REASONING_STREAM_CASES = [
         client_type="kimi-k2.6",
     ),
     ReasoningStreamCase(
+        expected_client="OpenaiResponsesClient",
+        model="gpt-5.6",
+        client_type="openai-responses",
+        protocol="responses",
+    ),
+    ReasoningStreamCase(
         expected_client="DeepSeekV4Client",
         model="deepseek-v4",
         client_type="deepseek-v4",
+        protocol="responses",
     ),
 ]
 
@@ -61,7 +69,9 @@ async def _stream_from_chunks(chunks: list[object]) -> AsyncIterator[object]:
         yield chunk
 
 
-class _FakeOpenAICompatibleCompletions:
+class _FakeCreateEndpoint:
+    """Stands in for an SDK endpoint whose create() returns a stream."""
+
     def __init__(self, chunks: list[object]) -> None:
         self._chunks = chunks
 
@@ -69,14 +79,14 @@ class _FakeOpenAICompatibleCompletions:
         return _stream_from_chunks(self._chunks)
 
 
-class _FakeOpenAICompatibleClient:
-    def __init__(self, chunks: list[object]) -> None:
-        self.base_url = "https://api.test.invalid/v1"
-        self.chat = SimpleNamespace(completions=_FakeOpenAICompatibleCompletions(chunks))
-
-
-def _install_fake_openai_compatible_stream(client: AutoLLMClient, chunks: list[object]) -> None:
-    client._client._client = _FakeOpenAICompatibleClient(chunks)  # noqa: SLF001
+def _install_fake_stream(client: AutoLLMClient, case: ReasoningStreamCase, chunks: list[object]) -> None:
+    endpoint = _FakeCreateEndpoint(chunks)
+    if case.protocol == "responses":
+        client._client._client = SimpleNamespace(responses=endpoint)  # noqa: SLF001
+    else:
+        client._client._client = SimpleNamespace(  # noqa: SLF001
+            base_url="https://api.test.invalid/v1", chat=SimpleNamespace(completions=endpoint)
+        )
 
 
 def _delta_chunk(text: str | None = None, reasoning_content: str | None = None) -> object:
@@ -105,6 +115,50 @@ def _stop_chunk(finish_reason: str = "stop") -> object:
     )
 
 
+def _responses_stop_event(finish_reason: str) -> object:
+    status = "incomplete" if finish_reason == "length" else "completed"
+    return SimpleNamespace(
+        type=f"response.{status}",
+        response=SimpleNamespace(
+            status=status,
+            usage=SimpleNamespace(
+                input_tokens=1,
+                output_tokens=1,
+                input_tokens_details=SimpleNamespace(cached_tokens=0),
+                output_tokens_details=SimpleNamespace(reasoning_tokens=1),
+            ),
+        ),
+    )
+
+
+def _reasoning_stream(
+    case: ReasoningStreamCase,
+    *,
+    thinking: str | None = None,
+    text: str | None = None,
+    finish_reason: str = "stop",
+) -> list[object]:
+    """Build a thinking/text/stop stream in the wire shape the case's client parses."""
+    if case.protocol == "responses":
+        events = []
+        if thinking:
+            events.append(SimpleNamespace(type="response.reasoning_text.delta", delta=thinking))
+        if text:
+            events.append(SimpleNamespace(type="response.output_text.delta", delta=text))
+
+        events.append(_responses_stop_event(finish_reason))
+        return events
+
+    chunks = []
+    if thinking:
+        chunks.append(_delta_chunk(reasoning_content=thinking))
+    if text:
+        chunks.append(_delta_chunk(text=text))
+
+    chunks.append(_stop_chunk(finish_reason=finish_reason))
+    return chunks
+
+
 MESSAGES = [{"role": "user", "content_items": [{"type": "text", "text": "Create a memo."}]}]
 
 
@@ -116,13 +170,7 @@ MESSAGES = [{"role": "user", "content_items": [{"type": "text", "text": "Create 
 )
 async def test_reasoning_clients_reject_thinking_only_response(case: ReasoningStreamCase):
     client = _create_auto_client(case)
-    _install_fake_openai_compatible_stream(
-        client,
-        [
-            _delta_chunk(reasoning_content="Let me think about the memo."),
-            _stop_chunk(finish_reason="stop"),
-        ],
-    )
+    _install_fake_stream(client, case, _reasoning_stream(case, thinking="Let me think about the memo."))
 
     with pytest.raises(EmptyResponseError) as exc_info:
         async for _event in client.streaming_response(MESSAGES, {}):
@@ -142,7 +190,7 @@ async def test_reasoning_clients_reject_thinking_only_response(case: ReasoningSt
 )
 async def test_reasoning_clients_reject_response_without_any_content(case: ReasoningStreamCase):
     client = _create_auto_client(case)
-    _install_fake_openai_compatible_stream(client, [_stop_chunk(finish_reason="length")])
+    _install_fake_stream(client, case, _reasoning_stream(case, finish_reason="length"))
 
     with pytest.raises(EmptyResponseError) as exc_info:
         async for _event in client.streaming_response(MESSAGES, {}):
@@ -159,13 +207,10 @@ async def test_reasoning_clients_reject_response_without_any_content(case: Reaso
 )
 async def test_reasoning_clients_accept_response_with_text_content(case: ReasoningStreamCase):
     client = _create_auto_client(case)
-    _install_fake_openai_compatible_stream(
+    _install_fake_stream(
         client,
-        [
-            _delta_chunk(reasoning_content="Let me think about the memo."),
-            _delta_chunk(text="Here is the memo."),
-            _stop_chunk(finish_reason="stop"),
-        ],
+        case,
+        _reasoning_stream(case, thinking="Let me think about the memo.", text="Here is the memo."),
     )
 
     events = [event async for event in client.streaming_response(MESSAGES, {})]

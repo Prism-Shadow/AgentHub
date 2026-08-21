@@ -22,13 +22,14 @@ import {
   UniMessage,
 } from "../src";
 
-type FakeOpenAICompatibleClient = {
-  baseURL: string;
-  chat: {
-    completions: {
-      create: () => Promise<AsyncIterable<unknown>>;
-    };
-  };
+type FakeCreateEndpoint = {
+  create: () => Promise<AsyncIterable<unknown>>;
+};
+
+type FakeStreamClient = {
+  baseURL?: string;
+  chat?: { completions: FakeCreateEndpoint };
+  responses?: FakeCreateEndpoint;
 };
 
 type OpenAICompatibleToolStreamClient = {
@@ -42,6 +43,8 @@ interface OpenAICompatibleToolStreamCase {
   expectedClient: string;
   model: string;
   clientType: string;
+  // the wire shape the client parses: "chat" or "responses"
+  protocol?: "chat" | "responses";
 }
 
 const OPENAI_COMPATIBLE_TOOL_STREAM_CASES: OpenAICompatibleToolStreamCase[] = [
@@ -61,9 +64,16 @@ const OPENAI_COMPATIBLE_TOOL_STREAM_CASES: OpenAICompatibleToolStreamCase[] = [
     clientType: "kimi-k2.6",
   },
   {
+    expectedClient: "OpenaiResponsesClient",
+    model: "gpt-5.6",
+    clientType: "openai-responses",
+    protocol: "responses",
+  },
+  {
     expectedClient: "DeepSeekV4Client",
     model: "deepseek-v4",
     clientType: "deepseek-v4",
+    protocol: "responses",
   },
 ];
 
@@ -84,20 +94,23 @@ function streamFromChunks(chunks: unknown[]): AsyncIterable<unknown> {
   };
 }
 
-function installFakeOpenAICompatibleStream(
+function installFakeStream(
   client: OpenAICompatibleToolStreamClient,
+  testCase: OpenAICompatibleToolStreamCase,
   chunks: unknown[],
 ): void {
-  const fakeClient: FakeOpenAICompatibleClient = {
-    baseURL: "https://api.test.invalid/v1",
-    chat: {
-      completions: {
-        create: async () => streamFromChunks(chunks),
-      },
-    },
+  const endpoint: FakeCreateEndpoint = {
+    create: async () => streamFromChunks(chunks),
   };
+  const fakeClient: FakeStreamClient =
+    testCase.protocol === "responses"
+      ? { responses: endpoint }
+      : {
+          baseURL: "https://api.test.invalid/v1",
+          chat: { completions: endpoint },
+        };
   const routedClient = (
-    client as unknown as { _client: { _client: FakeOpenAICompatibleClient } }
+    client as unknown as { _client: { _client: FakeStreamClient } }
   )._client;
   routedClient._client = fakeClient;
 }
@@ -147,6 +160,52 @@ function toolStopChunk(): unknown {
   };
 }
 
+/** Build a streamed tool call in the wire shape the case's client parses. */
+function toolStream(
+  testCase: OpenAICompatibleToolStreamCase,
+  toolCallId: string,
+  name: string,
+  ...fragments: string[]
+): unknown[] {
+  if (testCase.protocol === "responses") {
+    const events: unknown[] = [
+      {
+        type: "response.output_item.added",
+        item: { type: "function_call", name, call_id: toolCallId },
+      },
+    ];
+    for (const fragment of fragments) {
+      events.push({
+        type: "response.function_call_arguments.delta",
+        delta: fragment,
+      });
+    }
+
+    events.push({ type: "response.function_call_arguments.done" });
+    events.push({
+      type: "response.completed",
+      response: {
+        status: "completed",
+        usage: {
+          input_tokens: 1,
+          output_tokens: 1,
+          input_tokens_details: { cached_tokens: 0 },
+          output_tokens_details: { reasoning_tokens: 0 },
+        },
+      },
+    });
+    return events;
+  }
+
+  const chunks: unknown[] = [toolDeltaChunk(toolCallId, name, fragments[0])];
+  for (const fragment of fragments.slice(1)) {
+    chunks.push(toolDeltaChunk("", "", fragment));
+  }
+
+  chunks.push(toolStopChunk());
+  return chunks;
+}
+
 async function collectEvents(
   stream: AsyncIterable<UniEvent>,
 ): Promise<UniEvent[]> {
@@ -174,11 +233,11 @@ describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
   (testCase) => {
     test("combines valid streamed tool call arguments", async () => {
       const client = createAutoClient(testCase);
-      installFakeOpenAICompatibleStream(client, [
-        toolDeltaChunk("call_ok", "exec_command", '{"cmd":'),
-        toolDeltaChunk("", "", '"echo ok"}'),
-        toolStopChunk(),
-      ]);
+      installFakeStream(
+        client,
+        testCase,
+        toolStream(testCase, "call_ok", "exec_command", '{"cmd":', '"echo ok"}'),
+      );
 
       const events = await collectEvents(
         client.streamingResponse({ messages, config: {} }),
@@ -200,14 +259,16 @@ describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
 
     test("reports malformed streamed tool call arguments with context", async () => {
       const client = createAutoClient(testCase);
-      installFakeOpenAICompatibleStream(client, [
-        toolDeltaChunk(
+      installFakeStream(
+        client,
+        testCase,
+        toolStream(
+          testCase,
           "call_bad",
           "exec_command",
           '{"cmd":"python create_docx.py',
         ),
-        toolStopChunk(),
-      ]);
+      );
 
       const capturedError = await captureStreamError(
         client.streamingResponse({ messages, config: {} }),
@@ -225,10 +286,11 @@ describe.each(OPENAI_COMPATIBLE_TOOL_STREAM_CASES)(
 
     test("reports non-object streamed tool call arguments with context", async () => {
       const client = createAutoClient(testCase);
-      installFakeOpenAICompatibleStream(client, [
-        toolDeltaChunk("call_array", "exec_command", "[]"),
-        toolStopChunk(),
-      ]);
+      installFakeStream(
+        client,
+        testCase,
+        toolStream(testCase, "call_array", "exec_command", "[]"),
+      );
 
       const capturedError = await captureStreamError(
         client.streamingResponse({ messages, config: {} }),
