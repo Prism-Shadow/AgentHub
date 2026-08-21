@@ -23,6 +23,9 @@
   stream keeps the audio that had already arrived. Chunks are joined as bytes before the WAV header
   is written, and the sample rate and channel count are read from the mime type parameters
   (`audio/l16; rate=24000; channels=1`).
+- The finished clip plays once by itself, and a browser that blocks autoplay leaves the player
+  ready to press. A stream stopped from the Stop button does not play. The token footer is appended
+  to the message card instead of re-parsed into it, which would have restarted the clip.
 
 ## TTS request limits
 

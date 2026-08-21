@@ -79,7 +79,13 @@ def test_chat_app_index_route():
         assert b"appendAudioChunk(contentDiv, item, audioStream)" in response.data
         assert b"finalizeAudioStream(audioStream)" in response.data
         assert b"renderAudioPlayer(audioStream.mimeType, audioStream.chunks)" in response.data
+        assert b"finalizeAudioStream(audioStream, true)" in response.data
+        assert b"audioStream.container.querySelector('audio').play()" in response.data
+        assert b"assistantCard.insertAdjacentHTML('beforeend', metadataHtml)" in response.data
+        assert b"agenthub.playground.config" in response.data
+        assert b"restoreConfig()" in response.data
         assert b"pcmBase64ToWavDataUrl" not in response.data
+        assert b"assistantCard.innerHTML +=" not in response.data
         assert b'href="/tracer/"' in response.data
         assert b'target="_blank"' in response.data
         assert b"Open Tracer" in response.data

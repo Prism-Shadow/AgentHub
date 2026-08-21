@@ -539,7 +539,7 @@ export function createChatApp(): Express {
               audioStream.container.textContent = audioProgressLabel(audioStream);
           }
 
-          function finalizeAudioStream(audioStream) {
+          function finalizeAudioStream(audioStream, autoplay = false) {
               if (audioStream.finalized || !audioStream.container) {
                   return;
               }
@@ -547,6 +547,10 @@ export function createChatApp(): Express {
               audioStream.finalized = true;
               audioStream.container.className = 'mb-3';
               audioStream.container.innerHTML = renderAudioPlayer(audioStream.mimeType, audioStream.chunks);
+              if (autoplay) {
+                  // a browser that blocks autoplay leaves the player sitting there ready to press
+                  audioStream.container.querySelector('audio').play().catch(() => {});
+              }
           }
 
           function renderInlineData(item) {
@@ -674,6 +678,8 @@ export function createChatApp(): Express {
               if (comboboxId === 'modelCombobox') {
                   handleModelSelectChange();
               }
+
+              saveConfig();
           }
 
           function handleComboboxKeydown(event, comboboxId) {
@@ -938,6 +944,85 @@ export function createChatApp(): Express {
               }
 
               return config;
+          }
+
+          const CONFIG_STORAGE_KEY = 'agenthub.playground.config';
+          // saved as typed rather than as parsed values, so an unfinished JSON edit survives too
+          const CONFIG_TEXT_INPUTS = [
+              'apiKeyInput', 'baseUrlInput', 'extraHeadersInput', 'systemPromptInput', 'toolsInput', 'traceIdInput'
+          ];
+          const CONFIG_COMBOBOXES = [
+              ['thinkingLevelCombobox', 'thinkingLevelSelect'],
+              ['thinkingSummaryCombobox', 'thinkingSummaryCheckbox'],
+              ['toolChoiceCombobox', 'toolChoiceSelect']
+          ];
+          let restoringConfig = false;
+
+          function comboboxOption(comboboxId, value) {
+              return document.querySelector('#' + comboboxId + ' [data-combobox-option][data-value="' + value + '"]');
+          }
+
+          function saveConfig() {
+              if (restoringConfig) {
+                  return;
+              }
+
+              const saved = { model: getSelectedModel(), client_type: getSelectedClientType() };
+              CONFIG_TEXT_INPUTS.forEach((id) => {
+                  saved[id] = document.getElementById(id).value;
+              });
+              CONFIG_COMBOBOXES.forEach(([, valueId]) => {
+                  saved[valueId] = document.getElementById(valueId).value;
+              });
+              try {
+                  localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(saved));
+              } catch (error) {
+                  // a browser that refuses storage still runs the playground, just without the memory
+              }
+          }
+
+          function restoreConfig() {
+              let saved = null;
+              try {
+                  saved = JSON.parse(localStorage.getItem(CONFIG_STORAGE_KEY) || 'null');
+              } catch (error) {
+                  saved = null;
+              }
+              if (!saved) {
+                  return;
+              }
+
+              restoringConfig = true;
+              try {
+                  CONFIG_TEXT_INPUTS.forEach((id) => {
+                      if (typeof saved[id] === 'string') {
+                          document.getElementById(id).value = saved[id];
+                      }
+                  });
+                  CONFIG_COMBOBOXES.forEach(([comboboxId, valueId]) => {
+                      const option = comboboxOption(comboboxId, saved[valueId] || '');
+                      if (option) {
+                          selectComboboxOption(comboboxId, option);
+                      }
+                  });
+
+                  // a model the menu does not list — one that was listed, or typed in — comes back as a custom entry
+                  const modelOption = saved.model ? comboboxOption('modelCombobox', saved.model) : null;
+                  if (modelOption) {
+                      selectComboboxOption('modelCombobox', modelOption);
+                  } else if (saved.model) {
+                      document.getElementById('customModelInput').value = saved.model;
+                      selectComboboxOption('modelCombobox', comboboxOption('modelCombobox', '__custom__'));
+                      // the custom option focuses its id field on selection, which a page load should not do
+                      document.getElementById('customModelInput').blur();
+                  }
+                  if (saved.client_type) {
+                      document.getElementById('customClientTypeInput').value = saved.client_type;
+                      handleClientTypeInput();
+                  }
+              } finally {
+                  restoringConfig = false;
+              }
           }
 
           function addMessageCard(role, content, metadata = null, images = [], timestamp = null, tookMs = null) {
@@ -1214,8 +1299,7 @@ export function createChatApp(): Express {
                       }
                   }
 
-                  // the metadata footer below rebuilds the card, so the player is built first
-                  finalizeAudioStream(audioStream);
+                  finalizeAudioStream(audioStream, true);
 
                   if (lastCreatedAt) {
                       const timestampEl = assistantCard.querySelector('.msg-timestamp');
@@ -1245,7 +1329,8 @@ export function createChatApp(): Express {
                           metadataHtml += \`<div class="flex items-center gap-1">🏁 \${metadata.finish_reason}</div>\`;
                       }
                       metadataHtml += '</div>';
-                      assistantCard.innerHTML += metadataHtml;
+                      // appended rather than re-parsed into the card, which would restart a playing clip
+                      assistantCard.insertAdjacentHTML('beforeend', metadataHtml);
                   }
 
               } catch (error) {
@@ -1307,6 +1392,9 @@ export function createChatApp(): Express {
           }
           textarea.addEventListener('input', resizeMessageInput);
           resizeMessageInput();
+
+          document.getElementById('configPanel').addEventListener('input', saveConfig);
+          restoreConfig();
 
       </script>
   </body>

@@ -113,7 +113,17 @@ describe("Playground", () => {
     expect(response.text).toContain(
       "renderAudioPlayer(audioStream.mimeType, audioStream.chunks)",
     );
+    expect(response.text).toContain("finalizeAudioStream(audioStream, true)");
+    expect(response.text).toContain(
+      "audioStream.container.querySelector('audio').play()",
+    );
+    expect(response.text).toContain(
+      "assistantCard.insertAdjacentHTML('beforeend', metadataHtml)",
+    );
+    expect(response.text).toContain("agenthub.playground.config");
+    expect(response.text).toContain("restoreConfig()");
     expect(response.text).not.toContain("pcmBase64ToWavDataUrl");
+    expect(response.text).not.toContain("assistantCard.innerHTML +=");
     expect(response.text).toContain('href="/tracer/"');
     expect(response.text).toContain('target="_blank"');
     expect(response.text).toContain("Open Tracer");
