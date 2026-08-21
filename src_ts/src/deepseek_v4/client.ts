@@ -14,15 +14,12 @@
 
 import OpenAI from "openai";
 import type {
-  ChatCompletionChunk,
-  ChatCompletionMessageParam,
-  ChatCompletionCreateParamsStreaming,
-} from "openai/resources/chat/completions";
+  ResponseInputItem,
+  ResponseStreamEvent,
+  ResponseCreateParamsStreaming,
+} from "openai/resources/responses/responses";
 import { LLMClient } from "../baseClient";
-import {
-  parseToolCallArguments,
-  UnsupportedParameterError,
-} from "../errors";
+import { parseToolCallArguments, UnsupportedParameterError } from "../errors";
 import {
   EventType,
   FinishReason,
@@ -35,11 +32,18 @@ import {
   UniMessage,
   UsageMetadata,
 } from "../types";
+import { isDebugEnabled } from "../utils";
 
+/**
+ * DeepSeek V4-specific LLM client implementation using the OpenAI-compatible Responses API.
+ */
 export class DeepSeekV4Client extends LLMClient {
   protected _model: string;
   private _client: OpenAI;
 
+  /**
+   * Initialize DeepSeek client with model, API key, and base URL.
+   */
   constructor(options: {
     model: string;
     apiKey?: string;
@@ -61,30 +65,17 @@ export class DeepSeekV4Client extends LLMClient {
     });
   }
 
-  private _convertThinkingLevelToConfig(thinkingLevel: ThinkingLevel): {
-    type: string;
-  } {
-    const mapping: { [key: string]: { type: string } } = {
-      [ThinkingLevel.NONE]: { type: "disabled" },
-      [ThinkingLevel.LOW]: { type: "enabled" },
-      [ThinkingLevel.MEDIUM]: { type: "enabled" },
-      [ThinkingLevel.HIGH]: { type: "enabled" },
-      [ThinkingLevel.XHIGH]: { type: "enabled" },
-      [ThinkingLevel.MAX]: { type: "enabled" },
-    };
-    return mapping[thinkingLevel];
-  }
-
   /**
-   * Convert ThinkingLevel enum to DeepSeek's reasoning_effort.
+   * Convert ThinkingLevel enum to DeepSeek's reasoning effort.
    *
    * DeepSeek accepts low/high/max and maps medium and xhigh onto high server-side
-   * (llmsdk_docs/deepseek_v4/docs/thinking-mode.md), so this sends the value the
-   * server would settle on anyway.
+   * (llmsdk_docs/deepseek_v4/docs/thinking-mode.md), so this sends the value the server
+   * would settle on anyway. Effort "none" is what turns thinking off on this endpoint:
+   * the Chat Completions `thinking` toggle is ignored here (verified live 2026-08-21).
    */
-  private _convertReasoningEffort(thinkingLevel: ThinkingLevel): string | null {
-    const mapping: { [key: string]: string | null } = {
-      [ThinkingLevel.NONE]: null,
+  private _convertThinkingLevelToEffort(thinkingLevel: ThinkingLevel): string {
+    const mapping: { [key: string]: string } = {
+      [ThinkingLevel.NONE]: "none",
       [ThinkingLevel.LOW]: "low",
       [ThinkingLevel.MEDIUM]: "high",
       [ThinkingLevel.HIGH]: "high",
@@ -94,28 +85,38 @@ export class DeepSeekV4Client extends LLMClient {
     return mapping[thinkingLevel];
   }
 
+  /**
+   * Convert ToolChoice to DeepSeek's Responses-compatible tool_choice format.
+   */
   private _convertToolChoice(toolChoice: ToolChoice): string {
     if (toolChoice === "auto" || toolChoice === "none") {
       return toolChoice;
     }
+
     throw new UnsupportedParameterError({
       client: this.constructor.name,
       parameter: "tool_choice",
-      message: 'DeepSeek V4 only supports "auto" and "none" for tool_choice.',
+      message: "DeepSeek V4 only supports 'auto' and 'none' for tool_choice.",
     });
   }
 
+  /**
+   * Transform universal configuration to DeepSeek-specific configuration.
+   */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   transformUniConfigToModelConfig(config: UniConfig): any {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const deepseekConfig: any = {
       model: this._model,
-      stream: true,
-      stream_options: { include_usage: true },
+      store: false,
     };
 
+    if (config.system_prompt !== undefined) {
+      deepseekConfig.instructions = config.system_prompt;
+    }
+
     if (config.max_tokens !== undefined) {
-      deepseekConfig.max_tokens = config.max_tokens;
+      deepseekConfig.max_output_tokens = config.max_tokens;
     }
 
     if (config.temperature !== undefined && config.temperature !== 1.0) {
@@ -126,26 +127,17 @@ export class DeepSeekV4Client extends LLMClient {
       });
     }
 
+    // a thinking summary is accepted but never generated, so the parameter is left out
     if (config.thinking_level !== undefined) {
-      const thinkingConfig = this._convertThinkingLevelToConfig(
-        config.thinking_level,
-      );
-      deepseekConfig.extra_body = {
-        ...(deepseekConfig.extra_body || {}),
-        thinking: thinkingConfig,
+      deepseekConfig.reasoning = {
+        effort: this._convertThinkingLevelToEffort(config.thinking_level),
       };
-      const reasoningEffort = this._convertReasoningEffort(
-        config.thinking_level,
-      );
-      if (reasoningEffort !== null) {
-        deepseekConfig.reasoning_effort = reasoningEffort;
-      }
     }
 
     if (config.tools !== undefined) {
       deepseekConfig.tools = config.tools.map((tool) => ({
         type: "function",
-        function: tool,
+        ...tool,
       }));
     }
 
@@ -175,254 +167,259 @@ export class DeepSeekV4Client extends LLMClient {
     return deepseekConfig;
   }
 
+  /**
+   * Transform universal message format to DeepSeek's Responses-compatible input format.
+   */
   transformUniMessageToModelInput(
     messages: UniMessage[],
     _signal?: AbortSignal,
-  ): ChatCompletionMessageParam[] {
-    const deepseekMessages: ChatCompletionMessageParam[] = [];
+  ): ResponseInputItem[] {
+    // only a vision model reads image parts; every other DeepSeek model answers from a
+    // placeholder instead of failing (llmsdk_docs/deepseek_v4/docs/responses-api.md), so an
+    // image is refused here rather than silently dropped
+    const supportsImage = this._model.toLowerCase().includes("vision");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const inputList: any[] = [];
 
     for (const msg of messages) {
-      const contentParts: Array<{
-        type: string;
-        text?: string;
-        image_url?: { url: string };
-      }> = [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const toolCalls: any[] = [];
-      let thinking = "";
+      const contentItems: any[] = [];
 
       for (const item of msg.content_items) {
+        // anything that is not message content becomes an input item of its own, so the
+        // text collected so far is flushed first to keep the original order: DeepSeek
+        // merges a function call into the adjacent assistant message and answers a call
+        // whose output does not follow it with "No tool output found for tool call"
+        // (verified live 2026-08-21)
+        if (
+          item.type !== "text" &&
+          item.type !== "image_url" &&
+          contentItems.length > 0
+        ) {
+          inputList.push({ role: msg.role, content: [...contentItems] });
+          contentItems.length = 0;
+        }
+
         if (item.type === "text") {
-          contentParts.push({ type: "text", text: item.text });
+          if (msg.role === "user") {
+            contentItems.push({ type: "input_text", text: item.text });
+          } else {
+            contentItems.push({ type: "output_text", text: item.text });
+          }
         } else if (item.type === "image_url") {
-          throw new Error("DeepSeek does not support image url inputs.");
+          if (!supportsImage) {
+            throw new Error(
+              `DeepSeek ${this._model} does not support image inputs.`,
+            );
+          }
+
+          contentItems.push({ type: "input_image", image_url: item.image_url });
         } else if (item.type === "thinking") {
-          thinking += item.thinking;
+          // DeepSeek carries the chain of thought as plain reasoning_text and ignores the
+          // summary and encrypted_content channels, so the item is rebuilt from the text
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const reasoning: any = { type: "reasoning", summary: [] };
+          if (item.thinking) {
+            reasoning.content = [
+              { type: "reasoning_text", text: item.thinking },
+            ];
+          }
+
+          inputList.push(reasoning);
         } else if (item.type === "tool_call") {
-          toolCalls.push({
-            id: item.tool_call_id,
-            type: "function",
-            function: {
-              name: item.name,
-              arguments: JSON.stringify(item.arguments, null, 0),
-            },
+          inputList.push({
+            type: "function_call",
+            call_id: item.tool_call_id,
+            name: item.name,
+            arguments: JSON.stringify(item.arguments),
           });
         } else if (item.type === "tool_result") {
           if (!item.tool_call_id) {
             throw new Error("tool_call_id is required for tool result.");
           }
 
-          if (item.images && item.images.length > 0) {
-            throw new Error(
-              "DeepSeek does not support images in tool results.",
-            );
+          // NOTE: tool results are input items
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const toolResult: any[] = [{ type: "input_text", text: item.text }];
+
+          if (item.images) {
+            if (!supportsImage) {
+              throw new Error(
+                `DeepSeek ${this._model} does not support images in tool results.`,
+              );
+            }
+
+            for (const imageUrl of item.images) {
+              toolResult.push({ type: "input_image", image_url: imageUrl });
+            }
           }
 
-          deepseekMessages.push({
-            role: "tool",
-            tool_call_id: item.tool_call_id,
-            content: [{ type: "text" as const, text: item.text }],
+          inputList.push({
+            type: "function_call_output",
+            call_id: item.tool_call_id,
+            output: toolResult,
           });
         } else {
-          throw new Error(
-            `Unknown item type: ${(item as { type: string }).type}`,
-          );
+          throw new Error(`Unknown item: ${JSON.stringify(item)}`);
         }
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const message: any = { role: msg.role };
-      if (contentParts.length > 0) {
-        message.content = contentParts;
-      }
-
-      if (toolCalls.length > 0) {
-        message.tool_calls = toolCalls;
-      }
-
-      if (thinking) {
-        message.reasoning_content = thinking;
-      }
-
-      if (Object.keys(message).length > 1) {
-        deepseekMessages.push(message);
+      if (contentItems.length > 0) {
+        inputList.push({ role: msg.role, content: contentItems });
       }
     }
 
-    return deepseekMessages;
+    return inputList;
   }
 
-  transformModelOutputToUniEvent(modelOutput: ChatCompletionChunk): UniEvent {
+  /**
+   * Transform DeepSeek streaming event to universal event format.
+   */
+  transformModelOutputToUniEvent(modelOutput: ResponseStreamEvent): UniEvent {
     let eventType: EventType | null = null;
     const contentItems: PartialContentItem[] = [];
     let usageMetadata: UsageMetadata | null = null;
     let finishReason: FinishReason | null = null;
 
-    // gateways inject content-free heartbeat chunks on long generations, whose
-    // choices arrive as undefined rather than an empty list
-    if (modelOutput.choices?.length) {
-      const choice = modelOutput.choices[0];
-      const delta = choice?.delta;
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((delta as any)?.reasoning_content) {
-        eventType = "delta";
-        // record the wire field so a replay through another OpenAI-compatible
-        // client reproduces the exact field DeepSeek produced
+    const deepseekEventType = modelOutput.type;
+    if (deepseekEventType === "response.output_text.delta") {
+      eventType = "delta";
+      contentItems.push({ type: "text", text: modelOutput.delta });
+    } else if (deepseekEventType === "response.reasoning_text.delta") {
+      eventType = "delta";
+      contentItems.push({ type: "thinking", thinking: modelOutput.delta });
+    } else if (deepseekEventType === "response.output_item.added") {
+      const item = modelOutput.item;
+      if (item.type === "function_call") {
+        eventType = "start";
         contentItems.push({
-          type: "thinking",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          thinking: (delta as any).reasoning_content,
-          fidelity: { reasoning_field: "reasoning_content" },
+          type: "partial_tool_call",
+          name: item.name,
+          arguments: "",
+          tool_call_id: item.call_id,
         });
+      } else {
+        eventType = "unused";
       }
-
-      if (delta?.content) {
-        eventType = "delta";
-        contentItems.push({ type: "text", text: delta.content });
-      }
-
-      if (delta?.tool_calls) {
-        eventType = "delta";
-        for (const toolCall of delta.tool_calls) {
-          contentItems.push({
-            type: "partial_tool_call",
-            name: toolCall.function?.name || "",
-            arguments: toolCall.function?.arguments || "",
-            tool_call_id: toolCall.id || "",
-          });
-        }
-      }
-
-      if (choice?.finish_reason) {
-        eventType = eventType || "stop";
-        const finishReasonMapping: { [key: string]: FinishReason } = {
-          stop: "stop",
-          length: "length",
-          tool_calls: "tool_call",
-          content_filter: "stop",
-        };
-        finishReason = finishReasonMapping[choice.finish_reason] || "unknown";
-      }
-    }
-
-    if (modelOutput.usage) {
-      eventType = eventType || "stop";
-      const completionTokenDetails =
-        modelOutput.usage.completion_tokens_details;
-      const reasoningTokens = completionTokenDetails
-        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ((completionTokenDetails as any).reasoning_tokens ?? null)
-        : null;
-      const responseTokens =
-        modelOutput.usage.completion_tokens - (reasoningTokens || 0);
-
-      // usage.prompt_tokens = prompt_cache_hit_tokens + prompt_cache_miss_tokens
-      usageMetadata = {
-        cached_tokens:
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (modelOutput.usage as any).prompt_cache_hit_tokens ?? null,
-        prompt_tokens:
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (modelOutput.usage as any).prompt_cache_miss_tokens ?? null,
-        thoughts_tokens: reasoningTokens,
-        response_tokens: responseTokens,
+    } else if (deepseekEventType === "response.function_call_arguments.delta") {
+      eventType = "delta";
+      contentItems.push({
+        type: "partial_tool_call",
+        name: "",
+        arguments: modelOutput.delta,
+        tool_call_id: "",
+      });
+    } else if (deepseekEventType === "response.function_call_arguments.done") {
+      eventType = "stop";
+    } else if (
+      deepseekEventType === "response.completed" ||
+      deepseekEventType === "response.incomplete"
+    ) {
+      eventType = "stop";
+      const response = modelOutput.response;
+      const finishReasonMapping: { [key: string]: FinishReason } = {
+        completed: "stop",
+        incomplete: "length",
       };
+      if (response.status) {
+        finishReason = finishReasonMapping[response.status] || "unknown";
+      }
+      if (response.usage) {
+        const cachedTokens =
+          response.usage.input_tokens_details?.cached_tokens || 0;
+        const reasoningTokens =
+          response.usage.output_tokens_details?.reasoning_tokens || 0;
+
+        usageMetadata = {
+          cached_tokens: cachedTokens,
+          prompt_tokens: response.usage.input_tokens - cachedTokens,
+          thoughts_tokens: reasoningTokens,
+          response_tokens: response.usage.output_tokens - reasoningTokens,
+        };
+      }
+    } else if (
+      [
+        "response.created",
+        "response.in_progress",
+        "response.output_item.done",
+        "response.output_text.done",
+        "response.reasoning_text.done",
+        "response.content_part.added",
+        "response.content_part.done",
+        // gateway heartbeat on long generations; carries no content
+        "keepalive",
+      ].includes(deepseekEventType)
+    ) {
+      eventType = "unused";
+    } else if (isDebugEnabled()) {
+      throw new Error(`Unknown output: ${JSON.stringify(modelOutput)}`);
+    } else {
+      // a gateway injects its own events (heartbeats, cost tickers) into the stream, and
+      // killing a long generation over one costs more than dropping it
+      eventType = "unused";
     }
 
     return {
       role: "assistant",
-      event_type: eventType as EventType,
+      event_type: eventType,
       content_items: contentItems,
       usage_metadata: usageMetadata,
       finish_reason: finishReason,
     };
   }
 
+  /**
+   * Stream generate using DeepSeek's OpenAI-compatible Responses API.
+   */
   async *_streamingResponseInternal(options: {
     messages: UniMessage[];
     config: UniConfig;
     signal?: AbortSignal;
   }): AsyncGenerator<UniEvent> {
     const deepseekConfig = this.transformUniConfigToModelConfig(options.config);
-    const deepseekMessages = this.transformUniMessageToModelInput(
+    const inputList = this.transformUniMessageToModelInput(
       options.messages,
       options.signal,
     );
-
-    if (options.config.system_prompt) {
-      deepseekMessages.unshift({
-        role: "system",
-        content: options.config.system_prompt,
-      });
-    }
-
-    const params: ChatCompletionCreateParamsStreaming = {
-      ...deepseekConfig,
-      messages: deepseekMessages,
-      stream: true,
-    };
-
-    const stream = await this._client.chat.completions.create(params, {
-      signal: options.signal,
-    });
 
     const partialToolCall: {
       name?: string;
       arguments?: string;
       tool_call_id?: string;
     } = {};
-    let partialUsage: {
-      finish_reason?: FinishReason | null;
-      usage_metadata?: UsageMetadata | null;
-    } = {};
 
-    for await (const chunk of stream) {
-      const event = this.transformModelOutputToUniEvent(chunk);
-      partialUsage.finish_reason =
-        event.finish_reason || partialUsage.finish_reason;
-      partialUsage.usage_metadata =
-        event.usage_metadata || partialUsage.usage_metadata;
+    const params: ResponseCreateParamsStreaming = {
+      ...deepseekConfig,
+      input: inputList,
+      stream: true,
+    };
 
-      if (event.event_type === "delta") {
-        for (const item of event.content_items) {
+    const stream = await this._client.responses.create(params, {
+      signal: options.signal,
+    });
+    for await (const event of stream) {
+      const uniEvent = this.transformModelOutputToUniEvent(event);
+
+      if (uniEvent.event_type === "start") {
+        for (const item of uniEvent.content_items) {
           if (item.type === "partial_tool_call") {
-            if (!partialToolCall.name) {
-              partialToolCall.name = item.name;
-              partialToolCall.arguments = item.arguments;
-              partialToolCall.tool_call_id = item.tool_call_id;
-            } else if (item.name) {
-              yield {
-                role: "assistant",
-                event_type: "delta",
-                content_items: [
-                  {
-                    type: "tool_call",
-                    name: partialToolCall.name,
-                    arguments: parseToolCallArguments(
-                      partialToolCall.arguments,
-                      this.constructor.name,
-                      partialToolCall.name || "",
-                      partialToolCall.tool_call_id || "",
-                    ),
-                    tool_call_id: partialToolCall.tool_call_id || "",
-                  },
-                ],
-                usage_metadata: null,
-                finish_reason: null,
-              };
-              partialToolCall.name = item.name;
-              partialToolCall.arguments = item.arguments;
-              partialToolCall.tool_call_id = item.tool_call_id;
-            } else {
-              partialToolCall.arguments =
-                (partialToolCall.arguments || "") + item.arguments;
-            }
+            partialToolCall.name = item.name;
+            partialToolCall.arguments = "";
+            partialToolCall.tool_call_id = item.tool_call_id;
+            yield uniEvent;
           }
         }
-        yield event;
-      } else if (event.event_type === "stop") {
-        if (partialToolCall.name) {
+      } else if (uniEvent.event_type === "delta") {
+        for (const item of uniEvent.content_items) {
+          if (item.type === "partial_tool_call") {
+            partialToolCall.arguments =
+              (partialToolCall.arguments || "") + item.arguments;
+          }
+        }
+
+        yield uniEvent;
+      } else if (uniEvent.event_type === "stop") {
+        if (partialToolCall.name && partialToolCall.arguments !== undefined) {
           yield {
             role: "assistant",
             event_type: "delta",
@@ -447,16 +444,8 @@ export class DeepSeekV4Client extends LLMClient {
           partialToolCall.tool_call_id = undefined;
         }
 
-        if (partialUsage.finish_reason && partialUsage.usage_metadata) {
-          yield {
-            role: "assistant",
-            event_type: "stop",
-            content_items: [],
-            usage_metadata: partialUsage.usage_metadata,
-            finish_reason: partialUsage.finish_reason,
-          };
-          partialUsage.finish_reason = null;
-          partialUsage.usage_metadata = null;
+        if (uniEvent.finish_reason || uniEvent.usage_metadata) {
+          yield uniEvent;
         }
       }
     }

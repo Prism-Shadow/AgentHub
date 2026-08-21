@@ -38,6 +38,9 @@ class PromptCaching(StrEnum):
 # Tool choice can be a literal string or a list of tool names
 ToolChoice = Literal["auto", "required", "none"] | list[str]
 Role = Literal["user", "assistant"]
+# "start" opens an item, "delta" carries content, and "stop" closes the response with usage and
+# a finish reason. "unused" is a client's own marker for a wire event that carries nothing
+# universal, and never leaves the client.
 EventType = Literal["start", "delta", "stop", "unused"]
 FinishReason = Literal["stop", "length", "tool_call", "unknown"]
 AspectRatio = Literal["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"]

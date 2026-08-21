@@ -169,6 +169,17 @@ export class MiniMaxM3Client extends LLMClient {
       let contentItems: any[] = [];
 
       for (const item of message.content_items) {
+        // anything that is not message content becomes an input item of its own, so the
+        // text collected so far is flushed first to keep the order the model produced
+        if (
+          item.type !== "text" &&
+          item.type !== "image_url" &&
+          contentItems.length > 0
+        ) {
+          inputList.push({ role: message.role, content: contentItems });
+          contentItems = [];
+        }
+
         if (item.type === "text") {
           contentItems.push({
             type: message.role === "user" ? "input_text" : "output_text",

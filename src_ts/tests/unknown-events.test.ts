@@ -20,6 +20,7 @@ import {
   UniEvent,
   UniMessage,
 } from "../src";
+import { LLMClient } from "../src/baseClient";
 
 type StreamClient = {
   streamingResponse(options: {
@@ -47,6 +48,11 @@ const RESPONSES_STREAM_CASES: StreamCase[] = [
     clientType: "openai-responses",
   },
   {
+    expectedClient: "DeepSeekV4Client",
+    model: "deepseek-v4",
+    clientType: "deepseek-v4",
+  },
+  {
     expectedClient: "MiniMaxM3Client",
     model: "minimax-m3",
     clientType: "minimax-m3",
@@ -59,11 +65,6 @@ const CHAT_STREAM_CASES: StreamCase[] = [
     expectedClient: "OpenaiChatClient",
     model: "gpt-5.6",
     clientType: "openai-chat",
-  },
-  {
-    expectedClient: "DeepSeekV4Client",
-    model: "deepseek-v4",
-    clientType: "deepseek-v4",
   },
   {
     expectedClient: "GLM5_3Client",
@@ -565,3 +566,128 @@ describe.each(GEMINI_STREAM_CASES)(
     });
   },
 );
+
+
+// Every client, driven over the ignorable events its own protocol carries.
+const UNUSED_EVENT_CASES: Array<{
+  testCase: StreamCase;
+  install: (client: StreamClient, events: unknown[]) => void;
+  stream: () => unknown[];
+}> = [
+  ...RESPONSES_STREAM_CASES.map((testCase) => ({
+    testCase,
+    install: installFakeResponsesStream,
+    stream: () => [
+      responsesKeepaliveEvent(1),
+      responsesTextDeltaEvent("Here is"),
+      responsesCompletedEvent(),
+    ],
+  })),
+  ...CHAT_STREAM_CASES.map((testCase) => ({
+    testCase,
+    install: installFakeChatStream,
+    stream: () => [chatKeepaliveChunk(1), chatTextChunk("Here is"), chatStopChunk()],
+  })),
+  ...MESSAGES_STREAM_CASES.map((testCase) => ({
+    testCase,
+    install: installFakeMessagesStream,
+    stream: () => [
+      messagesPingEvent(),
+      messagesStartEvent(),
+      messagesTextDeltaEvent("Here is"),
+      messagesStopEvent(),
+    ],
+  })),
+  ...GEMINI_STREAM_CASES.map((testCase) => ({
+    testCase,
+    install: installFakeGeminiStream,
+    stream: () => [geminiKeepaliveChunk(), geminiTextChunk("Here is"), geminiStopChunk()],
+  })),
+];
+
+/** A client that lets its own "unused" bookkeeping escape, which no client may do. */
+class LeakyClient extends LLMClient {
+  protected _model = "leaky-1";
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  transformUniConfigToModelConfig(config: UniConfig): any {
+    return config;
+  }
+
+  transformUniMessageToModelInput(messages: UniMessage[]): UniMessage[] {
+    return messages;
+  }
+
+  transformModelOutputToUniEvent(modelOutput: UniEvent): UniEvent {
+    return modelOutput;
+  }
+
+  async *_streamingResponseInternal(): AsyncGenerator<UniEvent> {
+    yield {
+      role: "assistant",
+      event_type: "unused",
+      content_items: [],
+      usage_metadata: null,
+      finish_reason: null,
+    };
+    yield {
+      role: "assistant",
+      event_type: "delta",
+      content_items: [{ type: "text", text: "Here is" }],
+      usage_metadata: null,
+      finish_reason: null,
+    };
+    yield {
+      role: "assistant",
+      event_type: "stop",
+      content_items: [],
+      usage_metadata: {
+        cached_tokens: 0,
+        prompt_tokens: 1,
+        thoughts_tokens: 0,
+        response_tokens: 1,
+      },
+      finish_reason: "stop",
+    };
+  }
+
+  async listModels(): Promise<string[]> {
+    return [this._model];
+  }
+}
+
+describe.each(UNUSED_EVENT_CASES)(
+  "Unused event handling for $testCase.clientType",
+  ({ testCase, install, stream }) => {
+    test("never yields an unused event", async () => {
+      // with the debug guard on, an "unused" event that reached the caller throws instead of passing
+      process.env.AGENTHUB_DEBUG = "1";
+      const client = createAutoClient(testCase);
+      install(client, stream());
+
+      const events = await collectEvents(
+        client.streamingResponse({ messages, config: {} }),
+      );
+      expect(events.every((event) => event.event_type !== "unused")).toBe(true);
+      expect(collectedTexts(events)).toEqual(["Here is"]);
+    });
+  },
+);
+
+describe("Base client unused event guarantee", () => {
+  test("drops an escaped unused event", async () => {
+    const events = await collectEvents(
+      new LeakyClient().streamingResponse({ messages, config: {} }),
+    );
+
+    expect(events.map((event) => event.event_type)).toEqual(["delta", "stop"]);
+  });
+
+  test("rejects an escaped unused event with AGENTHUB_DEBUG set", async () => {
+    process.env.AGENTHUB_DEBUG = "1";
+
+    await expect(
+      collectEvents(new LeakyClient().streamingResponse({ messages, config: {} })),
+    ).rejects.toThrow("unused event");
+  });
+});

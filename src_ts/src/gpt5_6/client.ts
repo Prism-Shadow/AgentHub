@@ -177,6 +177,23 @@ export class GPT5_6Client extends LLMClient {
       let lastPhase: string | null = null;
 
       for (const item of msg.content_items) {
+        // anything that is not message content becomes an input item of its own, so the
+        // text collected so far is flushed first to keep the order the model produced
+        if (
+          item.type !== "text" &&
+          item.type !== "image_url" &&
+          contentItems.length > 0
+        ) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const entry: any = { role: msg.role, content: contentItems };
+          if (lastPhase !== null) {
+            entry.phase = lastPhase;
+          }
+
+          inputList.push(entry);
+          contentItems = [];
+        }
+
         if (item.type === "text") {
           const phase = item.fidelity?.phase;
           if (msg.role === "assistant" && phase) {

@@ -310,6 +310,17 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "pricing": _cny(1.5, 4.5, cached=0.05),
     },
     {
+        "model": "deepseek-v4-flash-vision-exp",
+        "base_url": _DEEPSEEK,
+        "client": "deepseek-v4",
+        "input_modalities": ["Text", "Image"],
+        "output_modalities": ["Text"],
+        "context_window": 1000000,
+        # priced as deepseek-v4-flash; official off-peak list price (verified 2026-08-21), and
+        # peak-hour rates (Beijing 9:00-12:00, 14:00-18:00) are double
+        "pricing": _cny(1.5, 4.5, cached=0.05),
+    },
+    {
         "model": "deepseek-v4-pro",
         "base_url": _DEEPSEEK,
         "client": "deepseek-v4",
@@ -550,7 +561,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "deepseek-ai/DeepSeek-V4-Flash",
         "base_url": _SILICONFLOW,
-        "client": "deepseek-v4",
+        "client": "openai-chat",
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1000000,
@@ -559,7 +570,7 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
     {
         "model": "deepseek-ai/DeepSeek-V4-Pro",
         "base_url": _SILICONFLOW,
-        "client": "deepseek-v4",
+        "client": "openai-chat",
         "input_modalities": ["Text"],
         "output_modalities": ["Text"],
         "context_window": 1000000,

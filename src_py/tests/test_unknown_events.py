@@ -19,6 +19,8 @@ from types import SimpleNamespace
 import pytest
 
 from agenthub import AutoLLMClient
+from agenthub.base_client import LLMClient
+from agenthub.types import UniConfig, UniEvent, UniMessage
 
 
 @dataclass
@@ -32,13 +34,13 @@ class StreamCase:
 RESPONSES_STREAM_CASES = [
     StreamCase(expected_client="GPT5_6Client", model="gpt-5.6", client_type="gpt-5.6"),
     StreamCase(expected_client="OpenaiResponsesClient", model="gpt-5.6", client_type="openai-responses"),
+    StreamCase(expected_client="DeepSeekV4Client", model="deepseek-v4", client_type="deepseek-v4"),
     StreamCase(expected_client="MiniMaxM3Client", model="minimax-m3", client_type="minimax-m3"),
 ]
 
 # Every client that parses the OpenAI Chat Completions chunk shape.
 CHAT_STREAM_CASES = [
     StreamCase(expected_client="OpenaiChatClient", model="gpt-5.6", client_type="openai-chat"),
-    StreamCase(expected_client="DeepSeekV4Client", model="deepseek-v4", client_type="deepseek-v4"),
     StreamCase(expected_client="GLM5_3Client", model="glm-5.3", client_type="glm-5.3"),
     StreamCase(expected_client="KimiK3Client", model="kimi-k3", client_type="kimi-k3"),
 ]
@@ -489,4 +491,125 @@ async def test_gemini_client_rejects_unknown_parts_in_debug_mode(case: StreamCas
 
     with pytest.raises(ValueError, match="Unknown output"):
         async for _event in client.streaming_response(MESSAGES, {}):
+            pass
+
+
+# Every client, driven over the ignorable events its own protocol carries.
+UNUSED_EVENT_CASES = [
+    *[
+        (
+            case,
+            _install_fake_responses_stream,
+            [_responses_keepalive_event(1), _responses_text_delta_event("Here is"), _responses_completed_event()],
+        )
+        for case in RESPONSES_STREAM_CASES
+    ],
+    *[
+        (case, _install_fake_chat_stream, [_chat_keepalive_chunk(1), _chat_text_chunk("Here is"), _chat_stop_chunk()])
+        for case in CHAT_STREAM_CASES
+    ],
+    *[
+        (
+            case,
+            _install_fake_messages_stream,
+            [
+                _messages_ping_event(),
+                _messages_start_event(),
+                _messages_text_delta_event("Here is"),
+                _messages_stop_event(),
+            ],
+        )
+        for case in MESSAGES_STREAM_CASES
+    ],
+    *[
+        (
+            case,
+            _install_fake_gemini_stream,
+            [_gemini_keepalive_chunk(), _gemini_text_chunk("Here is"), _gemini_stop_chunk()],
+        )
+        for case in GEMINI_STREAM_CASES
+    ],
+]
+
+
+class _LeakyClient(LLMClient):
+    """A client that lets its own "unused" bookkeeping escape, which no client may do."""
+
+    _model = "leaky-1"
+
+    def transform_uni_config_to_model_config(self, config: UniConfig) -> UniConfig:
+        return config
+
+    def transform_uni_message_to_model_input(self, messages: list[UniMessage]) -> list[UniMessage]:
+        return messages
+
+    def transform_model_output_to_uni_event(self, model_output: UniEvent) -> UniEvent:
+        return model_output
+
+    async def list_models(self) -> list[str]:
+        return [self._model]
+
+    async def _streaming_response_internal(
+        self, messages: list[UniMessage], config: UniConfig
+    ) -> AsyncIterator[UniEvent]:
+        yield {
+            "role": "assistant",
+            "event_type": "unused",
+            "content_items": [],
+            "usage_metadata": None,
+            "finish_reason": None,
+        }
+        yield {
+            "role": "assistant",
+            "event_type": "delta",
+            "content_items": [{"type": "text", "text": "Here is"}],
+            "usage_metadata": None,
+            "finish_reason": None,
+        }
+        yield {
+            "role": "assistant",
+            "event_type": "stop",
+            "content_items": [],
+            "usage_metadata": {
+                "cached_tokens": 0,
+                "prompt_tokens": 1,
+                "thoughts_tokens": 0,
+                "response_tokens": 1,
+            },
+            "finish_reason": "stop",
+        }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("case", "installer", "stream"),
+    UNUSED_EVENT_CASES,
+    ids=[case.client_type for case, _installer, _stream in UNUSED_EVENT_CASES],
+)
+async def test_clients_never_yield_unused_events(
+    case: StreamCase, installer: Callable[[AutoLLMClient, list[object]], None], stream: list[object], monkeypatch
+):
+    # with the debug guard on, an "unused" event that reached the caller raises instead of passing
+    monkeypatch.setenv("AGENTHUB_DEBUG", "1")
+    client = _create_auto_client(case)
+    installer(client, stream)
+
+    events = [event async for event in client.streaming_response(MESSAGES, {})]
+    assert all(event["event_type"] != "unused" for event in events)
+    assert _collected_texts(events) == ["Here is"]
+
+
+@pytest.mark.asyncio
+async def test_base_client_drops_an_escaped_unused_event():
+    events = [event async for event in _LeakyClient().streaming_response(MESSAGES, {})]
+
+    assert [event["event_type"] for event in events] == ["delta", "stop"]
+
+
+@pytest.mark.asyncio
+async def test_base_client_rejects_an_escaped_unused_event_in_debug_mode(monkeypatch):
+    monkeypatch.setenv("AGENTHUB_DEBUG", "1")
+
+    with pytest.raises(ValueError, match="unused event"):
+        async for _event in _LeakyClient().streaming_response(MESSAGES, {}):
             pass

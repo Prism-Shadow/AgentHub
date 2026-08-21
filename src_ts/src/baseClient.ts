@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { EmptyResponseError } from "./errors";
+import { isDebugEnabled } from "./utils";
 import {
   Fidelity,
   FinishReason,
@@ -226,6 +227,18 @@ export abstract class LLMClient {
     let lastEvent: UniEvent | null = null;
     const events: UniEvent[] = [];
     for await (const event of this._streamingResponseInternal(options)) {
+      if (event.event_type === "unused") {
+        // a client marks a wire event it has nothing to emit for as "unused"; that is its own
+        // bookkeeping and must not reach a caller
+        if (isDebugEnabled()) {
+          throw new Error(
+            `${this.constructor.name} yielded an internal unused event: ${JSON.stringify(event)}`,
+          );
+        }
+
+        continue;
+      }
+
       event.created_at = Date.now();
       lastEvent = event;
       events.push(event);
