@@ -145,29 +145,26 @@ class DeepSeekV4Client(LLMClient):
             content_items: list = []
 
             for item in msg["content_items"]:
+                # anything that is not message content becomes an input item of its own, so the
+                # text collected so far is flushed first to keep the original order: DeepSeek
+                # merges a function call into the adjacent assistant message and answers a call
+                # whose output does not follow it with "No tool output found for tool call"
+                # (verified live 2026-08-21)
+                if item["type"] not in ("text", "image_url") and content_items:
+                    input_list.append({"role": msg["role"], "content": content_items})
+                    content_items = []
+
                 if item["type"] == "text":
                     if msg["role"] == "user":
                         content_items.append({"type": "input_text", "text": item["text"]})
                     else:
                         content_items.append({"type": "output_text", "text": item["text"]})
-                    continue
-
-                if item["type"] == "image_url":
+                elif item["type"] == "image_url":
                     if not supports_image:
                         raise ValueError(f"DeepSeek {self._model} does not support image inputs.")
 
                     content_items.append({"type": "input_image", "image_url": item["image_url"]})
-                    continue
-
-                # the items below are input items of their own, so the message text collected so
-                # far is flushed first to keep the original order: DeepSeek merges a function call
-                # into the adjacent assistant message and answers a call whose output does not
-                # follow it with "No tool output found for tool call" (verified live 2026-08-21)
-                if content_items:
-                    input_list.append({"role": msg["role"], "content": content_items})
-                    content_items = []
-
-                if item["type"] == "thinking":
+                elif item["type"] == "thinking":
                     # DeepSeek carries the chain of thought as plain reasoning_text and ignores the
                     # summary and encrypted_content channels, so the item is rebuilt from the text
                     reasoning = {"type": "reasoning", "summary": []}

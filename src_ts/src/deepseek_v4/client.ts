@@ -186,17 +186,27 @@ export class DeepSeekV4Client extends LLMClient {
       const contentItems: any[] = [];
 
       for (const item of msg.content_items) {
+        // anything that is not message content becomes an input item of its own, so the
+        // text collected so far is flushed first to keep the original order: DeepSeek
+        // merges a function call into the adjacent assistant message and answers a call
+        // whose output does not follow it with "No tool output found for tool call"
+        // (verified live 2026-08-21)
+        if (
+          item.type !== "text" &&
+          item.type !== "image_url" &&
+          contentItems.length > 0
+        ) {
+          inputList.push({ role: msg.role, content: [...contentItems] });
+          contentItems.length = 0;
+        }
+
         if (item.type === "text") {
           if (msg.role === "user") {
             contentItems.push({ type: "input_text", text: item.text });
           } else {
             contentItems.push({ type: "output_text", text: item.text });
           }
-
-          continue;
-        }
-
-        if (item.type === "image_url") {
+        } else if (item.type === "image_url") {
           if (!supportsImage) {
             throw new Error(
               `DeepSeek ${this._model} does not support image inputs.`,
@@ -204,19 +214,7 @@ export class DeepSeekV4Client extends LLMClient {
           }
 
           contentItems.push({ type: "input_image", image_url: item.image_url });
-          continue;
-        }
-
-        // the items below are input items of their own, so the message text collected so
-        // far is flushed first to keep the original order: DeepSeek merges a function call
-        // into the adjacent assistant message and answers a call whose output does not
-        // follow it with "No tool output found for tool call" (verified live 2026-08-21)
-        if (contentItems.length > 0) {
-          inputList.push({ role: msg.role, content: [...contentItems] });
-          contentItems.length = 0;
-        }
-
-        if (item.type === "thinking") {
+        } else if (item.type === "thinking") {
           // DeepSeek carries the chain of thought as plain reasoning_text and ignores the
           // summary and encrypted_content channels, so the item is rebuilt from the text
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

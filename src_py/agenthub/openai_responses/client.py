@@ -130,6 +130,18 @@ class OpenaiResponsesClient(LLMClient):
             last_phase: str | None = None
 
             for item in msg["content_items"]:
+                # anything that is not message content becomes an input item of its own, so the
+                # text collected so far is flushed first to keep the original order: a server that
+                # merges a function call into the adjacent assistant message rejects a call whose
+                # output does not follow it (DeepSeek answers "No tool output found for tool call")
+                if item["type"] not in ("text", "image_url") and content_items:
+                    entry = {"role": msg["role"], "content": content_items}
+                    if last_phase is not None:
+                        entry["phase"] = last_phase
+
+                    input_list.append(entry)
+                    content_items = []
+
                 if item["type"] == "text":
                     phase = (item.get("fidelity") or {}).get("phase")
                     if msg["role"] == "assistant" and phase:  # split different phases
@@ -143,26 +155,9 @@ class OpenaiResponsesClient(LLMClient):
                         content_items.append({"type": "input_text", "text": item["text"]})
                     else:
                         content_items.append({"type": "output_text", "text": item["text"]})
-
-                    continue
-
-                if item["type"] == "image_url":
+                elif item["type"] == "image_url":
                     content_items.append({"type": "input_image", "image_url": item["image_url"]})
-                    continue
-
-                # the items below are input items of their own, so the message text collected so
-                # far is flushed first to keep the original order: a server that merges a function
-                # call into the adjacent assistant message rejects a call whose output does not
-                # follow it (DeepSeek answers "No tool output found for tool call")
-                if content_items:
-                    entry = {"role": msg["role"], "content": content_items}
-                    if last_phase is not None:
-                        entry["phase"] = last_phase
-
-                    input_list.append(entry)
-                    content_items = []
-
-                if item["type"] == "thinking":
+                elif item["type"] == "thinking":
                     # the wire shape differs by server: OpenAI-style servers stream summaries and
                     # demand the summary key back (with encrypted_content preserved), while
                     # DeepSeek/Z.AI/MiniMax-style servers accept a reasoning item rebuilt from the

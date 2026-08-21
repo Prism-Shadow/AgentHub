@@ -172,6 +172,25 @@ export class OpenaiResponsesClient extends LLMClient {
       let lastPhase: string | null = null;
 
       for (const item of msg.content_items) {
+        // anything that is not message content becomes an input item of its own, so the
+        // text collected so far is flushed first to keep the original order: a server that
+        // merges a function call into the adjacent assistant message rejects a call whose
+        // output does not follow it (DeepSeek answers "No tool output found for tool call")
+        if (
+          item.type !== "text" &&
+          item.type !== "image_url" &&
+          contentItems.length > 0
+        ) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const entry: any = { role: msg.role, content: contentItems };
+          if (lastPhase !== null) {
+            entry.phase = lastPhase;
+          }
+
+          inputList.push(entry);
+          contentItems = [];
+        }
+
         if (item.type === "text") {
           const phase = item.fidelity?.phase;
           if (msg.role === "assistant" && phase) {
@@ -195,34 +214,12 @@ export class OpenaiResponsesClient extends LLMClient {
           } else {
             contentItems.push({ type: "output_text", text: item.text });
           }
-
-          continue;
-        }
-
-        if (item.type === "image_url") {
+        } else if (item.type === "image_url") {
           contentItems.push({
             type: "input_image",
             image_url: item.image_url,
           });
-          continue;
-        }
-
-        // the items below are input items of their own, so the message text collected so
-        // far is flushed first to keep the original order: a server that merges a function
-        // call into the adjacent assistant message rejects a call whose output does not
-        // follow it (DeepSeek answers "No tool output found for tool call")
-        if (contentItems.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const entry: any = { role: msg.role, content: contentItems };
-          if (lastPhase !== null) {
-            entry.phase = lastPhase;
-          }
-
-          inputList.push(entry);
-          contentItems = [];
-        }
-
-        if (item.type === "thinking") {
+        } else if (item.type === "thinking") {
           // the wire shape differs by server: OpenAI-style servers stream summaries and
           // demand the summary key back (with encrypted_content preserved), while
           // DeepSeek/Z.AI/MiniMax-style servers accept a reasoning item rebuilt from the
