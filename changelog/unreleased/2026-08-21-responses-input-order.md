@@ -3,6 +3,7 @@
 - **Date:** 2026-08-21
 - **Type:** fix
 - **Scope:** `deepseek_v4`, `openai_responses`
+- **PR:** [#185](https://github.com/Prism-Shadow/agenthub/pull/185)
 
 [中文版](2026-08-21-responses-input-order.zh.md)
 

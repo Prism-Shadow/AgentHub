@@ -3,6 +3,7 @@
 - **Date:** 2026-08-21
 - **Type:** refactor
 - **Scope:** `deepseek_v4`, `registry`, `tests`
+- **PR:** [#185](https://github.com/Prism-Shadow/agenthub/pull/185)
 
 [English](2026-08-21-deepseek-responses-protocol.md)
 
