@@ -2,6 +2,7 @@
 
 [中文版](README.zh.md)
 
+- [2026-08-21] The live E2E suites read their test image from a reachable host. ([details](2026-08-21-e2e-image-host.md))
 - [2026-08-21] An internal "unused" event never reaches a caller. ([details](2026-08-21-unused-event-guarantee.md), [#185](https://github.com/Prism-Shadow/agenthub/pull/185))
 - [2026-08-21] `deepseek-v4-flash-vision-exp` reads images, in a prompt and in a tool result. ([details](2026-08-21-deepseek-vision.md), [#185](https://github.com/Prism-Shadow/agenthub/pull/185))
 - [2026-08-21] DeepSeek moves onto the OpenAI Responses protocol. ([details](2026-08-21-deepseek-responses-protocol.md), [#185](https://github.com/Prism-Shadow/agenthub/pull/185))

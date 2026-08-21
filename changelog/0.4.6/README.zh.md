@@ -2,6 +2,7 @@
 
 [English](README.md)
 
+- [2026-08-21] 实况 E2E 套件改用可正常拉取的图片地址。([详情](2026-08-21-e2e-image-host.zh.md))
 - [2026-08-21] 内部的 "unused" 事件绝不会流到调用方。([详情](2026-08-21-unused-event-guarantee.zh.md), [#185](https://github.com/Prism-Shadow/agenthub/pull/185))
 - [2026-08-21] `deepseek-v4-flash-vision-exp` 可读图片，提示词与工具返回都支持。([详情](2026-08-21-deepseek-vision.zh.md), [#185](https://github.com/Prism-Shadow/agenthub/pull/185))
 - [2026-08-21] DeepSeek 改用 OpenAI Responses 协议。([详情](2026-08-21-deepseek-responses-protocol.zh.md), [#185](https://github.com/Prism-Shadow/agenthub/pull/185))
