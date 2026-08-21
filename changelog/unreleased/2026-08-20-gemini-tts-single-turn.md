@@ -3,6 +3,7 @@
 - **Date:** 2026-08-20
 - **Type:** fix
 - **Scope:** `gemini3_7`, `base_client`, `integration`, `tests`
+- **PR:** [#184](https://github.com/Prism-Shadow/agenthub/pull/184)
 
 [中文版](2026-08-20-gemini-tts-single-turn.zh.md)
 
