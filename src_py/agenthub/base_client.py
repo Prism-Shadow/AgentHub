@@ -28,6 +28,7 @@ from .types import (
     UniMessage,
     UsageMetadata,
 )
+from .utils import is_debug_enabled
 
 
 class LLMClient(ABC):
@@ -264,6 +265,14 @@ class LLMClient(ABC):
                     raise
                 finally:
                     waiting_for_stream = False
+
+                if event["event_type"] == "unused":
+                    # a client marks a wire event it has nothing to emit for as "unused"; that is
+                    # its own bookkeeping and must not reach a caller
+                    if is_debug_enabled():
+                        raise ValueError(f"{self.__class__.__name__} yielded an internal unused event: {event}")
+
+                    continue
 
                 event["created_at"] = int(time.time() * 1000)
                 last_event = event
