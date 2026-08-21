@@ -6,13 +6,19 @@ DeepSeek provides OpenAI-compatible and Anthropic-compatible API formats. For Op
 
 | Parameter | Value |
 | --- | --- |
-| OpenAI `base_url` | `https://api.deepseek.com` |
+| OpenAI `base_url` | `https://api.deepseek.com` (Chat Completions and Responses) |
 | Anthropic `base_url` | `https://api.deepseek.com/anthropic` |
 | API key | Create one in the DeepSeek platform |
-| Current models | `deepseek-v4-flash`, `deepseek-v4-pro` |
+| Current models | `deepseek-v4-flash`, `deepseek-v4-pro`, `deepseek-v4-flash-vision-exp` |
 | Compatibility model aliases | `deepseek-chat`, `deepseek-reasoner` |
 
 `deepseek-chat` and `deepseek-reasoner` are compatibility aliases scheduled for deprecation on 2026-07-24. They correspond to non-thinking and thinking mode on `deepseek-v4-flash`.
+
+Every model carries a 1M context window and a 384K max output, and supports JSON output, tool
+calls, the Responses API, the Anthropic API and chat prefix completion (Beta).
+`deepseek-v4-flash-vision-exp` adds image input, and prices the same as `deepseek-v4-flash`; its
+image tokens are counted by image size and billed with the rest
+(https://api-docs.deepseek.com/quick_start/pricing, snapshot 2026-08-21).
 
 ## Invoke the Chat API
 
@@ -105,6 +111,8 @@ main();
 
 ## Related Guides
 
+- [Responses API](./docs/responses-api.md)
+- [Vision](./docs/vision.md)
 - [Thinking Mode](./docs/thinking-mode.md)
 - [Multi-round Chat](./docs/multi-round-chat.md)
 - [JSON Mode](./docs/json-mode.md)
