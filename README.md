@@ -132,7 +132,7 @@ AgentHub provides Codex/Claude Code skill files for assistants that need to help
 - `get_history()`: Returns the history of the stateful LLM client.
 - `set_history(history)`: Replaces the history of the stateful LLM client with a copy of the provided list.
 
-Streaming clients skip output they do not recognize, so a gateway's own frames cannot end a generation. Set `AGENTHUB_DEBUG` to anything other than `0`, `false`, `no` or `off` to make them raise instead.
+Streaming clients skip output they do not recognize, so a gateway's own frames cannot end a generation, and an event a client has nothing universal to emit for never reaches you. Set `AGENTHUB_DEBUG` to anything other than `0`, `false`, `no` or `off` to make both raise instead.
 
 ## Basic Usage
 
