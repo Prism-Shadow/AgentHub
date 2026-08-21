@@ -59,6 +59,22 @@ OpenRouter, DeepSeek, Z.AI, and MiniMax). Where a gateway serves more than one, 
 `"openai-responses"`: OpenRouter serves it for every model it hosts, while SiliconFlow
 serves Chat Completions only.
 
+Every client speaks one vendor protocol on the wire, whichever `client_type` reaches it:
+
+| `client_type` | Wire protocol |
+| ------------------------------------------------------------ | ------------------ |
+| `gemini-3.7`, `gemini-3.6`, `gemini-3`, `gemini-embedding`     | `google-genai`     |
+| `claude-5`, `claude-4-8`, `claude-4-7`, `claude-4-6`           | `ant-messages`     |
+| `ant-messages`                                                 | `ant-messages`     |
+| `gpt-5.6`, `gpt-5.5`, `gpt-5.4`                                | `openai-responses` |
+| `deepseek-v4`                                                  | `openai-responses` |
+| `minimax-m3`                                                   | `openai-responses` |
+| `openai-responses`                                             | `openai-responses` |
+| `glm-5.3`, `glm-5.2`, `glm-5.1`                                | `openai-chat`      |
+| `kimi-k3`, `kimi-k2.6`, `kimi-k2.5`                            | `openai-chat`      |
+| `openai-chat` (alias `openai`)                                 | `openai-chat`      |
+| `openai-embedding`                                             | OpenAI Embeddings  |
+
 The full machine-readable list — model, base URL, client, input/output modalities, context
 window, and per-million-token pricing in USD or CNY — is available via
 `agenthub.list_supported_models()` (Python) / `listSupportedModels()` (TypeScript).

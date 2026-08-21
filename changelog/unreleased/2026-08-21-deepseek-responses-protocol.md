@@ -19,6 +19,9 @@
   moved to the Responses wire shape, and those first two suites gained a case for the generic
   `openai-responses` client alongside it.
 
+- `README.md` gained a table of the wire protocol each `client_type` speaks: `google-genai`,
+  `ant-messages`, `openai-responses`, `openai-chat`, and OpenAI Embeddings.
+
 ## Configuration behavior
 
 | `UniConfig` key | On the wire |

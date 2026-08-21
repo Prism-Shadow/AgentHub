@@ -18,6 +18,9 @@
 - 空响应、工具参数与未知事件三个单测套件里的 DeepSeek 用例改为 Responses 线格式，前两个套件同时
   新增了通用 `openai-responses` 客户端的用例。
 
+- `README.md` 新增一张表，列出每个 `client_type` 在线上说的协议：`google-genai`、`ant-messages`、
+  `openai-responses`、`openai-chat` 与 OpenAI Embeddings。
+
 ## 配置映射
 
 | `UniConfig` 键 | 线上字段 |
