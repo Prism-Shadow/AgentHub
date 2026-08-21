@@ -134,6 +134,12 @@ class MiniMaxM3Client(LLMClient):
         for message in messages:
             content_items: list[dict[str, Any]] = []
             for item in message["content_items"]:
+                # anything that is not message content becomes an input item of its own, so the
+                # text collected so far is flushed first to keep the order the model produced
+                if item["type"] not in ("text", "image_url") and content_items:
+                    input_list.append({"role": message["role"], "content": content_items})
+                    content_items = []
+
                 if item["type"] == "text":
                     content_items.append(
                         {
