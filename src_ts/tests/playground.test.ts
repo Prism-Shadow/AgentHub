@@ -108,6 +108,12 @@ describe("Playground", () => {
     expect(response.text).toContain("baseUrlInput");
     expect(response.text).toContain("renderEmbedding");
     expect(response.text).toContain("item.embedding.slice(0, 5)");
+    expect(response.text).toContain("appendAudioChunk(contentDiv, item, audioStream)");
+    expect(response.text).toContain("finalizeAudioStream(audioStream)");
+    expect(response.text).toContain(
+      "renderAudioPlayer(audioStream.mimeType, audioStream.chunks)",
+    );
+    expect(response.text).not.toContain("pcmBase64ToWavDataUrl");
     expect(response.text).toContain('href="/tracer/"');
     expect(response.text).toContain('target="_blank"');
     expect(response.text).toContain("Open Tracer");

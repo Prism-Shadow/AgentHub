@@ -139,6 +139,17 @@ class LLMClient(ABC):
                 elif item["type"] == "partial_tool_call":
                     # Skip partial_tool_call items - they should already be converted to tool_call
                     pass
+                elif item["type"] == "inline_data" and (item.get("mime_type") or "").startswith("audio/"):
+                    # a spoken response streams as many small audio chunks; the message keeps the
+                    # whole utterance as one playable item
+                    if (
+                        content_items
+                        and content_items[-1]["type"] == "inline_data"
+                        and content_items[-1].get("mime_type") == item["mime_type"]
+                    ):
+                        content_items[-1]["data"] += item["data"]
+                    else:
+                        content_items.append(item.copy())
                 else:
                     content_items.append(item.copy())
 
