@@ -25,7 +25,7 @@ import pytest
 from agenthub import AutoLLMClient, ThinkingLevel, list_supported_models
 
 
-IMAGE = "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg"
+IMAGE = "https://sghimages.shobserver.com/img/catch/2022/01/22/c1ae0300-9402-4128-a7e6-1244d3874167.jpg"
 IMAGE_KEYWORDS = ("flower", "narcissus", "daffodil", "bloom")
 
 

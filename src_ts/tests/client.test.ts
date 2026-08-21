@@ -19,7 +19,7 @@ import { beforeAll, expect, describe, test } from "@jest/globals";
 import { Gaxios } from "gaxios";
 
 const IMAGE =
-  "https://cdn.britannica.com/80/120980-050-D1DA5C61/Poet-narcissus.jpg";
+  "https://sghimages.shobserver.com/img/catch/2022/01/22/c1ae0300-9402-4128-a7e6-1244d3874167.jpg";
 const IMAGE_KEYWORDS = ["flower", "narcissus", "daffodil", "bloom"];
 
 interface Model {
