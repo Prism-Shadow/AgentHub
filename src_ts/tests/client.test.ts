@@ -187,9 +187,9 @@ if (process.env.MINIMAX_API_KEY) {
 
 if (process.env.DEEPSEEK_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "deepseek-v4-flash",
+    name: "deepseek-v4-flash-vision-exp",
     supportTextGeneration: true,
-    supportImageUnderstanding: false,
+    supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,

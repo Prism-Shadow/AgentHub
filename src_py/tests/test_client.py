@@ -130,7 +130,7 @@ if os.getenv("MINIMAX_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="MiniMax-M3", client_type="minimax-m3"))
 
 if os.getenv("DEEPSEEK_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="deepseek-v4-flash", support_image_understanding=False))
+    AVAILABLE_MODELS.append(Model(name="deepseek-v4-flash-vision-exp"))
     for mode in _PROTOCOL_MODES:
         AVAILABLE_MODELS.append(
             Model(
