@@ -3,6 +3,7 @@
 - **Date:** 2026-08-24
 - **Type:** fix
 - **Scope:** `gemini3_7`, `tests`
+- **PR:** [#189](https://github.com/Prism-Shadow/agenthub/pull/189)
 
 [中文版](2026-08-24-gemini-function-response-content-split.zh.md)
 
