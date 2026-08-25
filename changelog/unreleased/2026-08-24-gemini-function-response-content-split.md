@@ -19,4 +19,4 @@ Vertex AI rejects that mix with a misleading error: HTTP 400 `"Requests ending w
 
 The client E2E suites gained `should handle tool result mixed with text` (`test_tool_result_mixed_with_text` in Python): after a real tool call, the tool result goes back in the same universal message as a follow-up instruction, and the reply must prove both halves reached the model — the temperature from the tool result, and a marker word demanded by the text. Verified live across the available providers, including `gemini-3.7-flash` on Vertex AI, the endpoint that rejected the pre-fix shape.
 
-The Python tracer suite's two live-model tests moved into `test_client.py` unchanged, restoring the invariant that every test needing a real API key lives in the client E2E suite and the rest of the suites run offline.
+The Python tracer suite's two monitoring tests stopped calling a real model: they now drive an `AutoLLMClient` whose wire stream is a scripted generator, so the trace_id → save_history integration still runs for real while the suite needs no API key — restoring the invariant that every test needing a real key lives in the client E2E suite and the rest run offline.

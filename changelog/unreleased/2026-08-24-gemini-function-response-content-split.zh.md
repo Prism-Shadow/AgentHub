@@ -19,4 +19,4 @@ Vertex AI 拒绝这种混合,而且报错文案有误导性:HTTP 400 `"Requests 
 
 客户端 E2E 套件新增 `should handle tool result mixed with text`(Python 为 `test_tool_result_mixed_with_text`):真实工具调用之后,工具结果与一条后续指令放在同一条通用消息里回传,回复必须证明两半都到达了模型——工具结果里的温度,和文本要求的标记词。已在可用的 provider 上实跑验证,包括 Vertex AI 上的 `gemini-3.7-flash`——正是修复前拒绝该形状的端点。
 
-Python tracer 套件的两个真实模型测试原样移入 `test_client.py`,恢复"所有需要真实 API key 的测试都住在客户端 E2E 套件、其余套件离线运行"的不变量。
+Python tracer 套件的两个 monitoring 测试不再调用真实模型:改为驱动一个把 wire 流替换成脚本化生成器的 `AutoLLMClient`,trace_id → save_history 的集成缝照常真实运行,而套件不再需要任何 API key——恢复"所有需要真实 key 的测试都住在客户端 E2E 套件、其余套件离线运行"的不变量。

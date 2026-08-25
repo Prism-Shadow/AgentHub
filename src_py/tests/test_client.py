@@ -16,10 +16,7 @@ import base64
 import json
 import mimetypes
 import os
-import shutil
-import tempfile
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Literal
 
 import httpx
@@ -919,69 +916,6 @@ async def test_embedding(model: Model):
     for item in embedding_items:
         assert len(item["embedding"]) == 768
         assert all(isinstance(v, float) for v in item["embedding"])
-
-
-# The tracer integration tests live here rather than in test_tracer.py because they call a
-# real model: every test that needs a real API key stays in this file, and the rest of the
-# suite runs offline.
-@pytest.fixture
-def temp_cache_dir():
-    """Create a temporary cache directory for testing."""
-    temp_dir = tempfile.mkdtemp()
-    yield temp_dir
-    shutil.rmtree(temp_dir, ignore_errors=True)
-
-
-@pytest.mark.asyncio
-@pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OpenAI API key not available")
-async def test_monitoring_integration(temp_cache_dir):
-    """Test monitoring integration with AutoLLMClient."""
-
-    os.environ["AGENTHUB_CACHE_DIR"] = temp_cache_dir
-    client = AutoLLMClient(model="gpt-5.5")
-    config = {"trace_id": "integration_test/conversation.txt"}
-
-    message = {"role": "user", "content_items": [{"type": "text", "text": "Say hello"}]}
-    async for _ in client.streaming_response_stateful(message=message, config=config):
-        pass
-
-    # Verify file was created
-    file_path = Path(temp_cache_dir) / "integration_test/conversation.txt"
-    assert file_path.exists()
-
-    # Verify content
-    content = file_path.read_text()
-    assert "Say hello" in content
-    assert "USER:" in content
-    assert "ASSISTANT:" in content
-
-
-@pytest.mark.asyncio
-@pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OpenAI API key not available")
-async def test_monitoring_updates_on_multiple_messages(temp_cache_dir):
-    """Test that monitoring file is updated with each new message."""
-
-    os.environ["AGENTHUB_CACHE_DIR"] = temp_cache_dir
-    client = AutoLLMClient(model="gpt-5.5")
-    config = {"trace_id": "multi_message_test/conversation.txt"}
-
-    # First message
-    message1 = {"role": "user", "content_items": [{"type": "text", "text": "First question"}]}
-    async for _ in client.streaming_response_stateful(message=message1, config=config):
-        pass
-
-    file_path = Path(temp_cache_dir) / "multi_message_test/conversation.txt"
-    content1 = file_path.read_text()
-    assert "First question" in content1
-
-    # Second message
-    message2 = {"role": "user", "content_items": [{"type": "text", "text": "Second question"}]}
-    async for _ in client.streaming_response_stateful(message=message2, config=config):
-        pass
-
-    content2 = file_path.read_text()
-    assert "First question" in content2
-    assert "Second question" in content2
 
 
 if __name__ == "__main__":

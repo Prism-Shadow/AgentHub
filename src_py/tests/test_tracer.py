@@ -20,6 +20,7 @@ from pathlib import Path
 import pytest
 from flask import Flask
 
+from agenthub import AutoLLMClient
 from agenthub.integration.tracer import Tracer
 
 
@@ -250,6 +251,90 @@ def test_web_app_nonexistent_path(temp_cache_dir):
     with app.test_client() as client:
         response = client.get("/nonexistent")
         assert response.status_code == 404
+
+
+def _fake_llm_client() -> AutoLLMClient:
+    """AutoLLMClient whose wire stream is a scripted UniEvent generator.
+
+    The tracer hook under test lives in the base class's streaming_response (trace_id ->
+    save_history), above the seam replaced here — so the integration runs for real while
+    no network or API key is involved.
+    """
+    client = AutoLLMClient(model="gpt-5.5", api_key="test-key")
+
+    async def fake_stream(messages, config):
+        yield {
+            "role": "assistant",
+            "event_type": "delta",
+            "content_items": [{"type": "text", "text": "Hello there!"}],
+            "usage_metadata": None,
+            "finish_reason": None,
+        }
+        yield {
+            "role": "assistant",
+            "event_type": "stop",
+            "content_items": [],
+            "usage_metadata": {
+                "cached_tokens": 0,
+                "prompt_tokens": 1,
+                "thoughts_tokens": None,
+                "response_tokens": 1,
+            },
+            "finish_reason": "stop",
+        }
+
+    client._client._streaming_response_internal = fake_stream  # noqa: SLF001
+    return client
+
+
+@pytest.mark.asyncio
+async def test_monitoring_integration(temp_cache_dir):
+    """Test monitoring integration with AutoLLMClient (scripted stream, no real model)."""
+
+    os.environ["AGENTHUB_CACHE_DIR"] = temp_cache_dir
+    client = _fake_llm_client()
+    config = {"trace_id": "integration_test/conversation.txt"}
+
+    message = {"role": "user", "content_items": [{"type": "text", "text": "Say hello"}]}
+    async for _ in client.streaming_response_stateful(message=message, config=config):
+        pass
+
+    # Verify file was created
+    file_path = Path(temp_cache_dir) / "integration_test/conversation.txt"
+    assert file_path.exists()
+
+    # Verify content
+    content = file_path.read_text()
+    assert "Say hello" in content
+    assert "USER:" in content
+    assert "ASSISTANT:" in content
+
+
+@pytest.mark.asyncio
+async def test_monitoring_updates_on_multiple_messages(temp_cache_dir):
+    """Test that monitoring file is updated with each new message."""
+
+    os.environ["AGENTHUB_CACHE_DIR"] = temp_cache_dir
+    client = _fake_llm_client()
+    config = {"trace_id": "multi_message_test/conversation.txt"}
+
+    # First message
+    message1 = {"role": "user", "content_items": [{"type": "text", "text": "First question"}]}
+    async for _ in client.streaming_response_stateful(message=message1, config=config):
+        pass
+
+    file_path = Path(temp_cache_dir) / "multi_message_test/conversation.txt"
+    content1 = file_path.read_text()
+    assert "First question" in content1
+
+    # Second message
+    message2 = {"role": "user", "content_items": [{"type": "text", "text": "Second question"}]}
+    async for _ in client.streaming_response_stateful(message=message2, config=config):
+        pass
+
+    content2 = file_path.read_text()
+    assert "First question" in content2
+    assert "Second question" in content2
 
 
 def test_format_config_with_system_and_tools(temp_cache_dir):
