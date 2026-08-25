@@ -253,13 +253,46 @@ def test_web_app_nonexistent_path(temp_cache_dir):
         assert response.status_code == 404
 
 
+def _fake_llm_client() -> AutoLLMClient:
+    """AutoLLMClient whose wire stream is a scripted UniEvent generator.
+
+    The tracer hook under test lives in the base class's streaming_response (trace_id ->
+    save_history), above the seam replaced here — so the integration runs for real while
+    no network or API key is involved.
+    """
+    client = AutoLLMClient(model="gpt-5.5", api_key="test-key")
+
+    async def fake_stream(messages, config):
+        yield {
+            "role": "assistant",
+            "event_type": "delta",
+            "content_items": [{"type": "text", "text": "Hello there!"}],
+            "usage_metadata": None,
+            "finish_reason": None,
+        }
+        yield {
+            "role": "assistant",
+            "event_type": "stop",
+            "content_items": [],
+            "usage_metadata": {
+                "cached_tokens": 0,
+                "prompt_tokens": 1,
+                "thoughts_tokens": None,
+                "response_tokens": 1,
+            },
+            "finish_reason": "stop",
+        }
+
+    client._client._streaming_response_internal = fake_stream  # noqa: SLF001
+    return client
+
+
 @pytest.mark.asyncio
-@pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OpenAI API key not available")
 async def test_monitoring_integration(temp_cache_dir):
-    """Test monitoring integration with AutoLLMClient."""
+    """Test monitoring integration with AutoLLMClient (scripted stream, no real model)."""
 
     os.environ["AGENTHUB_CACHE_DIR"] = temp_cache_dir
-    client = AutoLLMClient(model="gpt-5.5")
+    client = _fake_llm_client()
     config = {"trace_id": "integration_test/conversation.txt"}
 
     message = {"role": "user", "content_items": [{"type": "text", "text": "Say hello"}]}
@@ -278,12 +311,11 @@ async def test_monitoring_integration(temp_cache_dir):
 
 
 @pytest.mark.asyncio
-@pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OpenAI API key not available")
 async def test_monitoring_updates_on_multiple_messages(temp_cache_dir):
     """Test that monitoring file is updated with each new message."""
 
     os.environ["AGENTHUB_CACHE_DIR"] = temp_cache_dir
-    client = AutoLLMClient(model="gpt-5.5")
+    client = _fake_llm_client()
     config = {"trace_id": "multi_message_test/conversation.txt"}
 
     # First message

@@ -74,6 +74,26 @@ function itemThoughtSignature(item: {
 }
 
 /**
+ * Split a message's parts into consecutive runs of functionResponse and
+ * non-functionResponse parts, preserving order. Vertex AI requires function
+ * responses to sit in a content of their own (see the call site); a message
+ * without function responses — or with nothing else — comes back as one run.
+ */
+function splitFunctionResponseRuns(parts: Part[]): Part[][] {
+  const runs: Part[][] = [];
+  let lastIsResponse: boolean | null = null;
+  for (const part of parts) {
+    const isResponse = part.functionResponse !== undefined;
+    if (isResponse !== lastIsResponse) {
+      runs.push([]);
+      lastIsResponse = isResponse;
+    }
+    runs[runs.length - 1].push(part);
+  }
+  return runs.length > 0 ? runs : [parts];
+}
+
+/**
  * Unified client for the Gemini family, named for the newest generation it
  * serves (3.7). It serves every generateContent model generation (3.7 back
  * through 3.x text, image, TTS, and embedding models, with the 2.5 series
@@ -549,10 +569,18 @@ export class Gemini3_7Client extends LLMClient {
         }
       }
 
-      contents.push({
-        role: mapping[msg.role],
-        parts: parts,
-      } as Content);
+      // Vertex AI rejects a content that mixes functionResponse parts with any other
+      // part kind — the request fails with a misleading 400, "Requests ending with a
+      // model turn are not supported" (the Gemini API endpoint accepts the mix). Split
+      // such a message into consecutive same-role contents: each run of function
+      // responses becomes its own content, the surrounding parts keep theirs, and the
+      // part order is preserved. Homogeneous messages stay a single content.
+      for (const runParts of splitFunctionResponseRuns(parts)) {
+        contents.push({
+          role: mapping[msg.role],
+          parts: runParts,
+        } as Content);
+      }
     }
 
     return contents;
