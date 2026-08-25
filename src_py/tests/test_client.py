@@ -611,6 +611,68 @@ async def test_tool_use(model: Model):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
+async def test_tool_result_mixed_with_text(model: Model):
+    """A user message mixing a tool result with follow-up text.
+
+    An agent resends an interrupted turn's tool output together with the user's next
+    prompt. Vertex AI rejects a Gemini content that mixes function_response parts with
+    any other kind (HTTP 400 "Requests ending with a model turn are not supported"), so
+    the Gemini client splits them into separate contents; the model must still see both
+    halves.
+    """
+    if not model.support_text:
+        pytest.skip(f"Text generation is not supported by {model.name}.")
+
+    client = await _create_client(model)
+
+    weather_tool = {
+        "name": "get_weather",
+        "description": "Get the current weather in a given location",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "The city name, e.g. San Francisco",
+                },
+            },
+            "required": ["location"],
+        },
+    }
+
+    config = {"tools": [weather_tool]}
+    tool_call_id = None
+
+    message1 = {"role": "user", "content_items": [{"type": "text", "text": "What is the weather in San Francisco?"}]}
+    async for event in client.streaming_response_stateful(message=message1, config=config):
+        await _check_event_integrity(event)
+        for item in event["content_items"]:
+            if item["type"] == "tool_call":
+                tool_call_id = item["tool_call_id"]
+    assert tool_call_id is not None
+
+    message2 = {
+        "role": "user",
+        "content_items": [
+            {"type": "tool_result", "text": "It's 20 degrees in San Francisco.", "tool_call_id": tool_call_id},
+            {"type": "text", "text": "Answer with the temperature, and end your reply with the exact word BANANA."},
+        ],
+    }
+    text = ""
+    async for event in client.streaming_response_stateful(message=message2, config=config):
+        await _check_event_integrity(event)
+        for item in event["content_items"]:
+            if item["type"] == "text":
+                text += item["text"]
+
+    # "20" proves the tool result reached the model; "BANANA" proves the text riding
+    # in the same universal message reached it too.
+    assert "20" in text
+    assert "BANANA" in text.upper()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_system_prompt(model: Model):
     """Test system prompt capability."""
     if not model.support_text:
