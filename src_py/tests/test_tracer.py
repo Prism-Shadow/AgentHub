@@ -20,7 +20,6 @@ from pathlib import Path
 import pytest
 from flask import Flask
 
-from agenthub import AutoLLMClient
 from agenthub.integration.tracer import Tracer
 
 
@@ -251,58 +250,6 @@ def test_web_app_nonexistent_path(temp_cache_dir):
     with app.test_client() as client:
         response = client.get("/nonexistent")
         assert response.status_code == 404
-
-
-@pytest.mark.asyncio
-@pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OpenAI API key not available")
-async def test_monitoring_integration(temp_cache_dir):
-    """Test monitoring integration with AutoLLMClient."""
-
-    os.environ["AGENTHUB_CACHE_DIR"] = temp_cache_dir
-    client = AutoLLMClient(model="gpt-5.5")
-    config = {"trace_id": "integration_test/conversation.txt"}
-
-    message = {"role": "user", "content_items": [{"type": "text", "text": "Say hello"}]}
-    async for _ in client.streaming_response_stateful(message=message, config=config):
-        pass
-
-    # Verify file was created
-    file_path = Path(temp_cache_dir) / "integration_test/conversation.txt"
-    assert file_path.exists()
-
-    # Verify content
-    content = file_path.read_text()
-    assert "Say hello" in content
-    assert "USER:" in content
-    assert "ASSISTANT:" in content
-
-
-@pytest.mark.asyncio
-@pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OpenAI API key not available")
-async def test_monitoring_updates_on_multiple_messages(temp_cache_dir):
-    """Test that monitoring file is updated with each new message."""
-
-    os.environ["AGENTHUB_CACHE_DIR"] = temp_cache_dir
-    client = AutoLLMClient(model="gpt-5.5")
-    config = {"trace_id": "multi_message_test/conversation.txt"}
-
-    # First message
-    message1 = {"role": "user", "content_items": [{"type": "text", "text": "First question"}]}
-    async for _ in client.streaming_response_stateful(message=message1, config=config):
-        pass
-
-    file_path = Path(temp_cache_dir) / "multi_message_test/conversation.txt"
-    content1 = file_path.read_text()
-    assert "First question" in content1
-
-    # Second message
-    message2 = {"role": "user", "content_items": [{"type": "text", "text": "Second question"}]}
-    async for _ in client.streaming_response_stateful(message=message2, config=config):
-        pass
-
-    content2 = file_path.read_text()
-    assert "First question" in content2
-    assert "Second question" in content2
 
 
 def test_format_config_with_system_and_tools(temp_cache_dir):

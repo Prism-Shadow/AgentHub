@@ -43,6 +43,24 @@ from ..types import (
 from ..utils import is_debug_enabled
 
 
+def _split_function_response_runs(parts: list[types.Part]) -> list[list[types.Part]]:
+    """Split parts into consecutive runs of function_response and other parts.
+
+    Vertex AI requires function responses to sit in a content of their own (see the call
+    site); order is preserved, and a message without function responses — or with nothing
+    else — comes back as one run.
+    """
+    runs: list[list[types.Part]] = []
+    last_is_response: bool | None = None
+    for part in parts:
+        is_response = part.function_response is not None
+        if is_response != last_is_response:
+            runs.append([])
+            last_is_response = is_response
+        runs[-1].append(part)
+    return runs if runs else [parts]
+
+
 class Gemini3_7Client(LLMClient):
     """Unified client for the Gemini family, named for the newest generation it serves (3.7).
 
@@ -377,7 +395,14 @@ class Gemini3_7Client(LLMClient):
                 else:
                     raise ValueError(f"Unknown item: {item}")
 
-            contents.append(types.Content(role=mapping[msg["role"]], parts=parts))
+            # Vertex AI rejects a content that mixes function_response parts with any other
+            # part kind — the request fails with a misleading 400, "Requests ending with a
+            # model turn are not supported" (the Gemini API endpoint accepts the mix). Split
+            # such a message into consecutive same-role contents: each run of function
+            # responses becomes its own content, the surrounding parts keep theirs, and the
+            # part order is preserved. Homogeneous messages stay a single content.
+            for run_parts in _split_function_response_runs(parts):
+                contents.append(types.Content(role=mapping[msg["role"]], parts=run_parts))
 
         return contents
 

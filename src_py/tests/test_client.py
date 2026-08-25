@@ -16,7 +16,10 @@ import base64
 import json
 import mimetypes
 import os
+import shutil
+import tempfile
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
 
 import httpx
@@ -611,6 +614,68 @@ async def test_tool_use(model: Model):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
+async def test_tool_result_mixed_with_text(model: Model):
+    """A user message mixing a tool result with follow-up text.
+
+    An agent resends an interrupted turn's tool output together with the user's next
+    prompt. Vertex AI rejects a Gemini content that mixes function_response parts with
+    any other kind (HTTP 400 "Requests ending with a model turn are not supported"), so
+    the Gemini client splits them into separate contents; the model must still see both
+    halves.
+    """
+    if not model.support_text:
+        pytest.skip(f"Text generation is not supported by {model.name}.")
+
+    client = await _create_client(model)
+
+    weather_tool = {
+        "name": "get_weather",
+        "description": "Get the current weather in a given location",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "The city name, e.g. San Francisco",
+                },
+            },
+            "required": ["location"],
+        },
+    }
+
+    config = {"tools": [weather_tool]}
+    tool_call_id = None
+
+    message1 = {"role": "user", "content_items": [{"type": "text", "text": "What is the weather in San Francisco?"}]}
+    async for event in client.streaming_response_stateful(message=message1, config=config):
+        await _check_event_integrity(event)
+        for item in event["content_items"]:
+            if item["type"] == "tool_call":
+                tool_call_id = item["tool_call_id"]
+    assert tool_call_id is not None
+
+    message2 = {
+        "role": "user",
+        "content_items": [
+            {"type": "tool_result", "text": "It's 20 degrees in San Francisco.", "tool_call_id": tool_call_id},
+            {"type": "text", "text": "Answer with the temperature, and end your reply with the exact word BANANA."},
+        ],
+    }
+    text = ""
+    async for event in client.streaming_response_stateful(message=message2, config=config):
+        await _check_event_integrity(event)
+        for item in event["content_items"]:
+            if item["type"] == "text":
+                text += item["text"]
+
+    # "20" proves the tool result reached the model; "BANANA" proves the text riding
+    # in the same universal message reached it too.
+    assert "20" in text
+    assert "BANANA" in text.upper()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", AVAILABLE_MODELS, ids=[str(model) for model in AVAILABLE_MODELS])
 async def test_system_prompt(model: Model):
     """Test system prompt capability."""
     if not model.support_text:
@@ -854,6 +919,69 @@ async def test_embedding(model: Model):
     for item in embedding_items:
         assert len(item["embedding"]) == 768
         assert all(isinstance(v, float) for v in item["embedding"])
+
+
+# The tracer integration tests live here rather than in test_tracer.py because they call a
+# real model: every test that needs a real API key stays in this file, and the rest of the
+# suite runs offline.
+@pytest.fixture
+def temp_cache_dir():
+    """Create a temporary cache directory for testing."""
+    temp_dir = tempfile.mkdtemp()
+    yield temp_dir
+    shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OpenAI API key not available")
+async def test_monitoring_integration(temp_cache_dir):
+    """Test monitoring integration with AutoLLMClient."""
+
+    os.environ["AGENTHUB_CACHE_DIR"] = temp_cache_dir
+    client = AutoLLMClient(model="gpt-5.5")
+    config = {"trace_id": "integration_test/conversation.txt"}
+
+    message = {"role": "user", "content_items": [{"type": "text", "text": "Say hello"}]}
+    async for _ in client.streaming_response_stateful(message=message, config=config):
+        pass
+
+    # Verify file was created
+    file_path = Path(temp_cache_dir) / "integration_test/conversation.txt"
+    assert file_path.exists()
+
+    # Verify content
+    content = file_path.read_text()
+    assert "Say hello" in content
+    assert "USER:" in content
+    assert "ASSISTANT:" in content
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OpenAI API key not available")
+async def test_monitoring_updates_on_multiple_messages(temp_cache_dir):
+    """Test that monitoring file is updated with each new message."""
+
+    os.environ["AGENTHUB_CACHE_DIR"] = temp_cache_dir
+    client = AutoLLMClient(model="gpt-5.5")
+    config = {"trace_id": "multi_message_test/conversation.txt"}
+
+    # First message
+    message1 = {"role": "user", "content_items": [{"type": "text", "text": "First question"}]}
+    async for _ in client.streaming_response_stateful(message=message1, config=config):
+        pass
+
+    file_path = Path(temp_cache_dir) / "multi_message_test/conversation.txt"
+    content1 = file_path.read_text()
+    assert "First question" in content1
+
+    # Second message
+    message2 = {"role": "user", "content_items": [{"type": "text", "text": "Second question"}]}
+    async for _ in client.streaming_response_stateful(message=message2, config=config):
+        pass
+
+    content2 = file_path.read_text()
+    assert "First question" in content2
+    assert "Second question" in content2
 
 
 if __name__ == "__main__":

@@ -861,6 +861,91 @@ if (AVAILABLE_MODELS.length > 0) {
       expect(text).toContain("20");
     });
 
+    // A user message mixing a tool result with follow-up text: an agent resending an
+    // interrupted turn's tool output together with the user's next prompt. Vertex AI
+    // rejects a Gemini content that mixes functionResponse parts with any other kind
+    // (HTTP 400 "Requests ending with a model turn are not supported"), so the Gemini
+    // client splits them into separate contents; the model must still see both halves.
+    modelTest(
+      "should handle tool result mixed with text",
+      60000,
+      async (model) => {
+        if (!model.supportTextGeneration) {
+          return;
+        }
+        const client = createClient(model);
+
+        const weatherTool = {
+          name: "get_weather",
+          description: "Get the current weather in a given location",
+          parameters: {
+            type: "object",
+            properties: {
+              location: {
+                type: "string",
+                description: "The city name, e.g. San Francisco",
+              },
+            },
+            required: ["location"],
+          },
+        };
+
+        const config: UniConfig = { tools: [weatherTool] };
+        let toolCallId: string | undefined;
+
+        const message1: UniMessage = {
+          role: "user",
+          content_items: [
+            { type: "text", text: "What is the weather in San Francisco?" },
+          ],
+        };
+        for await (const event of client.streamingResponseStateful({
+          message: message1,
+          config,
+        })) {
+          checkEventIntegrity(event);
+          for (const item of event.content_items) {
+            if (item.type === "tool_call") {
+              toolCallId = item.tool_call_id;
+            }
+          }
+        }
+        expect(toolCallId).toBeDefined();
+
+        const message2: UniMessage = {
+          role: "user",
+          content_items: [
+            {
+              type: "tool_result",
+              text: "It's 20 degrees in San Francisco.",
+              tool_call_id: toolCallId || "",
+            },
+            {
+              type: "text",
+              text: "Answer with the temperature, and end your reply with the exact word BANANA.",
+            },
+          ],
+        };
+        let text = "";
+        for await (const event of client.streamingResponseStateful({
+          message: message2,
+          config,
+        })) {
+          checkEventIntegrity(event);
+          for (const item of event.content_items) {
+            if (item.type === "text") {
+              text += item.text;
+            }
+          }
+        }
+
+        // "20" proves the tool result reached the model; "BANANA" proves the text
+        // riding in the same universal message reached it too.
+        expect(text).toContain("20");
+        expect(text.toUpperCase()).toContain("BANANA");
+      },
+    );
+
     modelTest("should handle system prompt", 60000, async (model) => {
       if (!model.supportTextGeneration) {
         return;
