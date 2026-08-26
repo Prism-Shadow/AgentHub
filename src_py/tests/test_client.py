@@ -121,7 +121,7 @@ _PROTOCOL_BASE_URLS = {
 }
 
 if os.getenv("ZAI_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="glm-5.3", support_image_understanding=False))
+    AVAILABLE_MODELS.append(Model(name="glm-5.3-flash"))
 
 if os.getenv("MOONSHOT_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="kimi-k3"))

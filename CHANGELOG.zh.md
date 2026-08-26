@@ -4,6 +4,8 @@
 
 在这里，我们记录模型的新增与移除时间、主要功能更新、缺陷修复，以及关键版本的发布时间。每个发布版本在此保留一行简述；逐条目的摘要位于 `changelog/<version>/README.md`，且每个条目都会链接到自己的详情文件。
 
+- [2026-08-26] [版本 0.4.8](changelog/0.4.8/README.zh.md)：注册表新增 `glm-5.3-flash`，提示词与工具返回里的图片都能读；其余 GLM 模型遇到图片条目会直接拒绝，而不是照发。
+
 - [2026-08-25] [版本 0.4.7](changelog/0.4.7/README.zh.md)：Gemini client 把 function response 拆分为独立的 content，修复消息里工具结果与文本混排时（被中断轮次的 carry-over 随下一条 prompt 重发、或工具输出折叠进摘要请求）Vertex AI 报 400 `Requests ending with a model turn are not supported.` 的问题。
 
 - [2026-08-21] [版本 0.4.6](changelog/0.4.6/README.zh.md)：注册表新增 `deepseek-v4-flash-vision-exp`，提示词与工具返回里的图片都能读；DeepSeek client 改用 OpenAI Responses 协议；全部 Responses client 按模型产出的顺序回放内容条目；内部的 `unused` 事件不会流到调用方；Playground 把语音回复合成一条音频播放，并在刷新后保留配置。

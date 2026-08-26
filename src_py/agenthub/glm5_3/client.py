@@ -164,6 +164,12 @@ class GLM5_3Client(LLMClient):
         Returns:
             List of OpenAI message dictionaries
         """
+        # glm-5.3-flash is the natively multimodal GLM and the only one that reads image
+        # parts (https://docs.z.ai/guides/vlm/glm-5.3-flash); every other GLM answers a request
+        # carrying one with an error, so the item is refused here rather than dropped.
+        # Provider-hosted ids keep their own casing (e.g. z-ai/glm-5.3-flash), so the version
+        # match is case-insensitive.
+        supports_image = "glm-5.3-flash" in self._model.lower()
         openai_messages = []
 
         for msg in messages:
@@ -175,7 +181,10 @@ class GLM5_3Client(LLMClient):
                 if item["type"] == "text":
                     content_parts.append({"type": "text", "text": item["text"]})
                 elif item["type"] == "image_url":
-                    raise ValueError("GLM-5 does not support image inputs.")
+                    if not supports_image:
+                        raise ValueError(f"GLM {self._model} does not support image inputs.")
+
+                    content_parts.append({"type": "image_url", "image_url": {"url": item["image_url"]}})
                 elif item["type"] == "thinking":
                     thinking += item["thinking"]
                     thinking_fields.add((item.get("fidelity") or {}).get("reasoning_field"))
@@ -194,15 +203,23 @@ class GLM5_3Client(LLMClient):
                     if "tool_call_id" not in item:
                         raise ValueError("tool_call_id is required for tool result.")
 
+                    # a tool result without images stays a plain string, the only content shape
+                    # the Chat Completion schema documents for a tool message
+                    content = item["text"]
                     if "images" in item and item["images"]:
-                        raise ValueError("GLM-5 does not support images in tool results.")
+                        if not supports_image:
+                            raise ValueError(f"GLM {self._model} does not support images in tool results.")
+
+                        content = [{"type": "text", "text": item["text"]}]
+                        for image_url in item["images"]:
+                            content.append({"type": "image_url", "image_url": {"url": image_url}})
 
                     # Tool results are sent as separate messages
                     openai_messages.append(
                         {
                             "role": "tool",
                             "tool_call_id": item["tool_call_id"],
-                            "content": item["text"],
+                            "content": content,
                         }
                     )
                 else:
