@@ -150,9 +150,9 @@ const PROTOCOL_BASE_URLS: { [provider: string]: { [mode: string]: string } } = {
 
 if (process.env.ZAI_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "glm-5.3",
+    name: "glm-5.3-flash",
     supportTextGeneration: true,
-    supportImageUnderstanding: false,
+    supportImageUnderstanding: true,
     supportImageGeneration: false,
     supportAudioGeneration: false,
     supportEmbedding: false,

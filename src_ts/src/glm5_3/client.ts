@@ -221,6 +221,12 @@ export class GLM5_3Client extends LLMClient {
     messages: UniMessage[],
     _signal?: AbortSignal,
   ): ChatCompletionMessageParam[] {
+    // glm-5.3-flash is the natively multimodal GLM and the only one that reads image
+    // parts (https://docs.z.ai/guides/vlm/glm-5.3-flash); every other GLM answers a
+    // request carrying one with an error, so the item is refused here rather than
+    // dropped. Provider-hosted ids keep their own casing (e.g. z-ai/glm-5.3-flash),
+    // so the version match is case-insensitive.
+    const supportsImage = this._model.toLowerCase().includes("glm-5.3-flash");
     const openaiMessages: ChatCompletionMessageParam[] = [];
 
     for (const msg of messages) {
@@ -238,7 +244,16 @@ export class GLM5_3Client extends LLMClient {
         if (item.type === "text") {
           contentParts.push({ type: "text", text: item.text });
         } else if (item.type === "image_url") {
-          throw new Error("GLM-5 does not support image inputs.");
+          if (!supportsImage) {
+            throw new Error(
+              `GLM ${this._model} does not support image inputs.`,
+            );
+          }
+
+          contentParts.push({
+            type: "image_url",
+            image_url: { url: item.image_url },
+          });
         } else if (item.type === "thinking") {
           thinking += item.thinking;
           thinkingFields.add(item.fidelity?.reasoning_field);
@@ -256,14 +271,31 @@ export class GLM5_3Client extends LLMClient {
             throw new Error("tool_call_id is required for tool result.");
           }
 
+          // a tool result without images stays a plain string, the only content shape
+          // the Chat Completion schema documents for a tool message
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let content: any = item.text;
+
           if (item.images && item.images.length > 0) {
-            throw new Error("GLM-5 does not support images in tool results.");
+            if (!supportsImage) {
+              throw new Error(
+                `GLM ${this._model} does not support images in tool results.`,
+              );
+            }
+
+            content = [{ type: "text", text: item.text }];
+            for (const imageUrl of item.images) {
+              content.push({
+                type: "image_url",
+                image_url: { url: imageUrl },
+              });
+            }
           }
 
           openaiMessages.push({
             role: "tool",
             tool_call_id: item.tool_call_id,
-            content: item.text,
+            content,
           });
         } else {
           throw new Error(

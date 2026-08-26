@@ -236,8 +236,8 @@ export function createChatApp(): Express {
                           <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="claude-sonnet-5" data-label="Claude Sonnet 5" data-description="claude-sonnet-5" onclick="selectComboboxOption('modelCombobox', this)">
                               <span class="block truncate text-sm font-medium text-gray-900">Claude Sonnet 5</span>
                           </button>
-                          <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="glm-5.3" data-label="GLM 5.3" data-description="glm-5.3" onclick="selectComboboxOption('modelCombobox', this)">
-                              <span class="block truncate text-sm font-medium text-gray-900">GLM 5.3</span>
+                          <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="glm-5.3-flash" data-label="GLM 5.3 Flash" data-description="glm-5.3-flash" onclick="selectComboboxOption('modelCombobox', this)">
+                              <span class="block truncate text-sm font-medium text-gray-900">GLM 5.3 Flash</span>
                           </button>
                           <button type="button" role="option" aria-selected="false" class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none" data-combobox-option data-value="kimi-k3" data-label="Kimi K3" data-description="kimi-k3" onclick="selectComboboxOption('modelCombobox', this)">
                               <span class="block truncate text-sm font-medium text-gray-900">Kimi K3</span>
