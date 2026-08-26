@@ -258,6 +258,17 @@ const SUPPORTED_MODELS: SupportedModel[] = [
     pricing: usd(1.4, 4.4, 0.26),
   },
   {
+    model: "glm-5.3-flash",
+    base_url: ZAI,
+    client: "glm-5.3",
+    input_modalities: ["Text", "Image"],
+    output_modalities: ["Text"],
+    context_window: 1000000,
+    // official list price (verified 2026-08-26); a launch discount halves all three
+    // rates through 2026-09-09 (UTC+8)
+    pricing: usd(0.15, 0.5, 0.03),
+  },
+  {
     model: "glm-5.2",
     base_url: ZAI,
     client: "glm-5.3",

@@ -47,7 +47,7 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 | GPT-5.4-5.6    | Official/OpenRouter/UModelVerse     | `gpt-5.6-sol`          | Text, Image      | Text, Embedding                |
 | Kimi-K2.5/K2.6/K3 | Official/OpenRouter/SiliconFlow  | `kimi-k3`              | Text, Image      | Text                           |
 | DeepSeek V4    | Official/OpenRouter/SiliconFlow     | `deepseek-v4-pro`      | Text, Image      | Text                           |
-| GLM-5.1-5.3    | Official/OpenRouter/SiliconFlow     | `glm-5.3`              | Text             | Text                           |
+| GLM-5.1-5.3    | Official/OpenRouter/SiliconFlow     | `glm-5.3`              | Text, Image      | Text                           |
 | MiniMax-M3     | Official                            | `MiniMax-M3`           | Text, Image      | Text                           |
 | Qwen3.6        | OpenRouter/SiliconFlow/vLLM         | `qwen/qwen3.6-35b-a3b` | Text, Image      | Text, Embedding                |
 

@@ -117,6 +117,7 @@ GLM_THINKING_LEVEL_CASES = [
     ("glm-5.3", ThinkingLevel.HIGH, "enabled", "high"),
     ("glm-5.3", ThinkingLevel.XHIGH, "enabled", "max"),
     ("glm-5.3", ThinkingLevel.MAX, "enabled", "max"),
+    ("glm-5.3-flash", ThinkingLevel.MAX, "enabled", "max"),
     ("glm-5.2", ThinkingLevel.NONE, "disabled", None),
     ("glm-5.2", ThinkingLevel.MEDIUM, "enabled", "medium"),
     ("glm-5.2", ThinkingLevel.XHIGH, "enabled", "xhigh"),
