@@ -35,7 +35,7 @@ import {
   UniMessage,
   UsageMetadata,
 } from "../types";
-import { fixOpenrouterUsageMetadata } from "../utils";
+import { exceedsOpenaiPatchLimit, fixOpenrouterUsageMetadata } from "../utils";
 
 /**
  * OpenAI Chat Completions-compatible client implementation.
@@ -129,6 +129,27 @@ export class OpenaiChatClient extends LLMClient {
   }
 
   /**
+   * Convert a fetched image to an image_url part.
+   *
+   * GPT-5.6 reads the default `auto` detail as `original`, which keeps the image's own
+   * dimensions and rejects one over 30,000 patches instead of resizing it; `high` has the
+   * API fit it into 2,500 patches, so the image is read instead of refused.
+   */
+  private _convertImageUrl(dataUrl: string): {
+    type: "image_url";
+    image_url: { url: string; detail?: "high" };
+  } {
+    if (
+      this._model.toLowerCase().includes("gpt-5.6") &&
+      exceedsOpenaiPatchLimit(dataUrl)
+    ) {
+      return { type: "image_url", image_url: { url: dataUrl, detail: "high" } };
+    }
+
+    return { type: "image_url", image_url: { url: dataUrl } };
+  }
+
+  /**
    * Transform universal configuration to OpenAI Chat Completions configuration.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -190,7 +211,7 @@ export class OpenaiChatClient extends LLMClient {
       const contentParts: Array<{
         type: string;
         text?: string;
-        image_url?: { url: string };
+        image_url?: { url: string; detail?: string };
       }> = [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const toolCalls: any[] = [];
@@ -205,10 +226,7 @@ export class OpenaiChatClient extends LLMClient {
             item.image_url,
             signal,
           );
-          contentParts.push({
-            type: "image_url",
-            image_url: { url: base64Image },
-          });
+          contentParts.push(this._convertImageUrl(base64Image));
         } else if (item.type === "thinking") {
           thinking += item.thinking;
           thinkingFields.add(item.fidelity?.reasoning_field);
@@ -235,16 +253,11 @@ export class OpenaiChatClient extends LLMClient {
                 imageUrl,
                 signal,
               );
+              const part = this._convertImageUrl(base64Image);
               if (this._client.baseURL.includes("siliconflow.cn")) {
-                contentParts.push({
-                  type: "image_url",
-                  image_url: { url: base64Image },
-                });
+                contentParts.push(part);
               } else {
-                content.push({
-                  type: "image_url",
-                  image_url: { url: base64Image },
-                });
+                content.push(part);
               }
             }
           }

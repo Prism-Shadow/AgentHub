@@ -35,7 +35,7 @@ import {
   PromptCaching,
   UsageMetadata,
 } from "../types";
-import { isDebugEnabled } from "../utils";
+import { exceedsOpenaiPatchLimit, isDebugEnabled } from "../utils";
 
 /**
  * GPT-5.6-specific LLM client implementation (also serves GPT-5.4 and GPT-5.5).
@@ -93,6 +93,28 @@ export class GPT5_6Client extends LLMClient {
     }
 
     return toolChoice;
+  }
+
+  /**
+   * Convert an image URL to an input_image item.
+   *
+   * GPT-5.6 reads the default `auto` detail as `original`, which keeps the image's own
+   * dimensions and rejects one over 30,000 patches instead of resizing it; `high` has the
+   * API fit it into 2,500 patches, so the image is read instead of refused.
+   */
+  private _convertImageUrl(imageUrl: string): {
+    type: "input_image";
+    image_url: string;
+    detail?: "high";
+  } {
+    if (
+      this._model.toLowerCase().includes("gpt-5.6") &&
+      exceedsOpenaiPatchLimit(imageUrl)
+    ) {
+      return { type: "input_image", image_url: imageUrl, detail: "high" };
+    }
+
+    return { type: "input_image", image_url: imageUrl };
   }
 
   /**
@@ -218,10 +240,7 @@ export class GPT5_6Client extends LLMClient {
             contentItems.push({ type: "output_text", text: item.text });
           }
         } else if (item.type === "image_url") {
-          contentItems.push({
-            type: "input_image",
-            image_url: item.image_url,
-          });
+          contentItems.push(this._convertImageUrl(item.image_url));
         } else if (item.type === "thinking") {
           // rebuild the reasoning item from the recorded wire fields: the thinking
           // text goes back through the channel that carried it (histories recorded
@@ -269,7 +288,7 @@ export class GPT5_6Client extends LLMClient {
 
           if (item.images) {
             for (const imageUrl of item.images) {
-              toolResult.push({ type: "input_image", image_url: imageUrl });
+              toolResult.push(this._convertImageUrl(imageUrl));
             }
           }
 

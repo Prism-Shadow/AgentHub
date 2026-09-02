@@ -35,7 +35,7 @@ from ..types import (
     UniMessage,
     UsageMetadata,
 )
-from ..utils import fix_openrouter_usage_metadata
+from ..utils import exceeds_openai_patch_limit, fix_openrouter_usage_metadata
 
 
 class OpenaiChatClient(LLMClient):
@@ -87,6 +87,19 @@ class OpenaiChatClient(LLMClient):
             }
 
         return tool_choice
+
+    def _convert_image_url(self, data_url: str) -> dict[str, Any]:
+        """
+        Convert a fetched image to an image_url part.
+
+        GPT-5.6 reads the default `auto` detail as `original`, which keeps the image's own
+        dimensions and rejects one over 30,000 patches instead of resizing it; `high` has the
+        API fit it into 2,500 patches, so the image is read instead of refused.
+        """
+        if "gpt-5.6" in self._model.lower() and exceeds_openai_patch_limit(data_url):
+            return {"type": "image_url", "image_url": {"url": data_url, "detail": "high"}}
+
+        return {"type": "image_url", "image_url": {"url": data_url}}
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """
@@ -146,7 +159,7 @@ class OpenaiChatClient(LLMClient):
                     content_parts.append({"type": "text", "text": item["text"]})
                 elif item["type"] == "image_url":
                     base64_image = await self._convert_image_url_to_base64(item["image_url"])
-                    content_parts.append({"type": "image_url", "image_url": {"url": base64_image}})
+                    content_parts.append(self._convert_image_url(base64_image))
                 elif item["type"] == "thinking":
                     thinking += item["thinking"]
                     thinking_fields.add((item.get("fidelity") or {}).get("reasoning_field"))
@@ -169,12 +182,12 @@ class OpenaiChatClient(LLMClient):
 
                     if "images" in item and item["images"]:
                         for image_url in item["images"]:
-                            base64_image = await self._convert_image_url_to_base64(image_url)
+                            part = self._convert_image_url(await self._convert_image_url_to_base64(image_url))
                             if "siliconflow.cn" in str(self._client.base_url):
                                 # siliconflow does not support image_url in tool result
-                                content_parts.append({"type": "image_url", "image_url": {"url": base64_image}})
+                                content_parts.append(part)
                             else:
-                                content.append({"type": "image_url", "image_url": {"url": base64_image}})
+                                content.append(part)
 
                     # Tool results are sent as separate messages
                     openai_messages.append(
