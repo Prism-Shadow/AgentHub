@@ -35,7 +35,7 @@ from ..types import (
     UniMessage,
     UsageMetadata,
 )
-from ..utils import fix_openrouter_usage_metadata
+from ..utils import fix_openrouter_usage_metadata, openai_image_detail
 
 
 class OpenaiChatClient(LLMClient):
@@ -87,6 +87,14 @@ class OpenaiChatClient(LLMClient):
             }
 
         return tool_choice
+
+    def _convert_image_url(self, data_url: str) -> dict[str, Any]:
+        """Convert a fetched image to an image_url part, at the detail the API needs to read it."""
+        image_url = {"url": data_url}
+        if detail := openai_image_detail(self._model, data_url):
+            image_url["detail"] = detail
+
+        return {"type": "image_url", "image_url": image_url}
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """
@@ -146,7 +154,7 @@ class OpenaiChatClient(LLMClient):
                     content_parts.append({"type": "text", "text": item["text"]})
                 elif item["type"] == "image_url":
                     base64_image = await self._convert_image_url_to_base64(item["image_url"])
-                    content_parts.append({"type": "image_url", "image_url": {"url": base64_image}})
+                    content_parts.append(self._convert_image_url(base64_image))
                 elif item["type"] == "thinking":
                     thinking += item["thinking"]
                     thinking_fields.add((item.get("fidelity") or {}).get("reasoning_field"))
@@ -169,12 +177,12 @@ class OpenaiChatClient(LLMClient):
 
                     if "images" in item and item["images"]:
                         for image_url in item["images"]:
-                            base64_image = await self._convert_image_url_to_base64(image_url)
+                            part = self._convert_image_url(await self._convert_image_url_to_base64(image_url))
                             if "siliconflow.cn" in str(self._client.base_url):
                                 # siliconflow does not support image_url in tool result
-                                content_parts.append({"type": "image_url", "image_url": {"url": base64_image}})
+                                content_parts.append(part)
                             else:
-                                content.append({"type": "image_url", "image_url": {"url": base64_image}})
+                                content.append(part)
 
                     # Tool results are sent as separate messages
                     openai_messages.append(

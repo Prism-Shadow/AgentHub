@@ -33,7 +33,7 @@ from ..types import (
     UniMessage,
     UsageMetadata,
 )
-from ..utils import is_debug_enabled
+from ..utils import is_debug_enabled, openai_image_detail
 
 
 class GPT5_6Client(LLMClient):
@@ -70,6 +70,14 @@ class GPT5_6Client(LLMClient):
         if isinstance(tool_choice, list):
             return {"mode": "required", "tools": [{"type": "function", "name": name} for name in tool_choice]}
         return tool_choice
+
+    def _convert_image_url(self, image_url: str) -> dict[str, str]:
+        """Convert an image URL to an input_image item, at the detail the API needs to read it."""
+        item = {"type": "input_image", "image_url": image_url}
+        if detail := openai_image_detail(self._model, image_url):
+            item["detail"] = detail
+
+        return item
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """
@@ -158,7 +166,7 @@ class GPT5_6Client(LLMClient):
                     else:
                         content_items.append({"type": "output_text", "text": item["text"]})
                 elif item["type"] == "image_url":
-                    content_items.append({"type": "input_image", "image_url": item["image_url"]})
+                    content_items.append(self._convert_image_url(item["image_url"]))
                 elif item["type"] == "thinking":
                     # rebuild the reasoning item from the recorded wire fields: the thinking
                     # text goes back through the channel that carried it (histories recorded
@@ -196,7 +204,7 @@ class GPT5_6Client(LLMClient):
                     tool_result = [{"type": "input_text", "text": item["text"]}]
                     if "images" in item:
                         for image_url in item["images"]:
-                            tool_result.append({"type": "input_image", "image_url": image_url})
+                            tool_result.append(self._convert_image_url(image_url))
 
                     input_list.append(
                         {"type": "function_call_output", "call_id": item["tool_call_id"], "output": tool_result}
