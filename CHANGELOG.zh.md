@@ -4,6 +4,8 @@
 
 在这里，我们记录模型的新增与移除时间、主要功能更新、缺陷修复，以及关键版本的发布时间。每个发布版本在此保留一行简述；逐条目的摘要位于 `changelog/<version>/README.md`，且每个条目都会链接到自己的详情文件。
 
+- [2026-09-02] [版本 0.4.9](changelog/0.4.9/README.zh.md)：GPT-5.6 对超过 30,000 patch 上限的图片改以高细节读取，不再拒收；提示词与工具返回里的图片都适用，GPT-5.6、OpenAI Responses、OpenAI Chat 三个 client 一并生效。
+
 - [2026-08-26] [版本 0.4.8](changelog/0.4.8/README.zh.md)：注册表新增 `glm-5.3-flash`，提示词与工具返回里的图片都能读；其余 GLM 模型遇到图片条目会直接拒绝，而不是照发。
 
 - [2026-08-25] [版本 0.4.7](changelog/0.4.7/README.zh.md)：Gemini client 把 function response 拆分为独立的 content，修复消息里工具结果与文本混排时（被中断轮次的 carry-over 随下一条 prompt 重发、或工具输出折叠进摘要请求）Vertex AI 报 400 `Requests ending with a model turn are not supported.` 的问题。
