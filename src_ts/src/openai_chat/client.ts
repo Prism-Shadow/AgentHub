@@ -35,7 +35,7 @@ import {
   UniMessage,
   UsageMetadata,
 } from "../types";
-import { fixOpenrouterUsageMetadata } from "../utils";
+import { fixOpenrouterUsageMetadata, openaiImageDetail } from "../utils";
 
 /**
  * OpenAI Chat Completions-compatible client implementation.
@@ -129,6 +129,20 @@ export class OpenaiChatClient extends LLMClient {
   }
 
   /**
+   * Convert a fetched image to an image_url part, at the detail the API needs
+   * to read it.
+   */
+  private _convertImageUrl(dataUrl: string): {
+    type: "image_url";
+    image_url: { url: string; detail?: "high" };
+  } {
+    const detail = openaiImageDetail(this._model, dataUrl);
+    return detail
+      ? { type: "image_url", image_url: { url: dataUrl, detail } }
+      : { type: "image_url", image_url: { url: dataUrl } };
+  }
+
+  /**
    * Transform universal configuration to OpenAI Chat Completions configuration.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -190,7 +204,7 @@ export class OpenaiChatClient extends LLMClient {
       const contentParts: Array<{
         type: string;
         text?: string;
-        image_url?: { url: string };
+        image_url?: { url: string; detail?: "high" };
       }> = [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const toolCalls: any[] = [];
@@ -205,10 +219,7 @@ export class OpenaiChatClient extends LLMClient {
             item.image_url,
             signal,
           );
-          contentParts.push({
-            type: "image_url",
-            image_url: { url: base64Image },
-          });
+          contentParts.push(this._convertImageUrl(base64Image));
         } else if (item.type === "thinking") {
           thinking += item.thinking;
           thinkingFields.add(item.fidelity?.reasoning_field);
@@ -235,16 +246,11 @@ export class OpenaiChatClient extends LLMClient {
                 imageUrl,
                 signal,
               );
+              const part = this._convertImageUrl(base64Image);
               if (this._client.baseURL.includes("siliconflow.cn")) {
-                contentParts.push({
-                  type: "image_url",
-                  image_url: { url: base64Image },
-                });
+                contentParts.push(part);
               } else {
-                content.push({
-                  type: "image_url",
-                  image_url: { url: base64Image },
-                });
+                content.push(part);
               }
             }
           }
