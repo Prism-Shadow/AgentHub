@@ -86,12 +86,16 @@ export function imageDimensions(bytes: Uint8Array): ImageDimensions | null {
     0;
 
   // PNG: an 8-byte signature, then the IHDR chunk with width and height
-  if (bytes.length >= 24 && ascii(1, 3) === "PNG" && ascii(12, 4) === "IHDR") {
+  if (
+    bytes.length >= 24 &&
+    ascii(0, 8) === "\x89PNG\r\n\x1a\n" &&
+    ascii(12, 4) === "IHDR"
+  ) {
     return { width: u32be(16), height: u32be(20) };
   }
 
   // GIF: the logical screen size follows the 6-byte signature
-  if (bytes.length >= 10 && ascii(0, 3) === "GIF") {
+  if (bytes.length >= 10 && ["GIF87a", "GIF89a"].includes(ascii(0, 6))) {
     return { width: u16le(6), height: u16le(8) };
   }
 

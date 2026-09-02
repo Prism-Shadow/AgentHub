@@ -101,6 +101,8 @@ def test_image_dimensions_reads_the_header(name: str, data: bytes, expected: tup
         ("empty input", b""),
         ("text", b"not an image"),
         ("a PNG cut before its IHDR chunk", _png(6400, 8608)[:16]),
+        ("bytes that spell PNG and IHDR without the PNG signature", b"\x00PNG" + bytes(8) + b"IHDR" + bytes(8)),
+        ("a GIF signature without its version", b"GIFxxx" + bytes(7)),
         ("a JPEG cut inside a metadata segment", _jpeg(4032, 3024, 1024)[:512]),
         ("a JPEG whose scan starts before any frame header", b"\xff\xd8\xff\xda\x00\x02\x00\x00"),
         ("a WebP whose first chunk is not a bitstream", _riff(b"ALPH", bytes(10))),

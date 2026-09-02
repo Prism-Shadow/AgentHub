@@ -127,6 +127,19 @@ describe("imageDimensions", () => {
     ["text", Buffer.from("not an image")],
     ["a PNG cut before its IHDR chunk", png(6400, 8608).subarray(0, 16)],
     [
+      "bytes that spell PNG and IHDR without the PNG signature",
+      Buffer.concat([
+        Buffer.from("\0PNG", "latin1"),
+        Buffer.alloc(8),
+        Buffer.from("IHDR", "latin1"),
+        Buffer.alloc(8),
+      ]),
+    ],
+    [
+      "a GIF signature without its version",
+      Buffer.from("GIFxxx\0\0\0\0\0\0\0", "latin1"),
+    ],
+    [
       "a JPEG cut inside a metadata segment",
       jpeg(4032, 3024, 1024).subarray(0, 512),
     ],

@@ -68,11 +68,11 @@ def image_dimensions(data: bytes) -> tuple[int, int] | None:
         tuple[int, int] | None: The width and height, or None when the bytes are not a recognized image.
     """
     # PNG: an 8-byte signature, then the IHDR chunk with width and height
-    if len(data) >= 24 and data[1:4] == b"PNG" and data[12:16] == b"IHDR":
+    if len(data) >= 24 and data[:8] == b"\x89PNG\r\n\x1a\n" and data[12:16] == b"IHDR":
         return int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
 
     # GIF: the logical screen size follows the 6-byte signature
-    if len(data) >= 10 and data[:3] == b"GIF":
+    if len(data) >= 10 and data[:6] in (b"GIF87a", b"GIF89a"):
         return int.from_bytes(data[6:8], "little"), int.from_bytes(data[8:10], "little")
 
     # WebP: a RIFF container whose first chunk names the bitstream flavour
