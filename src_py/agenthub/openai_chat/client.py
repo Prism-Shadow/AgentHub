@@ -35,7 +35,7 @@ from ..types import (
     UniMessage,
     UsageMetadata,
 )
-from ..utils import exceeds_openai_patch_limit, fix_openrouter_usage_metadata
+from ..utils import fix_openrouter_usage_metadata, openai_image_detail
 
 
 class OpenaiChatClient(LLMClient):
@@ -89,17 +89,12 @@ class OpenaiChatClient(LLMClient):
         return tool_choice
 
     def _convert_image_url(self, data_url: str) -> dict[str, Any]:
-        """
-        Convert a fetched image to an image_url part.
+        """Convert a fetched image to an image_url part, at the detail the API needs to read it."""
+        image_url = {"url": data_url}
+        if detail := openai_image_detail(self._model, data_url):
+            image_url["detail"] = detail
 
-        GPT-5.6 reads the default `auto` detail as `original`, which keeps the image's own
-        dimensions and rejects one over 30,000 patches instead of resizing it; `high` has the
-        API fit it into 2,500 patches, so the image is read instead of refused.
-        """
-        if "gpt-5.6" in self._model.lower() and exceeds_openai_patch_limit(data_url):
-            return {"type": "image_url", "image_url": {"url": data_url, "detail": "high"}}
-
-        return {"type": "image_url", "image_url": {"url": data_url}}
+        return {"type": "image_url", "image_url": image_url}
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """

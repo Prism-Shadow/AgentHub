@@ -33,7 +33,7 @@ from ..types import (
     UniMessage,
     UsageMetadata,
 )
-from ..utils import exceeds_openai_patch_limit, is_debug_enabled
+from ..utils import is_debug_enabled, openai_image_detail
 
 
 class GPT5_6Client(LLMClient):
@@ -72,17 +72,12 @@ class GPT5_6Client(LLMClient):
         return tool_choice
 
     def _convert_image_url(self, image_url: str) -> dict[str, str]:
-        """
-        Convert an image URL to an input_image item.
+        """Convert an image URL to an input_image item, at the detail the API needs to read it."""
+        item = {"type": "input_image", "image_url": image_url}
+        if detail := openai_image_detail(self._model, image_url):
+            item["detail"] = detail
 
-        GPT-5.6 reads the default `auto` detail as `original`, which keeps the image's own
-        dimensions and rejects one over 30,000 patches instead of resizing it; `high` has the
-        API fit it into 2,500 patches, so the image is read instead of refused.
-        """
-        if "gpt-5.6" in self._model.lower() and exceeds_openai_patch_limit(image_url):
-            return {"type": "input_image", "image_url": image_url, "detail": "high"}
-
-        return {"type": "input_image", "image_url": image_url}
+        return item
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
         """

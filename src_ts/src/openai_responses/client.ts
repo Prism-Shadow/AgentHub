@@ -35,7 +35,7 @@ import {
   PromptCaching,
   UsageMetadata,
 } from "../types";
-import { exceedsOpenaiPatchLimit, isDebugEnabled } from "../utils";
+import { isDebugEnabled, openaiImageDetail } from "../utils";
 
 /**
  * OpenAI Responses-compatible client implementation.
@@ -96,25 +96,18 @@ export class OpenaiResponsesClient extends LLMClient {
   }
 
   /**
-   * Convert an image URL to an input_image item.
-   *
-   * GPT-5.6 reads the default `auto` detail as `original`, which keeps the image's own
-   * dimensions and rejects one over 30,000 patches instead of resizing it; `high` has the
-   * API fit it into 2,500 patches, so the image is read instead of refused.
+   * Convert an image URL to an input_image item, at the detail the API needs
+   * to read it.
    */
   private _convertImageUrl(imageUrl: string): {
     type: "input_image";
     image_url: string;
     detail?: "high";
   } {
-    if (
-      this._model.toLowerCase().includes("gpt-5.6") &&
-      exceedsOpenaiPatchLimit(imageUrl)
-    ) {
-      return { type: "input_image", image_url: imageUrl, detail: "high" };
-    }
-
-    return { type: "input_image", image_url: imageUrl };
+    const detail = openaiImageDetail(this._model, imageUrl);
+    return detail
+      ? { type: "input_image", image_url: imageUrl, detail }
+      : { type: "input_image", image_url: imageUrl };
   }
 
   /**

@@ -36,6 +36,19 @@ function gif(width: number, height: number): Buffer {
   return header;
 }
 
+// A frame header: baseline (SOF0) by default, progressive with 0xc2.
+function sof(width: number, height: number, marker = 0xc0): Buffer {
+  const header = Buffer.alloc(10);
+  header[0] = 0xff;
+  header[1] = marker;
+  header.writeUInt16BE(8, 2);
+  header[4] = 8;
+  header.writeUInt16BE(height, 5);
+  header.writeUInt16BE(width, 7);
+  header[9] = 3;
+  return header;
+}
+
 // The frame header follows `metadataBytes` of APP1 payload, the way EXIF does; a segment
 // holds at most 65,533 bytes, so a larger amount spans several of them.
 function jpeg(width: number, height: number, metadataBytes = 0): Buffer {
@@ -50,16 +63,19 @@ function jpeg(width: number, height: number, metadataBytes = 0): Buffer {
     parts.push(app1);
     remaining -= payload;
   } while (remaining > 0);
-  const sof0 = Buffer.alloc(10);
-  sof0[0] = 0xff;
-  sof0[1] = 0xc0;
-  sof0.writeUInt16BE(8, 2);
-  sof0[4] = 8;
-  sof0.writeUInt16BE(height, 5);
-  sof0.writeUInt16BE(width, 7);
-  sof0[9] = 3;
-  return Buffer.concat([...parts, sof0]);
+  return Buffer.concat([...parts, sof(width, height)]);
 }
+
+// A JPEG whose frame header follows the SOI directly, and a progressive one that puts fill
+// bytes, an empty APP1 segment and a restart marker ahead of it.
+const SOF_FIRST_JPEG = Buffer.concat([
+  Buffer.from([0xff, 0xd8]),
+  sof(4032, 3024),
+]);
+const PROGRESSIVE_JPEG = Buffer.concat([
+  Buffer.from([0xff, 0xd8, 0xff, 0xff, 0xff, 0xe1, 0x00, 0x02, 0xff, 0xd0]),
+  sof(4032, 3024, 0xc2),
+]);
 
 function riff(chunk: string, payload: Buffer): Buffer {
   const header = Buffer.alloc(20);
@@ -105,6 +121,23 @@ function dataUrl(bytes: Buffer, mime = "image/png"): string {
   return `data:${mime};base64,${bytes.toString("base64")}`;
 }
 
+// Payloads an encoder other than the clients' own may produce: wrapped at 76 columns the way
+// MIME tooling does, without its padding, and in the URL-safe alphabet.
+const WRAPPED_URL = `data:image/png;base64,${Buffer.concat([
+  png(6400, 8608),
+  Buffer.alloc(100 * 1024),
+])
+  .toString("base64")
+  .replace(/.{76}/g, "$&\n")}\n`;
+const UNPADDED_URL = dataUrl(
+  Buffer.concat([jpeg(8000, 8000, 100 * 1024), Buffer.alloc(1)]),
+  "image/jpeg",
+).replace(/=+$/, "");
+const URL_SAFE_URL = `data:image/png;base64,${Buffer.concat([
+  png(6400, 8608),
+  Buffer.alloc(13, Buffer.from([0xfb, 0xff, 0xbf])),
+]).toString("base64url")}`;
+
 describe("imageDimensions", () => {
   test.each([
     ["PNG", png(6400, 8608), { width: 6400, height: 8608 }],
@@ -113,6 +146,16 @@ describe("imageDimensions", () => {
     [
       "JPEG behind 100 KiB of metadata",
       jpeg(4032, 3024, 100 * 1024),
+      { width: 4032, height: 3024 },
+    ],
+    [
+      "JPEG whose frame header comes first",
+      SOF_FIRST_JPEG,
+      { width: 4032, height: 3024 },
+    ],
+    [
+      "progressive JPEG behind fill bytes and a restart marker",
+      PROGRESSIVE_JPEG,
       { width: 4032, height: 3024 },
     ],
     ["lossy WebP", webpLossy(1920, 1080), { width: 1920, height: 1080 }],
@@ -160,6 +203,8 @@ describe("exceedsOpenaiPatchLimit", () => {
   test.each([
     ["a 6400x8608 screenshot (53,800 patches)", dataUrl(png(6400, 8608)), true],
     ["5600x5600 (30,625 patches)", dataUrl(png(5600, 5600)), true],
+    ["6400x4832 (30,200 patches)", dataUrl(png(6400, 4832)), true],
+    ["6400x4800 (exactly 30,000 patches)", dataUrl(png(6400, 4800)), false],
     ["5504x5504 (29,584 patches)", dataUrl(png(5504, 5504)), false],
     ["1024x1024", dataUrl(png(1024, 1024)), false],
     [
@@ -175,6 +220,18 @@ describe("exceedsOpenaiPatchLimit", () => {
     [
       "a 131070x1500 strip, still over the limit once scaled",
       dataUrl(png(131070, 1500)),
+      true,
+    ],
+    ["a payload wrapped at 76 columns", WRAPPED_URL, true],
+    [
+      "an unpadded payload of a JPEG with a deep frame header",
+      UNPADDED_URL,
+      true,
+    ],
+    ["a payload in the URL-safe alphabet", URL_SAFE_URL, true],
+    [
+      "an upper-case base64 marker",
+      `data:image/png;BASE64,${png(6400, 8608).toString("base64")}`,
       true,
     ],
     ["an http URL", "https://example.com/huge.png", false],
@@ -283,23 +340,19 @@ const MESSAGES: UniMessage[] = [
 ];
 
 // The detail of each image part, in order: the prompt's two images, then the tool result's two.
+// An absent key and an explicit undefined differ on the wire, so the key itself is reported.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function details(testCase: ImageDetailCase, modelInput: any[]): unknown[] {
-  if (testCase.protocol === "responses") {
-    return [
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...modelInput[0].content.slice(1).map((part: any) => part.detail),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...modelInput[2].output.slice(1).map((part: any) => part.detail),
-    ];
-  }
-
-  return [
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...modelInput[0].content.slice(1).map((part: any) => part.image_url.detail),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...modelInput[2].content.slice(1).map((part: any) => part.image_url.detail),
-  ];
+function details(testCase: ImageDetailCase, modelInput: any[]): string[] {
+  const parts =
+    testCase.protocol === "responses"
+      ? [...modelInput[0].content.slice(1), ...modelInput[2].output.slice(1)]
+      : [
+          ...modelInput[0].content.slice(1),
+          ...modelInput[2].content.slice(1),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ].map((part: any) => part.image_url);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return parts.map((part: any) => ("detail" in part ? part.detail : "absent"));
 }
 
 describe.each(IMAGE_DETAIL_CASES)(
@@ -331,12 +384,12 @@ describe.each(IMAGE_DETAIL_CASES)(
         const modelInput =
           await routedClient.transformUniMessageToModelInput(MESSAGES);
 
-        const shrunk = testCase.shrinks ? "high" : undefined;
+        const shrunk = testCase.shrinks ? "high" : "absent";
         expect(details(testCase, modelInput)).toEqual([
           shrunk,
-          undefined,
+          "absent",
           shrunk,
-          undefined,
+          "absent",
         ]);
       },
     );

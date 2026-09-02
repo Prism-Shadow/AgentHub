@@ -35,7 +35,7 @@ import {
   UniMessage,
   UsageMetadata,
 } from "../types";
-import { exceedsOpenaiPatchLimit, fixOpenrouterUsageMetadata } from "../utils";
+import { fixOpenrouterUsageMetadata, openaiImageDetail } from "../utils";
 
 /**
  * OpenAI Chat Completions-compatible client implementation.
@@ -129,24 +129,17 @@ export class OpenaiChatClient extends LLMClient {
   }
 
   /**
-   * Convert a fetched image to an image_url part.
-   *
-   * GPT-5.6 reads the default `auto` detail as `original`, which keeps the image's own
-   * dimensions and rejects one over 30,000 patches instead of resizing it; `high` has the
-   * API fit it into 2,500 patches, so the image is read instead of refused.
+   * Convert a fetched image to an image_url part, at the detail the API needs
+   * to read it.
    */
   private _convertImageUrl(dataUrl: string): {
     type: "image_url";
     image_url: { url: string; detail?: "high" };
   } {
-    if (
-      this._model.toLowerCase().includes("gpt-5.6") &&
-      exceedsOpenaiPatchLimit(dataUrl)
-    ) {
-      return { type: "image_url", image_url: { url: dataUrl, detail: "high" } };
-    }
-
-    return { type: "image_url", image_url: { url: dataUrl } };
+    const detail = openaiImageDetail(this._model, dataUrl);
+    return detail
+      ? { type: "image_url", image_url: { url: dataUrl, detail } }
+      : { type: "image_url", image_url: { url: dataUrl } };
   }
 
   /**
@@ -211,7 +204,7 @@ export class OpenaiChatClient extends LLMClient {
       const contentParts: Array<{
         type: string;
         text?: string;
-        image_url?: { url: string; detail?: string };
+        image_url?: { url: string; detail?: "high" };
       }> = [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const toolCalls: any[] = [];

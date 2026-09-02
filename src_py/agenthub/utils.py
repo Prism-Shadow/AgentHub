@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import base64
-import binascii
 import math
 import os
+import re
+from typing import Literal
 
 from .types import UsageMetadata
 
@@ -121,42 +122,65 @@ def image_dimensions(data: bytes) -> tuple[int, int] | None:
     return None
 
 
-# The patch count above which the OpenAI vision API rejects an image instead of resizing it.
+# The patch count above which the OpenAI vision API rejects an image instead of resizing it
+# (Images and vision guide, "Choose an image detail level":
+# https://developers.openai.com/api/docs/guides/images-vision).
 _OPENAI_PATCH_LIMIT = 30000
 
 # The longest side the OpenAI vision API keeps at `original` detail; a larger image is scaled
-# down to fit it before the patches are counted.
+# down to fit it before the patches are counted (the same guide, model sizing table).
 _OPENAI_ORIGINAL_MAX_SIDE = 65535
 
-# Base64 characters decoded on the first attempt: enough for any PNG, GIF or WebP header, and
-# for a JPEG whose metadata segments are of ordinary size.
-_HEADER_PREFIX_CHARS = 64 * 1024
+# Base64 characters decoded first: 48 bytes, enough for any PNG, GIF or WebP header. A JPEG's
+# frame header may sit behind metadata segments, so its window grows by the factor below until
+# the header is found or the payload runs out.
+_HEADER_PROBE_CHARS = 64
+_HEADER_WINDOW_GROWTH = 4
+
+# Characters outside the base64 alphabet, URL-safe variant included, and the map from that
+# variant back to the standard alphabet.
+_NOT_BASE64 = re.compile(r"[^A-Za-z0-9+/_-]")
+_URL_SAFE_TO_STANDARD = str.maketrans("-_", "+/")
 
 
-def _data_url_bytes(data_url: str, max_chars: int | None) -> bytes | None:
+def _base64_payload_start(data_url: str) -> int:
     """
-    Decode the leading bytes of a base64 data URL.
+    Locate the payload of a base64 data URL.
 
     Args:
         data_url (str): The URL.
-        max_chars (int | None): How many base64 characters to decode at most, or None for all of them.
 
     Returns:
-        bytes | None: The decoded bytes, or None when the URL is not a base64 data URL.
+        int: The index of the payload's first character, or -1 when the URL is not a base64 data URL.
     """
     if not data_url.startswith("data:"):
-        return None
+        return -1
     comma = data_url.find(",")
-    if comma < 0 or "base64" not in data_url[5:comma].split(";"):
-        return None
-    payload = data_url[comma + 1 :]
-    if max_chars is not None:
-        # whole 4-character groups only, so the cut cannot land inside one
-        payload = payload[: min(len(payload), max_chars) & ~3]
-    try:
-        return base64.b64decode(payload)
-    except (binascii.Error, ValueError):
-        return None
+    if comma < 0:
+        return -1
+    # the token is case-insensitive and may follow a space, as a browser reads it
+    params = [param.strip().lower() for param in data_url[5:comma].split(";")]
+    return comma + 1 if "base64" in params else -1
+
+
+def _decode_base64_prefix(text: str) -> bytes:
+    """
+    Decode a prefix of a base64 payload the way Node's Buffer does.
+
+    Whitespace and other stray characters are skipped, the URL-safe alphabet is accepted, and a
+    cut inside a 4-character group or missing padding yields the bytes that are complete, so the
+    Python and TypeScript clients measure the same image alike.
+
+    Args:
+        text (str): The leading characters of the payload.
+
+    Returns:
+        bytes: The decoded bytes.
+    """
+    chars = _NOT_BASE64.sub("", text).translate(_URL_SAFE_TO_STANDARD)
+    if len(chars) % 4 == 1:  # a lone trailing character carries no whole byte
+        chars = chars[:-1]
+    return base64.b64decode(chars + "=" * (-len(chars) % 4))
 
 
 def exceeds_openai_patch_limit(image_url: str) -> bool:
@@ -165,8 +189,9 @@ def exceeds_openai_patch_limit(image_url: str) -> bool:
 
     The API covers an image with 32-pixel patches and rejects one that needs more than 30,000 of
     them after its own resizing; at `original` detail the only resizing is the 65,535-pixel cap
-    on either side. Only a base64 data URL can be measured here: an HTTP(S) URL is fetched by
-    the API itself and answers False.
+    on either side. Only a base64 data URL can be measured here: an HTTP(S) URL answers False.
+    The Responses clients pass such a URL through for the API to fetch; the Chat client fetches
+    it into a data URL first, so it measures the fetched bytes.
 
     Args:
         image_url (str): The image URL.
@@ -174,14 +199,17 @@ def exceeds_openai_patch_limit(image_url: str) -> bool:
     Returns:
         bool: Whether the API would reject the image.
     """
-    data = _data_url_bytes(image_url, _HEADER_PREFIX_CHARS)
-    if data is None:
+    start = _base64_payload_start(image_url)
+    if start < 0:
         return False
-    size = image_dimensions(data)
-    if size is None and data[:2] == b"\xff\xd8":
-        # a JPEG may carry more metadata than the prefix before its frame header
-        data = _data_url_bytes(image_url, None)
-        size = image_dimensions(data) if data is not None else None
+    # decode a growing prefix rather than the whole payload
+    chars = _HEADER_PROBE_CHARS
+    while True:
+        data = _decode_base64_prefix(image_url[start : start + chars])
+        size = image_dimensions(data)
+        if size is not None or data[:2] != b"\xff\xd8" or start + chars >= len(image_url):
+            break
+        chars *= _HEADER_WINDOW_GROWTH
     if size is None:
         return False
 
@@ -191,3 +219,25 @@ def exceeds_openai_patch_limit(image_url: str) -> bool:
         width = math.floor(width * _OPENAI_ORIGINAL_MAX_SIDE / longest + 0.5)
         height = math.floor(height * _OPENAI_ORIGINAL_MAX_SIDE / longest + 0.5)
     return math.ceil(width / 32) * math.ceil(height / 32) > _OPENAI_PATCH_LIMIT
+
+
+def openai_image_detail(model: str, image_url: str) -> Literal["high"] | None:
+    """
+    The `detail` an OpenAI image part needs so that the API reads the image.
+
+    GPT-5.6 reads the default `auto` detail as `original`, which keeps the image's own
+    dimensions and rejects one over 30,000 patches instead of resizing it; `high` has the API
+    fit it into 2,500 patches, so the image is read instead of refused. Every other model keeps
+    a patch budget at every detail level, so no other model gets the field.
+
+    Args:
+        model (str): The model id the request is sent with.
+        image_url (str): The image URL as it goes on the wire.
+
+    Returns:
+        Literal["high"] | None: "high" when the image needs it, otherwise None.
+    """
+    if "gpt-5.6" in model.lower() and exceeds_openai_patch_limit(image_url):
+        return "high"
+
+    return None

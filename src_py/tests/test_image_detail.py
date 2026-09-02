@@ -35,6 +35,11 @@ def _gif(width: int, height: int) -> bytes:
     return b"GIF89a" + struct.pack("<HH", width, height) + bytes(3)
 
 
+def _sof(width: int, height: int, marker: int = 0xC0) -> bytes:
+    """A frame header: baseline (SOF0) by default, progressive with 0xC2."""
+    return bytes([0xFF, marker]) + struct.pack(">HBHHB", 8, 8, height, width, 3)
+
+
 def _jpeg(width: int, height: int, metadata_bytes: int = 0) -> bytes:
     """
     The frame header follows `metadata_bytes` of APP1 payload, the way EXIF does; a segment
@@ -49,7 +54,7 @@ def _jpeg(width: int, height: int, metadata_bytes: int = 0) -> bytes:
         if remaining <= 0:
             break
 
-    parts.append(b"\xff\xc0" + struct.pack(">HBHHB", 8, 8, height, width, 3))
+    parts.append(_sof(width, height))
     return b"".join(parts)
 
 
@@ -78,62 +83,89 @@ def _data_url(data: bytes, mime: str = "image/png") -> str:
     return f"data:{mime};base64," + base64.b64encode(data).decode("ascii")
 
 
+# A JPEG whose frame header follows the SOI directly, and a progressive one that puts fill bytes,
+# an empty APP1 segment and a restart marker ahead of it.
+_SOF_FIRST_JPEG = b"\xff\xd8" + _sof(4032, 3024)
+_PROGRESSIVE_JPEG = b"\xff\xd8\xff\xff\xff\xe1\x00\x02\xff\xd0" + _sof(4032, 3024, 0xC2)
+
+# Payloads an encoder other than the clients' own may produce: wrapped at 76 columns the way
+# `base64.encodebytes` and MIME tooling do, without its padding, and in the URL-safe alphabet.
+_WRAPPED_URL = "data:image/png;base64," + base64.encodebytes(_png(6400, 8608) + bytes(100 * 1024)).decode("ascii")
+_UNPADDED_URL = _data_url(_jpeg(8000, 8000, 100 * 1024) + b"\x00", "image/jpeg").rstrip("=")
+_URL_SAFE_URL = "data:image/png;base64," + base64.urlsafe_b64encode(
+    _png(6400, 8608) + b"\xfb\xff\xbf" * 4 + b"\xfb"
+).decode("ascii")
+
+
 @pytest.mark.parametrize(
-    ("name", "data", "expected"),
+    ("data", "expected"),
     [
-        ("PNG", _png(6400, 8608), (6400, 8608)),
-        ("GIF", _gif(640, 480), (640, 480)),
-        ("JPEG", _jpeg(4032, 3024), (4032, 3024)),
-        ("JPEG behind 100 KiB of metadata", _jpeg(4032, 3024, 100 * 1024), (4032, 3024)),
-        ("lossy WebP", _webp_lossy(1920, 1080), (1920, 1080)),
-        ("lossless WebP", _webp_lossless(1920, 1080), (1920, 1080)),
-        ("extended WebP", _webp_extended(1920, 1080), (1920, 1080)),
+        pytest.param(_png(6400, 8608), (6400, 8608), id="PNG"),
+        pytest.param(_gif(640, 480), (640, 480), id="GIF"),
+        pytest.param(_jpeg(4032, 3024), (4032, 3024), id="JPEG"),
+        pytest.param(_jpeg(4032, 3024, 100 * 1024), (4032, 3024), id="JPEG behind 100 KiB of metadata"),
+        pytest.param(_SOF_FIRST_JPEG, (4032, 3024), id="JPEG whose frame header comes first"),
+        pytest.param(_PROGRESSIVE_JPEG, (4032, 3024), id="progressive JPEG behind fill bytes and a restart marker"),
+        pytest.param(_webp_lossy(1920, 1080), (1920, 1080), id="lossy WebP"),
+        pytest.param(_webp_lossless(1920, 1080), (1920, 1080), id="lossless WebP"),
+        pytest.param(_webp_extended(1920, 1080), (1920, 1080), id="extended WebP"),
     ],
-    ids=lambda value: value if isinstance(value, str) else "",
 )
-def test_image_dimensions_reads_the_header(name: str, data: bytes, expected: tuple[int, int]):
+def test_image_dimensions_reads_the_header(data: bytes, expected: tuple[int, int]):
     assert image_dimensions(data) == expected
 
 
 @pytest.mark.parametrize(
-    ("name", "data"),
+    "data",
     [
-        ("empty input", b""),
-        ("text", b"not an image"),
-        ("a PNG cut before its IHDR chunk", _png(6400, 8608)[:16]),
-        ("bytes that spell PNG and IHDR without the PNG signature", b"\x00PNG" + bytes(8) + b"IHDR" + bytes(8)),
-        ("a GIF signature without its version", b"GIFxxx" + bytes(7)),
-        ("a JPEG cut inside a metadata segment", _jpeg(4032, 3024, 1024)[:512]),
-        ("a JPEG whose scan starts before any frame header", b"\xff\xd8\xff\xda\x00\x02\x00\x00"),
-        ("a WebP whose first chunk is not a bitstream", _riff(b"ALPH", bytes(10))),
+        pytest.param(b"", id="empty input"),
+        pytest.param(b"not an image", id="text"),
+        pytest.param(_png(6400, 8608)[:16], id="a PNG cut before its IHDR chunk"),
+        pytest.param(
+            b"\x00PNG" + bytes(8) + b"IHDR" + bytes(8), id="bytes that spell PNG and IHDR without the PNG signature"
+        ),
+        pytest.param(b"GIFxxx" + bytes(7), id="a GIF signature without its version"),
+        pytest.param(_jpeg(4032, 3024, 1024)[:512], id="a JPEG cut inside a metadata segment"),
+        pytest.param(b"\xff\xd8\xff\xda\x00\x02\x00\x00", id="a JPEG whose scan starts before any frame header"),
+        pytest.param(_riff(b"ALPH", bytes(10)), id="a WebP whose first chunk is not a bitstream"),
     ],
-    ids=lambda value: value if isinstance(value, str) else "",
 )
-def test_image_dimensions_reads_unrecognized_bytes_as_none(name: str, data: bytes):
+def test_image_dimensions_reads_unrecognized_bytes_as_none(data: bytes):
     assert image_dimensions(data) is None
 
 
 @pytest.mark.parametrize(
-    ("name", "url", "expected"),
+    ("url", "expected"),
     [
-        ("a 6400x8608 screenshot (53,800 patches)", _data_url(_png(6400, 8608)), True),
-        ("5600x5600 (30,625 patches)", _data_url(_png(5600, 5600)), True),
-        ("5504x5504 (29,584 patches)", _data_url(_png(5504, 5504)), False),
-        ("1024x1024", _data_url(_png(1024, 1024)), False),
-        (
-            "an 8000x8000 JPEG whose frame header sits behind 100 KiB of metadata",
+        pytest.param(_data_url(_png(6400, 8608)), True, id="a 6400x8608 screenshot (53,800 patches)"),
+        pytest.param(_data_url(_png(5600, 5600)), True, id="5600x5600 (30,625 patches)"),
+        pytest.param(_data_url(_png(6400, 4832)), True, id="6400x4832 (30,200 patches)"),
+        pytest.param(_data_url(_png(6400, 4800)), False, id="6400x4800 (exactly 30,000 patches)"),
+        pytest.param(_data_url(_png(5504, 5504)), False, id="5504x5504 (29,584 patches)"),
+        pytest.param(_data_url(_png(1024, 1024)), False, id="1024x1024"),
+        pytest.param(
             _data_url(_jpeg(8000, 8000, 100 * 1024), "image/jpeg"),
             True,
+            id="an 8000x8000 JPEG whose frame header sits behind 100 KiB of metadata",
         ),
-        ("a 131070x500 strip, once scaled to the 65,535-pixel side", _data_url(_png(131070, 500)), False),
-        ("a 131070x1500 strip, still over the limit once scaled", _data_url(_png(131070, 1500)), True),
-        ("an http URL", "https://example.com/huge.png", False),
-        ("a data URL that is not base64", "data:image/png," + quote("not base64"), False),
-        ("a data URL of something that is not an image", _data_url(b"hello"), False),
+        pytest.param(
+            _data_url(_png(131070, 500)), False, id="a 131070x500 strip, once scaled to the 65,535-pixel side"
+        ),
+        pytest.param(_data_url(_png(131070, 1500)), True, id="a 131070x1500 strip, still over the limit once scaled"),
+        pytest.param(_WRAPPED_URL, True, id="a payload wrapped at 76 columns"),
+        pytest.param(_UNPADDED_URL, True, id="an unpadded payload of a JPEG with a deep frame header"),
+        pytest.param(_URL_SAFE_URL, True, id="a payload in the URL-safe alphabet"),
+        pytest.param(
+            "data:image/png;BASE64," + base64.b64encode(_png(6400, 8608)).decode("ascii"),
+            True,
+            id="an upper-case base64 marker",
+        ),
+        pytest.param("https://example.com/huge.png", False, id="an http URL"),
+        pytest.param("data:image/png," + quote("not base64"), False, id="a data URL that is not base64"),
+        pytest.param(_data_url(b"hello"), False, id="a data URL of something that is not an image"),
     ],
-    ids=lambda value: value if isinstance(value, str) and not value.startswith(("data:", "http")) else "",
 )
-def test_exceeds_openai_patch_limit(name: str, url: str, expected: bool):
+def test_exceeds_openai_patch_limit(url: str, expected: bool):
     assert exceeds_openai_patch_limit(url) is expected
 
 
@@ -184,16 +216,18 @@ MESSAGES: list[dict[str, Any]] = [
 ]
 
 
-def _details(case: ImageDetailCase, model_input: list[dict[str, Any]]) -> list[str | None]:
-    """The detail of each image part, in order: the prompt's two images, then the tool result's two."""
-    if case.protocol == "responses":
-        return [part.get("detail") for part in model_input[0]["content"][1:]] + [
-            part.get("detail") for part in model_input[2]["output"][1:]
-        ]
+def _details(case: ImageDetailCase, model_input: list[dict[str, Any]]) -> list[str]:
+    """
+    The detail of each image part, in order: the prompt's two images, then the tool result's two.
 
-    return [part["image_url"].get("detail") for part in model_input[0]["content"][1:]] + [
-        part["image_url"].get("detail") for part in model_input[2]["content"][1:]
-    ]
+    An absent key and an explicit None differ on the wire, so the key itself is reported.
+    """
+    if case.protocol == "responses":
+        parts = model_input[0]["content"][1:] + model_input[2]["output"][1:]
+    else:
+        parts = [part["image_url"] for part in model_input[0]["content"][1:] + model_input[2]["content"][1:]]
+
+    return [part.get("detail", "absent") for part in parts]
 
 
 @pytest.mark.asyncio
@@ -210,5 +244,5 @@ async def test_image_over_the_patch_limit_goes_out_at_high_detail_on_gpt_5_6(cas
     if inspect.isawaitable(model_input):
         model_input = await model_input
 
-    shrunk = "high" if case.shrinks else None
-    assert _details(case, model_input) == [shrunk, None, shrunk, None]
+    shrunk = "high" if case.shrinks else "absent"
+    assert _details(case, model_input) == [shrunk, "absent", shrunk, "absent"]
