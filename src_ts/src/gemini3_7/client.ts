@@ -238,8 +238,12 @@ export class Gemini3_7Client extends LLMClient {
         GeminiThinkingLevel.HIGH,
       ];
     }
-    if (this._model.includes("gemini-3.7")) {
-      // The 3.7 generation rejects "minimal" with a 400 (verified live 2026-08-13).
+    if (
+      this._model.includes("gemini-3.7") ||
+      this._model.includes("gemini-3.8")
+    ) {
+      // Both generations reject "minimal" with a 400 (3.7 verified live 2026-08-13;
+      // 3.8 documented at ai.google.dev/gemini-api/docs/latest-model).
       return [
         GeminiThinkingLevel.LOW,
         GeminiThinkingLevel.MEDIUM,

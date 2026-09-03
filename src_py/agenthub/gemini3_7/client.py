@@ -159,8 +159,9 @@ class Gemini3_7Client(LLMClient):
             # would have accepted costs a little accuracy, forwarding an
             # unsupported one is a 400).
             return (types.ThinkingLevel.LOW, types.ThinkingLevel.MEDIUM, types.ThinkingLevel.HIGH)
-        if "gemini-3.7" in self._model:
-            # The 3.7 generation rejects "minimal" with a 400 (verified live 2026-08-13).
+        if "gemini-3.7" in self._model or "gemini-3.8" in self._model:
+            # Both generations reject "minimal" with a 400 (3.7 verified live 2026-08-13;
+            # 3.8 documented at ai.google.dev/gemini-api/docs/latest-model).
             return (types.ThinkingLevel.LOW, types.ThinkingLevel.MEDIUM, types.ThinkingLevel.HIGH)
         return self._GEMINI_LEVEL_ORDER
 

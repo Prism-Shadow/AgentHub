@@ -91,12 +91,15 @@ describe("gemini3 thinking level clamping", () => {
   });
 });
 
-// The 3.7 generation drops "minimal" (verified live 2026-08-13; see
-// llmsdk_docs/gemini3_7/docs/thinking.md); the 3.6-generation models routed to
-// the same client keep the full four-level set.
+// The 3.7 and 3.8 generations drop "minimal" (3.7 verified live 2026-08-13, see
+// llmsdk_docs/gemini3_7/docs/thinking.md; 3.8 documented at
+// ai.google.dev/gemini-api/docs/latest-model); the 3.6-generation models routed
+// to the same client keep the full four-level set.
 const GEMINI3_7_THINKING_LEVEL_CASES: Array<
   [string, ThinkingLevel, GeminiThinkingLevel]
 > = [
+  ["gemini-3.8-flash", ThinkingLevel.NONE, GeminiThinkingLevel.LOW],
+  ["gemini-3.8-flash", ThinkingLevel.MAX, GeminiThinkingLevel.HIGH],
   ["gemini-3.7-flash", ThinkingLevel.NONE, GeminiThinkingLevel.LOW],
   ["gemini-3.7-flash", ThinkingLevel.LOW, GeminiThinkingLevel.LOW],
   ["gemini-3.7-flash", ThinkingLevel.MEDIUM, GeminiThinkingLevel.MEDIUM],

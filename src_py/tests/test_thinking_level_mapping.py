@@ -81,10 +81,13 @@ def test_gemini3_thinking_config_omits_level_for_pre_3_models():
     assert config.thinking_config.thinking_level is None
 
 
-# The 3.7 generation drops "minimal" (verified live 2026-08-13; see
-# llmsdk_docs/gemini3_7/docs/thinking.md); the 3.6-generation models routed to
-# the same client keep the full four-level set.
+# The 3.7 and 3.8 generations drop "minimal" (3.7 verified live 2026-08-13, see
+# llmsdk_docs/gemini3_7/docs/thinking.md; 3.8 documented at
+# ai.google.dev/gemini-api/docs/latest-model); the 3.6-generation models routed
+# to the same client keep the full four-level set.
 GEMINI3_7_THINKING_LEVEL_CASES = [
+    ("gemini-3.8-flash", ThinkingLevel.NONE, types.ThinkingLevel.LOW),
+    ("gemini-3.8-flash", ThinkingLevel.MAX, types.ThinkingLevel.HIGH),
     ("gemini-3.7-flash", ThinkingLevel.NONE, types.ThinkingLevel.LOW),
     ("gemini-3.7-flash", ThinkingLevel.LOW, types.ThinkingLevel.LOW),
     ("gemini-3.7-flash", ThinkingLevel.MEDIUM, types.ThinkingLevel.MEDIUM),
