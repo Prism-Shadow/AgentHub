@@ -56,7 +56,7 @@ endpoint:
 
 - **`client_type="openai-chat"`** — OpenAI Chat Completions. Bare `"openai"` is an alias.
 - **`client_type="vllm-openai-chat"`** — Chat Completions as served by vLLM, mapping
-  `thinking_level` onto `chat_template_kwargs.enable_thinking`: `"none"` off, the rest on.
+  `thinking_level` onto the `chat_template_kwargs` the served model's template reads.
 - **`client_type="openai-responses"`** — OpenAI Responses, served by OpenAI, OpenRouter,
   DeepSeek, Z.AI, and MiniMax.
 - **`client_type="ant-messages"`** — Anthropic Messages, served by Anthropic, OpenRouter,

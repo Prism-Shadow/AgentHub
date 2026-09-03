@@ -189,26 +189,53 @@ def test_thinking_level_maps_to_vendor_effort(
     assert _wire_effort(config) == expected
 
 
-@pytest.mark.parametrize(
-    ("level", "expected"),
-    [
-        (ThinkingLevel.NONE, False),
-        (ThinkingLevel.LOW, True),
-        (ThinkingLevel.MEDIUM, True),
-        (ThinkingLevel.HIGH, True),
-        (ThinkingLevel.XHIGH, True),
-        (ThinkingLevel.MAX, True),
-    ],
-)
-def test_vllm_openai_chat_thinking_level_maps_to_enable_thinking(level: ThinkingLevel, expected: bool):
+# vLLM hands chat_template_kwargs to the served model's own chat template, so the switch
+# differs per model (recipes.vllm.ai, read 2026-09-03): Qwen3 reads a single
+# enable_thinking boolean, Qwen3.8-27B takes its adaptive modes as reasoning_effort
+# (low/medium/xhigh only), and DeepSeek V4 reads a thinking flag paired with
+# reasoning_effort (low/high/max only, absent kwargs meaning off). Levels the model does
+# not offer clamp to the closest one it does; a model outside the table falls back to
+# Qwen3's boolean. None as the expectation means the request carries no kwargs at all.
+VLLM_THINKING_LEVEL_CASES = [
+    ("Qwen/Qwen3.6-35B-A3B", ThinkingLevel.NONE, {"enable_thinking": False}),
+    ("Qwen/Qwen3.6-35B-A3B", ThinkingLevel.LOW, {"enable_thinking": True}),
+    ("Qwen/Qwen3.6-35B-A3B", ThinkingLevel.MAX, {"enable_thinking": True}),
+    ("Qwen/Qwen3.8-Flash-Next", ThinkingLevel.NONE, {"enable_thinking": False}),
+    ("Qwen/Qwen3.8-Flash-Next", ThinkingLevel.HIGH, {"enable_thinking": True}),
+    ("Qwen/Qwen3.5-0.8B", ThinkingLevel.NONE, {"enable_thinking": False}),
+    ("Qwen/Qwen3.5-9B", ThinkingLevel.MEDIUM, {"enable_thinking": True}),
+    ("Qwen/Qwen3.8-27B", ThinkingLevel.NONE, {"enable_thinking": False}),
+    ("Qwen/Qwen3.8-27B", ThinkingLevel.LOW, {"reasoning_effort": "low"}),
+    ("Qwen/Qwen3.8-27B", ThinkingLevel.MEDIUM, {"reasoning_effort": "medium"}),
+    ("Qwen/Qwen3.8-27B", ThinkingLevel.HIGH, {"reasoning_effort": "xhigh"}),
+    ("Qwen/Qwen3.8-27B", ThinkingLevel.XHIGH, {"reasoning_effort": "xhigh"}),
+    ("Qwen/Qwen3.8-27B", ThinkingLevel.MAX, {"reasoning_effort": "xhigh"}),
+    ("deepseek-ai/DeepSeek-V4-Pro", ThinkingLevel.NONE, None),
+    ("deepseek-ai/DeepSeek-V4-Pro", ThinkingLevel.LOW, {"thinking": True, "reasoning_effort": "low"}),
+    ("deepseek-ai/DeepSeek-V4-Pro", ThinkingLevel.MEDIUM, {"thinking": True, "reasoning_effort": "high"}),
+    ("deepseek-ai/DeepSeek-V4-Pro", ThinkingLevel.HIGH, {"thinking": True, "reasoning_effort": "high"}),
+    ("deepseek-ai/DeepSeek-V4-Pro", ThinkingLevel.XHIGH, {"thinking": True, "reasoning_effort": "high"}),
+    ("deepseek-ai/DeepSeek-V4-Pro", ThinkingLevel.MAX, {"thinking": True, "reasoning_effort": "max"}),
+    ("deepseek-ai/DeepSeek-V4-Flash", ThinkingLevel.MAX, {"thinking": True, "reasoning_effort": "max"}),
+    ("deepseek-ai/DeepSeek-V4-Flash-Vision-Exp", ThinkingLevel.NONE, None),
+    ("deepseek-ai/DeepSeek-V4-Flash-Vision-Exp", ThinkingLevel.HIGH, {"thinking": True, "reasoning_effort": "high"}),
+    ("meta-llama/Llama-4-70B", ThinkingLevel.NONE, {"enable_thinking": False}),
+    ("meta-llama/Llama-4-70B", ThinkingLevel.HIGH, {"enable_thinking": True}),
+]
+
+
+@pytest.mark.parametrize(("model", "level", "expected"), VLLM_THINKING_LEVEL_CASES)
+def test_vllm_openai_chat_thinking_level_maps_to_chat_template_kwargs(
+    model: str, level: ThinkingLevel, expected: dict | None
+):
     client = AutoLLMClient(
-        model="Qwen/Qwen3.6-35B-A3B",
+        model=model,
         api_key="test-key",
         base_url="http://localhost:8000/v1",
         client_type="vllm-openai-chat",
     )
     config = client._client.transform_uni_config_to_model_config({"thinking_level": level})  # noqa: SLF001
-    assert config["chat_template_kwargs"] == {"enable_thinking": expected}
+    assert config.get("chat_template_kwargs") == expected
 
 
 def test_vllm_openai_chat_omits_chat_template_kwargs_without_thinking_level():
