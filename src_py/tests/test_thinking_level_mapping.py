@@ -200,28 +200,28 @@ def test_thinking_level_maps_to_vendor_effort(
         (ThinkingLevel.MAX, True),
     ],
 )
-def test_qwen_vllm_thinking_level_maps_to_enable_thinking(level: ThinkingLevel, expected: bool):
+def test_vllm_openai_chat_thinking_level_maps_to_enable_thinking(level: ThinkingLevel, expected: bool):
     client = AutoLLMClient(
         model="Qwen/Qwen3.6-35B-A3B",
         api_key="test-key",
         base_url="http://localhost:8000/v1",
-        client_type="qwen-vllm",
+        client_type="vllm-openai-chat",
     )
     config = client._client.transform_uni_config_to_model_config({"thinking_level": level})  # noqa: SLF001
     assert config["chat_template_kwargs"] == {"enable_thinking": expected}
 
 
-def test_qwen_vllm_omits_chat_template_kwargs_without_thinking_level():
+def test_vllm_openai_chat_omits_chat_template_kwargs_without_thinking_level():
     client = AutoLLMClient(
         model="Qwen/Qwen3.6-35B-A3B",
         api_key="test-key",
-        client_type="qwen-vllm",
+        client_type="vllm-openai-chat",
     )
     config = client._client.transform_uni_config_to_model_config({})  # noqa: SLF001
     assert "chat_template_kwargs" not in config
 
 
-def test_openai_chat_does_not_receive_qwen_vllm_extension():
+def test_openai_chat_does_not_receive_vllm_openai_chat_extension():
     client = AutoLLMClient(
         model="Qwen/Qwen3.6-35B-A3B",
         api_key="test-key",

@@ -18,16 +18,16 @@ from ..openai_chat import OpenaiChatClient
 from ..types import ThinkingLevel, UniConfig
 
 
-class QwenVllmClient(OpenaiChatClient):
-    """Qwen models served through vLLM's OpenAI-compatible Chat Completions API."""
+class VllmOpenaiChatClient(OpenaiChatClient):
+    """Models served through vLLM's OpenAI-compatible Chat Completions API."""
 
     def transform_uni_config_to_model_config(self, config: UniConfig) -> dict[str, Any]:
-        """Map AgentHub's level to the boolean switch consumed by Qwen chat templates."""
-        qwen_config = super().transform_uni_config_to_model_config(config)
+        """Map AgentHub's level to the enable_thinking switch vLLM hands to the chat template."""
+        vllm_config = super().transform_uni_config_to_model_config(config)
 
         if config.get("thinking_level") is not None:
-            qwen_config["chat_template_kwargs"] = {
+            vllm_config["chat_template_kwargs"] = {
                 "enable_thinking": config["thinking_level"] != ThinkingLevel.NONE,
             }
 
-        return qwen_config
+        return vllm_config

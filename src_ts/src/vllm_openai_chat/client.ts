@@ -15,19 +15,19 @@
 import { OpenaiChatClient } from "../openai_chat";
 import { ThinkingLevel, UniConfig } from "../types";
 
-/** Qwen models served through vLLM's OpenAI-compatible Chat Completions API. */
-export class QwenVllmClient extends OpenaiChatClient {
-  /** Map AgentHub's level to the boolean switch consumed by Qwen chat templates. */
+/** Models served through vLLM's OpenAI-compatible Chat Completions API. */
+export class VllmOpenaiChatClient extends OpenaiChatClient {
+  /** Map AgentHub's level to the enable_thinking switch vLLM hands to the chat template. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   override transformUniConfigToModelConfig(config: UniConfig): any {
-    const qwenConfig = super.transformUniConfigToModelConfig(config);
+    const vllmConfig = super.transformUniConfigToModelConfig(config);
 
     if (config.thinking_level !== undefined) {
-      qwenConfig.chat_template_kwargs = {
+      vllmConfig.chat_template_kwargs = {
         enable_thinking: config.thinking_level !== ThinkingLevel.NONE,
       };
     }
 
-    return qwenConfig;
+    return vllmConfig;
   }
 }
