@@ -181,8 +181,11 @@ class Gemini3_8Client(LLMClient):
             return None
         supported = self._supported_thinking_levels()
         if not supported:
-            # The model takes no thinking_level at all; drop the parameter and
-            # let the model use its default instead of forwarding a 400.
+            # The one level that cannot be kept: the 2.5 series answers every value with
+            # "Thinking level is not supported for this model" (400, re-verified live
+            # 2026-09-03 on flash, pro and flash-lite), so there is nothing to clamp onto
+            # and the parameter is omitted rather than turned into a failed request.
+            # thinking_summary is unaffected -- include_thoughts still rides along.
             return None
         if level in supported:
             return level

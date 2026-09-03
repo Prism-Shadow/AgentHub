@@ -66,8 +66,7 @@ Where a gateway serves more than one, prefer `"openai-responses"`: OpenRouter se
 every model it hosts, while SiliconFlow serves Chat Completions only.
 
 The full machine-readable list — model, base URL, client, input/output modalities, context
-window, per-million-token list pricing in USD or CNY, and the fraction off it any running
-promotion takes:
+window, and per-million-token list pricing in USD or CNY:
 
 ```python
 from agenthub import list_supported_models

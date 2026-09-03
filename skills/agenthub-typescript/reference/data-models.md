@@ -36,7 +36,7 @@ Fields:
 - `max_tokens` (`number`): Output token limit.
 - `temperature` (`number`): Sampling temperature; support varies by model.
 - `tools` (`ToolSchema[]`): Tools with `name`, `description`, and optional JSON Schema `parameters`.
-- `thinking_summary` (`boolean`): Request a thinking summary when supported. Gemini returns summaries only on some models (2.5-flash and 3.1-pro do; the 3.5-3.7 flash models do not).
+- `thinking_summary` (`boolean`): Request a thinking summary when supported. Gemini returns summaries only on some models (2.5-flash and 3.1-pro do; the 3.5-3.8 flash models do not).
 - `thinking_level` (`ThinkingLevel`): `NONE`, `LOW`, `MEDIUM`, `HIGH`, `XHIGH`, or `MAX`.
 - `tool_choice` (`ToolChoice`): `auto`, `required`, `none`, or a list of tool names; support varies by model.
 - `system_prompt` (`string`): System instruction text.

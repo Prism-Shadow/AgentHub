@@ -75,9 +75,11 @@ class GLM5_3Client(LLMClient):
 
         GLM-5.3 accepts only low/high/max and errors on anything else, so the client
         clamps to the closest value; NONE rides on low because 5.3 cannot disable
-        thinking. GLM-5.2 accepts the full vocabulary and maps it server-side
-        (low/medium to high, xhigh to max); NONE disables thinking there instead.
-        Models before 5.2 take no reasoning_effort parameter at all.
+        thinking. Every earlier generation takes the vocabulary unchanged: 5.2 maps it
+        server-side (low/medium to high, xhigh to max), and 5.1 and below accept the
+        parameter and ignore it (verified live 2026-09-03 on Z.AI, OpenRouter and
+        SiliconFlow), so the level is forwarded there rather than dropped. Outside 5.3
+        NONE disables thinking outright, which leaves no effort to send.
         """
         model = self._model.lower()  # provider-hosted ids keep their own casing
         if "glm-5.3" in model:
@@ -90,17 +92,15 @@ class GLM5_3Client(LLMClient):
                 ThinkingLevel.MAX: "max",
             }
             return mapping.get(thinking_level)
-        if "glm-5.2" in model:
-            mapping = {
-                ThinkingLevel.NONE: None,
-                ThinkingLevel.LOW: "low",
-                ThinkingLevel.MEDIUM: "medium",
-                ThinkingLevel.HIGH: "high",
-                ThinkingLevel.XHIGH: "xhigh",
-                ThinkingLevel.MAX: "max",
-            }
-            return mapping.get(thinking_level)
-        return None
+        mapping = {
+            ThinkingLevel.NONE: None,
+            ThinkingLevel.LOW: "low",
+            ThinkingLevel.MEDIUM: "medium",
+            ThinkingLevel.HIGH: "high",
+            ThinkingLevel.XHIGH: "xhigh",
+            ThinkingLevel.MAX: "max",
+        }
+        return mapping.get(thinking_level)
 
     def _convert_tool_choice(self, tool_choice: ToolChoice) -> str:
         """Convert ToolChoice to OpenAI's tool_choice format."""

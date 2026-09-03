@@ -180,8 +180,18 @@ export class AntMessagesClient extends LLMClient {
         antConfig,
         this._convertThinkingLevelToThinkingConfig(config.thinking_level),
       );
-      if (config.thinking_summary && antConfig.thinking?.type === "adaptive") {
-        antConfig.thinking.display = "summarized";
+    }
+
+    if (config.thinking_summary !== undefined) {
+      // display lives on the thinking block, so a summary asked for on its own selects
+      // adaptive thinking. A disabled block is the one place it cannot ride along --
+      // "thinking.disabled.display: Extra inputs are not permitted" (400, verified live
+      // 2026-09-03) -- and thinking_level NONE disables thinking, leaving nothing to show.
+      antConfig.thinking = antConfig.thinking ?? { type: "adaptive" };
+      if (antConfig.thinking.type !== "disabled") {
+        antConfig.thinking.display = config.thinking_summary
+          ? "summarized"
+          : "omitted";
       }
     }
 

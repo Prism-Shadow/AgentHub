@@ -1299,10 +1299,8 @@ test("should list supported model entries", () => {
     cached_tokens: 0.285714,
   });
 
-  // Pricing is the list price and a running promotion rides alongside it, so the rate to
-  // return to when it lapses stays on the entry. The three Gemini flash rows share Google's
-  // launch discount through 2026-12-31; kimi-k3 above runs none, so it carries no field.
-  expect(kimi?.discount).toBeUndefined();
+  // Pricing is always the list price: Google's launch discount on the three Gemini flash
+  // rows is not recorded here, so the catalog rate is what every entry reports.
   for (const model of [
     "gemini-3.8-flash",
     "gemini-3.7-flash",
@@ -1310,7 +1308,6 @@ test("should list supported model entries", () => {
   ]) {
     const gemini = entries.find((entry) => entry.model === model);
     expect(gemini?.client).toBe("gemini-3.8");
-    expect(gemini?.discount).toBe(0.5);
     expect([
       gemini?.pricing?.prompt_tokens,
       gemini?.pricing?.response_tokens,

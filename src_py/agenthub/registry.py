@@ -43,11 +43,8 @@ class SupportedModel(TypedDict):
     Modalities describe what is usable through that client; ``context_window`` and
     ``pricing`` are omitted where the platform publishes no authoritative value.
 
-    ``pricing`` is always the LIST price. A promotion in force is declared separately in
-    ``discount``, the fraction off it the seller is currently running (0.5 = 50% off),
-    applied to every bucket. Keeping the two apart leaves the list price as the source of
-    truth: a lapsed promotion is one field to delete rather than three numbers to
-    reconstruct, and a caller that bills usage multiplies each bucket by ``1 - discount``.
+    ``pricing`` is always the LIST price. A running promotion is deliberately not recorded:
+    the registry's job is the catalog price, and applying a promotion is the consumer's.
     """
 
     model: str
@@ -57,7 +54,6 @@ class SupportedModel(TypedDict):
     output_modalities: list[Modality]
     context_window: NotRequired[int]
     pricing: NotRequired[ModelPricing]
-    discount: NotRequired[float]
 
 
 _GOOGLE = "https://generativelanguage.googleapis.com"
@@ -109,10 +105,10 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "input_modalities": ["Text", "Image", "Video", "Audio"],
         "output_modalities": ["Text"],
         "context_window": 1048576,
-        # Google halves every bucket as a launch discount through 2026-12-31, on this row and
-        # on the two flash rows below; the price the three revert to is what is stored.
+        # Google runs a launch discount through 2026-12-31 on this row and on the two flash
+        # rows below; the list price is stored regardless, because applying a running
+        # promotion belongs to the consumer, not to the registry.
         "pricing": _usd(1.5, 7.5, cached=0.15),
-        "discount": 0.5,
     },
     {
         "model": "gemini-3.7-flash",
@@ -122,7 +118,6 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "output_modalities": ["Text"],
         "context_window": 1048576,
         "pricing": _usd(1.5, 7.5, cached=0.15),
-        "discount": 0.5,
     },
     {
         "model": "gemini-3.6-flash",
@@ -132,7 +127,6 @@ _SUPPORTED_MODELS: list[SupportedModel] = [
         "output_modalities": ["Text"],
         "context_window": 1048576,
         "pricing": _usd(1.5, 7.5, cached=0.15),
-        "discount": 0.5,
     },
     {
         "model": "gemini-3.5-flash-lite",

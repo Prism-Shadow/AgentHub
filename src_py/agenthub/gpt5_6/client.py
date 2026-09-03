@@ -106,8 +106,12 @@ class GPT5_6Client(LLMClient):
 
         if config.get("thinking_level") is not None:
             openai_config["reasoning"] = {"effort": self._convert_thinking_level_to_effort(config["thinking_level"])}
-            if config.get("thinking_summary"):
-                openai_config["reasoning"]["summary"] = "concise"
+
+        if config.get("thinking_summary"):
+            # reasoning.summary stands on its own, with or without an effort (verified live
+            # 2026-09-03 on the OpenAI and OpenRouter endpoints). False needs no key: the
+            # Responses API returns no summary unless one is asked for.
+            openai_config.setdefault("reasoning", {})["summary"] = "concise"
 
         if config.get("tools") is not None:
             openai_config["tools"] = [{"type": "function", **tool} for tool in config["tools"]]

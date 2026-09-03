@@ -142,9 +142,14 @@ export class GPT5_6Client extends LLMClient {
       openaiConfig.reasoning = {
         effort: this._convertThinkingLevelToEffort(config.thinking_level),
       };
-      if (config.thinking_summary) {
-        openaiConfig.reasoning.summary = "concise";
-      }
+    }
+
+    if (config.thinking_summary) {
+      // reasoning.summary stands on its own, with or without an effort (verified live
+      // 2026-09-03 on the OpenAI and OpenRouter endpoints). False needs no key: the
+      // Responses API returns no summary unless one is asked for.
+      openaiConfig.reasoning = openaiConfig.reasoning ?? {};
+      openaiConfig.reasoning.summary = "concise";
     }
 
     if (config.tools !== undefined) {

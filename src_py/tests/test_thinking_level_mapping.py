@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
 import pytest
 from google.genai import types
 
@@ -125,11 +127,12 @@ GLM_THINKING_LEVEL_CASES = [
     ("glm-5.2", ThinkingLevel.MEDIUM, "enabled", "medium"),
     ("glm-5.2", ThinkingLevel.XHIGH, "enabled", "xhigh"),
     ("glm-5.2", ThinkingLevel.MAX, "enabled", "max"),
-    ("glm-5.1", ThinkingLevel.HIGH, "enabled", None),
+    ("glm-5.1", ThinkingLevel.NONE, "disabled", None),
+    ("glm-5.1", ThinkingLevel.HIGH, "enabled", "high"),
     # Provider-hosted ids keep their own casing (SiliconFlow), so generation
     # detection must be case-insensitive.
     ("zai-org/GLM-5.2", ThinkingLevel.XHIGH, "enabled", "xhigh"),
-    ("Pro/zai-org/GLM-5.1", ThinkingLevel.HIGH, "enabled", None),
+    ("Pro/zai-org/GLM-5.1", ThinkingLevel.HIGH, "enabled", "high"),
 ]
 
 
@@ -190,6 +193,51 @@ def test_thinking_level_maps_to_vendor_effort(
     client = AutoLLMClient(model=model, api_key="test-key", client_type=client_type)
     config = client._client.transform_uni_config_to_model_config({"thinking_level": level})  # noqa: SLF001
     assert _wire_effort(config) == expected
+
+
+# thinking_summary reaches the wire on its own, not only when a thinking_level rides with
+# it. Each protocol spells the switch differently: Anthropic puts it on thinking.display,
+# the Responses API on reasoning.summary, and Gemini on thinking_config.include_thoughts.
+THINKING_SUMMARY_CASES: list[tuple[str, str | None, dict[str, Any], Any]] = [
+    ("claude-sonnet-5", None, {"thinking_summary": True}, "summarized"),
+    ("claude-sonnet-5", None, {"thinking_summary": False}, "omitted"),
+    ("claude-sonnet-5", None, {"thinking_summary": True, "thinking_level": ThinkingLevel.NONE}, "summarized"),
+    ("claude-sonnet-5", None, {"thinking_summary": True, "thinking_level": ThinkingLevel.MAX}, "summarized"),
+    ("claude-sonnet-5", "ant-messages", {"thinking_summary": True}, "summarized"),
+    ("claude-sonnet-5", "ant-messages", {"thinking_summary": False}, "omitted"),
+    # The Messages API disables thinking for NONE and rejects display on a disabled block,
+    # so that one combination leaves no thinking to summarize.
+    ("claude-sonnet-5", "ant-messages", {"thinking_summary": True, "thinking_level": ThinkingLevel.NONE}, None),
+    ("deepseek-v4", None, {"thinking_summary": True}, "concise"),
+    ("deepseek-v4", None, {"thinking_summary": True, "thinking_level": ThinkingLevel.NONE}, "concise"),
+    ("gpt-5.6", None, {"thinking_summary": True}, "concise"),
+    # OpenRouter reads an effort-less reasoning object as "reasoning disabled", so the
+    # generic Responses client alone keeps the summary tied to a level.
+    ("gpt-5.6", "openai-responses", {"thinking_summary": True}, None),
+    ("gemini-3.8-flash", None, {"thinking_summary": True}, True),
+    ("gemini-3.8-flash", None, {"thinking_summary": False}, False),
+    # gemini-2.5 drops the thinking_level it cannot send and keeps the summary regardless.
+    ("gemini-2.5-flash", "gemini-3", {"thinking_summary": True, "thinking_level": ThinkingLevel.HIGH}, True),
+]
+
+
+def _wire_thinking_summary(config: Any) -> Any:
+    """Read the thinking-summary switch out of whichever field the client used."""
+    thinking_config = getattr(config, "thinking_config", None)
+    if thinking_config is not None:
+        return thinking_config.include_thoughts
+    if "reasoning" in config:
+        return config["reasoning"].get("summary")
+    return (config.get("thinking") or {}).get("display")
+
+
+@pytest.mark.parametrize(("model", "client_type", "uni_config", "expected"), THINKING_SUMMARY_CASES)
+def test_thinking_summary_reaches_the_wire(
+    model: str, client_type: str | None, uni_config: dict[str, Any], expected: Any
+):
+    client = AutoLLMClient(model=model, api_key="test-key", client_type=client_type)
+    config = client._client.transform_uni_config_to_model_config(uni_config)  # noqa: SLF001
+    assert _wire_thinking_summary(config) == expected
 
 
 @pytest.mark.parametrize(
