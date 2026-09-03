@@ -187,3 +187,47 @@ def test_thinking_level_maps_to_vendor_effort(
     client = AutoLLMClient(model=model, api_key="test-key", client_type=client_type)
     config = client._client.transform_uni_config_to_model_config({"thinking_level": level})  # noqa: SLF001
     assert _wire_effort(config) == expected
+
+
+@pytest.mark.parametrize(
+    ("level", "expected"),
+    [
+        (ThinkingLevel.NONE, False),
+        (ThinkingLevel.LOW, True),
+        (ThinkingLevel.MEDIUM, True),
+        (ThinkingLevel.HIGH, True),
+        (ThinkingLevel.XHIGH, True),
+        (ThinkingLevel.MAX, True),
+    ],
+)
+def test_vllm_openai_chat_thinking_level_maps_to_enable_thinking(level: ThinkingLevel, expected: bool):
+    client = AutoLLMClient(
+        model="Qwen/Qwen3.6-35B-A3B",
+        api_key="test-key",
+        base_url="http://localhost:8000/v1",
+        client_type="vllm-openai-chat",
+    )
+    config = client._client.transform_uni_config_to_model_config({"thinking_level": level})  # noqa: SLF001
+    assert config["chat_template_kwargs"] == {"enable_thinking": expected}
+
+
+def test_vllm_openai_chat_omits_chat_template_kwargs_without_thinking_level():
+    client = AutoLLMClient(
+        model="Qwen/Qwen3.6-35B-A3B",
+        api_key="test-key",
+        client_type="vllm-openai-chat",
+    )
+    config = client._client.transform_uni_config_to_model_config({})  # noqa: SLF001
+    assert "chat_template_kwargs" not in config
+
+
+def test_openai_chat_does_not_receive_vllm_openai_chat_extension():
+    client = AutoLLMClient(
+        model="Qwen/Qwen3.6-35B-A3B",
+        api_key="test-key",
+        client_type="openai-chat",
+    )
+    config = client._client.transform_uni_config_to_model_config(  # noqa: SLF001
+        {"thinking_level": ThinkingLevel.NONE}
+    )
+    assert "chat_template_kwargs" not in config

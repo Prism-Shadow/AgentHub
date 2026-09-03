@@ -1,0 +1,14 @@
+# Control vLLM thinking through AgentHub levels
+
+- **Date:** 2026-09-03
+- **Type:** fix
+- **Scope:** `vllm_openai_chat`, `auto_client`, `docs`
+- **PR:** [#197](https://github.com/Prism-Shadow/agenthub/pull/197)
+
+[中文版](2026-09-03-vllm-thinking-switch.zh.md)
+
+## What changed
+
+- Added the explicit `vllm-openai-chat` client type for models served through vLLM's OpenAI-compatible Chat Completions API.
+- Mapped `thinking_level: none` to `chat_template_kwargs.enable_thinking: false` and every enabled AgentHub level to `true`.
+- Left `chat_template_kwargs` absent when no level is selected and kept the generic `openai-chat` request unchanged.

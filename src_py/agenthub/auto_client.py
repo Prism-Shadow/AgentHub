@@ -21,7 +21,7 @@ from .types import UniConfig, UniEvent, UniMessage
 
 
 # The generic protocol clients are named explicitly rather than deduced from a model id.
-_PROTOCOL_CLIENT_TYPES = ("openai-chat", "openai-responses", "ant-messages", "openai-embedding")
+_PROTOCOL_CLIENT_TYPES = ("openai-chat", "vllm-openai-chat", "openai-responses", "ant-messages", "openai-embedding")
 
 
 class AutoLLMClient(LLMClient):
@@ -99,6 +99,11 @@ class AutoLLMClient(LLMClient):
             from .deepseek_v4 import DeepSeekV4Client
 
             return DeepSeekV4Client
+        elif client_type == "vllm-openai-chat":
+            # exact match, since the "openai" branches below would otherwise claim it
+            from .vllm_openai_chat import VllmOpenaiChatClient
+
+            return VllmOpenaiChatClient
         elif "ant-messages" in client_type:
             from .ant_messages import AntMessagesClient
 
@@ -134,7 +139,7 @@ class AutoLLMClient(LLMClient):
                 "Supported client types: minimax-m3, gemini-3.7, gemini-3.6, gemini-3, "
                 "claude-5, claude-4-8, claude-4-7, claude-4-6, gpt-5.6, gpt-5.5, gpt-5.4, "
                 "glm-5.3, glm-5.2, glm-5.1, kimi-k3, kimi-k2.6, kimi-k2.5, deepseek-v4, "
-                "openai-embedding, ant-messages, openai-responses, openai-chat."
+                "vllm-openai-chat, openai-embedding, ant-messages, openai-responses, openai-chat."
             )
 
         return client_class(model=model, api_key=api_key, base_url=base_url, default_headers=default_headers)

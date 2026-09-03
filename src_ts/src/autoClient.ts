@@ -24,6 +24,7 @@ import { AntMessagesClient } from "./ant_messages";
 import { OpenaiEmbeddingClient } from "./openai_embedding";
 import { DeepSeekV4Client } from "./deepseek_v4";
 import { MiniMaxM3Client } from "./minimax_m3";
+import { VllmOpenaiChatClient } from "./vllm_openai_chat";
 import { UniConfig, UniEvent, UniMessage } from "./types";
 
 type LLMClientConstructor = new (options: {
@@ -37,6 +38,7 @@ type LLMClientConstructor = new (options: {
 // The generic protocol clients are named explicitly rather than deduced from a model id.
 const PROTOCOL_CLIENT_TYPES = [
   "openai-chat",
+  "vllm-openai-chat",
   "openai-responses",
   "ant-messages",
   "openai-embedding",
@@ -126,6 +128,9 @@ export class AutoLLMClient extends LLMClient {
       return MiniMaxM3Client;
     } else if (clientType.includes("deepseek-v4")) {
       return DeepSeekV4Client;
+    } else if (clientType === "vllm-openai-chat") {
+      // exact match, since the "openai" branches below would otherwise claim it
+      return VllmOpenaiChatClient;
     } else if (clientType.includes("ant-messages")) {
       return AntMessagesClient;
     } else if (clientType.includes("openai-responses")) {
@@ -160,7 +165,7 @@ export class AutoLLMClient extends LLMClient {
           "Supported client types: minimax-m3, gemini-3.7, gemini-3.6, gemini-3, " +
           "claude-5, claude-4-8, claude-4-7, " +
           "claude-4-6, gpt-5.6, gpt-5.5, gpt-5.4, glm-5.3, glm-5.2, glm-5.1, kimi-k3, kimi-k2.6, kimi-k2.5, " +
-          "deepseek-v4, openai-embedding, ant-messages, openai-responses, openai-chat.",
+          "deepseek-v4, vllm-openai-chat, openai-embedding, ant-messages, openai-responses, openai-chat.",
       );
     }
 
