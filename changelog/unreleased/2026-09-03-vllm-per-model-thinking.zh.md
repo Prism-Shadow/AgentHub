@@ -3,7 +3,7 @@
 - **Date:** 2026-09-03
 - **Type:** fix
 - **Scope:** `vllm_openai_chat`, `docs`
-- **PR:** [#PENDING](https://github.com/Prism-Shadow/agenthub/pull/PENDING)
+- **PR:** [#198](https://github.com/Prism-Shadow/agenthub/pull/198)
 
 [English](2026-09-03-vllm-per-model-thinking.md)
 
