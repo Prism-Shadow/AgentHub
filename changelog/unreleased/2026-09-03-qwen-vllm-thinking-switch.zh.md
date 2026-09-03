@@ -3,6 +3,7 @@
 - **Date:** 2026-09-03
 - **Type:** fix
 - **Scope:** `qwen_vllm`, `auto_client`, `docs`
+- **PR:** [#197](https://github.com/Prism-Shadow/agenthub/pull/197)
 
 [English](2026-09-03-qwen-vllm-thinking-switch.md)
 
