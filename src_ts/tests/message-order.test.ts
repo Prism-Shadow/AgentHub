@@ -95,8 +95,8 @@ const MESSAGE_ORDER_CASES: MessageOrderCase[] = [
     expected: MESSAGES_ORDER,
   },
   {
-    expectedClient: "Gemini3_7Client",
-    model: "gemini-3.7-flash",
+    expectedClient: "Gemini3_8Client",
+    model: "gemini-3.8-flash",
     protocol: "gemini",
     expected: GEMINI_ORDER,
     thoughtSignature: Buffer.from("sig-1"),

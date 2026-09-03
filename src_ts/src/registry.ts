@@ -38,6 +38,12 @@ export interface ModelPricing {
  * `new AutoLLMClient({ model, baseUrl: base_url, clientType: client })`.
  * Modalities describe what is usable through that client; `context_window` and
  * `pricing` are omitted where the platform publishes no authoritative value.
+ *
+ * `pricing` is always the LIST price. A promotion in force is declared separately in
+ * `discount`, the fraction off it the seller is currently running (0.5 = 50% off), applied
+ * to every bucket. Keeping the two apart leaves the list price as the source of truth: a
+ * lapsed promotion is one field to delete rather than three numbers to reconstruct, and a
+ * caller that bills usage multiplies each bucket by `1 - discount`.
  */
 export interface SupportedModel {
   model: string;
@@ -47,6 +53,7 @@ export interface SupportedModel {
   output_modalities: Modality[];
   context_window?: number;
   pricing?: ModelPricing;
+  discount?: number;
 }
 
 const GOOGLE = "https://generativelanguage.googleapis.com";
@@ -93,36 +100,39 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "gemini-3.8-flash",
     base_url: GOOGLE,
-    client: "gemini-3.7",
+    client: "gemini-3.8",
     input_modalities: ["Text", "Image", "Video", "Audio"],
     output_modalities: ["Text"],
     context_window: 1048576,
-    // launch price, in force through 2026-12-31; the list price it reverts to is 1.5/7.5/0.15
-    pricing: usd(0.75, 3.75, 0.075),
+    // Google halves every bucket as a launch discount through 2026-12-31, on this row and
+    // on the two flash rows below; the price the three revert to is what is stored.
+    pricing: usd(1.5, 7.5, 0.15),
+    discount: 0.5,
   },
   {
     model: "gemini-3.7-flash",
     base_url: GOOGLE,
-    client: "gemini-3.7",
+    client: "gemini-3.8",
     input_modalities: ["Text", "Image", "Video", "Audio"],
     output_modalities: ["Text"],
     context_window: 1048576,
-    // official list price; a launch discount halves all three rates through 2026-12-31
     pricing: usd(1.5, 7.5, 0.15),
+    discount: 0.5,
   },
   {
     model: "gemini-3.6-flash",
     base_url: GOOGLE,
-    client: "gemini-3.7",
+    client: "gemini-3.8",
     input_modalities: ["Text", "Image", "Video", "Audio"],
     output_modalities: ["Text"],
     context_window: 1048576,
     pricing: usd(1.5, 7.5, 0.15),
+    discount: 0.5,
   },
   {
     model: "gemini-3.5-flash-lite",
     base_url: GOOGLE,
-    client: "gemini-3.7",
+    client: "gemini-3.8",
     input_modalities: ["Text", "Image", "Video", "Audio"],
     output_modalities: ["Text"],
     context_window: 1048576,
@@ -131,7 +141,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "gemini-3.5-flash",
     base_url: GOOGLE,
-    client: "gemini-3.7",
+    client: "gemini-3.8",
     input_modalities: ["Text", "Image", "Video", "Audio"],
     output_modalities: ["Text"],
     context_window: 1048576,
@@ -140,21 +150,21 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "gemini-3.1-flash-image",
     base_url: GOOGLE,
-    client: "gemini-3.7",
+    client: "gemini-3.8",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Image"],
   },
   {
     model: "gemini-3.1-flash-tts-preview",
     base_url: GOOGLE,
-    client: "gemini-3.7",
+    client: "gemini-3.8",
     input_modalities: ["Text"],
     output_modalities: ["Audio"],
   },
   {
     model: "gemini-embedding-2",
     base_url: GOOGLE,
-    client: "gemini-3.7",
+    client: "gemini-3.8",
     input_modalities: ["Text"],
     output_modalities: ["Embed"],
   },

@@ -53,7 +53,7 @@ GEMINI3_THINKING_LEVEL_CASES = [
 
 def _create_gemini3_auto_client(model: str) -> AutoLLMClient:
     # client_type pins routing so pre-3 and hypothetical model names reach
-    # the unified Gemini3_7Client the same way an explicit override would in user code.
+    # the unified Gemini3_8Client the same way an explicit override would in user code.
     return AutoLLMClient(model=model, api_key="test-key", client_type="gemini-3")
 
 
@@ -82,7 +82,7 @@ def test_gemini3_thinking_config_omits_level_for_pre_3_models():
 
 
 # The 3.7 and 3.8 generations drop "minimal" (3.7 verified live 2026-08-13, see
-# llmsdk_docs/gemini3_7/docs/thinking.md; 3.8 documented at
+# llmsdk_docs/gemini3_8/docs/thinking.md; 3.8 documented at
 # ai.google.dev/gemini-api/docs/latest-model); the 3.6-generation models routed
 # to the same client keep the full four-level set.
 GEMINI3_7_THINKING_LEVEL_CASES = [
@@ -101,12 +101,12 @@ GEMINI3_7_THINKING_LEVEL_CASES = [
 
 
 @pytest.mark.parametrize(("model", "level", "expected"), GEMINI3_7_THINKING_LEVEL_CASES)
-def test_gemini3_7_thinking_level_clamps_to_model_support(
+def test_gemini3_8_thinking_level_clamps_to_model_support(
     model: str, level: ThinkingLevel, expected: types.ThinkingLevel
 ):
-    # These are real model ids, so automatic routing reaches Gemini3_7Client directly.
+    # These are real model ids, so automatic routing reaches Gemini3_8Client directly.
     client = AutoLLMClient(model=model, api_key="test-key")
-    assert client._client.__class__.__name__ == "Gemini3_7Client"
+    assert client._client.__class__.__name__ == "Gemini3_8Client"
     assert client._client._convert_thinking_level(level) == expected  # noqa: SLF001
 
 

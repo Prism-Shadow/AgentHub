@@ -65,13 +65,13 @@ class AutoLLMClient(LLMClient):
             type[LLMClient] | None: The client class, or None when no client claims the type.
         """
         # every Gemini generation shares the unified client ("gemini-3" also matches the
-        # gemini-3.7/gemini-3.6/gemini-3.5-flash-lite client types)
+        # gemini-3.8/gemini-3.7/gemini-3.6/gemini-3.5-flash-lite client types)
         if any(
             prefix in client_type for prefix in ("gemini-3", "gemini-embedding")
-        ):  # e.g., gemini-3.7-flash, gemini-3-flash-preview, gemini-embedding-2
-            from .gemini3_7 import Gemini3_7Client
+        ):  # e.g., gemini-3.8-flash, gemini-3-flash-preview, gemini-embedding-2
+            from .gemini3_8 import Gemini3_8Client
 
-            return Gemini3_7Client
+            return Gemini3_8Client
         elif "claude" in client_type and (
             "4-6" in client_type or "4-7" in client_type or "4-8" in client_type or "-5" in client_type
         ):  # the whole Claude 4.6+ series shares the unified client, e.g., claude-sonnet-4-6
@@ -136,7 +136,7 @@ class AutoLLMClient(LLMClient):
         if client_class is None:
             raise ValueError(
                 f"{client_type} is not supported. "
-                "Supported client types: minimax-m3, gemini-3.7, gemini-3.6, gemini-3, "
+                "Supported client types: minimax-m3, gemini-3.8, gemini-3.7, gemini-3.6, gemini-3, "
                 "claude-5, claude-4-8, claude-4-7, claude-4-6, gpt-5.6, gpt-5.5, gpt-5.4, "
                 "glm-5.3, glm-5.2, glm-5.1, kimi-k3, kimi-k2.6, kimi-k2.5, deepseek-v4, "
                 "vllm-openai-chat, openai-embedding, ant-messages, openai-responses, openai-chat."

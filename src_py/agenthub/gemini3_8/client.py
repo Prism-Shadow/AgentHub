@@ -61,7 +61,7 @@ def _split_function_response_runs(parts: list[types.Part]) -> list[list[types.Pa
     return runs if runs else [parts]
 
 
-class Gemini3_7Client(LLMClient):
+class Gemini3_8Client(LLMClient):
     """Unified client for the Gemini family, named for the newest generation it serves (3.7).
 
     It serves every generateContent model generation (3.7 back through 3.x text, image, TTS,
@@ -139,7 +139,7 @@ class Gemini3_7Client(LLMClient):
     )
 
     def _supported_thinking_levels(self) -> tuple[types.ThinkingLevel, ...]:
-        """Thinking levels the target model accepts (llmsdk_docs/gemini3_7/docs/thinking.md).
+        """Thinking levels the target model accepts (llmsdk_docs/gemini3_8/docs/thinking.md).
 
         An empty tuple means the model rejects the thinking_level parameter
         entirely, so it must be omitted from the request.
@@ -282,7 +282,7 @@ class Gemini3_7Client(LLMClient):
             config_params["system_instruction"] = config["system_prompt"]
 
         # include_thoughts asks for thought summaries, but whether generateContent returns any
-        # is model-dependent (llmsdk_docs/gemini3_7/docs/thinking.md)
+        # is model-dependent (llmsdk_docs/gemini3_8/docs/thinking.md)
         thinking_summary = config.get("thinking_summary")
         thinking_level = config.get("thinking_level")
         if thinking_summary is not None or thinking_level is not None:

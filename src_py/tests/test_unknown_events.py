@@ -53,7 +53,7 @@ MESSAGES_STREAM_CASES = [
 
 # Every client that parses the Gemini generateContent chunk shape.
 GEMINI_STREAM_CASES = [
-    StreamCase(expected_client="Gemini3_7Client", model="gemini-3.7-flash", client_type="gemini-3.7"),
+    StreamCase(expected_client="Gemini3_8Client", model="gemini-3.8-flash", client_type="gemini-3.8"),
 ]
 
 MESSAGES = [{"role": "user", "content_items": [{"type": "text", "text": "Create a memo."}]}]

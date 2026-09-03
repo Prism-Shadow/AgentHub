@@ -37,12 +37,12 @@ HEADER_CASES = [
     HeaderCase(client_type="openai-chat", model="gpt-5.6", base_url_suffix="/v1", expected=["m1", "m2"]),
     HeaderCase(client_type="ant-messages", model="claude-sonnet-5", base_url_suffix="", expected=["m1", "m2"]),
     HeaderCase(
-        client_type="gemini-3.7",
-        model="gemini-3.7-flash",
+        client_type="gemini-3.8",
+        model="gemini-3.8-flash",
         base_url_suffix="",
         # the Gemini client is deduced from the model id, so its listing keeps only ids that
         # deduce back to it
-        expected=["gemini-3.7-flash", "gemini-3.7-pro"],
+        expected=["gemini-3.8-flash", "gemini-3.8-pro"],
     ),
 ]
 
@@ -59,7 +59,7 @@ class _ModelListHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802 - the name is BaseHTTPRequestHandler's
         type(self).received_headers = {name.lower(): value for name, value in self.headers.items()}
         if "v1beta" in self.path:
-            payload = {"models": [{"name": "models/gemini-3.7-flash"}, {"name": "models/gemini-3.7-pro"}]}
+            payload = {"models": [{"name": "models/gemini-3.8-flash"}, {"name": "models/gemini-3.8-pro"}]}
         else:
             payload = {"object": "list", "data": [{"id": "m1"}, {"id": "m2"}], "has_more": False}
 

@@ -51,7 +51,7 @@ const GEMINI3_THINKING_LEVEL_CASES: Array<
 ];
 
 // clientType pins routing so pre-3 and hypothetical model names reach
-// the unified Gemini3_7Client the same way an explicit override would in user code.
+// the unified Gemini3_8Client the same way an explicit override would in user code.
 function createGemini3AutoClient(model: string): AutoLLMClient {
   return new AutoLLMClient({
     model,
@@ -92,7 +92,7 @@ describe("gemini3 thinking level clamping", () => {
 });
 
 // The 3.7 and 3.8 generations drop "minimal" (3.7 verified live 2026-08-13, see
-// llmsdk_docs/gemini3_7/docs/thinking.md; 3.8 documented at
+// llmsdk_docs/gemini3_8/docs/thinking.md; 3.8 documented at
 // ai.google.dev/gemini-api/docs/latest-model); the 3.6-generation models routed
 // to the same client keep the full four-level set.
 const GEMINI3_7_THINKING_LEVEL_CASES: Array<
@@ -111,14 +111,14 @@ const GEMINI3_7_THINKING_LEVEL_CASES: Array<
   ["gemini-3.5-flash-lite", ThinkingLevel.NONE, GeminiThinkingLevel.MINIMAL],
 ];
 
-describe("gemini3_7 thinking level clamping", () => {
+describe("gemini3_8 thinking level clamping", () => {
   test.each(GEMINI3_7_THINKING_LEVEL_CASES)(
     "%s clamps %s to %s",
     (model, level, expected) => {
-      // These are real model ids, so automatic routing reaches Gemini3_7Client directly.
+      // These are real model ids, so automatic routing reaches Gemini3_8Client directly.
       const client = new AutoLLMClient({ model, apiKey: "test-key" });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect((client as any)._client.constructor.name).toBe("Gemini3_7Client");
+      expect((client as any)._client.constructor.name).toBe("Gemini3_8Client");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect((client as any)._client._convertThinkingLevel(level)).toBe(
         expected,

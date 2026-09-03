@@ -49,7 +49,7 @@ MESSAGE_ORDER_CASES = [
     MessageOrderCase("MiniMaxM3Client", "MiniMax-M3", "minimax-m3", "responses", RESPONSES_ORDER),
     MessageOrderCase("Claude5Client", "claude-sonnet-5", None, "messages", MESSAGES_ORDER),
     MessageOrderCase("AntMessagesClient", "claude-sonnet-5", "ant-messages", "messages", MESSAGES_ORDER),
-    MessageOrderCase("Gemini3_7Client", "gemini-3.7-flash", None, "gemini", GEMINI_ORDER, b"sig-1"),
+    MessageOrderCase("Gemini3_8Client", "gemini-3.8-flash", None, "gemini", GEMINI_ORDER, b"sig-1"),
     MessageOrderCase("OpenaiChatClient", "gpt-5.6", "openai-chat", "chat", CHAT_ORDER),
     MessageOrderCase("GLM5_3Client", "glm-5.3", None, "chat", CHAT_ORDER),
     MessageOrderCase("KimiK3Client", "kimi-k3", None, "chat", CHAT_ORDER),

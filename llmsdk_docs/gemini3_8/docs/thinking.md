@@ -1,6 +1,6 @@
 # Thinking levels across Gemini 3.x
 
-> Source: https://ai.google.dev/gemini-api/docs/thinking (snapshot 2026-08-13)
+> Source: https://ai.google.dev/gemini-api/docs/thinking (snapshot 2026-09-03)
 
 Thinking is controlled with the `thinking_level` enum in the generation config. Supported
 values and defaults per model:
@@ -19,9 +19,17 @@ values and defaults per model:
 
 Notes:
 
+- All Gemini 3.x models have reasoning enabled by default; none allow disabling it.
 - Thought summaries are requested via the thinking config (`include_thoughts` in the
   google-genai SDK). A thought block may contain **only a signature with no summary** for
   simple requests or thought content types without text summaries.
+- Whether generateContent returns thought parts at all is model-dependent (probed live
+  2026-08-19): `gemini-2.5-flash` and `gemini-3.1-pro-preview` return them, while
+  `gemini-3.5-flash`, `gemini-3.6-flash`, `gemini-3.7-flash`, and `gemini-3.8-flash`
+  return none even when
+  usage reports thousands of thought tokens. The `thinking_summaries` setting from
+  https://ai.google.dev/gemini-api/docs/thinking belongs to the Interactions API;
+  generateContent rejects it with `Unknown name "thinkingSummaries" at 'generation_config'`.
 - When managing conversation state yourself (stateless mode), you **must** resend all
   thought blocks and thought signatures exactly as they were received to maintain
   reasoning continuity. See [../../gemini3/docs/thought-signatures.md](../../gemini3/docs/thought-signatures.md).

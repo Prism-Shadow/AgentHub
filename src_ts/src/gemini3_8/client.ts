@@ -104,7 +104,7 @@ function splitFunctionResponseRuns(parts: Part[]): Part[][] {
  * sampling parameters (silently ignored today, HTTP 400 in future
  * generations), so this client rejects them instead of sending a no-op.
  */
-export class Gemini3_7Client extends LLMClient {
+export class Gemini3_8Client extends LLMClient {
   protected _model: string;
   private _client: GoogleGenAI;
 
@@ -209,7 +209,7 @@ export class Gemini3_7Client extends LLMClient {
   ];
 
   /**
-   * Thinking levels the target model accepts (llmsdk_docs/gemini3_7/docs/thinking.md).
+   * Thinking levels the target model accepts (llmsdk_docs/gemini3_8/docs/thinking.md).
    *
    * An empty array means the model rejects the thinking_level parameter
    * entirely, so it must be omitted from the request.
@@ -250,7 +250,7 @@ export class Gemini3_7Client extends LLMClient {
         GeminiThinkingLevel.HIGH,
       ];
     }
-    return Gemini3_7Client.GEMINI_LEVEL_ORDER;
+    return Gemini3_8Client.GEMINI_LEVEL_ORDER;
   }
 
   /**
@@ -287,7 +287,7 @@ export class Gemini3_7Client extends LLMClient {
     // e.g. MEDIUM becomes HIGH on gemini-3-pro and NONE maps to LOW on
     // gemini-3.7-flash. `supported` is non-empty here, so the
     // initial-value-less reduce cannot throw.
-    const order = Gemini3_7Client.GEMINI_LEVEL_ORDER;
+    const order = Gemini3_8Client.GEMINI_LEVEL_ORDER;
     const index = order.indexOf(level);
     return supported.reduce((best, candidate) => {
       const bestDistance = Math.abs(order.indexOf(best) - index);
@@ -423,7 +423,7 @@ export class Gemini3_7Client extends LLMClient {
     }
 
     // includeThoughts asks for thought summaries, but whether generateContent returns any
-    // is model-dependent (llmsdk_docs/gemini3_7/docs/thinking.md)
+    // is model-dependent (llmsdk_docs/gemini3_8/docs/thinking.md)
     const thinkingSummary = config.thinking_summary;
     const thinkingLevel = config.thinking_level;
     if (thinkingSummary !== undefined || thinkingLevel !== undefined) {

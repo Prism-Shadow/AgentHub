@@ -49,12 +49,12 @@ const HEADER_CASES: HeaderCase[] = [
     expected: ["m1", "m2"],
   },
   {
-    clientType: "gemini-3.7",
-    model: "gemini-3.7-flash",
+    clientType: "gemini-3.8",
+    model: "gemini-3.8-flash",
     baseUrlSuffix: "",
     // the Gemini client is deduced from the model id, so its listing keeps only ids that
     // deduce back to it
-    expected: ["gemini-3.7-flash", "gemini-3.7-pro"],
+    expected: ["gemini-3.8-flash", "gemini-3.8-pro"],
   },
 ];
 
@@ -80,8 +80,8 @@ beforeAll(async () => {
     const payload = req.url?.includes("v1beta")
       ? {
           models: [
-            { name: "models/gemini-3.7-flash" },
-            { name: "models/gemini-3.7-pro" },
+            { name: "models/gemini-3.8-flash" },
+            { name: "models/gemini-3.8-pro" },
           ],
         }
       : { object: "list", data: [{ id: "m1" }, { id: "m2" }], has_more: false };

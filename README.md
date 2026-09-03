@@ -66,7 +66,8 @@ Where a gateway serves more than one, prefer `"openai-responses"`: OpenRouter se
 every model it hosts, while SiliconFlow serves Chat Completions only.
 
 The full machine-readable list — model, base URL, client, input/output modalities, context
-window, and per-million-token pricing in USD or CNY:
+window, per-million-token list pricing in USD or CNY, and the fraction off it any running
+promotion takes:
 
 ```python
 from agenthub import list_supported_models
@@ -691,7 +692,7 @@ Every client speaks one vendor protocol on the wire, whichever `client_type` rea
 
 | `client_type`                                              | Wire protocol      |
 | ---------------------------------------------------------- | ------------------ |
-| `gemini-3.7`, `gemini-3.6`, `gemini-3`, `gemini-embedding` | `google-genai`     |
+| `gemini-3.8`, `gemini-3.7`, `gemini-3`, `gemini-embedding` | `google-genai`     |
 | `claude-5`, `claude-4-8`, `claude-4-7`, `claude-4-6`       | `ant-messages`     |
 | `ant-messages`                                             | `ant-messages`     |
 | `gpt-5.6`, `gpt-5.5`, `gpt-5.4`                            | `openai-responses` |
