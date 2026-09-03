@@ -221,3 +221,52 @@ describe("thinking level to vendor effort", () => {
     },
   );
 });
+
+describe("Qwen vLLM thinking switch", () => {
+  test.each([
+    [ThinkingLevel.NONE, false],
+    [ThinkingLevel.LOW, true],
+    [ThinkingLevel.MEDIUM, true],
+    [ThinkingLevel.HIGH, true],
+    [ThinkingLevel.XHIGH, true],
+    [ThinkingLevel.MAX, true],
+  ])("maps %s to enable_thinking=%s", (level, expected) => {
+    const client = new AutoLLMClient({
+      model: "Qwen/Qwen3.6-35B-A3B",
+      apiKey: "test-key",
+      baseUrl: "http://localhost:8000/v1",
+      clientType: "qwen-vllm",
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const config = (client as any)._client.transformUniConfigToModelConfig({
+      thinking_level: level,
+    });
+    expect(config.chat_template_kwargs).toEqual({
+      enable_thinking: expected,
+    });
+  });
+
+  test("does not add the vLLM extension when no level is selected", () => {
+    const client = new AutoLLMClient({
+      model: "Qwen/Qwen3.6-35B-A3B",
+      apiKey: "test-key",
+      clientType: "qwen-vllm",
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const config = (client as any)._client.transformUniConfigToModelConfig({});
+    expect(config.chat_template_kwargs).toBeUndefined();
+  });
+
+  test("keeps generic OpenAI Chat requests unchanged", () => {
+    const client = new AutoLLMClient({
+      model: "Qwen/Qwen3.6-35B-A3B",
+      apiKey: "test-key",
+      clientType: "openai-chat",
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const config = (client as any)._client.transformUniConfigToModelConfig({
+      thinking_level: ThinkingLevel.NONE,
+    });
+    expect(config.chat_template_kwargs).toBeUndefined();
+  });
+});
