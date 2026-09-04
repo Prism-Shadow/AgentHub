@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .client import Gemini3_7Client
+from .client import Gemini3_8Client
 
 
-__all__ = ["Gemini3_7Client"]
+__all__ = ["Gemini3_8Client"]

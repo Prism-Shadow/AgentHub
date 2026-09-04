@@ -7,6 +7,7 @@ values and defaults per model:
 
 | Model                       | Default thinking | Supported levels             |
 | --------------------------- | ---------------- | ---------------------------- |
+| gemini-3.8-flash            | medium           | low, medium, high            |
 | gemini-3.7-flash            | medium           | low, medium, high            |
 | gemini-3.6-flash            | medium           | minimal, low, medium, high   |
 | gemini-3.5-flash            | medium           | minimal, low, medium, high   |

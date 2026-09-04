@@ -95,21 +95,21 @@ function splitFunctionResponseRuns(parts: Part[]): Part[][] {
 
 /**
  * Unified client for the Gemini family, named for the newest generation it
- * serves (3.7). It serves every generateContent model generation (3.7 back
- * through 3.x text, image, TTS, and embedding models, with the 2.5 series
- * reachable via an explicit clientType), and applies the 3.6-generation
- * parameter contract to the whole family: temperature is rejected everywhere.
+ * serves (3.8). It serves every generateContent model generation (3.8 back
+ * through 3.x text, image, TTS, and embedding models), and applies the
+ * 3.6-generation parameter contract to the whole family: temperature is
+ * rejected everywhere.
  *
  * Starting with the 3.6 generation the API deprecates the temperature/top_p/top_k
  * sampling parameters (silently ignored today, HTTP 400 in future
  * generations), so this client rejects them instead of sending a no-op.
  */
-export class Gemini3_7Client extends LLMClient {
+export class Gemini3_8Client extends LLMClient {
   protected _model: string;
   private _client: GoogleGenAI;
 
   /**
-   * Initialize Gemini 3.7 client with model and API key.
+   * Initialize Gemini 3.8 client with model and API key.
    */
   constructor(options: {
     model: string;
@@ -209,17 +209,12 @@ export class Gemini3_7Client extends LLMClient {
   ];
 
   /**
-   * Thinking levels the target model accepts (llmsdk_docs/gemini3_7/docs/thinking.md).
+   * Thinking levels the target model accepts (llmsdk_docs/gemini3_8/docs/thinking.md).
    *
    * An empty array means the model rejects the thinking_level parameter
    * entirely, so it must be omitted from the request.
    */
   private _supportedThinkingLevels(): GeminiThinkingLevel[] {
-    if (this._model.includes("gemini-2.5")) {
-      // The vendor table claims low/medium/high, but the live API rejects
-      // every thinking_level value for the 2.5 series (verified 2026-07-24).
-      return [];
-    }
     if (this._model.includes("-image")) {
       return [GeminiThinkingLevel.MINIMAL, GeminiThinkingLevel.HIGH];
     }
@@ -238,15 +233,19 @@ export class Gemini3_7Client extends LLMClient {
         GeminiThinkingLevel.HIGH,
       ];
     }
-    if (this._model.includes("gemini-3.7")) {
-      // The 3.7 generation rejects "minimal" with a 400 (verified live 2026-08-13).
+    if (
+      this._model.includes("gemini-3.7") ||
+      this._model.includes("gemini-3.8")
+    ) {
+      // Both generations reject "minimal" with a 400 (3.7 verified live 2026-08-13;
+      // 3.8 documented at ai.google.dev/gemini-api/docs/latest-model).
       return [
         GeminiThinkingLevel.LOW,
         GeminiThinkingLevel.MEDIUM,
         GeminiThinkingLevel.HIGH,
       ];
     }
-    return Gemini3_7Client.GEMINI_LEVEL_ORDER;
+    return Gemini3_8Client.GEMINI_LEVEL_ORDER;
   }
 
   /**
@@ -272,8 +271,9 @@ export class Gemini3_7Client extends LLMClient {
     }
     const supported = this._supportedThinkingLevels();
     if (supported.length === 0) {
-      // The model takes no thinking_level at all; drop the parameter and
-      // let the model use its default instead of forwarding a 400.
+      // A model that takes no thinking_level at all has nothing to clamp onto, so the
+      // parameter is omitted rather than turned into a failed request. thinking_summary
+      // is unaffected -- includeThoughts still rides along.
       return undefined;
     }
     if (supported.includes(level)) {
@@ -283,7 +283,7 @@ export class Gemini3_7Client extends LLMClient {
     // e.g. MEDIUM becomes HIGH on gemini-3-pro and NONE maps to LOW on
     // gemini-3.7-flash. `supported` is non-empty here, so the
     // initial-value-less reduce cannot throw.
-    const order = Gemini3_7Client.GEMINI_LEVEL_ORDER;
+    const order = Gemini3_8Client.GEMINI_LEVEL_ORDER;
     const index = order.indexOf(level);
     return supported.reduce((best, candidate) => {
       const bestDistance = Math.abs(order.indexOf(best) - index);
@@ -419,7 +419,7 @@ export class Gemini3_7Client extends LLMClient {
     }
 
     // includeThoughts asks for thought summaries, but whether generateContent returns any
-    // is model-dependent (llmsdk_docs/gemini3_7/docs/thinking.md)
+    // is model-dependent (llmsdk_docs/gemini3_8/docs/thinking.md)
     const thinkingSummary = config.thinking_summary;
     const thinkingLevel = config.thinking_level;
     if (thinkingSummary !== undefined || thinkingLevel !== undefined) {
@@ -787,7 +787,7 @@ export class Gemini3_7Client extends LLMClient {
 
       for (const item of event.content_items) {
         if (item.type === "tool_call") {
-          // gemini 3.7 does not support partial tool call, mock a partial tool call event
+          // the Gemini API does not stream partial tool calls, mock a partial tool call event
           yield {
             role: "assistant",
             event_type: "delta",

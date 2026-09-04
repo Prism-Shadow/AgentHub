@@ -42,7 +42,7 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 
 | Model Name     | Vendor                              | Example Model ID       | Input Modalities | Output Modalities              |
 | -------------- | ----------------------------------- | ---------------------- | ---------------- | ------------------------------ |
-| Gemini 3-3.7   | Official/Google Vertex AI           | `gemini-3.7-flash`     | Text, Image      | Text, Image, Speech, Embedding |
+| Gemini 3-3.8   | Official/Google Vertex AI           | `gemini-3.8-flash`     | Text, Image      | Text, Image, Speech, Embedding |
 | Claude 4.6-5   | Official/Amazon Bedrock/UModelVerse | `claude-opus-5`        | Text, Image      | Text                           |
 | GPT-5.4-5.6    | Official/OpenRouter/UModelVerse     | `gpt-5.6-sol`          | Text, Image      | Text, Embedding                |
 | Kimi-K2.5/K2.6/K3 | Official/OpenRouter/SiliconFlow  | `kimi-k3`              | Text, Image      | Text                           |
@@ -51,10 +51,12 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 | MiniMax-M3     | Official                            | `MiniMax-M3`           | Text, Image      | Text                           |
 | Qwen3.6        | OpenRouter/SiliconFlow/vLLM         | `qwen/qwen3.6-35b-a3b` | Text, Image      | Text, Embedding                |
 
-Beyond the model-specific clients, three generic protocol clients call any compatible
+Beyond the model-specific clients, four generic protocol clients call any compatible
 endpoint:
 
 - **`client_type="openai-chat"`** — OpenAI Chat Completions. Bare `"openai"` is an alias.
+- **`client_type="openai-chat-vllm-adapter"`** — Chat Completions as served by vLLM, mapping
+  `thinking_level` onto the `chat_template_kwargs` the served model's template reads.
 - **`client_type="openai-responses"`** — OpenAI Responses, served by OpenAI, OpenRouter,
   DeepSeek, Z.AI, and MiniMax.
 - **`client_type="ant-messages"`** — Anthropic Messages, served by Anthropic, OpenRouter,
@@ -64,7 +66,7 @@ Where a gateway serves more than one, prefer `"openai-responses"`: OpenRouter se
 every model it hosts, while SiliconFlow serves Chat Completions only.
 
 The full machine-readable list — model, base URL, client, input/output modalities, context
-window, and per-million-token pricing in USD or CNY:
+window, and per-million-token list pricing in USD or CNY:
 
 ```python
 from agenthub import list_supported_models
@@ -127,7 +129,7 @@ AgentHub provides Codex/Claude Code skill files for assistants that need to help
 
 - `(async) streaming_response(messages, config)`: Streams the response of LLMs in a stateless manner.
 - `(async) streaming_response_stateful(message, config)`: Streams the response of LLMs in a stateful manner.
-- `(async) list_models()`: Lists the model ids the configured endpoint serves. A protocol client (`openai-chat`, `openai-responses`, `ant-messages`, `openai-embedding`) is named explicitly and lists everything the endpoint serves; a client deduced from a model id lists only the ids that deduce back to it.
+- `(async) list_models()`: Lists the model ids the configured endpoint serves. A protocol client (`openai-chat`, `openai-chat-vllm-adapter`, `openai-responses`, `ant-messages`, `openai-embedding`) is named explicitly and lists everything the endpoint serves; a client deduced from a model id lists only the ids that deduce back to it.
 - `clear_history()`: Clears the history of the stateful LLM client.
 - `get_history()`: Returns the history of the stateful LLM client.
 - `set_history(history)`: Replaces the history of the stateful LLM client with a copy of the provided list.
@@ -689,7 +691,7 @@ Every client speaks one vendor protocol on the wire, whichever `client_type` rea
 
 | `client_type`                                              | Wire protocol      |
 | ---------------------------------------------------------- | ------------------ |
-| `gemini-3.7`, `gemini-3.6`, `gemini-3`, `gemini-embedding` | `google-genai`     |
+| `gemini-3.8`, `gemini-3.7`, `gemini-3`, `gemini-embedding` | `google-genai`     |
 | `claude-5`, `claude-4-8`, `claude-4-7`, `claude-4-6`       | `ant-messages`     |
 | `ant-messages`                                             | `ant-messages`     |
 | `gpt-5.6`, `gpt-5.5`, `gpt-5.4`                            | `openai-responses` |
@@ -699,6 +701,7 @@ Every client speaks one vendor protocol on the wire, whichever `client_type` rea
 | `glm-5.3`, `glm-5.2`, `glm-5.1`                            | `openai-chat`      |
 | `kimi-k3`, `kimi-k2.6`, `kimi-k2.5`                        | `openai-chat`      |
 | `openai-chat` (alias `openai`)                             | `openai-chat`      |
+| `openai-chat-vllm-adapter`                                 | `openai-chat`      |
 | `openai-embedding`                                         | `openai-embedding` |
 
 ## Related Work

@@ -47,7 +47,7 @@ const AVAILABLE_MODELS: Model[] = [];
 
 if (process.env.GEMINI_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "gemini-3.7-flash",
+    name: "gemini-3.8-flash",
     supportTextGeneration: true,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
@@ -224,7 +224,7 @@ if (process.env.BEDROCK_API_KEY) {
 
 if (process.env.VERTEX_API_KEY) {
   AVAILABLE_MODELS.push({
-    name: "gemini-3.7-flash",
+    name: "gemini-3.8-flash",
     supportTextGeneration: true,
     supportImageUnderstanding: true,
     supportImageGeneration: false,
@@ -1298,6 +1298,22 @@ test("should list supported model entries", () => {
     response_tokens: 14.285714,
     cached_tokens: 0.285714,
   });
+
+  // Pricing is always the list price: Google's launch discount on the three Gemini flash
+  // rows is not recorded here, so the catalog rate is what every entry reports.
+  for (const model of [
+    "gemini-3.8-flash",
+    "gemini-3.7-flash",
+    "gemini-3.6-flash",
+  ]) {
+    const gemini = entries.find((entry) => entry.model === model);
+    expect(gemini?.client).toBe("gemini-3.8");
+    expect([
+      gemini?.pricing?.prompt_tokens,
+      gemini?.pricing?.response_tokens,
+      gemini?.pricing?.cached_tokens,
+    ]).toEqual([1.5, 7.5, 0.15]);
+  }
 
   const kimiCny = listSupportedModels("CNY").find(
     (entry) => entry.model === "kimi-k3",

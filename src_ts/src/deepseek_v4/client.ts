@@ -127,11 +127,20 @@ export class DeepSeekV4Client extends LLMClient {
       });
     }
 
-    // a thinking summary is accepted but never generated, so the parameter is left out
     if (config.thinking_level !== undefined) {
       deepseekConfig.reasoning = {
         effort: this._convertThinkingLevelToEffort(config.thinking_level),
       };
+    }
+
+    if (config.thinking_summary) {
+      // DeepSeek takes reasoning.summary with or without an effort and returns an empty
+      // summary list for now (verified live 2026-09-03 on api.deepseek.com and
+      // OpenRouter), so the request carries the preference instead of dropping it and
+      // picks up summaries as soon as the vendor generates them. False needs no key:
+      // the Responses API returns no summary unless one is asked for.
+      deepseekConfig.reasoning = deepseekConfig.reasoning ?? {};
+      deepseekConfig.reasoning.summary = "concise";
     }
 
     if (config.tools !== undefined) {

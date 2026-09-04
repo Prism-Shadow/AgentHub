@@ -6,6 +6,7 @@ Use exact model IDs. If a model ID is not listed, ask the user to confirm the ex
 | --- | --- | --- | --- | --- |
 | Gemini 3 | Official / Vertex AI | `gemini-3.1-pro-preview`, `gemini-3.5-flash`, `gemini-3.1-flash-lite` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
 | Gemini 3.6 | Official / Vertex AI | `gemini-3.6-flash`, `gemini-3.5-flash-lite` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
+| Gemini 3.8 | Official / Vertex AI | `gemini-3.8-flash` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
 | Gemini 3.7 | Official / Vertex AI | `gemini-3.7-flash` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
 | Gemini 3 Image | Official / Vertex AI | `gemini-3.1-flash-image`, `gemini-3-pro-image` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |
 | Gemini 3 TTS | Official / Vertex AI | `gemini-3.1-flash-tts-preview` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` |

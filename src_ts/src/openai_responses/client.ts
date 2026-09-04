@@ -133,6 +133,11 @@ export class OpenaiResponsesClient extends LLMClient {
       openaiConfig.temperature = config.temperature;
     }
 
+    // Unlike the model-specific Responses clients, the summary stays inside this branch:
+    // OpenRouter reads a reasoning object carrying no effort as "reasoning disabled" and
+    // refuses it on a forced-thinking model -- "Reasoning is mandatory for this endpoint
+    // and cannot be disabled" (400, verified live 2026-09-03 with z-ai/glm-5.3) -- so a
+    // summary sent on its own would turn a dropped value into a failed request.
     if (config.thinking_level !== undefined) {
       openaiConfig.reasoning = {
         effort: this._convertThinkingLevelToEffort(config.thinking_level),

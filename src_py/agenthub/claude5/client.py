@@ -176,8 +176,14 @@ class Claude5Client(LLMClient):
 
         if config.get("thinking_level") is not None:
             claude_config.update(self._convert_thinking_level_to_thinking_config(config["thinking_level"]))
-            if config.get("thinking_summary") and claude_config.get("thinking") is not None:
-                claude_config["thinking"]["display"] = "summarized"
+
+        if config.get("thinking_summary") is not None:
+            # display lives on the thinking block, so a summary asked for on its own selects
+            # adaptive thinking, which is what this family runs by default anyway; a block
+            # carrying display but no output_config is accepted on 4.6 through 5 (verified
+            # live 2026-09-03). NONE omits the block, so the request lands on that default.
+            thinking = claude_config.setdefault("thinking", {"type": "adaptive"})
+            thinking["display"] = "summarized" if config["thinking_summary"] else "omitted"
 
         # Convert tools to Claude's tool schema
         if config.get("tools") is not None:

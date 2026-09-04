@@ -95,9 +95,9 @@ const MESSAGES_STREAM_CASES: StreamCase[] = [
 // Every client that parses the Gemini generateContent chunk shape.
 const GEMINI_STREAM_CASES: StreamCase[] = [
   {
-    expectedClient: "Gemini3_7Client",
-    model: "gemini-3.7-flash",
-    clientType: "gemini-3.7",
+    expectedClient: "Gemini3_8Client",
+    model: "gemini-3.8-flash",
+    clientType: "gemini-3.8",
   },
 ];
 

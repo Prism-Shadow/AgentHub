@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { LLMClient } from "./baseClient";
-import { Gemini3_7Client } from "./gemini3_7";
+import { Gemini3_8Client } from "./gemini3_8";
 import { Claude5Client } from "./claude5";
 import { GPT5_6Client } from "./gpt5_6";
 import { GLM5_3Client } from "./glm5_3";
@@ -24,6 +24,7 @@ import { AntMessagesClient } from "./ant_messages";
 import { OpenaiEmbeddingClient } from "./openai_embedding";
 import { DeepSeekV4Client } from "./deepseek_v4";
 import { MiniMaxM3Client } from "./minimax_m3";
+import { OpenaiChatVllmAdapterClient } from "./openai_chat_vllm_adapter";
 import { UniConfig, UniEvent, UniMessage } from "./types";
 
 type LLMClientConstructor = new (options: {
@@ -37,6 +38,7 @@ type LLMClientConstructor = new (options: {
 // The generic protocol clients are named explicitly rather than deduced from a model id.
 const PROTOCOL_CLIENT_TYPES = [
   "openai-chat",
+  "openai-chat-vllm-adapter",
   "openai-responses",
   "ant-messages",
   "openai-embedding",
@@ -91,12 +93,12 @@ export class AutoLLMClient extends LLMClient {
    */
   private _clientClassForModel(clientType: string): LLMClientConstructor | null {
     // every Gemini generation shares the unified client ("gemini-3" also matches the
-    // gemini-3.7/gemini-3.6/gemini-3.5-flash-lite client types)
+    // gemini-3.8/gemini-3.7/gemini-3.6/gemini-3.5-flash-lite client types)
     if (
       clientType.includes("gemini-3") ||
       clientType.includes("gemini-embedding")
     ) {
-      return Gemini3_7Client;
+      return Gemini3_8Client;
     } else if (
       clientType.includes("claude") &&
       (clientType.includes("4-6") ||
@@ -126,6 +128,10 @@ export class AutoLLMClient extends LLMClient {
       return MiniMaxM3Client;
     } else if (clientType.includes("deepseek-v4")) {
       return DeepSeekV4Client;
+    } else if (clientType === "openai-chat-vllm-adapter") {
+      // exact match: "openai-chat-vllm-adapter" contains "openai", so the substring
+      // branches below would otherwise claim it
+      return OpenaiChatVllmAdapterClient;
     } else if (clientType.includes("ant-messages")) {
       return AntMessagesClient;
     } else if (clientType.includes("openai-responses")) {
@@ -157,10 +163,10 @@ export class AutoLLMClient extends LLMClient {
     if (ClientClass === null) {
       throw new Error(
         `${clientType} is not supported. ` +
-          "Supported client types: minimax-m3, gemini-3.7, gemini-3.6, gemini-3, " +
+          "Supported client types: minimax-m3, gemini-3.8, gemini-3.7, gemini-3.6, gemini-3, " +
           "claude-5, claude-4-8, claude-4-7, " +
           "claude-4-6, gpt-5.6, gpt-5.5, gpt-5.4, glm-5.3, glm-5.2, glm-5.1, kimi-k3, kimi-k2.6, kimi-k2.5, " +
-          "deepseek-v4, openai-embedding, ant-messages, openai-responses, openai-chat.",
+          "deepseek-v4, openai-chat-vllm-adapter, openai-embedding, ant-messages, openai-responses, openai-chat.",
       );
     }
 

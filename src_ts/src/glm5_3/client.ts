@@ -98,9 +98,12 @@ export class GLM5_3Client extends LLMClient {
    *
    * GLM-5.3 accepts only low/high/max and errors on anything else, so the
    * client clamps to the closest value; NONE rides on low because 5.3 cannot
-   * disable thinking. GLM-5.2 accepts the full vocabulary and maps it
-   * server-side (low/medium to high, xhigh to max); NONE disables thinking
-   * there instead. Models before 5.2 take no reasoning_effort parameter at all.
+   * disable thinking. Every earlier generation takes the vocabulary unchanged:
+   * 5.2 maps it server-side (low/medium to high, xhigh to max), and 5.1 and
+   * below accept the parameter and ignore it (verified live 2026-09-03 on
+   * Z.AI, OpenRouter and SiliconFlow), so the level is forwarded there rather
+   * than dropped. Outside 5.3 NONE disables thinking outright, which leaves no
+   * effort to send.
    */
   private _convertThinkingLevelToReasoningEffort(
     thinkingLevel: ThinkingLevel,
@@ -117,17 +120,14 @@ export class GLM5_3Client extends LLMClient {
       };
       return mapping[thinkingLevel];
     }
-    if (model.includes("glm-5.2")) {
-      const mapping: { [key: string]: string } = {
-        [ThinkingLevel.LOW]: "low",
-        [ThinkingLevel.MEDIUM]: "medium",
-        [ThinkingLevel.HIGH]: "high",
-        [ThinkingLevel.XHIGH]: "xhigh",
-        [ThinkingLevel.MAX]: "max",
-      };
-      return mapping[thinkingLevel];
-    }
-    return undefined;
+    const mapping: { [key: string]: string } = {
+      [ThinkingLevel.LOW]: "low",
+      [ThinkingLevel.MEDIUM]: "medium",
+      [ThinkingLevel.HIGH]: "high",
+      [ThinkingLevel.XHIGH]: "xhigh",
+      [ThinkingLevel.MAX]: "max",
+    };
+    return mapping[thinkingLevel];
   }
 
   /**
