@@ -18,5 +18,10 @@
   `xhigh`.
 - DeepSeek-V4-Pro, DeepSeek-V4-Flash and DeepSeek-V4-Flash-Vision-Exp pair `thinking: true` with
   `reasoning_effort`, which accepts only `low`/`high`/`max`, so `medium` and `xhigh` clamp to
-  `high`; `none` sends no `chat_template_kwargs` at all, which is how those templates read as off.
+  `high`; `none` sends no `chat_template_kwargs` at all, which is how those models read as off.
 - A model outside the table falls back to the `enable_thinking` boolean.
+- New reference section `llmsdk_docs/openai_chat_vllm_adapter/`: the five Qwen chat templates
+  snapshotted byte-identical from Hugging Face with their source URL, snapshot date, license and
+  checksum, plus a note on the three DeepSeek V4 models, which publish no chat template and
+  define their parameters in an `encoding/encoding_dsv4.py` module instead. The section states
+  the convention that a model added to the adapter has its template added here too.

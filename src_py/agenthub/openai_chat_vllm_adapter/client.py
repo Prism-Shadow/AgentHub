@@ -22,8 +22,14 @@ from ..types import ThinkingLevel, UniConfig
 # switch that turns thinking on is whatever that template happens to read. Each profile
 # below maps an AgentHub level onto one family's kwargs; an empty mapping means the
 # request carries no chat_template_kwargs at all.
+#
+# The upstream templates these profiles are read off, and the two places where a profile
+# knowingly diverges from one, are snapshotted in llmsdk_docs/openai_chat_vllm_adapter/.
+# Update that snapshot whenever a model is added here.
 
-# Qwen3 templates read a single enable_thinking boolean.
+# Qwen3 templates read a single enable_thinking boolean. Qwen3.8-Flash-Next is the
+# exception: it ships the same template as Qwen3.8-27B, which also reads reasoning_effort
+# and defaults it to xhigh, so LOW and MEDIUM land on xhigh here.
 _QWEN3_THINKING: dict[ThinkingLevel, dict[str, Any]] = {
     ThinkingLevel.NONE: {"enable_thinking": False},
     ThinkingLevel.LOW: {"enable_thinking": True},
@@ -44,9 +50,11 @@ _QWEN3_8_27B_THINKING: dict[ThinkingLevel, dict[str, Any]] = {
     ThinkingLevel.MAX: {"reasoning_effort": "xhigh"},
 }
 
-# DeepSeek V4 templates read a thinking flag paired with reasoning_effort, which accepts
-# only low/high/max, so medium and xhigh clamp to high. Thinking is off whenever the flag
-# is absent, which is what NONE sends.
+# DeepSeek V4 publishes no chat template; vLLM reads a thinking flag paired with
+# reasoning_effort, which accepts only low/high/max, so medium and xhigh clamp to high.
+# Thinking is off whenever the flag is absent, which is what NONE sends. Upstream's own
+# encoding module narrows that set to high/max on DeepSeek-V4-Pro and DeepSeek-V4-Flash,
+# where low is rejected outright; only Flash-Vision-Exp takes all three.
 _DEEPSEEK_V4_THINKING: dict[ThinkingLevel, dict[str, Any]] = {
     ThinkingLevel.NONE: {},
     ThinkingLevel.LOW: {"thinking": True, "reasoning_effort": "low"},
