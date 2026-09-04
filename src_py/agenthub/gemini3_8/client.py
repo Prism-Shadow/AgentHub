@@ -62,9 +62,9 @@ def _split_function_response_runs(parts: list[types.Part]) -> list[list[types.Pa
 
 
 class Gemini3_8Client(LLMClient):
-    """Unified client for the Gemini family, named for the newest generation it serves (3.7).
+    """Unified client for the Gemini family, named for the newest generation it serves (3.8).
 
-    It serves every generateContent model generation (3.7 back through 3.x text, image, TTS,
+    It serves every generateContent model generation (3.8 back through 3.x text, image, TTS,
     and embedding models). The API deprecated the temperature/top_p/top_k sampling parameters
     starting with the 3.6 generation (silently ignored today, HTTP 400 in future generations),
     and this client applies that contract to the whole family: temperature is rejected
@@ -78,7 +78,7 @@ class Gemini3_8Client(LLMClient):
         base_url: str | None = None,
         default_headers: dict[str, str] | None = None,
     ):
-        """Initialize Gemini 3.7 client with model and API key."""
+        """Initialize Gemini 3.8 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("GEMINI_API_KEY")
         base_url = base_url or os.getenv("GEMINI_BASE_URL")
@@ -568,7 +568,7 @@ class Gemini3_8Client(LLMClient):
 
             for item in event["content_items"]:
                 if item["type"] == "tool_call":
-                    # gemini 3.7 does not support partial tool call, mock a partial tool call event
+                    # the Gemini API does not stream partial tool calls, mock a partial tool call event
                     yield {
                         "role": "assistant",
                         "event_type": "delta",

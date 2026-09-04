@@ -95,7 +95,7 @@ function splitFunctionResponseRuns(parts: Part[]): Part[][] {
 
 /**
  * Unified client for the Gemini family, named for the newest generation it
- * serves (3.7). It serves every generateContent model generation (3.7 back
+ * serves (3.8). It serves every generateContent model generation (3.8 back
  * through 3.x text, image, TTS, and embedding models), and applies the
  * 3.6-generation parameter contract to the whole family: temperature is
  * rejected everywhere.
@@ -109,7 +109,7 @@ export class Gemini3_8Client extends LLMClient {
   private _client: GoogleGenAI;
 
   /**
-   * Initialize Gemini 3.7 client with model and API key.
+   * Initialize Gemini 3.8 client with model and API key.
    */
   constructor(options: {
     model: string;
@@ -787,7 +787,7 @@ export class Gemini3_8Client extends LLMClient {
 
       for (const item of event.content_items) {
         if (item.type === "tool_call") {
-          // gemini 3.7 does not support partial tool call, mock a partial tool call event
+          // the Gemini API does not stream partial tool calls, mock a partial tool call event
           yield {
             role: "assistant",
             event_type: "delta",
