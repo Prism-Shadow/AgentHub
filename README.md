@@ -42,7 +42,7 @@ https://github.com/user-attachments/assets/c49a21a1-5bf9-4768-a76d-f73c9a03ca87
 
 | Model Name     | Vendor                              | Example Model ID       | Input Modalities | Output Modalities              |
 | -------------- | ----------------------------------- | ---------------------- | ---------------- | ------------------------------ |
-| Gemini 3-3.7   | Official/Google Vertex AI           | `gemini-3.7-flash`     | Text, Image      | Text, Image, Speech, Embedding |
+| Gemini 3-3.8   | Official/Google Vertex AI           | `gemini-3.8-flash`     | Text, Image      | Text, Image, Speech, Embedding |
 | Claude 4.6-5   | Official/Amazon Bedrock/UModelVerse | `claude-opus-5`        | Text, Image      | Text                           |
 | GPT-5.4-5.6    | Official/OpenRouter/UModelVerse     | `gpt-5.6-sol`          | Text, Image      | Text, Embedding                |
 | Kimi-K2.5/K2.6/K3 | Official/OpenRouter/SiliconFlow  | `kimi-k3`              | Text, Image      | Text                           |
@@ -66,7 +66,7 @@ Where a gateway serves more than one, prefer `"openai-responses"`: OpenRouter se
 every model it hosts, while SiliconFlow serves Chat Completions only.
 
 The full machine-readable list — model, base URL, client, input/output modalities, context
-window, and per-million-token pricing in USD or CNY:
+window, and per-million-token list pricing in USD or CNY:
 
 ```python
 from agenthub import list_supported_models
@@ -691,7 +691,7 @@ Every client speaks one vendor protocol on the wire, whichever `client_type` rea
 
 | `client_type`                                              | Wire protocol      |
 | ---------------------------------------------------------- | ------------------ |
-| `gemini-3.7`, `gemini-3.6`, `gemini-3`, `gemini-embedding` | `google-genai`     |
+| `gemini-3.8`, `gemini-3.7`, `gemini-3`, `gemini-embedding` | `google-genai`     |
 | `claude-5`, `claude-4-8`, `claude-4-7`, `claude-4-6`       | `ant-messages`     |
 | `ant-messages`                                             | `ant-messages`     |
 | `gpt-5.6`, `gpt-5.5`, `gpt-5.4`                            | `openai-responses` |

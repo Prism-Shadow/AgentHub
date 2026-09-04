@@ -139,12 +139,14 @@ describe.each(SDK_LIST_CASES)("listModels for $clientType", (testCase) => {
 
 describe("listModels", () => {
   test("the Gemini client strips the path from model names", async () => {
+    // Deliberately the previous generation's spelling: the unified client is named for the
+    // newest one, and a caller still passing clientType "gemini-3.7" must keep routing to it.
     const client = new AutoLLMClient({
       model: "gemini-3.7-flash",
       apiKey: "test-key",
       clientType: "gemini-3.7",
     });
-    expect(routedClientName(client)).toBe("Gemini3_7Client");
+    expect(routedClientName(client)).toBe("Gemini3_8Client");
     installFakeModels(client, {
       models: {
         list: async () =>

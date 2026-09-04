@@ -53,7 +53,7 @@ class Model:
 AVAILABLE_MODELS: list[Model] = []
 
 if os.getenv("GEMINI_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="gemini-3.7-flash"))
+    AVAILABLE_MODELS.append(Model(name="gemini-3.8-flash"))
     AVAILABLE_MODELS.append(
         Model(
             name="gemini-3.1-flash-image",
@@ -146,7 +146,7 @@ if os.getenv("BEDROCK_API_KEY"):
     AVAILABLE_MODELS.append(Model(name="global.anthropic.claude-sonnet-4-6", provider="bedrock"))
 
 if os.getenv("VERTEX_API_KEY"):
-    AVAILABLE_MODELS.append(Model(name="gemini-3.7-flash", provider="vertex"))
+    AVAILABLE_MODELS.append(Model(name="gemini-3.8-flash", provider="vertex"))
     AVAILABLE_MODELS.append(
         Model(
             name="gemini-3.1-flash-image",
@@ -478,6 +478,15 @@ async def test_list_supported_models():
         "response_tokens": 14.285714,
         "cached_tokens": 0.285714,
     }
+
+    # Pricing is always the list price: Google's launch discount on the three Gemini flash
+    # rows is not recorded here, so the catalog rate is what every entry reports.
+    for model in ("gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash"):
+        gemini = next(entry for entry in entries if entry["model"] == model)
+        assert gemini["client"] == "gemini-3.8"
+        assert gemini["pricing"]["prompt_tokens"] == 1.5
+        assert gemini["pricing"]["response_tokens"] == 7.5
+        assert gemini["pricing"]["cached_tokens"] == 0.15
 
     kimi_cny = next(entry for entry in list_supported_models(currency="CNY") if entry["model"] == "kimi-k3")
     assert kimi_cny["pricing"]["currency"] == "CNY"

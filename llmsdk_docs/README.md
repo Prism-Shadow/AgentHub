@@ -14,6 +14,7 @@ To use a specific model, please refer to its dedicated README:
 - **[Gemini 3](./gemini3/README.md)** - Google's Gemini 3 API documentation and examples
 - **[Gemini 3.6](./gemini3_6/README.md)** - Google's Gemini 3.6 generation (gemini-3.6-flash, gemini-3.5-flash-lite): sampling-parameter deprecation and thinking levels
 - **[Gemini 3.7](./gemini3_7/README.md)** - Google's Gemini 3.7 generation (gemini-3.7-flash): same wire contract as 3.6, drops the `minimal` thinking level
+- **[Gemini 3.8](./gemini3_8/README.md)** - Google's Gemini 3.8 generation (gemini-3.8-flash): same wire contract, capabilities and price table as 3.7
 - **[GLM-5.1](./glm5_1/README.md)** - Z.AI's GLM-5.1 API documentation and examples
 - **[GLM-5.2](./glm5_2/README.md)** - Z.AI's GLM-5.2 API documentation (reasoning_effort, thinking modes, tool streaming)
 - **[GLM-5.3](./glm5_3/README.md)** - Z.AI's GLM-5.3 API documentation (forced thinking, reasoning_effort restricted to low/high/max)

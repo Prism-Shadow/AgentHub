@@ -128,8 +128,15 @@ class AntMessagesClient(LLMClient):
 
         if config.get("thinking_level") is not None:
             ant_config.update(self._convert_thinking_level_to_thinking_config(config["thinking_level"]))
-            if config.get("thinking_summary") and ant_config.get("thinking", {}).get("type") == "adaptive":
-                ant_config["thinking"]["display"] = "summarized"
+
+        if config.get("thinking_summary") is not None:
+            # display lives on the thinking block, so a summary asked for on its own selects
+            # adaptive thinking. A disabled block is the one place it cannot ride along --
+            # "thinking.disabled.display: Extra inputs are not permitted" (400, verified live
+            # 2026-09-03) -- and thinking_level NONE disables thinking, leaving nothing to show.
+            thinking = ant_config.setdefault("thinking", {"type": "adaptive"})
+            if thinking["type"] != "disabled":
+                thinking["display"] = "summarized" if config["thinking_summary"] else "omitted"
 
         # Convert tools to the Messages API tool schema
         if config.get("tools") is not None:

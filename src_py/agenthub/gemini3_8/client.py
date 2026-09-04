@@ -61,14 +61,14 @@ def _split_function_response_runs(parts: list[types.Part]) -> list[list[types.Pa
     return runs if runs else [parts]
 
 
-class Gemini3_7Client(LLMClient):
-    """Unified client for the Gemini family, named for the newest generation it serves (3.7).
+class Gemini3_8Client(LLMClient):
+    """Unified client for the Gemini family, named for the newest generation it serves (3.8).
 
-    It serves every generateContent model generation (3.7 back through 3.x text, image, TTS,
-    and embedding models, with the 2.5 series reachable via an explicit client_type). The API
-    deprecated the temperature/top_p/top_k sampling parameters starting with the 3.6
-    generation (silently ignored today, HTTP 400 in future generations), and this client
-    applies that contract to the whole family: temperature is rejected everywhere.
+    It serves every generateContent model generation (3.8 back through 3.x text, image, TTS,
+    and embedding models). The API deprecated the temperature/top_p/top_k sampling parameters
+    starting with the 3.6 generation (silently ignored today, HTTP 400 in future generations),
+    and this client applies that contract to the whole family: temperature is rejected
+    everywhere.
     """
 
     def __init__(
@@ -78,7 +78,7 @@ class Gemini3_7Client(LLMClient):
         base_url: str | None = None,
         default_headers: dict[str, str] | None = None,
     ):
-        """Initialize Gemini 3.7 client with model and API key."""
+        """Initialize Gemini 3.8 client with model and API key."""
         self._model = model
         api_key = api_key or os.getenv("GEMINI_API_KEY")
         base_url = base_url or os.getenv("GEMINI_BASE_URL")
@@ -139,15 +139,11 @@ class Gemini3_7Client(LLMClient):
     )
 
     def _supported_thinking_levels(self) -> tuple[types.ThinkingLevel, ...]:
-        """Thinking levels the target model accepts (llmsdk_docs/gemini3_7/docs/thinking.md).
+        """Thinking levels the target model accepts (llmsdk_docs/gemini3_8/docs/thinking.md).
 
         An empty tuple means the model rejects the thinking_level parameter
         entirely, so it must be omitted from the request.
         """
-        if "gemini-2.5" in self._model:
-            # The vendor table claims low/medium/high, but the live API rejects
-            # every thinking_level value for the 2.5 series (verified 2026-07-24).
-            return ()
         if "-image" in self._model:
             return (types.ThinkingLevel.MINIMAL, types.ThinkingLevel.HIGH)
         if "gemini-3-pro" in self._model:
@@ -159,8 +155,9 @@ class Gemini3_7Client(LLMClient):
             # would have accepted costs a little accuracy, forwarding an
             # unsupported one is a 400).
             return (types.ThinkingLevel.LOW, types.ThinkingLevel.MEDIUM, types.ThinkingLevel.HIGH)
-        if "gemini-3.7" in self._model:
-            # The 3.7 generation rejects "minimal" with a 400 (verified live 2026-08-13).
+        if "gemini-3.7" in self._model or "gemini-3.8" in self._model:
+            # Both generations reject "minimal" with a 400 (3.7 verified live 2026-08-13;
+            # 3.8 documented at ai.google.dev/gemini-api/docs/latest-model).
             return (types.ThinkingLevel.LOW, types.ThinkingLevel.MEDIUM, types.ThinkingLevel.HIGH)
         return self._GEMINI_LEVEL_ORDER
 
@@ -180,8 +177,9 @@ class Gemini3_7Client(LLMClient):
             return None
         supported = self._supported_thinking_levels()
         if not supported:
-            # The model takes no thinking_level at all; drop the parameter and
-            # let the model use its default instead of forwarding a 400.
+            # A model that takes no thinking_level at all has nothing to clamp onto, so the
+            # parameter is omitted rather than turned into a failed request. thinking_summary
+            # is unaffected -- include_thoughts still rides along.
             return None
         if level in supported:
             return level
@@ -281,7 +279,7 @@ class Gemini3_7Client(LLMClient):
             config_params["system_instruction"] = config["system_prompt"]
 
         # include_thoughts asks for thought summaries, but whether generateContent returns any
-        # is model-dependent (llmsdk_docs/gemini3_7/docs/thinking.md)
+        # is model-dependent (llmsdk_docs/gemini3_8/docs/thinking.md)
         thinking_summary = config.get("thinking_summary")
         thinking_level = config.get("thinking_level")
         if thinking_summary is not None or thinking_level is not None:
@@ -570,7 +568,7 @@ class Gemini3_7Client(LLMClient):
 
             for item in event["content_items"]:
                 if item["type"] == "tool_call":
-                    # gemini 3.7 does not support partial tool call, mock a partial tool call event
+                    # the Gemini API does not stream partial tool calls, mock a partial tool call event
                     yield {
                         "role": "assistant",
                         "event_type": "delta",

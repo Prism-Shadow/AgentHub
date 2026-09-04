@@ -103,9 +103,16 @@ class DeepSeekV4Client(LLMClient):
                 self.__class__.__name__, "temperature", "DeepSeek V4 does not support setting temperature."
             )
 
-        # a thinking summary is accepted but never generated, so the parameter is left out
         if config.get("thinking_level") is not None:
             deepseek_config["reasoning"] = {"effort": self._convert_thinking_level_to_effort(config["thinking_level"])}
+
+        if config.get("thinking_summary"):
+            # DeepSeek takes reasoning.summary with or without an effort and returns an empty
+            # summary list for now (verified live 2026-09-03 on api.deepseek.com and
+            # OpenRouter), so the request carries the preference instead of dropping it and
+            # picks up summaries as soon as the vendor generates them. False needs no key:
+            # the Responses API returns no summary unless one is asked for.
+            deepseek_config.setdefault("reasoning", {})["summary"] = "concise"
 
         if config.get("tools") is not None:
             deepseek_config["tools"] = [{"type": "function", **tool} for tool in config["tools"]]

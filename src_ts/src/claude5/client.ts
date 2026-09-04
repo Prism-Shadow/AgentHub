@@ -237,9 +237,17 @@ export class Claude5Client extends LLMClient {
         claudeConfig,
         this._convertThinkingLevelToThinkingConfig(config.thinking_level),
       );
-      if (config.thinking_summary && claudeConfig.thinking) {
-        claudeConfig.thinking.display = "summarized";
-      }
+    }
+
+    if (config.thinking_summary !== undefined) {
+      // display lives on the thinking block, so a summary asked for on its own selects
+      // adaptive thinking, which is what this family runs by default anyway; a block
+      // carrying display but no output_config is accepted on 4.6 through 5 (verified
+      // live 2026-09-03). NONE omits the block, so the request lands on that default.
+      claudeConfig.thinking = claudeConfig.thinking ?? { type: "adaptive" };
+      claudeConfig.thinking.display = config.thinking_summary
+        ? "summarized"
+        : "omitted";
     }
 
     if (config.tools !== undefined) {

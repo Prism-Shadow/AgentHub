@@ -118,8 +118,10 @@ async def test_clients_return_the_ids_the_endpoint_serves(case: ListCase):
 
 @pytest.mark.asyncio
 async def test_gemini_client_strips_the_path_from_model_names():
+    # Deliberately the previous generation's spelling: the unified client is named for the
+    # newest one, and a caller still passing client_type="gemini-3.7" must keep routing to it.
     client = AutoLLMClient(model="gemini-3.7-flash", api_key="test-key", client_type="gemini-3.7")
-    assert type(client._client).__name__ == "Gemini3_7Client"  # noqa: SLF001
+    assert type(client._client).__name__ == "Gemini3_8Client"  # noqa: SLF001
     fake = _FakeGeminiModelsEndpoint(["models/gemini-3.7-flash", "publishers/google/models/gemini-3.7-pro"])
     client._client._client = SimpleNamespace(aio=SimpleNamespace(models=fake))  # noqa: SLF001
 

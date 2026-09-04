@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { LLMClient } from "./baseClient";
-import { Gemini3_7Client } from "./gemini3_7";
+import { Gemini3_8Client } from "./gemini3_8";
 import { Claude5Client } from "./claude5";
 import { GPT5_6Client } from "./gpt5_6";
 import { GLM5_3Client } from "./glm5_3";
@@ -93,12 +93,12 @@ export class AutoLLMClient extends LLMClient {
    */
   private _clientClassForModel(clientType: string): LLMClientConstructor | null {
     // every Gemini generation shares the unified client ("gemini-3" also matches the
-    // gemini-3.7/gemini-3.6/gemini-3.5-flash-lite client types)
+    // gemini-3.8/gemini-3.7/gemini-3.6/gemini-3.5-flash-lite client types)
     if (
       clientType.includes("gemini-3") ||
       clientType.includes("gemini-embedding")
     ) {
-      return Gemini3_7Client;
+      return Gemini3_8Client;
     } else if (
       clientType.includes("claude") &&
       (clientType.includes("4-6") ||
@@ -163,7 +163,7 @@ export class AutoLLMClient extends LLMClient {
     if (ClientClass === null) {
       throw new Error(
         `${clientType} is not supported. ` +
-          "Supported client types: minimax-m3, gemini-3.7, gemini-3.6, gemini-3, " +
+          "Supported client types: minimax-m3, gemini-3.8, gemini-3.7, gemini-3.6, gemini-3, " +
           "claude-5, claude-4-8, claude-4-7, " +
           "claude-4-6, gpt-5.6, gpt-5.5, gpt-5.4, glm-5.3, glm-5.2, glm-5.1, kimi-k3, kimi-k2.6, kimi-k2.5, " +
           "deepseek-v4, openai-chat-vllm-adapter, openai-embedding, ant-messages, openai-responses, openai-chat.",

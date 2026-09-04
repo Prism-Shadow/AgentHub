@@ -38,6 +38,9 @@ export interface ModelPricing {
  * `new AutoLLMClient({ model, baseUrl: base_url, clientType: client })`.
  * Modalities describe what is usable through that client; `context_window` and
  * `pricing` are omitted where the platform publishes no authoritative value.
+ *
+ * `pricing` is always the LIST price. A running promotion is deliberately not recorded: the
+ * registry's job is the catalog price, and applying a promotion is the consumer's.
  */
 export interface SupportedModel {
   model: string;
@@ -91,19 +94,30 @@ function cny(prompt: number, output: number, cached?: number): ModelPricing {
 const SUPPORTED_MODELS: SupportedModel[] = [
   // official vendor endpoints
   {
-    model: "gemini-3.7-flash",
+    model: "gemini-3.8-flash",
     base_url: GOOGLE,
-    client: "gemini-3.7",
+    client: "gemini-3.8",
     input_modalities: ["Text", "Image", "Video", "Audio"],
     output_modalities: ["Text"],
     context_window: 1048576,
-    // official list price; a launch discount halves all three rates through 2026-12-31
+    // Google runs a launch discount through 2026-12-31 on this row and on the two flash
+    // rows below; the list price is stored regardless, because applying a running
+    // promotion belongs to the consumer, not to the registry.
+    pricing: usd(1.5, 7.5, 0.15),
+  },
+  {
+    model: "gemini-3.7-flash",
+    base_url: GOOGLE,
+    client: "gemini-3.8",
+    input_modalities: ["Text", "Image", "Video", "Audio"],
+    output_modalities: ["Text"],
+    context_window: 1048576,
     pricing: usd(1.5, 7.5, 0.15),
   },
   {
     model: "gemini-3.6-flash",
     base_url: GOOGLE,
-    client: "gemini-3.7",
+    client: "gemini-3.8",
     input_modalities: ["Text", "Image", "Video", "Audio"],
     output_modalities: ["Text"],
     context_window: 1048576,
@@ -112,7 +126,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "gemini-3.5-flash-lite",
     base_url: GOOGLE,
-    client: "gemini-3.7",
+    client: "gemini-3.8",
     input_modalities: ["Text", "Image", "Video", "Audio"],
     output_modalities: ["Text"],
     context_window: 1048576,
@@ -121,7 +135,7 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "gemini-3.5-flash",
     base_url: GOOGLE,
-    client: "gemini-3.7",
+    client: "gemini-3.8",
     input_modalities: ["Text", "Image", "Video", "Audio"],
     output_modalities: ["Text"],
     context_window: 1048576,
@@ -130,21 +144,21 @@ const SUPPORTED_MODELS: SupportedModel[] = [
   {
     model: "gemini-3.1-flash-image",
     base_url: GOOGLE,
-    client: "gemini-3.7",
+    client: "gemini-3.8",
     input_modalities: ["Text", "Image"],
     output_modalities: ["Image"],
   },
   {
     model: "gemini-3.1-flash-tts-preview",
     base_url: GOOGLE,
-    client: "gemini-3.7",
+    client: "gemini-3.8",
     input_modalities: ["Text"],
     output_modalities: ["Audio"],
   },
   {
     model: "gemini-embedding-2",
     base_url: GOOGLE,
-    client: "gemini-3.7",
+    client: "gemini-3.8",
     input_modalities: ["Text"],
     output_modalities: ["Embed"],
   },

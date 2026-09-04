@@ -14,14 +14,12 @@
 
 import { expect, describe, test } from "@jest/globals";
 import { ThinkingLevel as GeminiThinkingLevel } from "@google/genai";
-import { AutoLLMClient, ThinkingLevel } from "../src";
+import { AutoLLMClient, ThinkingLevel, UniConfig } from "../src";
 
 // Not every Gemini model accepts every thinking level (verified live 2026-07-24;
 // see llmsdk_docs/gemini3/docs/thinking.md): pro models reject "minimal"
-// (gemini-3-pro also "medium"), image models accept only "minimal" and "high",
-// and the 2.5 series rejects the thinking_level parameter outright. Unsupported
-// levels must clamp to the closest supported one — or be dropped entirely for
-// models that take none — never error.
+// (gemini-3-pro also "medium") and image models accept only "minimal" and
+// "high". Unsupported levels must clamp to the closest supported one, never error.
 const GEMINI3_THINKING_LEVEL_CASES: Array<
   [string, ThinkingLevel, GeminiThinkingLevel | undefined]
 > = [
@@ -40,18 +38,14 @@ const GEMINI3_THINKING_LEVEL_CASES: Array<
   ["gemini-3-pro-image", ThinkingLevel.LOW, GeminiThinkingLevel.MINIMAL],
   ["gemini-3-flash-preview", ThinkingLevel.NONE, GeminiThinkingLevel.MINIMAL],
   ["gemini-3.5-flash", ThinkingLevel.MEDIUM, GeminiThinkingLevel.MEDIUM],
-  // The 2.5 series rejects thinking_level for every value: drop the parameter.
-  ["gemini-2.5-pro", ThinkingLevel.NONE, undefined],
-  ["gemini-2.5-flash", ThinkingLevel.HIGH, undefined],
-  ["gemini-2.5-flash-lite", ThinkingLevel.LOW, undefined],
   // A future pro generation falls into the generic "-pro" branch.
   ["gemini-4-pro", ThinkingLevel.NONE, GeminiThinkingLevel.LOW],
   // An unrecognized model inherits the full four-level default.
   ["gemini-9-flash", ThinkingLevel.NONE, GeminiThinkingLevel.MINIMAL],
 ];
 
-// clientType pins routing so pre-3 and hypothetical model names reach
-// the unified Gemini3_7Client the same way an explicit override would in user code.
+// clientType pins routing so hypothetical model names reach the unified
+// Gemini3_8Client the same way an explicit override would in user code.
 function createGemini3AutoClient(model: string): AutoLLMClient {
   return new AutoLLMClient({
     model,
@@ -80,23 +74,17 @@ describe("gemini3 thinking level clamping", () => {
     });
     expect(config.thinkingConfig.thinkingLevel).toBe(GeminiThinkingLevel.LOW);
   });
-
-  test("thinking config omits the level for pre-3 models", () => {
-    const client = createGemini3AutoClient("gemini-2.5-flash");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const config = (client as any)._client.transformUniConfigToModelConfig({
-      thinking_level: ThinkingLevel.HIGH,
-    });
-    expect(config.thinkingConfig.thinkingLevel).toBeUndefined();
-  });
 });
 
-// The 3.7 generation drops "minimal" (verified live 2026-08-13; see
-// llmsdk_docs/gemini3_7/docs/thinking.md); the 3.6-generation models routed to
-// the same client keep the full four-level set.
+// The 3.7 and 3.8 generations drop "minimal" (3.7 verified live 2026-08-13, see
+// llmsdk_docs/gemini3_8/docs/thinking.md; 3.8 documented at
+// ai.google.dev/gemini-api/docs/latest-model); the 3.6-generation models routed
+// to the same client keep the full four-level set.
 const GEMINI3_7_THINKING_LEVEL_CASES: Array<
   [string, ThinkingLevel, GeminiThinkingLevel]
 > = [
+  ["gemini-3.8-flash", ThinkingLevel.NONE, GeminiThinkingLevel.LOW],
+  ["gemini-3.8-flash", ThinkingLevel.MAX, GeminiThinkingLevel.HIGH],
   ["gemini-3.7-flash", ThinkingLevel.NONE, GeminiThinkingLevel.LOW],
   ["gemini-3.7-flash", ThinkingLevel.LOW, GeminiThinkingLevel.LOW],
   ["gemini-3.7-flash", ThinkingLevel.MEDIUM, GeminiThinkingLevel.MEDIUM],
@@ -108,14 +96,14 @@ const GEMINI3_7_THINKING_LEVEL_CASES: Array<
   ["gemini-3.5-flash-lite", ThinkingLevel.NONE, GeminiThinkingLevel.MINIMAL],
 ];
 
-describe("gemini3_7 thinking level clamping", () => {
+describe("gemini3_8 thinking level clamping", () => {
   test.each(GEMINI3_7_THINKING_LEVEL_CASES)(
     "%s clamps %s to %s",
     (model, level, expected) => {
-      // These are real model ids, so automatic routing reaches Gemini3_7Client directly.
+      // These are real model ids, so automatic routing reaches Gemini3_8Client directly.
       const client = new AutoLLMClient({ model, apiKey: "test-key" });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect((client as any)._client.constructor.name).toBe("Gemini3_7Client");
+      expect((client as any)._client.constructor.name).toBe("Gemini3_8Client");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect((client as any)._client._convertThinkingLevel(level)).toBe(
         expected,
@@ -141,11 +129,12 @@ const GLM_THINKING_LEVEL_CASES: Array<
   ["glm-5.2", ThinkingLevel.MEDIUM, "enabled", "medium"],
   ["glm-5.2", ThinkingLevel.XHIGH, "enabled", "xhigh"],
   ["glm-5.2", ThinkingLevel.MAX, "enabled", "max"],
-  ["glm-5.1", ThinkingLevel.HIGH, "enabled", undefined],
+  ["glm-5.1", ThinkingLevel.NONE, "disabled", undefined],
+  ["glm-5.1", ThinkingLevel.HIGH, "enabled", "high"],
   // Provider-hosted ids keep their own casing (SiliconFlow), so generation
   // detection must be case-insensitive.
   ["zai-org/GLM-5.2", ThinkingLevel.XHIGH, "enabled", "xhigh"],
-  ["Pro/zai-org/GLM-5.1", ThinkingLevel.HIGH, "enabled", undefined],
+  ["Pro/zai-org/GLM-5.1", ThinkingLevel.HIGH, "enabled", "high"],
 ];
 
 describe("glm thinking level mapping", () => {
@@ -218,6 +207,79 @@ describe("thinking level to vendor effort", () => {
         thinking_level: level,
       });
       expect(wireEffort(config)).toBe(expected);
+    },
+  );
+});
+
+// thinking_summary reaches the wire on its own, not only when a thinking_level rides with
+// it. Each protocol spells the switch differently: Anthropic puts it on thinking.display,
+// the Responses API on reasoning.summary, and Gemini on thinkingConfig.includeThoughts.
+const THINKING_SUMMARY_CASES: Array<
+  [string, string | undefined, UniConfig, string | boolean | undefined]
+> = [
+  ["claude-sonnet-5", undefined, { thinking_summary: true }, "summarized"],
+  ["claude-sonnet-5", undefined, { thinking_summary: false }, "omitted"],
+  [
+    "claude-sonnet-5",
+    undefined,
+    { thinking_summary: true, thinking_level: ThinkingLevel.NONE },
+    "summarized",
+  ],
+  [
+    "claude-sonnet-5",
+    undefined,
+    { thinking_summary: true, thinking_level: ThinkingLevel.MAX },
+    "summarized",
+  ],
+  ["claude-sonnet-5", "ant-messages", { thinking_summary: true }, "summarized"],
+  ["claude-sonnet-5", "ant-messages", { thinking_summary: false }, "omitted"],
+  // The Messages API disables thinking for NONE and rejects display on a disabled block,
+  // so that one combination leaves no thinking to summarize.
+  [
+    "claude-sonnet-5",
+    "ant-messages",
+    { thinking_summary: true, thinking_level: ThinkingLevel.NONE },
+    undefined,
+  ],
+  ["deepseek-v4", undefined, { thinking_summary: true }, "concise"],
+  [
+    "deepseek-v4",
+    undefined,
+    { thinking_summary: true, thinking_level: ThinkingLevel.NONE },
+    "concise",
+  ],
+  ["gpt-5.6", undefined, { thinking_summary: true }, "concise"],
+  // OpenRouter reads an effort-less reasoning object as "reasoning disabled", so the
+  // generic Responses client alone keeps the summary tied to a level.
+  ["gpt-5.6", "openai-responses", { thinking_summary: true }, undefined],
+  ["gemini-3.8-flash", undefined, { thinking_summary: true }, true],
+  ["gemini-3.8-flash", undefined, { thinking_summary: false }, false],
+];
+
+/** Read the thinking-summary switch out of whichever field the client used. */
+function wireThinkingSummary(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  config: any,
+): string | boolean | undefined {
+  if (config.thinkingConfig) return config.thinkingConfig.includeThoughts;
+  if (config.reasoning) return config.reasoning.summary;
+  return config.thinking?.display;
+}
+
+describe("thinking summary reaches the wire", () => {
+  test.each(THINKING_SUMMARY_CASES)(
+    "%s (%s) with %p sends %s",
+    (model, clientType, uniConfig, expected) => {
+      const client = new AutoLLMClient({
+        model,
+        apiKey: "test-key",
+        clientType,
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const config = (client as any)._client.transformUniConfigToModelConfig(
+        uniConfig,
+      );
+      expect(wireThinkingSummary(config)).toBe(expected);
     },
   );
 });
