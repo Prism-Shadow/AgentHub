@@ -96,9 +96,9 @@ function splitFunctionResponseRuns(parts: Part[]): Part[][] {
 /**
  * Unified client for the Gemini family, named for the newest generation it
  * serves (3.7). It serves every generateContent model generation (3.7 back
- * through 3.x text, image, TTS, and embedding models, with the 2.5 series
- * reachable via an explicit clientType), and applies the 3.6-generation
- * parameter contract to the whole family: temperature is rejected everywhere.
+ * through 3.x text, image, TTS, and embedding models), and applies the
+ * 3.6-generation parameter contract to the whole family: temperature is
+ * rejected everywhere.
  *
  * Starting with the 3.6 generation the API deprecates the temperature/top_p/top_k
  * sampling parameters (silently ignored today, HTTP 400 in future
@@ -215,11 +215,6 @@ export class Gemini3_8Client extends LLMClient {
    * entirely, so it must be omitted from the request.
    */
   private _supportedThinkingLevels(): GeminiThinkingLevel[] {
-    if (this._model.includes("gemini-2.5")) {
-      // The vendor table claims low/medium/high, but the live API rejects
-      // every thinking_level value for the 2.5 series (verified 2026-07-24).
-      return [];
-    }
     if (this._model.includes("-image")) {
       return [GeminiThinkingLevel.MINIMAL, GeminiThinkingLevel.HIGH];
     }
@@ -276,11 +271,9 @@ export class Gemini3_8Client extends LLMClient {
     }
     const supported = this._supportedThinkingLevels();
     if (supported.length === 0) {
-      // The one level that cannot be kept: the 2.5 series answers every value with
-      // "Thinking level is not supported for this model" (400, re-verified live
-      // 2026-09-03 on flash, pro and flash-lite), so there is nothing to clamp onto
-      // and the parameter is omitted rather than turned into a failed request.
-      // thinking_summary is unaffected -- includeThoughts still rides along.
+      // A model that takes no thinking_level at all has nothing to clamp onto, so the
+      // parameter is omitted rather than turned into a failed request. thinking_summary
+      // is unaffected -- includeThoughts still rides along.
       return undefined;
     }
     if (supported.includes(level)) {

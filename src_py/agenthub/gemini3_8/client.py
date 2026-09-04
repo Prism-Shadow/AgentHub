@@ -65,10 +65,10 @@ class Gemini3_8Client(LLMClient):
     """Unified client for the Gemini family, named for the newest generation it serves (3.7).
 
     It serves every generateContent model generation (3.7 back through 3.x text, image, TTS,
-    and embedding models, with the 2.5 series reachable via an explicit client_type). The API
-    deprecated the temperature/top_p/top_k sampling parameters starting with the 3.6
-    generation (silently ignored today, HTTP 400 in future generations), and this client
-    applies that contract to the whole family: temperature is rejected everywhere.
+    and embedding models). The API deprecated the temperature/top_p/top_k sampling parameters
+    starting with the 3.6 generation (silently ignored today, HTTP 400 in future generations),
+    and this client applies that contract to the whole family: temperature is rejected
+    everywhere.
     """
 
     def __init__(
@@ -144,10 +144,6 @@ class Gemini3_8Client(LLMClient):
         An empty tuple means the model rejects the thinking_level parameter
         entirely, so it must be omitted from the request.
         """
-        if "gemini-2.5" in self._model:
-            # The vendor table claims low/medium/high, but the live API rejects
-            # every thinking_level value for the 2.5 series (verified 2026-07-24).
-            return ()
         if "-image" in self._model:
             return (types.ThinkingLevel.MINIMAL, types.ThinkingLevel.HIGH)
         if "gemini-3-pro" in self._model:
@@ -181,11 +177,9 @@ class Gemini3_8Client(LLMClient):
             return None
         supported = self._supported_thinking_levels()
         if not supported:
-            # The one level that cannot be kept: the 2.5 series answers every value with
-            # "Thinking level is not supported for this model" (400, re-verified live
-            # 2026-09-03 on flash, pro and flash-lite), so there is nothing to clamp onto
-            # and the parameter is omitted rather than turned into a failed request.
-            # thinking_summary is unaffected -- include_thoughts still rides along.
+            # A model that takes no thinking_level at all has nothing to clamp onto, so the
+            # parameter is omitted rather than turned into a failed request. thinking_summary
+            # is unaffected -- include_thoughts still rides along.
             return None
         if level in supported:
             return level
