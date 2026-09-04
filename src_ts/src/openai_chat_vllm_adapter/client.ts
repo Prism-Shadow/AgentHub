@@ -73,7 +73,7 @@ const MODEL_THINKING_PROFILES: readonly (readonly [string, ThinkingProfile])[] =
   ];
 
 /** Models served through vLLM's OpenAI-compatible Chat Completions API. */
-export class VllmOpenaiChatClient extends OpenaiChatClient {
+export class OpenaiChatVllmAdapterClient extends OpenaiChatClient {
   /**
    * Return the chat_template_kwargs this model's template reads for the level.
    *

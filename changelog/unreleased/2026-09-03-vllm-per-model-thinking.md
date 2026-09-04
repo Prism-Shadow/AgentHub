@@ -2,15 +2,15 @@
 
 - **Date:** 2026-09-03
 - **Type:** fix
-- **Scope:** `vllm_openai_chat`, `docs`
+- **Scope:** `openai_chat_vllm_adapter`, `docs`
 - **PR:** [#198](https://github.com/Prism-Shadow/agenthub/pull/198)
 
 [中文版](2026-09-03-vllm-per-model-thinking.zh.md)
 
 ## What changed
 
-- `vllm-openai-chat` now picks the `chat_template_kwargs` shape from the served model id, matched
-  as a lowercased substring, instead of sending `enable_thinking` to every model.
+- `openai-chat-vllm-adapter` now picks the `chat_template_kwargs` shape from the served model
+  id, matched as a lowercased substring, instead of sending `enable_thinking` to every model.
 - Qwen3.8-Flash-Next, Qwen3.6-35B-A3B, Qwen3.5-0.8B and Qwen3.5-9B keep the `enable_thinking`
   boolean.
 - Qwen3.8-27B disables thinking with `enable_thinking: false` and selects its adaptive modes with

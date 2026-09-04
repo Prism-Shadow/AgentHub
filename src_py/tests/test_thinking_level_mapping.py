@@ -225,30 +225,30 @@ VLLM_THINKING_LEVEL_CASES = [
 
 
 @pytest.mark.parametrize(("model", "level", "expected"), VLLM_THINKING_LEVEL_CASES)
-def test_vllm_openai_chat_thinking_level_maps_to_chat_template_kwargs(
+def test_openai_chat_vllm_adapter_thinking_level_maps_to_chat_template_kwargs(
     model: str, level: ThinkingLevel, expected: dict | None
 ):
     client = AutoLLMClient(
         model=model,
         api_key="test-key",
         base_url="http://localhost:8000/v1",
-        client_type="vllm-openai-chat",
+        client_type="openai-chat-vllm-adapter",
     )
     config = client._client.transform_uni_config_to_model_config({"thinking_level": level})  # noqa: SLF001
     assert config.get("chat_template_kwargs") == expected
 
 
-def test_vllm_openai_chat_omits_chat_template_kwargs_without_thinking_level():
+def test_openai_chat_vllm_adapter_omits_chat_template_kwargs_without_thinking_level():
     client = AutoLLMClient(
         model="Qwen/Qwen3.6-35B-A3B",
         api_key="test-key",
-        client_type="vllm-openai-chat",
+        client_type="openai-chat-vllm-adapter",
     )
     config = client._client.transform_uni_config_to_model_config({})  # noqa: SLF001
     assert "chat_template_kwargs" not in config
 
 
-def test_openai_chat_does_not_receive_vllm_openai_chat_extension():
+def test_openai_chat_does_not_receive_the_vllm_extension():
     client = AutoLLMClient(
         model="Qwen/Qwen3.6-35B-A3B",
         api_key="test-key",

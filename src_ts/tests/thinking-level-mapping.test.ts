@@ -290,7 +290,7 @@ describe("vLLM thinking switch", () => {
         model: model as string,
         apiKey: "test-key",
         baseUrl: "http://localhost:8000/v1",
-        clientType: "vllm-openai-chat",
+        clientType: "openai-chat-vllm-adapter",
       });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const config = (client as any)._client.transformUniConfigToModelConfig({
@@ -304,7 +304,7 @@ describe("vLLM thinking switch", () => {
     const client = new AutoLLMClient({
       model: "Qwen/Qwen3.6-35B-A3B",
       apiKey: "test-key",
-      clientType: "vllm-openai-chat",
+      clientType: "openai-chat-vllm-adapter",
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const config = (client as any)._client.transformUniConfigToModelConfig({});

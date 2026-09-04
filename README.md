@@ -55,7 +55,7 @@ Beyond the model-specific clients, four generic protocol clients call any compat
 endpoint:
 
 - **`client_type="openai-chat"`** — OpenAI Chat Completions. Bare `"openai"` is an alias.
-- **`client_type="vllm-openai-chat"`** — Chat Completions as served by vLLM, mapping
+- **`client_type="openai-chat-vllm-adapter"`** — Chat Completions as served by vLLM, mapping
   `thinking_level` onto the `chat_template_kwargs` the served model's template reads.
 - **`client_type="openai-responses"`** — OpenAI Responses, served by OpenAI, OpenRouter,
   DeepSeek, Z.AI, and MiniMax.
@@ -129,7 +129,7 @@ AgentHub provides Codex/Claude Code skill files for assistants that need to help
 
 - `(async) streaming_response(messages, config)`: Streams the response of LLMs in a stateless manner.
 - `(async) streaming_response_stateful(message, config)`: Streams the response of LLMs in a stateful manner.
-- `(async) list_models()`: Lists the model ids the configured endpoint serves. A protocol client (`openai-chat`, `vllm-openai-chat`, `openai-responses`, `ant-messages`, `openai-embedding`) is named explicitly and lists everything the endpoint serves; a client deduced from a model id lists only the ids that deduce back to it.
+- `(async) list_models()`: Lists the model ids the configured endpoint serves. A protocol client (`openai-chat`, `openai-chat-vllm-adapter`, `openai-responses`, `ant-messages`, `openai-embedding`) is named explicitly and lists everything the endpoint serves; a client deduced from a model id lists only the ids that deduce back to it.
 - `clear_history()`: Clears the history of the stateful LLM client.
 - `get_history()`: Returns the history of the stateful LLM client.
 - `set_history(history)`: Replaces the history of the stateful LLM client with a copy of the provided list.
@@ -701,7 +701,7 @@ Every client speaks one vendor protocol on the wire, whichever `client_type` rea
 | `glm-5.3`, `glm-5.2`, `glm-5.1`                            | `openai-chat`      |
 | `kimi-k3`, `kimi-k2.6`, `kimi-k2.5`                        | `openai-chat`      |
 | `openai-chat` (alias `openai`)                             | `openai-chat`      |
-| `vllm-openai-chat`                                         | `openai-chat`      |
+| `openai-chat-vllm-adapter`                                 | `openai-chat`      |
 | `openai-embedding`                                         | `openai-embedding` |
 
 ## Related Work

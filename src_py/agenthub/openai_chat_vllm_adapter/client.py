@@ -72,7 +72,7 @@ _MODEL_THINKING_PROFILES: tuple[tuple[str, dict[ThinkingLevel, dict[str, Any]]],
 )
 
 
-class VllmOpenaiChatClient(OpenaiChatClient):
+class OpenaiChatVllmAdapterClient(OpenaiChatClient):
     """Models served through vLLM's OpenAI-compatible Chat Completions API."""
 
     def _thinking_chat_template_kwargs(self, thinking_level: ThinkingLevel) -> dict[str, Any]:
