@@ -285,34 +285,95 @@ describe("thinking summary reaches the wire", () => {
 });
 
 describe("vLLM thinking switch", () => {
+  // vLLM hands chat_template_kwargs to the served model's own chat template, so the switch
+  // differs per model. The shapes come from the artifacts snapshotted in
+  // llmsdk_docs/openai_chat_vllm_adapter/: Qwen3 reads a single enable_thinking boolean;
+  // the two Qwen3.8 models share one template that takes reasoning_effort (low/medium/xhigh
+  // only); and DeepSeek V4 reads a thinking flag paired with reasoning_effort, which its
+  // Pro and Flash encoder narrows to high/max while Flash-Vision-Exp also accepts low.
+  // Absent kwargs are how DeepSeek reads as off. Levels the model does not offer clamp to
+  // the closest one it does; a model outside the table falls back to Qwen3's boolean.
+  // undefined as the expectation means no kwargs are sent at all.
   test.each([
-    [ThinkingLevel.NONE, false],
-    [ThinkingLevel.LOW, true],
-    [ThinkingLevel.MEDIUM, true],
-    [ThinkingLevel.HIGH, true],
-    [ThinkingLevel.XHIGH, true],
-    [ThinkingLevel.MAX, true],
-  ])("maps %s to enable_thinking=%s", (level, expected) => {
-    const client = new AutoLLMClient({
-      model: "Qwen/Qwen3.6-35B-A3B",
-      apiKey: "test-key",
-      baseUrl: "http://localhost:8000/v1",
-      clientType: "vllm-openai-chat",
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const config = (client as any)._client.transformUniConfigToModelConfig({
-      thinking_level: level,
-    });
-    expect(config.chat_template_kwargs).toEqual({
-      enable_thinking: expected,
-    });
-  });
+    ["Qwen/Qwen3.6-35B-A3B", ThinkingLevel.NONE, { enable_thinking: false }],
+    ["Qwen/Qwen3.6-35B-A3B", ThinkingLevel.LOW, { enable_thinking: true }],
+    ["Qwen/Qwen3.6-35B-A3B", ThinkingLevel.MAX, { enable_thinking: true }],
+    ["Qwen/Qwen3.8-Flash-Next", ThinkingLevel.NONE, { enable_thinking: false }],
+    ["Qwen/Qwen3.8-Flash-Next", ThinkingLevel.LOW, { reasoning_effort: "low" }],
+    ["Qwen/Qwen3.5-0.8B", ThinkingLevel.NONE, { enable_thinking: false }],
+    ["Qwen/Qwen3.5-9B", ThinkingLevel.MEDIUM, { enable_thinking: true }],
+    ["Qwen/Qwen3.8-27B", ThinkingLevel.NONE, { enable_thinking: false }],
+    ["Qwen/Qwen3.8-27B", ThinkingLevel.LOW, { reasoning_effort: "low" }],
+    ["Qwen/Qwen3.8-27B", ThinkingLevel.MEDIUM, { reasoning_effort: "medium" }],
+    ["Qwen/Qwen3.8-27B", ThinkingLevel.HIGH, { reasoning_effort: "xhigh" }],
+    ["Qwen/Qwen3.8-27B", ThinkingLevel.XHIGH, { reasoning_effort: "xhigh" }],
+    ["Qwen/Qwen3.8-27B", ThinkingLevel.MAX, { reasoning_effort: "xhigh" }],
+    ["deepseek-ai/DeepSeek-V4-Pro", ThinkingLevel.NONE, undefined],
+    [
+      "deepseek-ai/DeepSeek-V4-Pro",
+      ThinkingLevel.LOW,
+      { thinking: true, reasoning_effort: "high" },
+    ],
+    [
+      "deepseek-ai/DeepSeek-V4-Pro",
+      ThinkingLevel.MEDIUM,
+      { thinking: true, reasoning_effort: "high" },
+    ],
+    [
+      "deepseek-ai/DeepSeek-V4-Pro",
+      ThinkingLevel.HIGH,
+      { thinking: true, reasoning_effort: "high" },
+    ],
+    [
+      "deepseek-ai/DeepSeek-V4-Pro",
+      ThinkingLevel.XHIGH,
+      { thinking: true, reasoning_effort: "high" },
+    ],
+    [
+      "deepseek-ai/DeepSeek-V4-Pro",
+      ThinkingLevel.MAX,
+      { thinking: true, reasoning_effort: "max" },
+    ],
+    [
+      "deepseek-ai/DeepSeek-V4-Flash",
+      ThinkingLevel.LOW,
+      { thinking: true, reasoning_effort: "high" },
+    ],
+    ["deepseek-ai/DeepSeek-V4-Flash-Vision-Exp", ThinkingLevel.NONE, undefined],
+    [
+      "deepseek-ai/DeepSeek-V4-Flash-Vision-Exp",
+      ThinkingLevel.LOW,
+      { thinking: true, reasoning_effort: "low" },
+    ],
+    [
+      "deepseek-ai/DeepSeek-V4-Flash-Vision-Exp",
+      ThinkingLevel.HIGH,
+      { thinking: true, reasoning_effort: "high" },
+    ],
+    ["meta-llama/Llama-4-70B", ThinkingLevel.NONE, { enable_thinking: false }],
+    ["meta-llama/Llama-4-70B", ThinkingLevel.HIGH, { enable_thinking: true }],
+  ])(
+    "maps %s at %s onto its own chat template kwargs",
+    (model, level, expected) => {
+      const client = new AutoLLMClient({
+        model: model as string,
+        apiKey: "test-key",
+        baseUrl: "http://localhost:8000/v1",
+        clientType: "openai-chat-vllm-adapter",
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const config = (client as any)._client.transformUniConfigToModelConfig({
+        thinking_level: level,
+      });
+      expect(config.chat_template_kwargs).toEqual(expected);
+    },
+  );
 
   test("does not add the vLLM extension when no level is selected", () => {
     const client = new AutoLLMClient({
       model: "Qwen/Qwen3.6-35B-A3B",
       apiKey: "test-key",
-      clientType: "vllm-openai-chat",
+      clientType: "openai-chat-vllm-adapter",
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const config = (client as any)._client.transformUniConfigToModelConfig({});
