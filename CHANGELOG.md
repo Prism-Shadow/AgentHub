@@ -4,6 +4,8 @@
 
 Here, we record the addition and removal times of models, major functional updates, bug fixes, and release times of key versions. Each release keeps one brief line here; the per-entry summaries live in `changelog/<version>/README.md`, and every entry links its detail file.
 
+- [2026-09-04] [Version 0.4.10](changelog/0.4.10/README.md): Gemini 3.8 Flash joins the registry and the shared Gemini client is renamed for it, the Gemini 2 series is dropped, registry rows record the list price with no discount field, every thinking level and thinking summary value stays on the wire, and a vLLM adapter client maps the thinking level onto whatever switch each served model's own chat template reads.
+
 - [2026-09-02] [Version 0.4.9](changelog/0.4.9/README.md): GPT-5.6 reads an image over the 30,000-patch limit at high detail instead of rejecting it, in a prompt and in a tool result, on the GPT-5.6, OpenAI Responses and OpenAI Chat clients.
 
 - [2026-08-26] [Version 0.4.8](changelog/0.4.8/README.md): `glm-5.3-flash` joins the registry and reads images in a prompt and in a tool result, while every other GLM model refuses an image item instead of sending one.
