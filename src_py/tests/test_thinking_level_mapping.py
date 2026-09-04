@@ -190,18 +190,20 @@ def test_thinking_level_maps_to_vendor_effort(
 
 
 # vLLM hands chat_template_kwargs to the served model's own chat template, so the switch
-# differs per model (recipes.vllm.ai, read 2026-09-03): Qwen3 reads a single
-# enable_thinking boolean, Qwen3.8-27B takes its adaptive modes as reasoning_effort
-# (low/medium/xhigh only), and DeepSeek V4 reads a thinking flag paired with
-# reasoning_effort (low/high/max only, absent kwargs meaning off). Levels the model does
-# not offer clamp to the closest one it does; a model outside the table falls back to
-# Qwen3's boolean. None as the expectation means the request carries no kwargs at all.
+# differs per model. The shapes come from the artifacts snapshotted in
+# llmsdk_docs/openai_chat_vllm_adapter/: Qwen3 reads a single enable_thinking boolean; the
+# two Qwen3.8 models share one template that takes reasoning_effort (low/medium/xhigh
+# only); and DeepSeek V4 reads a thinking flag paired with reasoning_effort, which its Pro
+# and Flash encoder narrows to high/max while Flash-Vision-Exp also accepts low. Absent
+# kwargs are how DeepSeek reads as off. Levels the model does not offer clamp to the
+# closest one it does; a model outside the table falls back to Qwen3's boolean. None as
+# the expectation means the request carries no kwargs at all.
 VLLM_THINKING_LEVEL_CASES = [
     ("Qwen/Qwen3.6-35B-A3B", ThinkingLevel.NONE, {"enable_thinking": False}),
     ("Qwen/Qwen3.6-35B-A3B", ThinkingLevel.LOW, {"enable_thinking": True}),
     ("Qwen/Qwen3.6-35B-A3B", ThinkingLevel.MAX, {"enable_thinking": True}),
     ("Qwen/Qwen3.8-Flash-Next", ThinkingLevel.NONE, {"enable_thinking": False}),
-    ("Qwen/Qwen3.8-Flash-Next", ThinkingLevel.HIGH, {"enable_thinking": True}),
+    ("Qwen/Qwen3.8-Flash-Next", ThinkingLevel.LOW, {"reasoning_effort": "low"}),
     ("Qwen/Qwen3.5-0.8B", ThinkingLevel.NONE, {"enable_thinking": False}),
     ("Qwen/Qwen3.5-9B", ThinkingLevel.MEDIUM, {"enable_thinking": True}),
     ("Qwen/Qwen3.8-27B", ThinkingLevel.NONE, {"enable_thinking": False}),
@@ -211,13 +213,14 @@ VLLM_THINKING_LEVEL_CASES = [
     ("Qwen/Qwen3.8-27B", ThinkingLevel.XHIGH, {"reasoning_effort": "xhigh"}),
     ("Qwen/Qwen3.8-27B", ThinkingLevel.MAX, {"reasoning_effort": "xhigh"}),
     ("deepseek-ai/DeepSeek-V4-Pro", ThinkingLevel.NONE, None),
-    ("deepseek-ai/DeepSeek-V4-Pro", ThinkingLevel.LOW, {"thinking": True, "reasoning_effort": "low"}),
+    ("deepseek-ai/DeepSeek-V4-Pro", ThinkingLevel.LOW, {"thinking": True, "reasoning_effort": "high"}),
     ("deepseek-ai/DeepSeek-V4-Pro", ThinkingLevel.MEDIUM, {"thinking": True, "reasoning_effort": "high"}),
     ("deepseek-ai/DeepSeek-V4-Pro", ThinkingLevel.HIGH, {"thinking": True, "reasoning_effort": "high"}),
     ("deepseek-ai/DeepSeek-V4-Pro", ThinkingLevel.XHIGH, {"thinking": True, "reasoning_effort": "high"}),
     ("deepseek-ai/DeepSeek-V4-Pro", ThinkingLevel.MAX, {"thinking": True, "reasoning_effort": "max"}),
-    ("deepseek-ai/DeepSeek-V4-Flash", ThinkingLevel.MAX, {"thinking": True, "reasoning_effort": "max"}),
+    ("deepseek-ai/DeepSeek-V4-Flash", ThinkingLevel.LOW, {"thinking": True, "reasoning_effort": "high"}),
     ("deepseek-ai/DeepSeek-V4-Flash-Vision-Exp", ThinkingLevel.NONE, None),
+    ("deepseek-ai/DeepSeek-V4-Flash-Vision-Exp", ThinkingLevel.LOW, {"thinking": True, "reasoning_effort": "low"}),
     ("deepseek-ai/DeepSeek-V4-Flash-Vision-Exp", ThinkingLevel.HIGH, {"thinking": True, "reasoning_effort": "high"}),
     ("meta-llama/Llama-4-70B", ThinkingLevel.NONE, {"enable_thinking": False}),
     ("meta-llama/Llama-4-70B", ThinkingLevel.HIGH, {"enable_thinking": True}),

@@ -63,20 +63,23 @@ Three details that only the templates make visible:
 The 3.8 templates additionally read `preserve_thinking` (default true), which keeps
 `reasoning_content` from earlier assistant turns in the prompt. The adapter does not set it.
 
-### Where the adapter's table diverges from the templates
+### Where the artifacts constrain the adapter's table
 
-Two profiles in `_MODEL_THINKING_PROFILES` do not follow the artifact above. Both are recorded
-here rather than corrected, because changing either alters what requests go out:
+Every profile in `_MODEL_THINKING_PROFILES` follows the artifact it is read off; no profile
+sends a value its model rejects. What the artifacts do force is coarser granularity than
+AgentHub's six levels, in two places:
 
-- **`Qwen3.8-Flash-Next` gets the plain `enable_thinking` profile** even though its template is
-  byte-identical to `Qwen3.8-27B`'s and reads `reasoning_effort` the same way. Because the
-  adapter never sends the key for this model, every level from `LOW` up renders at the
-  template's `xhigh` default: `LOW` and `MEDIUM` on `Qwen3.8-Flash-Next` are not lower effort
-  than `MAX`, whereas on `Qwen3.8-27B` they are.
-- **All three DeepSeek V4 models get `reasoning_effort: "low"` at `LOW`**, but the encoding
-  module in the `DeepSeek-V4-Pro` and `DeepSeek-V4-Flash` repositories accepts only
-  `high`, `max` and `None`, and asserts on anything else. See
+- **`DeepSeek-V4-Pro` and `DeepSeek-V4-Flash` render `LOW` through `XHIGH` identically.** Their
+  encoding module asserts `reasoning_effort in ['max', None, 'high']`, so `low` is not an option
+  at all and `high` is the lowest value they take; of the values that pass, only `max` changes
+  the rendered prompt. `DeepSeek-V4-Flash-Vision-Exp` has its own copy of that module, which
+  accepts `low`/`high`/`max`, so it keeps `LOW` distinct and takes a separate profile. See
   [docs/deepseek-v4-encoding.md](./docs/deepseek-v4-encoding.md).
+- **Both Qwen3.8 models clamp `HIGH`, `XHIGH` and `MAX` onto `xhigh`.** Their shared template
+  accepts only `xhigh`, `medium` and `low`, and `xhigh` is the strongest of the three. Because
+  the template defaults the key to `xhigh`, a model on this template that is *not* sent
+  `reasoning_effort` runs every level at full effort; the adapter therefore sends the key to
+  both of them.
 
 ## Models that publish no chat template
 

@@ -23,13 +23,11 @@ type ThinkingProfile = Record<ThinkingLevel, ChatTemplateKwargs>;
 // below maps an AgentHub level onto one family's kwargs; an empty mapping means the
 // request carries no chat_template_kwargs at all.
 //
-// The upstream templates these profiles are read off, and the two places where a profile
-// knowingly diverges from one, are snapshotted in llmsdk_docs/openai_chat_vllm_adapter/.
-// Update that snapshot whenever a model is added here.
+// The upstream artifacts these profiles are read off, and the clamping those artifacts
+// force, are snapshotted in llmsdk_docs/openai_chat_vllm_adapter/. Update that snapshot
+// whenever a model is added here.
 
-// Qwen3 templates read a single enable_thinking boolean. Qwen3.8-Flash-Next is the
-// exception: it ships the same template as Qwen3.8-27B, which also reads reasoning_effort
-// and defaults it to xhigh, so LOW and MEDIUM land on xhigh here.
+// Qwen3 templates read a single enable_thinking boolean and no effort key at all.
 const QWEN3_THINKING: ThinkingProfile = {
   [ThinkingLevel.NONE]: { enable_thinking: false },
   [ThinkingLevel.LOW]: { enable_thinking: true },
@@ -39,9 +37,12 @@ const QWEN3_THINKING: ThinkingProfile = {
   [ThinkingLevel.MAX]: { enable_thinking: true },
 };
 
-// Qwen3.8-27B keeps enable_thinking as the off switch and takes its adaptive modes as
-// reasoning_effort, which accepts only low/medium/xhigh, so high and max clamp to xhigh.
-const QWEN3_8_27B_THINKING: ThinkingProfile = {
+// Qwen3.8-27B and Qwen3.8-Flash-Next ship the same chat template, byte for byte, so they
+// share a profile. It keeps enable_thinking as the off switch and takes its adaptive modes
+// as reasoning_effort, validated against low/medium/xhigh, so high and max clamp to xhigh.
+// The template defaults the key to xhigh, so a model on this template that is not sent the
+// key runs every level at full effort.
+const QWEN3_8_THINKING: ThinkingProfile = {
   [ThinkingLevel.NONE]: { enable_thinking: false },
   [ThinkingLevel.LOW]: { reasoning_effort: "low" },
   [ThinkingLevel.MEDIUM]: { reasoning_effort: "medium" },
@@ -51,11 +52,24 @@ const QWEN3_8_27B_THINKING: ThinkingProfile = {
 };
 
 // DeepSeek V4 publishes no chat template; vLLM reads a thinking flag paired with
-// reasoning_effort, which accepts only low/high/max, so medium and xhigh clamp to high.
-// Thinking is off whenever the flag is absent, which is what NONE sends. Upstream's own
-// encoding module narrows that set to high/max on DeepSeek-V4-Pro and DeepSeek-V4-Flash,
-// where low is rejected outright; only Flash-Vision-Exp takes all three.
-const DEEPSEEK_V4_THINKING: ThinkingProfile = {
+// reasoning_effort, and thinking is off whenever the flag is absent, which is what NONE
+// sends. DeepSeek-V4-Pro and DeepSeek-V4-Flash share an encoding module that asserts
+// reasoning_effort in ['max', None, 'high'], so low is a failed request rather than a
+// weaker answer and high is the lowest value they take. That module then branches on 'max'
+// alone, which means LOW through XHIGH all render the same prompt on these two models.
+const DEEPSEEK_V4_PRO_FLASH_THINKING: ThinkingProfile = {
+  [ThinkingLevel.NONE]: {},
+  [ThinkingLevel.LOW]: { thinking: true, reasoning_effort: "high" },
+  [ThinkingLevel.MEDIUM]: { thinking: true, reasoning_effort: "high" },
+  [ThinkingLevel.HIGH]: { thinking: true, reasoning_effort: "high" },
+  [ThinkingLevel.XHIGH]: { thinking: true, reasoning_effort: "high" },
+  [ThinkingLevel.MAX]: { thinking: true, reasoning_effort: "max" },
+};
+
+// DeepSeek-V4-Flash-Vision-Exp ships a different copy of that encoding module, one that
+// validates reasoning_effort against a low/high/max table, so it keeps the finer scale;
+// medium and xhigh clamp to high.
+const DEEPSEEK_V4_VISION_EXP_THINKING: ThinkingProfile = {
   [ThinkingLevel.NONE]: {},
   [ThinkingLevel.LOW]: { thinking: true, reasoning_effort: "low" },
   [ThinkingLevel.MEDIUM]: { thinking: true, reasoning_effort: "high" },
@@ -70,14 +84,14 @@ const DEEPSEEK_V4_THINKING: ThinkingProfile = {
 // prefix of deepseek-v4-flash-vision-exp.
 const MODEL_THINKING_PROFILES: readonly (readonly [string, ThinkingProfile])[] =
   [
-    ["qwen3.8-flash-next", QWEN3_THINKING],
-    ["qwen3.8-27b", QWEN3_8_27B_THINKING],
+    ["qwen3.8-flash-next", QWEN3_8_THINKING],
+    ["qwen3.8-27b", QWEN3_8_THINKING],
     ["qwen3.6-35b-a3b", QWEN3_THINKING],
     ["qwen3.5-0.8b", QWEN3_THINKING],
     ["qwen3.5-9b", QWEN3_THINKING],
-    ["deepseek-v4-flash-vision-exp", DEEPSEEK_V4_THINKING],
-    ["deepseek-v4-pro", DEEPSEEK_V4_THINKING],
-    ["deepseek-v4-flash", DEEPSEEK_V4_THINKING],
+    ["deepseek-v4-flash-vision-exp", DEEPSEEK_V4_VISION_EXP_THINKING],
+    ["deepseek-v4-pro", DEEPSEEK_V4_PRO_FLASH_THINKING],
+    ["deepseek-v4-flash", DEEPSEEK_V4_PRO_FLASH_THINKING],
   ];
 
 /** Models served through vLLM's OpenAI-compatible Chat Completions API. */

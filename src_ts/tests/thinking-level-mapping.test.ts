@@ -224,18 +224,20 @@ describe("thinking level to vendor effort", () => {
 
 describe("vLLM thinking switch", () => {
   // vLLM hands chat_template_kwargs to the served model's own chat template, so the switch
-  // differs per model (recipes.vllm.ai, read 2026-09-03): Qwen3 reads a single
-  // enable_thinking boolean, Qwen3.8-27B takes its adaptive modes as reasoning_effort
-  // (low/medium/xhigh only), and DeepSeek V4 reads a thinking flag paired with
-  // reasoning_effort (low/high/max only, absent kwargs meaning off). Levels the model does
-  // not offer clamp to the closest one it does; a model outside the table falls back to
-  // Qwen3's boolean. undefined as the expectation means no kwargs are sent at all.
+  // differs per model. The shapes come from the artifacts snapshotted in
+  // llmsdk_docs/openai_chat_vllm_adapter/: Qwen3 reads a single enable_thinking boolean;
+  // the two Qwen3.8 models share one template that takes reasoning_effort (low/medium/xhigh
+  // only); and DeepSeek V4 reads a thinking flag paired with reasoning_effort, which its
+  // Pro and Flash encoder narrows to high/max while Flash-Vision-Exp also accepts low.
+  // Absent kwargs are how DeepSeek reads as off. Levels the model does not offer clamp to
+  // the closest one it does; a model outside the table falls back to Qwen3's boolean.
+  // undefined as the expectation means no kwargs are sent at all.
   test.each([
     ["Qwen/Qwen3.6-35B-A3B", ThinkingLevel.NONE, { enable_thinking: false }],
     ["Qwen/Qwen3.6-35B-A3B", ThinkingLevel.LOW, { enable_thinking: true }],
     ["Qwen/Qwen3.6-35B-A3B", ThinkingLevel.MAX, { enable_thinking: true }],
     ["Qwen/Qwen3.8-Flash-Next", ThinkingLevel.NONE, { enable_thinking: false }],
-    ["Qwen/Qwen3.8-Flash-Next", ThinkingLevel.HIGH, { enable_thinking: true }],
+    ["Qwen/Qwen3.8-Flash-Next", ThinkingLevel.LOW, { reasoning_effort: "low" }],
     ["Qwen/Qwen3.5-0.8B", ThinkingLevel.NONE, { enable_thinking: false }],
     ["Qwen/Qwen3.5-9B", ThinkingLevel.MEDIUM, { enable_thinking: true }],
     ["Qwen/Qwen3.8-27B", ThinkingLevel.NONE, { enable_thinking: false }],
@@ -248,7 +250,7 @@ describe("vLLM thinking switch", () => {
     [
       "deepseek-ai/DeepSeek-V4-Pro",
       ThinkingLevel.LOW,
-      { thinking: true, reasoning_effort: "low" },
+      { thinking: true, reasoning_effort: "high" },
     ],
     [
       "deepseek-ai/DeepSeek-V4-Pro",
@@ -272,10 +274,15 @@ describe("vLLM thinking switch", () => {
     ],
     [
       "deepseek-ai/DeepSeek-V4-Flash",
-      ThinkingLevel.MAX,
-      { thinking: true, reasoning_effort: "max" },
+      ThinkingLevel.LOW,
+      { thinking: true, reasoning_effort: "high" },
     ],
     ["deepseek-ai/DeepSeek-V4-Flash-Vision-Exp", ThinkingLevel.NONE, undefined],
+    [
+      "deepseek-ai/DeepSeek-V4-Flash-Vision-Exp",
+      ThinkingLevel.LOW,
+      { thinking: true, reasoning_effort: "low" },
+    ],
     [
       "deepseek-ai/DeepSeek-V4-Flash-Vision-Exp",
       ThinkingLevel.HIGH,
