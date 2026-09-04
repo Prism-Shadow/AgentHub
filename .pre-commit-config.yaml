@@ -1,3 +1,7 @@
+# Vendored chat templates are stored byte-identical to the model repositories they come
+# from, so they must survive whitespace normalisation unchanged.
+exclude: '^llmsdk_docs/openai_chat_vllm_adapter/chat_templates/'
+
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
