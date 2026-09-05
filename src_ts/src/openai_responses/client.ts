@@ -285,7 +285,57 @@ export class OpenaiResponsesClient extends LLMClient {
             }
           }
 
-          inputList.push(reasoning);
+          // Replays carry the completed reasoning item back to the server. The
+          // Console Go / "opencode_go" gateway family keys a replayed reasoning item
+          // strictly by its plain-text `summary`/`content` and drops requests whose
+          // reasoning carries only an encrypted blob next to a following function call
+          // (`400 No function call found for function call output ...` when two
+          // parallel function_call_outputs follow such an item). A replay item with
+          // no visible text at all is therefore noise to those gateways and is safe to
+          // omit — the reasoning already happened and only needs the following
+          // function calls to be answerable.
+          if (
+            !item.thinking &&
+            (reasoning.encrypted_content || reasoning.signature) &&
+            (reasoning.content === undefined || reasoning.content.length === 0) &&
+            (reasoning.summary === undefined || reasoning.summary.length === 0)
+          ) {
+            // no visible reasoning text to replay — skip the encrypted-only item
+            continue;
+          }
+
+          // Co-locate the replayed reasoning with the message content that followed it
+          // on the wire. Some gateways reject a bare encrypted reasoning item that is
+          // immediately followed by a top-level function_call (the parallel-tool-call
+          // replay breaks), so instead of pushing the reasoning as its own top-level
+          // input item we merge it into the flushable message content. The flush
+          // helper below serializes message content as an `input_text`/`output_text`
+          // part; a reasoning part is not valid message content on every server, so
+          // when the message also carries visible text we still push the reasoning as
+          // a separate item, but only *after* the text entry (never between a
+          // function_call and its output).
+          if (contentItems.length > 0) {
+            // flush the collected text first, then the reasoning item
+            const flush = () => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const entry: any = { role: msg.role, content: contentItems };
+              if (lastPhase !== null) {
+                entry.phase = lastPhase;
+              }
+              inputList.push(entry);
+              contentItems = [];
+            };
+            flush();
+            inputList.push(reasoning);
+          } else if (item.thinking) {
+            // thinking text with fidelity: keep it directly before any tool calls
+            inputList.push(reasoning);
+          } else {
+            // fidelity-only reasoning: place it right after the assistant message's
+            // visible content if any was already flushed, otherwise before the rest
+            // (see also the encrypted-only skip above)
+            inputList.push(reasoning);
+          }
         } else if (item.type === "tool_call") {
           inputList.push({
             type: "function_call",
