@@ -164,6 +164,10 @@ const THINKING_EFFORT_CASES: Array<
   ["gpt-5.6", undefined, ThinkingLevel.XHIGH, "xhigh"],
   ["gpt-5.6", undefined, ThinkingLevel.MAX, "max"],
   ["gpt-5.6", "openai-responses", ThinkingLevel.MAX, "max"],
+  // The generic Responses client also fronts third-party gateways (Console Go,
+  // OpenRouter, ...) which reject "max"; MAX clamps to the highest accepted level.
+  ["longcat-2.0", "openai-responses", ThinkingLevel.MAX, "xhigh"],
+  ["muse-spark", "openai-responses", ThinkingLevel.MAX, "xhigh"],
   ["claude-sonnet-5", undefined, ThinkingLevel.XHIGH, "xhigh"],
   ["claude-sonnet-5", undefined, ThinkingLevel.MAX, "max"],
   // 4.6 has no xhigh but does take max.

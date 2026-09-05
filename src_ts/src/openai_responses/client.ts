@@ -67,15 +67,40 @@ export class OpenaiResponsesClient extends LLMClient {
 
   /**
    * Convert ThinkingLevel enum to the Responses API reasoning effort.
+   *
+   * This client is a generic Responses-protocol client, so it serves third-party
+   * gateways (Console Go, OpenRouter, ...) as well as OpenAI's own GPT-5.x models
+   * when they are routed here through a clientType override. Third-party gateways
+   * accept at most "xhigh" -- the Console Go family rejects "max" with
+   *   `reasoning.effort`: unknown variant `max`, expected one of
+   *   `none`, `minimal`, `low`, `medium`, `high`, `xhigh`
+   * -- so MAX is clamped to "xhigh" for every model except OpenAI's own GPT-5.x
+   * line, which is the one that genuinely takes "max".
    */
   private _convertThinkingLevelToEffort(thinkingLevel: ThinkingLevel): string {
+    if (thinkingLevel !== ThinkingLevel.MAX) {
+      return this._effortForLevel(thinkingLevel);
+    }
+    // OpenAI's own GPT-5.4/5.5/5.6 accept "max"; gateways do not.
+    const model = this._model.toLowerCase();
+    if (
+      model.includes("gpt-5.4") ||
+      model.includes("gpt-5.5") ||
+      model.includes("gpt-5.6")
+    ) {
+      return "max";
+    }
+    return "xhigh";
+  }
+
+  private _effortForLevel(thinkingLevel: ThinkingLevel): string {
     const mapping: { [key: string]: string } = {
       [ThinkingLevel.NONE]: "none",
       [ThinkingLevel.LOW]: "low",
       [ThinkingLevel.MEDIUM]: "medium",
       [ThinkingLevel.HIGH]: "high",
       [ThinkingLevel.XHIGH]: "xhigh",
-      [ThinkingLevel.MAX]: "max",
+      [ThinkingLevel.MAX]: "xhigh",
     };
     return mapping[thinkingLevel];
   }
