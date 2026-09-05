@@ -67,15 +67,40 @@ export class OpenaiResponsesClient extends LLMClient {
 
   /**
    * Convert ThinkingLevel enum to the Responses API reasoning effort.
+   *
+   * This client is a generic Responses-protocol client, so it serves third-party
+   * gateways (Console Go, OpenRouter, ...) as well as OpenAI's own GPT-5.x models
+   * when they are routed here through a clientType override. Third-party gateways
+   * accept at most "xhigh" -- the Console Go family rejects "max" with
+   *   `reasoning.effort`: unknown variant `max`, expected one of
+   *   `none`, `minimal`, `low`, `medium`, `high`, `xhigh`
+   * -- so MAX is clamped to "xhigh" for every model except OpenAI's own GPT-5.x
+   * line, which is the one that genuinely takes "max".
    */
   private _convertThinkingLevelToEffort(thinkingLevel: ThinkingLevel): string {
+    if (thinkingLevel !== ThinkingLevel.MAX) {
+      return this._effortForLevel(thinkingLevel);
+    }
+    // OpenAI's own GPT-5.4/5.5/5.6 accept "max"; gateways do not.
+    const model = this._model.toLowerCase();
+    if (
+      model.includes("gpt-5.4") ||
+      model.includes("gpt-5.5") ||
+      model.includes("gpt-5.6")
+    ) {
+      return "max";
+    }
+    return "xhigh";
+  }
+
+  private _effortForLevel(thinkingLevel: ThinkingLevel): string {
     const mapping: { [key: string]: string } = {
       [ThinkingLevel.NONE]: "none",
       [ThinkingLevel.LOW]: "low",
       [ThinkingLevel.MEDIUM]: "medium",
       [ThinkingLevel.HIGH]: "high",
       [ThinkingLevel.XHIGH]: "xhigh",
-      [ThinkingLevel.MAX]: "max",
+      [ThinkingLevel.MAX]: "xhigh",
     };
     return mapping[thinkingLevel];
   }
@@ -260,7 +285,57 @@ export class OpenaiResponsesClient extends LLMClient {
             }
           }
 
-          inputList.push(reasoning);
+          // Replays carry the completed reasoning item back to the server. The
+          // Console Go / "opencode_go" gateway family keys a replayed reasoning item
+          // strictly by its plain-text `summary`/`content` and drops requests whose
+          // reasoning carries only an encrypted blob next to a following function call
+          // (`400 No function call found for function call output ...` when two
+          // parallel function_call_outputs follow such an item). A replay item with
+          // no visible text at all is therefore noise to those gateways and is safe to
+          // omit — the reasoning already happened and only needs the following
+          // function calls to be answerable.
+          if (
+            !item.thinking &&
+            (reasoning.encrypted_content || reasoning.signature) &&
+            (reasoning.content === undefined || reasoning.content.length === 0) &&
+            (reasoning.summary === undefined || reasoning.summary.length === 0)
+          ) {
+            // no visible reasoning text to replay — skip the encrypted-only item
+            continue;
+          }
+
+          // Co-locate the replayed reasoning with the message content that followed it
+          // on the wire. Some gateways reject a bare encrypted reasoning item that is
+          // immediately followed by a top-level function_call (the parallel-tool-call
+          // replay breaks), so instead of pushing the reasoning as its own top-level
+          // input item we merge it into the flushable message content. The flush
+          // helper below serializes message content as an `input_text`/`output_text`
+          // part; a reasoning part is not valid message content on every server, so
+          // when the message also carries visible text we still push the reasoning as
+          // a separate item, but only *after* the text entry (never between a
+          // function_call and its output).
+          if (contentItems.length > 0) {
+            // flush the collected text first, then the reasoning item
+            const flush = () => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const entry: any = { role: msg.role, content: contentItems };
+              if (lastPhase !== null) {
+                entry.phase = lastPhase;
+              }
+              inputList.push(entry);
+              contentItems = [];
+            };
+            flush();
+            inputList.push(reasoning);
+          } else if (item.thinking) {
+            // thinking text with fidelity: keep it directly before any tool calls
+            inputList.push(reasoning);
+          } else {
+            // fidelity-only reasoning: place it right after the assistant message's
+            // visible content if any was already flushed, otherwise before the rest
+            // (see also the encrypted-only skip above)
+            inputList.push(reasoning);
+          }
         } else if (item.type === "tool_call") {
           inputList.push({
             type: "function_call",
@@ -283,11 +358,18 @@ export class OpenaiResponsesClient extends LLMClient {
             }
           }
 
-          inputList.push({
+          // Build the function_call_output item. The output is delivered as a plain
+          // string for maximum compatibility: some Responses-compatible gateways
+          // (e.g. the opencode_go / "Console Go" proxy family) reject the array form
+          // with "No function call found for function call output with call_id …"
+          // because they key the call's replay by a string output payload.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const functionCallOutput: any = {
             type: "function_call_output",
             call_id: item.tool_call_id,
-            output: toolResult,
-          });
+            output: typeof item.text === "string" ? item.text : JSON.stringify(toolResult),
+          };
+          inputList.push(functionCallOutput);
         } else {
           throw new Error(`Unknown item: ${JSON.stringify(item)}`);
         }
@@ -436,6 +518,60 @@ export class OpenaiResponsesClient extends LLMClient {
   }
 
   /**
+   * Estimate the wire bytes of an input list. Used to gate requests against
+   * gateway body-size limits (nginx `client_max_body_size`) before they ship.
+   */
+  _estimateInputBytes(inputList: any[]): number {
+    try {
+      return JSON.stringify(inputList).length;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
+   * Trim the input list so the serialized body stays under `maxBytes`.
+   * Strategy: keep the system instructions (first entry) and the most recent
+   * user/assistant exchanges, dropping older history in pairs. Tool calls and
+   * their outputs are kept together so the function-call replay stays valid.
+   */
+  _trimInputToFit(inputList: any[], maxBytes: number): any[] {
+    if (this._estimateInputBytes(inputList) <= maxBytes) return inputList;
+
+    // Never touch the first entry — it carries the system instructions.
+    const head = inputList[0];
+    const rest = inputList.slice(1);
+
+    // Drop oldest pairs until we fit. Walk from the front, removing one
+    // assistant/user exchange at a time (keep function_call + function_call_output paired).
+    let trimmed = rest;
+    while (
+      trimmed.length > 2 &&
+      this._estimateInputBytes([head, ...trimmed]) > maxBytes
+    ) {
+      // Find the next safe cut point: the earliest index after which we can slice
+      // without orphaning a function_call from its function_call_output.
+      // Safe cut points: after a function_call_output, or after any non-function_call item.
+      // Unsafe: after a function_call (the output must follow).
+      let cut = 0; // Default: drop nothing (keep everything)
+      for (let i = 0; i < trimmed.length; i++) {
+        if (trimmed[i].type === "function_call") {
+          // Can't cut here, need to keep looking for the function_call_output
+          continue;
+        }
+        // Safe to cut here (function_call_output or non-function_call item)
+        cut = i + 1;
+      }
+      // If cut is 0, we can't safely drop anything without breaking a pair;
+      // force-drop the oldest exchange to avoid an infinite loop.
+      if (cut === 0) cut = 1;
+      trimmed = trimmed.slice(cut);
+    }
+
+    return [head, ...trimmed];
+  }
+
+  /**
    * Stream generate using an OpenAI Responses-compatible API with unified conversion methods.
    */
   async *_streamingResponseInternal(options: {
@@ -444,10 +580,50 @@ export class OpenaiResponsesClient extends LLMClient {
     signal?: AbortSignal;
   }): AsyncGenerator<UniEvent> {
     const openaiConfig = this.transformUniConfigToModelConfig(options.config);
-    const inputList = this.transformUniMessageToModelInput(
+    let inputList = this.transformUniMessageToModelInput(
       options.messages,
       options.signal,
     );
+
+    // Guard against gateways that cap the HTTP body (nginx 413). The Console Go
+    // proxy family sits behind nginx with a ~1 MB client_max_body_size; a long
+    // history or a verbose tool catalog blows past it. Trim to a safe ceiling.
+    const MAX_BODY_BYTES = 900 * 1024;
+    if (this._estimateInputBytes(inputList) > MAX_BODY_BYTES) {
+      inputList = this._trimInputToFit(inputList, MAX_BODY_BYTES);
+    }
+
+    // DEBUG: log the input list to diagnose function_call issues
+    if (process.env.DEBUG_RESPONSES) {
+      console.error("[DEBUG] Responses input:", JSON.stringify(inputList, null, 2));
+    }
+
+    // Validate: every function_call_output must have a matching function_call before it.
+    // The Console Go proxy rejects the request with "No function call found for function
+    // call output" if any output is orphaned, so strip orphans defensively.
+    {
+      const seenCallIds = new Set<string>();
+      const validated: any[] = [];
+      for (const item of inputList) {
+        if (item.type === "function_call") {
+          seenCallIds.add(item.call_id);
+          validated.push(item);
+        } else if (item.type === "function_call_output") {
+          if (seenCallIds.has(item.call_id)) {
+            validated.push(item);
+          } else {
+            // Orphaned output — drop it to avoid a 400.
+            console.error(
+              "[openai_responses] Dropping orphaned function_call_output with call_id:",
+              item.call_id,
+            );
+          }
+        } else {
+          validated.push(item);
+        }
+      }
+      inputList = validated;
+    }
 
     const partialToolCall: {
       name?: string;
