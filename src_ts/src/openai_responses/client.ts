@@ -283,11 +283,18 @@ export class OpenaiResponsesClient extends LLMClient {
             }
           }
 
-          inputList.push({
+          // Build the function_call_output item. The output is delivered as a plain
+          // string for maximum compatibility: some Responses-compatible gateways
+          // (e.g. the opencode_go / "Console Go" proxy family) reject the array form
+          // with "No function call found for function call output with call_id …"
+          // because they key the call's replay by a string output payload.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const functionCallOutput: any = {
             type: "function_call_output",
             call_id: item.tool_call_id,
-            output: toolResult,
-          });
+            output: typeof item.text === "string" ? item.text : JSON.stringify(toolResult),
+          };
+          inputList.push(functionCallOutput);
         } else {
           throw new Error(`Unknown item: ${JSON.stringify(item)}`);
         }
@@ -436,6 +443,60 @@ export class OpenaiResponsesClient extends LLMClient {
   }
 
   /**
+   * Estimate the wire bytes of an input list. Used to gate requests against
+   * gateway body-size limits (nginx `client_max_body_size`) before they ship.
+   */
+  _estimateInputBytes(inputList: any[]): number {
+    try {
+      return JSON.stringify(inputList).length;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
+   * Trim the input list so the serialized body stays under `maxBytes`.
+   * Strategy: keep the system instructions (first entry) and the most recent
+   * user/assistant exchanges, dropping older history in pairs. Tool calls and
+   * their outputs are kept together so the function-call replay stays valid.
+   */
+  _trimInputToFit(inputList: any[], maxBytes: number): any[] {
+    if (this._estimateInputBytes(inputList) <= maxBytes) return inputList;
+
+    // Never touch the first entry — it carries the system instructions.
+    const head = inputList[0];
+    const rest = inputList.slice(1);
+
+    // Drop oldest pairs until we fit. Walk from the front, removing one
+    // assistant/user exchange at a time (keep function_call + function_call_output paired).
+    let trimmed = rest;
+    while (
+      trimmed.length > 2 &&
+      this._estimateInputBytes([head, ...trimmed]) > maxBytes
+    ) {
+      // Find the next safe cut point: the earliest index after which we can slice
+      // without orphaning a function_call from its function_call_output.
+      // Safe cut points: after a function_call_output, or after any non-function_call item.
+      // Unsafe: after a function_call (the output must follow).
+      let cut = 0; // Default: drop nothing (keep everything)
+      for (let i = 0; i < trimmed.length; i++) {
+        if (trimmed[i].type === "function_call") {
+          // Can't cut here, need to keep looking for the function_call_output
+          continue;
+        }
+        // Safe to cut here (function_call_output or non-function_call item)
+        cut = i + 1;
+      }
+      // If cut is 0, we can't safely drop anything without breaking a pair;
+      // force-drop the oldest exchange to avoid an infinite loop.
+      if (cut === 0) cut = 1;
+      trimmed = trimmed.slice(cut);
+    }
+
+    return [head, ...trimmed];
+  }
+
+  /**
    * Stream generate using an OpenAI Responses-compatible API with unified conversion methods.
    */
   async *_streamingResponseInternal(options: {
@@ -444,10 +505,50 @@ export class OpenaiResponsesClient extends LLMClient {
     signal?: AbortSignal;
   }): AsyncGenerator<UniEvent> {
     const openaiConfig = this.transformUniConfigToModelConfig(options.config);
-    const inputList = this.transformUniMessageToModelInput(
+    let inputList = this.transformUniMessageToModelInput(
       options.messages,
       options.signal,
     );
+
+    // Guard against gateways that cap the HTTP body (nginx 413). The Console Go
+    // proxy family sits behind nginx with a ~1 MB client_max_body_size; a long
+    // history or a verbose tool catalog blows past it. Trim to a safe ceiling.
+    const MAX_BODY_BYTES = 900 * 1024;
+    if (this._estimateInputBytes(inputList) > MAX_BODY_BYTES) {
+      inputList = this._trimInputToFit(inputList, MAX_BODY_BYTES);
+    }
+
+    // DEBUG: log the input list to diagnose function_call issues
+    if (process.env.DEBUG_RESPONSES) {
+      console.error("[DEBUG] Responses input:", JSON.stringify(inputList, null, 2));
+    }
+
+    // Validate: every function_call_output must have a matching function_call before it.
+    // The Console Go proxy rejects the request with "No function call found for function
+    // call output" if any output is orphaned, so strip orphans defensively.
+    {
+      const seenCallIds = new Set<string>();
+      const validated: any[] = [];
+      for (const item of inputList) {
+        if (item.type === "function_call") {
+          seenCallIds.add(item.call_id);
+          validated.push(item);
+        } else if (item.type === "function_call_output") {
+          if (seenCallIds.has(item.call_id)) {
+            validated.push(item);
+          } else {
+            // Orphaned output — drop it to avoid a 400.
+            console.error(
+              "[openai_responses] Dropping orphaned function_call_output with call_id:",
+              item.call_id,
+            );
+          }
+        } else {
+          validated.push(item);
+        }
+      }
+      inputList = validated;
+    }
 
     const partialToolCall: {
       name?: string;
